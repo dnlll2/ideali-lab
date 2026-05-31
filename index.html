@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ideali Laboratorio - Clientes</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;padding:1.5rem;min-height:100vh}
+.card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;padding:1rem 1.25rem}
+.row-item{padding:9px 10px;border-bottom:0.5px solid rgba(255,255,255,0.06);cursor:pointer;border-radius:8px;transition:background 0.1s;display:flex;align-items:center;gap:8px}
+.row-item:hover{background:#22263a}
+.row-item.active{background:#1a2a40}
+.label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px}
+.val{font-size:13px;color:#e2e8f0}
+.detail-row{display:flex;gap:8px;padding:7px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);align-items:flex-start}
+.detail-row:last-child{border-bottom:none}
+.tick-btn{width:26px;height:26px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.15);background:#22263a;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:#4a5568;transition:all 0.15s;flex-shrink:0}
+.tick-btn.on{background:#0d3d2b;border-color:#22c55e;color:#22c55e}
+.tick-btn:disabled{opacity:0.35;cursor:default}
+.tick-col{display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0}
+.tick-label{font-size:9px;color:#4a5568;text-align:center;line-height:1.1}
+.tick-label.on{color:#22c55e;font-weight:500}
+.detail-tick{width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:12px;height:30px}
+input,select{height:36px;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:0 10px;font-size:13px;background:#22263a;color:#e2e8f0;outline:none;font-family:inherit}
+input::placeholder{color:#4a5568}
+input:focus,select:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
+select option{background:#1a1d27}
+button{font-family:inherit;cursor:pointer}
+.badge{display:inline-block;font-size:11px;padding:2px 10px;border-radius:8px;font-weight:500}
+.sealed-banner{background:#0d3d2b;border:0.5px solid #22c55e;border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:10px;margin-bottom:1rem}
+.counter-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.75rem;text-align:center}
+.fin-card{background:#22263a;border-radius:10px;padding:12px 14px}
+.fin-input{height:32px;width:100%;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:0 10px;font-size:13px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit}
+.fin-input:focus{border-color:#3b82f6}
+.save-btn{height:32px;padding:0 14px;border-radius:8px;border:none;background:#1d4ed8;color:#fff;font-size:12px;font-weight:500;cursor:pointer;transition:background 0.15s}
+.save-btn:hover{background:#2563eb}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:6px}
+.sync-dot.syncing{background:#fbbf24;animation:pulse 1s infinite}
+.sync-dot.error{background:#ef4444}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.loading-overlay{position:fixed;inset:0;background:rgba(15,17,23,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;gap:12px}
+.spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,0.1);border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.tab-tarefa{padding:6px 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;font-size:12px;color:#94a3b8;transition:all 0.15s}
+.tab-tarefa:hover{background:#2d3250;color:#e2e8f0}
+.tab-tarefa.active{background:#2e1d6e;color:#c4b5fd;border-color:#7c3aed}
+.task-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;background:#22263a;border:0.5px solid rgba(255,255,255,0.07);margin-bottom:8px}
+.task-add-btn{height:36px;padding:0 16px;border-radius:8px;border:none;background:#1d4ed8;color:#fff;font-size:13px;font-weight:500;cursor:pointer;transition:background 0.15s;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.task-add-btn:hover{background:#2563eb}
+.month-dd-btn{display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;font-size:12px;color:#e2e8f0;cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.month-dd-btn:hover,.month-dd-btn:focus{background:#2d3250;outline:none}
+.month-dd-btn.cur{border-color:#3b82f6;background:#1d3a6e;color:#93c5fd}
+.month-dd-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#94a3b8;transition:background 0.1s}
+.month-dd-item:hover{background:#22263a;color:#e2e8f0}
+.month-dd-item.sel{background:#1a2a40;color:#93c5fd}
+.month-dd-item.fech{color:#4ade80}
+</style>
+</head>
+<body>
+
+<div id="loading-overlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <p style="font-size:14px;color:#64748b">Conectando ao banco de dados...</p>
+</div>
+
+<div id="conn-error" style="display:none;position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:200;background:#3d1d1d;border:0.5px solid #ef4444;border-radius:10px;padding:12px 18px;align-items:center;gap:10px;max-width:520px;width:90%">
+  <i class="ti ti-alert-triangle" style="font-size:20px;color:#ef4444;flex-shrink:0"></i>
+  <div>
+    <p style="font-size:13px;font-weight:500;color:#fca5a5">Erro de conexao com o Supabase</p>
+    <span id="conn-error-msg" style="font-size:12px;color:#ef4444"></span>
+  </div>
+  <button onclick="document.getElementById('conn-error').style.display='none'" style="margin-left:auto;background:none;border:none;color:#64748b;font-size:18px;line-height:1;padding:0 4px">x</button>
+</div>
+
+<div style="max-width:1000px;margin:0 auto">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+    <div>
+      <p style="font-size:20px;font-weight:500;color:#f1f5f9">Ideali Laboratorio</p>
+      <p style="font-size:13px;color:#64748b">Controle mensal de clientes</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span id="sync-status" style="font-size:12px;color:#64748b"><span class="sync-dot" id="sync-dot"></span>Conectado</span>
+      <span id="total-badge" class="badge" style="background:#1d3a6e;color:#93c5fd">24 clientes</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center">
+    <span style="font-size:12px;color:#64748b;margin-right:4px">Mes:</span>
+    <div style="position:relative">
+      <button id="month-dd-btn" class="month-dd-btn" onclick="toggleMonthDD()">
+        <span id="month-dd-label">Carregando...</span>
+        <i class="ti ti-chevron-down" id="month-dd-arrow" style="font-size:11px;transition:transform 0.2s"></i>
+      </button>
+      <div id="month-dd-list" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:50;min-width:200px;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.12);border-radius:10px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,0.5)"></div>
+    </div>
+    <button onclick="addNextMonth()" title="Adicionar proximo mes" style="width:32px;height:32px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.15s" onmouseover="this.style.background='#2d3250';this.style.color='#e2e8f0'" onmouseout="this.style.background='#22263a';this.style.color='#94a3b8'">+</button>
+    <div style="width:1px;height:20px;background:rgba(255,255,255,0.1);margin:0 6px;flex-shrink:0"></div>
+    <button id="btn-tarefas" class="tab-tarefa" onclick="switchToTarefas()">Tarefas</button>
+    <button id="btn-inove" class="tab-tarefa" onclick="switchToInove()">&#127981; Inove 3D</button>
+    <button onclick="gerarRelatorioPDF()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:0.5px solid rgba(251,191,36,0.35);background:#2a2010;font-size:12px;color:#fbbf24;transition:all 0.15s;white-space:nowrap" onmouseover="this.style.background='#3d2e0e';this.style.borderColor='rgba(251,191,36,0.6)'" onmouseout="this.style.background='#2a2010';this.style.borderColor='rgba(251,191,36,0.35)'">&#128196; Relatório PDF</button>
+    <button onclick="gerarRelatorioClientes()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:0.5px solid rgba(99,179,237,0.35);background:#0c1e2e;font-size:12px;color:#63b3ed;transition:all 0.15s;white-space:nowrap" onmouseover="this.style.background='#112233';this.style.borderColor='rgba(99,179,237,0.65)'" onmouseout="this.style.background='#0c1e2e';this.style.borderColor='rgba(99,179,237,0.35)'">&#128203; Relatório Clientes</button>
+  </div>
+
+  <div id="clientes-view">
+
+    <div id="sealed-banner" style="display:none" class="sealed-banner">
+      <i class="ti ti-rosette-discount-check" style="font-size:22px;color:#22c55e"></i>
+      <div>
+        <p style="font-size:14px;font-weight:500;color:#4ade80">Mes fechado - 100% quitado!</p>
+        <p style="font-size:12px;color:#22c55e">Todos os clientes foram quitados neste mes.</p>
+      </div>
+    </div>
+
+    <div style="margin-bottom:1rem;display:flex;gap:8px">
+      <div style="flex:1;position:relative">
+        <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:16px;color:#4a5568"></i>
+        <input type="text" id="search" placeholder="Buscar por nome, CPF, CRO, cidade..." style="width:100%;padding-left:34px" oninput="doFilter()">
+      </div>
+      <select id="estado-filter" style="width:90px" onchange="doFilter()">
+        <option value="">Todos</option>
+        <option>SP</option><option>RJ</option><option>BA</option>
+      </select>
+      <select id="status-filter" style="width:130px" onchange="doFilter()">
+        <option value="">Todos status</option>
+        <option value="recebido">Recebido</option>
+        <option value="enviado">Enviado</option>
+        <option value="quitado">Quitado</option>
+        <option value="pendente">Pendente</option>
+      </select>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:12px">
+      <div class="card" style="padding:0.5rem;max-height:560px;overflow-y:auto" id="list-panel"></div>
+      <div class="card" id="detail-panel">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px">
+          <i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i>
+          <p style="font-size:13px;color:#4a5568">Selecione um cliente</p>
+        </div>
+      </div>
+    </div>
+
+    <p id="no-results" style="display:none;text-align:center;color:#64748b;font-size:13px;padding:1rem">Nenhum cliente encontrado.</p>
+
+    <div style="margin-top:1rem;display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+      <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Recebido</p><p style="font-size:24px;font-weight:500;color:#22c55e" id="count-recebido">0</p></div>
+      <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Enviado</p><p style="font-size:24px;font-weight:500;color:#22c55e" id="count-enviado">0</p></div>
+      <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Quitado</p><p style="font-size:24px;font-weight:500;color:#22c55e" id="count-quitado">0</p></div>
+      <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Pendente</p><p style="font-size:24px;font-weight:500;color:#ef4444" id="count-pendente">0</p></div>
+    </div>
+
+    <div style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total a receber</p><p style="font-size:18px;font-weight:500;color:#f1f5f9" id="total-valor">R$ 0,00</p></div>
+      <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total pago</p><p style="font-size:18px;font-weight:500;color:#22c55e" id="total-pago">R$ 0,00</p></div>
+      <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total componentes</p><p style="font-size:18px;font-weight:500;color:#94a3b8" id="total-comp">R$ 0,00</p></div>
+    </div>
+    <div style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Correio/Motoboy do mes (R$)</p><div style="display:flex;gap:6px;align-items:center;margin-top:2px"><input type="number" id="input-frete-mes" placeholder="0,00" min="0" step="0.01" style="height:30px;font-size:14px;font-weight:500;flex:1;background:#0f1117;border-color:rgba(255,255,255,0.08)" onkeydown="if(event.key==='Enter')saveFretesMes()"><button onclick="saveFretesMes()" style="height:30px;padding:0 10px;border-radius:6px;border:none;background:#1d4ed8;color:#fff;font-size:11px;cursor:pointer;font-family:inherit">Salvar</button></div></div>
+      <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissao bruta (17%)</p><p style="font-size:18px;font-weight:500;color:#fbbf24" id="total-com-bruta">R$ 0,00</p></div>
+      <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissao liquida (17%)</p><p style="font-size:18px;font-weight:500;color:#fbbf24" id="total-com-liq">R$ 0,00</p></div>
+    </div>
+
+  </div>
+
+  <div id="tarefas-view" style="display:none">
+    <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:12px">
+      <div class="card" style="padding:0.5rem;display:flex;flex-direction:column;max-height:580px">
+        <div style="position:relative;margin-bottom:6px;flex-shrink:0">
+          <i class="ti ti-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:14px;color:#4a5568"></i>
+          <input type="text" id="tarefas-search" placeholder="Buscar cliente..." style="width:100%;padding-left:30px;height:32px;font-size:12px" oninput="renderTarefasClientList()">
+        </div>
+        <div style="overflow-y:auto;flex:1" id="tarefas-client-list"></div>
+      </div>
+      <div class="card" id="tarefas-detail-panel">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px">
+          <i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i>
+          <p style="font-size:13px;color:#4a5568">Selecione um cliente para ver as tarefas</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="inove-view" style="display:none">
+    <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:12px">
+      <div class="card" style="padding:0.5rem;display:flex;flex-direction:column;max-height:580px">
+        <div style="position:relative;margin-bottom:6px;flex-shrink:0">
+          <i class="ti ti-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:14px;color:#4a5568"></i>
+          <input type="text" id="inove-client-search" placeholder="Buscar cliente..." style="width:100%;padding-left:30px;height:32px;font-size:12px" oninput="renderInoveClientList()">
+        </div>
+        <div style="overflow-y:auto;flex:1" id="inove-client-list"></div>
+      </div>
+      <div class="card" id="inove-detail-panel">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px">
+          <i class="ti ti-box" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i>
+          <p style="font-size:13px;color:#4a5568">Selecione um cliente para ver os pedidos</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var SUPABASE_URL = 'https://alqhhgysvehtgkwsxeok.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFscWhoZ3lzdmVodGdrd3N4ZW9rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDE0ODg2NSwiZXhwIjoyMDk1NzI0ODY1fQ.xogvgvFob-7Ir6hSLkz0pOj3GawRPRbwfz9oGuGQ90E';
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+var MESES = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+var COMISSAO = 0.17;
+
+var clients = [
+  {reg:20,nome:"Adriana Tavares de Almeida",   cpf:"146.607.018-83",  cro:"CRO-SP 92640", end:"Rua Dezesseis de Dezembro, 10 - Sala 3",          bairro:"Jd. Rubio",          cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"",                  obs:""},
+  {reg:23,nome:"Alexandre Miranda Souza",      cpf:"364.962.048-59",  cro:"",             end:"Av. Brasil, 1336 - 1 Andar",                      bairro:"",                   cidade:"Ferraz de Vasconcelos",uf:"SP",cep:"",          tel:"(11) 97723-2657",   obs:""},
+  {reg:3, nome:"Anthony Borges",               cpf:"378.641.768-79",  cro:"126.653",      end:"Av. Silvestre Pires de Freitas, 800",             bairro:"Jardim Paraiso",     cidade:"Guarulhos",           uf:"SP", cep:"07144-000", tel:"",                  obs:"Costa Borges Odontologia"},
+  {reg:7, nome:"Bruno Rocco Giusto",           cpf:"300.066.978-79",  cro:"",             end:"Av. Agua Fria, 1896",                             bairro:"Agua Fria",          cidade:"Sao Paulo",           uf:"SP", cep:"02332-001", tel:"",                  obs:"Entregar via motoboy (Katia)"},
+  {reg:10,nome:"Caio Vinicius Barreto dos Santos",cpf:"376.257.418-93",cro:"",            end:"Av. Inconfidencia Mineira, 1241",                 bairro:"Vila Antonieta",     cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"(11) 98216-2905",   obs:"Lab Barreto"},
+  {reg:9, nome:"Danilo Tuttis T. G. dos Santos",cpf:"338.114.288-70", cro:"",             end:"Rua Prado Rochi, 145",                           bairro:"Vila Assis",         cidade:"Jau",                 uf:"SP", cep:"17210-270", tel:"(14) 99749-3400",   obs:""},
+  {reg:4, nome:"Dr. Andre Ricardo G. Da Silva",cpf:"169.303.098-50",  cro:"SP 56824",     end:"Rua da Fonte, 199 - Sala 04",                    bairro:"Jardim Oriental",    cidade:"Osasco",              uf:"SP", cep:"",          tel:"(11) 3609-2030",    obs:"dr.andrericardo@gmail.com"},
+  {reg:11,nome:"Dr. Renato Oliveira Ferreira da Silva",cpf:"261.834.798-61",cro:"",       end:"Rua Guilherme de Almeida, 2-31",                  bairro:"Vila Cidade Universitaria",cidade:"Bauru",         uf:"SP", cep:"17012-500", tel:"",                  obs:"Padrao"},
+  {reg:8, nome:"Fernando 021 Dental Barra",    cpf:"CNPJ: 37.568.571/0001-37", cro:"",    end:"Av. das Americas, 3665 - Loja 214",              bairro:"Barra da Tijuca",    cidade:"Rio de Janeiro",      uf:"RJ", cep:"22631-000", tel:"",                  obs:"Padrao"},
+  {reg:22,nome:"Gilberto Ferreira Esquivel",   cpf:"CNPJ: 13.265.402/0001-60",cro:"CRO-BA 7329",end:"Rua Henqueque Alves, 315",                bairro:"Castalia",           cidade:"Itabuna",             uf:"BA", cep:"",          tel:"",                  obs:""},
+  {reg:18,nome:"Henrique Falcao",              cpf:"029.583.461-70",  cro:"CRO 5045",     end:"Rua Sao Francisco Xavier, 168",                   bairro:"Tijuca",             cidade:"Rio de Janeiro",      uf:"RJ", cep:"",          tel:"",                  obs:"Clinica Odonto Premier"},
+  {reg:5, nome:"Javier Garrido",               cpf:"CNPJ: 48.257.718/0001-94", cro:"75033", end:"Av. Conselheiro Rodrigues Alves, 518",         bairro:"Vila Mariana",       cidade:"Sao Paulo",           uf:"SP", cep:"04014-001", tel:"+55 (11) 98611-2003",obs:"Padrao"},
+  {reg:24,nome:"Jose Ricardo de Miranda Pires",cpf:"013.432.346-70",  cro:"CRO-BA 8586",  end:"Rua Manuel Vilaboim, 121",                        bairro:"Centro",             cidade:"Cruz das Almas",      uf:"BA", cep:"44380-000", tel:"",                  obs:""},
+  {reg:15,nome:"Julia Ando",                   cpf:"080.218.698-01",  cro:"CRO-SP TPD 9449",end:"Rua Santa Catarina, 240 - 5 andar, Sala 504", bairro:"Galeria Metropole",  cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"(11) 96387-3845",   obs:""},
+  {reg:21,nome:"Juliano Balseiro",             cpf:"195.269.398-59",  cro:"CRO 65000",    end:"Av. Onze de Junho, 1199",                         bairro:"",                   cidade:"Sao Paulo",           uf:"SP", cep:"04041-054", tel:"",                  obs:""},
+  {reg:2, nome:"Leonardo Moll",                cpf:"087.058.557-64",  cro:"RJ 36.484",    end:"Av. Ernani do Amaral Peixoto, 455 - Sala 711",   bairro:"Centro",             cidade:"Niteroi",             uf:"RJ", cep:"",          tel:"(21) 99541-9481",   obs:""},
+  {reg:16,nome:"Luiz Junior",                  cpf:"127.496.107-61",  cro:"",             end:"Rua Academico Walter Goncalves, 1 - Sala 404",    bairro:"Centro",             cidade:"Niteroi",             uf:"RJ", cep:"24020-290", tel:"",                  obs:"Padrao"},
+  {reg:12,nome:"Luiz Tolentino",               cpf:"",                cro:"",             end:"Rua Prefeito Jose Guilherme, 15",                 bairro:"Centro",             cidade:"Capela do Alto",      uf:"SP", cep:"18195-036", tel:"",                  obs:""},
+  {reg:19,nome:"Pedro Henrique de Araujo Cruz",cpf:"446.153.318-27",  cro:"162.968",      end:"Av. Antonio Sylvio Cunha Bueno, 597",             bairro:"Jardim Inamar",      cidade:"Diadema",             uf:"SP", cep:"",          tel:"",                  obs:""},
+  {reg:6, nome:"Renan Gerhard",                cpf:"133.262.117-16",  cro:"",             end:"Av. Geremario Dantas, 832 - Sala 207",            bairro:"Pechincha",          cidade:"Rio de Janeiro",      uf:"RJ", cep:"22743-010", tel:"",                  obs:""},
+  {reg:1, nome:"Ricardo Cader",                cpf:"013.436.277-29",  cro:"",             end:"Av. Nossa Senhora de Copacabana, 749 - Sala 409", bairro:"Copacabana",         cidade:"Rio de Janeiro",      uf:"RJ", cep:"22050-002", tel:"",                  obs:""},
+  {reg:13,nome:"Rodrigo Guimaraes",            cpf:"006.571.367-27",  cro:"",             end:"Av. Dr. Mario Guimaraes, 428 - Sala 813",         bairro:"Centro",             cidade:"Nova Iguacu",         uf:"RJ", cep:"26255-230", tel:"",                  obs:""},
+  {reg:17,nome:"Talia Estefanelli Sampaio (Dr. Alfeu)",    cpf:"223.215.228-60",  cro:"CRO-SP 98329", end:"Rua Salem Bechara, 140 - Sala 1504",              bairro:"Centro",             cidade:"Osasco",              uf:"SP", cep:"",          tel:"",                  obs:"Dr. Alfeu"},
+  {reg:25,nome:"Tiago Muller Pereira",         cpf:"025.981.860-79",  cro:"",             end:"Av. Salgado Filho, 2839",                         bairro:"",                   cidade:"Caxias do Sul",       uf:"RS", cep:"",          tel:"",                  obs:""}
+];
+
+var now = new Date();
+var currentMonth = now.getMonth();
+var currentYear  = now.getFullYear();
+var viewMonth    = currentMonth;
+var viewYear     = currentYear;
+var selected     = null;
+var dbState      = {};
+var viewMode     = 'clientes';
+var tarefas      = [];
+var selectedTarefaClient = null;
+var extraMonths  = [];
+var monthDDOpen  = false;
+var arquivadasOpen = false;
+var fretesMes     = 0;
+
+var avatarColors = [
+  ['#1d3a6e','#93c5fd'],['#0d3d2b','#4ade80'],['#2e1d6e','#c4b5fd'],
+  ['#3d1d1d','#fca5a5'],['#3d2e1d','#fcd34d'],['#1d3d2b','#6ee7b7']
+];
+
+function initials(n) {
+  var p = n.replace(/^(Dr\.|Dra\.)\s*/i,'').trim().split(' ');
+  return (p[0][0] + (p[1] ? p[1][0] : '')).toUpperCase();
+}
+
+function fmt(v) {
+  return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function setSyncStatus(status) {
+  var cls = 'sync-dot' + (status==='syncing' ? ' syncing' : status==='error' ? ' error' : '');
+  var lbl = status==='syncing' ? 'Salvando...' : status==='error' ? 'Erro de conexao' : 'Conectado';
+  document.getElementById('sync-dot').className = cls;
+  document.getElementById('sync-status').innerHTML = '<span class="' + cls + '"></span>' + lbl;
+}
+
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function todayLabel() {
+  var d = new Date();
+  var dias = ['domingo','segunda-feira','terca-feira','quarta-feira','quinta-feira','sexta-feira','sabado'];
+  return dias[d.getDay()] + ', ' + d.getDate() + ' de ' + MESES[d.getMonth()].toLowerCase() + ' de ' + d.getFullYear();
+}
+
+// ── Clientes / Meses ─────────────────────────────────────────
+
+async function loadMonthData(m, y) {
+  try {
+    var res = await sb.from('controle_mensal').select('*').eq('mes',m).eq('ano',y);
+    if (res.error) throw res.error;
+    var state = {};
+    clients.forEach(function(c) {
+      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0};
+    });
+    res.data.forEach(function(r) {
+      state[r.cliente_reg] = {recebido:r.recebido,enviado:r.enviado,quitado:r.quitado,valor_mes:r.valor_mes||0,valor_pago:r.valor_pago||0,valor_componente:r.valor_componente||0};
+    });
+    return state;
+  } catch(e) {
+    console.error('loadMonthData:', e);
+    setSyncStatus('error');
+    var el = document.getElementById('conn-error');
+    var msg = document.getElementById('conn-error-msg');
+    if (el) el.style.display = 'flex';
+    if (msg) msg.textContent = e.message || 'Erro de conexao';
+    return {};
+  }
+}
+
+async function upsertRow(reg, data) {
+  setSyncStatus('syncing');
+  var payload = {cliente_reg:reg, mes:viewMonth, ano:viewYear, updated_at:new Date().toISOString(), ...data};
+  var res = await sb.from('controle_mensal').upsert(payload, {onConflict:'cliente_reg,mes,ano'});
+  if (res.error) {
+    // coluna valor_componente ainda nao existe: retenta sem ela
+    if (res.error.code === 'PGRST204' && res.error.message && res.error.message.includes('valor_componente')) {
+      console.warn('upsertRow: coluna valor_componente ausente — salvando sem ela. Execute no Supabase SQL Editor:\nALTER TABLE controle_mensal ADD COLUMN IF NOT EXISTS valor_componente numeric(10,2) DEFAULT 0;');
+      var payloadSem = Object.assign({}, payload);
+      delete payloadSem.valor_componente;
+      var res2 = await sb.from('controle_mensal').upsert(payloadSem, {onConflict:'cliente_reg,mes,ano'});
+      if (res2.error) {
+        console.error('upsertRow (sem valor_componente):', res2.error);
+        setSyncStatus('error');
+        return false;
+      }
+      setSyncStatus('ok');
+      return true;
+    }
+    console.error('upsertRow:', res.error);
+    setSyncStatus('error');
+    return false;
+  }
+  setSyncStatus('ok');
+  return true;
+}
+
+function isCurrentMonth() { return viewMonth===currentMonth && viewYear===currentYear; }
+
+async function toggle(reg, tipo, e) {
+  e.stopPropagation();
+  if (!isCurrentMonth()) return;
+  var s = dbState[reg] || {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0};
+  s[tipo] = !s[tipo];
+  dbState[reg] = s;
+  updateCounts(); renderMonthTabs(); doFilter();
+  if (selected && selected.reg===reg) renderDetail();
+  upsertRow(reg, {recebido:s.recebido,enviado:s.enviado,quitado:s.quitado,valor_mes:s.valor_mes,valor_pago:s.valor_pago,valor_componente:s.valor_componente||0});
+}
+
+async function saveFinanceiro(reg) {
+  if (!isCurrentMonth()) return;
+  var s = dbState[reg] || {};
+  var vM = parseFloat(document.getElementById('fin-valor-'+reg).value) || 0;
+  var vC = parseFloat(document.getElementById('fin-comp-'+reg).value)  || 0;
+  var vP = parseFloat(document.getElementById('fin-pago-'+reg).value)  || 0;
+  s.valor_mes = vM; s.valor_componente = vC; s.valor_pago = vP;
+  dbState[reg] = s;
+  updateCounts();
+  var ok = await upsertRow(reg, {recebido:s.recebido||false,enviado:s.enviado||false,quitado:s.quitado||false,valor_mes:vM,valor_pago:vP,valor_componente:vC});
+  renderDetail();
+  if (ok === false) {
+    var errEl = document.getElementById('conn-error');
+    var msgEl = document.getElementById('conn-error-msg');
+    if (errEl) errEl.style.display = 'flex';
+    if (msgEl) msgEl.textContent = 'Erro ao salvar financeiro. Verifique o console (F12).';
+  }
+}
+
+async function clearFinanceiro(reg) {
+  if (!isCurrentMonth()) return;
+  var s = dbState[reg] || {};
+  s.valor_mes = 0; s.valor_componente = 0; s.valor_pago = 0;
+  dbState[reg] = s;
+  updateCounts(); renderDetail();
+  await upsertRow(reg, {recebido:s.recebido||false,enviado:s.enviado||false,quitado:s.quitado||false,valor_mes:0,valor_pago:0,valor_componente:0});
+}
+
+function isFechadoLocal() {
+  return clients.every(function(c) { return dbState[c.reg] && dbState[c.reg].quitado; });
+}
+
+function updateCounts() {
+  var rec=0,env=0,qui=0,pen=0,totVal=0,totPago=0,totComp=0;
+  clients.forEach(function(c) {
+    var v = dbState[c.reg] || {};
+    if (v.recebido) rec++;
+    if (v.enviado)  env++;
+    if (v.quitado)  qui++;
+    if (!v.recebido && !v.enviado && !v.quitado) pen++;
+    totVal  += Number(v.valor_mes  || 0);
+    totPago += Number(v.valor_pago || 0);
+    totComp += Number(v.valor_componente || 0);
+  });
+  document.getElementById('count-recebido').textContent = rec;
+  document.getElementById('count-enviado').textContent  = env;
+  document.getElementById('count-quitado').textContent  = qui;
+  document.getElementById('count-pendente').textContent = pen;
+  var comBruta = (totPago - totComp) * COMISSAO;
+  document.getElementById('total-valor').textContent      = fmt(totVal);
+  document.getElementById('total-pago').textContent       = fmt(totPago);
+  document.getElementById('total-comp').textContent       = fmt(totComp);
+  document.getElementById('total-com-bruta').textContent  = fmt(comBruta);
+  document.getElementById('total-com-liq').textContent    = fmt(comBruta - fretesMes);
+  document.getElementById('sealed-banner').style.display = isFechadoLocal() ? 'flex' : 'none';
+}
+
+function statusOf(reg) {
+  var s = dbState[reg] || {};
+  if (s.quitado) return 'quitado';
+  if (s.enviado)  return 'enviado';
+  if (s.recebido) return 'recebido';
+  return 'pendente';
+}
+
+// ── Mes dropdown ─────────────────────────────────────────────
+
+function buildMonthList() {
+  var base = [];
+  for (var i=3; i>=0; i--) {
+    var m = currentMonth - i, y = currentYear;
+    if (m < 0) { m += 12; y--; }
+    base.push({m:m, y:y});
+  }
+  var all = base.slice();
+  extraMonths.forEach(function(e) {
+    if (!all.some(function(t){return t.m===e.m&&t.y===e.y;})) all.push(e);
+  });
+  all.sort(function(a,b){ return b.y!==a.y ? b.y-a.y : b.m-a.m; });
+  return all;
+}
+
+function renderMonthTabs() {
+  var all = buildMonthList();
+  var isCurMo = viewMonth===currentMonth && viewYear===currentYear;
+  var labelEl = document.getElementById('month-dd-label');
+  var ddBtn   = document.getElementById('month-dd-btn');
+  if (labelEl) labelEl.textContent = viewMode==='clientes'
+    ? MESES[viewMonth] + (viewYear!==currentYear ? ' '+viewYear : '') + (isCurMo ? ' (atual)' : '')
+    : 'Selecione';
+  if (ddBtn) ddBtn.className = 'month-dd-btn' + (viewMode==='clientes' && isCurMo ? ' cur' : '');
+
+  var listEl = document.getElementById('month-dd-list');
+  if (listEl) {
+    listEl.innerHTML = all.map(function(t) {
+      var isView  = viewMode==='clientes' && t.m===viewMonth && t.y===viewYear;
+      var isCur   = t.m===currentMonth && t.y===currentYear;
+      var fechado = isView ? isFechadoLocal() : false;
+      var name    = MESES[t.m] + (t.y!==currentYear ? ' '+t.y : '') + (isCur ? ' (atual)' : '');
+      var check   = isView ? '<i class="ti ti-check" style="font-size:11px;flex-shrink:0"></i>' : '<span style="width:11px;flex-shrink:0"></span>';
+      var star    = fechado ? '<i class="ti ti-rosette-discount-check" style="font-size:11px;color:#4ade80"></i>' : '';
+      return '<div class="month-dd-item' + (isView?' sel':'') + (fechado?' fech':'') + '" onclick="switchMonth(' + t.m + ',' + t.y + ');closeMonthDD()">' + check + '<span style="flex:1">' + name + '</span>' + star + '</div>';
+    }).join('');
+  }
+
+  var btnT = document.getElementById('btn-tarefas');
+  if (btnT) btnT.className = 'tab-tarefa' + (viewMode==='tarefas' ? ' active' : '');
+  var btnI = document.getElementById('btn-inove');
+  if (btnI) btnI.className = 'tab-tarefa' + (viewMode==='inove' ? ' active' : '');
+}
+
+function toggleMonthDD() {
+  monthDDOpen = !monthDDOpen;
+  var list  = document.getElementById('month-dd-list');
+  var arrow = document.getElementById('month-dd-arrow');
+  if (list)  list.style.display = monthDDOpen ? 'block' : 'none';
+  if (arrow) arrow.style.transform = monthDDOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+function closeMonthDD() {
+  monthDDOpen = false;
+  var list  = document.getElementById('month-dd-list');
+  var arrow = document.getElementById('month-dd-arrow');
+  if (list)  list.style.display = 'none';
+  if (arrow) arrow.style.transform = 'rotate(0deg)';
+}
+
+function addNextMonth() {
+  var all = buildMonthList();
+  var newest = all.reduce(function(best, cur) {
+    return (cur.y > best.y || (cur.y===best.y && cur.m>best.m)) ? cur : best;
+  }, all[0]);
+  var nextM = newest.m + 1, nextY = newest.y;
+  if (nextM > 11) { nextM = 0; nextY++; }
+  if (!extraMonths.some(function(e){return e.m===nextM&&e.y===nextY;})) {
+    extraMonths.push({m:nextM, y:nextY});
+  }
+  switchMonth(nextM, nextY);
+}
+
+async function switchMonth(m, y) {
+  closeMonthDD();
+  var ts = document.getElementById('tarefas-search');
+  if (ts) ts.value = '';
+  viewMode = 'clientes';
+  document.getElementById('clientes-view').style.display = 'block';
+  document.getElementById('tarefas-view').style.display  = 'none';
+  document.getElementById('inove-view').style.display    = 'none';
+  viewMonth = m; viewYear = y; selected = null;
+  document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Carregando...</p></div>';
+  dbState = await loadMonthData(m, y);
+  renderMonthTabs(); updateCounts(); doFilter();
+  loadFretesMes();
+  document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Selecione um cliente</p></div>';
+}
+
+document.addEventListener('click', function(e) {
+  var btn  = document.getElementById('month-dd-btn');
+  var list = document.getElementById('month-dd-list');
+  if (monthDDOpen && btn && list && !btn.contains(e.target) && !list.contains(e.target)) closeMonthDD();
+});
+
+// ── Lista e detalhe de clientes ──────────────────────────────
+
+function tickBtn(reg, tipo, icon, label) {
+  var s  = dbState[reg] || {};
+  var on = s[tipo];
+  var dis = !isCurrentMonth() ? 'disabled' : '';
+  return '<div class="tick-col"><button class="tick-btn' + (on?' on':'') + '" onclick="toggle(' + reg + ',\'' + tipo + '\',event)" title="' + label + '" ' + dis + '><i class="ti ' + (on?'ti-check':icon) + '"></i></button><span class="tick-label' + (on?' on':'') + '">' + label + '</span></div>';
+}
+
+function renderList(data) {
+  var panel = document.getElementById('list-panel');
+  var noRes = document.getElementById('no-results');
+  document.getElementById('total-badge').textContent = data.length + ' cliente' + (data.length!==1 ? 's' : '');
+  if (!data.length) { panel.innerHTML = ''; noRes.style.display = 'block'; return; }
+  noRes.style.display = 'none';
+  panel.innerHTML = data.map(function(c) {
+    var col = avatarColors[c.reg % avatarColors.length];
+    var bg = col[0], fg = col[1];
+    var isActive = selected && selected.reg===c.reg;
+    var fin = dbState[c.reg] || {};
+    var temValor = fin.valor_mes > 0;
+    return '<div class="row-item' + (isActive?' active':'') + '" onclick="selectClient(' + c.reg + ')">' +
+      '<div style="width:32px;height:32px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:' + fg + ';flex-shrink:0">' + initials(c.nome) + '</div>' +
+      '<div style="min-width:0;flex:1"><p style="font-size:12px;font-weight:500;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + c.nome + '</p>' +
+      '<p style="font-size:11px;color:#64748b">' + (temValor ? '<span style="color:#94a3b8">Pedido: </span><span style="color:#fbbf24">' + fmt(fin.valor_mes) + '</span><span style="color:#4a5568"> | </span><span style="color:#94a3b8">Pago: </span><span style="color:#22c55e">' + fmt(Number(fin.valor_pago||0)) + '</span>' : (c.cidade||'-') + (c.uf?' / '+c.uf:'')) + '</p></div>' +
+      '<div style="display:flex;gap:5px;align-items:center">' + tickBtn(c.reg,'recebido','ti-download','receb.') + tickBtn(c.reg,'enviado','ti-upload','enviado') + tickBtn(c.reg,'quitado','ti-circle-check','quitado') + '</div></div>';
+  }).join('');
+}
+
+function renderDetail() {
+  if (!selected) return;
+  var c  = selected;
+  var col = avatarColors[c.reg % avatarColors.length];
+  var bg = col[0], fg = col[1];
+  var cv = dbState[c.reg] || {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0};
+  var hasEnd  = c.end || c.bairro || c.cidade;
+  var ro      = !isCurrentMonth();
+  var valorMes = Number(cv.valor_mes||0), valorPago = Number(cv.valor_pago||0), valorComp = Number(cv.valor_componente||0);
+  var restante = valorMes - valorPago, comissao = (valorPago - valorComp) * COMISSAO;
+
+  var badge = cv.quitado
+    ? '<span class="badge" style="background:#0d3d2b;color:#4ade80;border:0.5px solid #22c55e"><i class="ti ti-check" style="font-size:11px"></i> Quitado</span>'
+    : cv.enviado
+    ? '<span class="badge" style="background:#0d3d2b;color:#4ade80;border:0.5px solid #22c55e"><i class="ti ti-check" style="font-size:11px"></i> Enviado</span>'
+    : cv.recebido
+    ? '<span class="badge" style="background:#0d3d2b;color:#4ade80;border:0.5px solid #22c55e"><i class="ti ti-check" style="font-size:11px"></i> Recebido</span>'
+    : '<span class="badge" style="background:#22263a;color:#64748b">Pendente</span>';
+
+  function dt(tipo, icon, label) {
+    var on = cv[tipo];
+    return '<button class="tick-btn detail-tick' + (on?' on':'') + '" onclick="toggle(' + c.reg + ',\'' + tipo + '\',event)" ' + (ro?'disabled':'') + ' style="color:' + (on?'#22c55e':'#64748b') + '"><i class="ti ' + (on?'ti-check':icon) + '" style="font-size:14px"></i> ' + label + '</button>';
+  }
+
+  var roNote = ro ? '<p style="font-size:11px;color:#4a5568;margin-bottom:10px"><i class="ti ti-lock" style="font-size:12px"></i> Historico - nao editavel</p>' : '';
+
+  var finSection = ro
+    ? '<div class="fin-card" style="margin-bottom:14px"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px"><i class="ti ti-currency-dollar" style="font-size:13px;vertical-align:-1px"></i> Financeiro</p><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px"><div><p class="label">Valor do mes</p><p style="font-size:15px;font-weight:500;color:#f1f5f9">' + fmt(valorMes) + '</p></div><div><p class="label">Valor pago</p><p style="font-size:15px;font-weight:500;color:#22c55e">' + fmt(valorPago) + '</p></div><div><p class="label">Restante</p><p style="font-size:15px;font-weight:500;color:' + (restante>0?'#ef4444':'#22c55e') + '">' + fmt(restante) + '</p></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"><div><p class="label">Componente</p><p style="font-size:15px;font-weight:500;color:#94a3b8">' + fmt(valorComp) + '</p></div><div><p class="label">Comissao ind. (17%)</p><p style="font-size:15px;font-weight:600;color:#fbbf24">' + fmt(comissao) + '</p></div></div><div style="margin-top:10px;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.06)"><p class="label">Minha comissao (17%)</p><p style="font-size:18px;font-weight:600;color:#fbbf24">' + fmt(comissao) + '</p></div></div>'
+    : '<div class="fin-card" style="margin-bottom:14px"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px"><i class="ti ti-currency-dollar" style="font-size:13px;vertical-align:-1px"></i> Financeiro do mes</p><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px"><div><p class="label" style="margin-bottom:5px">Valor do mes (R$)</p><input class="fin-input" type="number" id="fin-valor-' + c.reg + '" value="' + (valorMes||'') + '" placeholder="0,00" min="0" step="0.01" oninput="calcPreview(' + c.reg + ')"></div><div><p class="label" style="margin-bottom:5px">Componente (R$)</p><input class="fin-input" type="number" id="fin-comp-' + c.reg + '" value="' + (valorComp||'') + '" placeholder="0,00" min="0" step="0.01" oninput="calcPreview(' + c.reg + ')"></div><div><p class="label" style="margin-bottom:5px">Valor pago (R$)</p><input class="fin-input" type="number" id="fin-pago-' + c.reg + '" value="' + (valorPago||'') + '" placeholder="0,00" min="0" step="0.01" oninput="calcPreview(' + c.reg + ')"></div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr 36px;gap:8px;margin-bottom:12px;align-items:flex-end"><div style="background:#0f1117;border-radius:8px;padding:8px"><p class="label">Restante</p><p style="font-size:14px;font-weight:500;color:#ef4444" id="prev-restante-' + c.reg + '">' + fmt(restante) + '</p></div><div style="background:#0f1117;border-radius:8px;padding:8px"><p class="label">Comissao (17%)</p><p style="font-size:14px;font-weight:500;color:#fbbf24" id="prev-comissao-' + c.reg + '">' + fmt(comissao) + '</p></div><button class="save-btn" onclick="saveFinanceiro(' + c.reg + ')"><i class="ti ti-device-floppy" style="font-size:13px"></i> Salvar</button><button onclick="clearFinanceiro(' + c.reg + ')" title="Zerar valores" style="height:32px;width:36px;border-radius:8px;border:0.5px solid rgba(239,68,68,0.4);background:#3d1d1d;color:#ef4444;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0"><i class="ti ti-trash" style="font-size:14px"></i></button></div></div>';
+
+  var rows = '';
+  if (c.cpf)    rows += '<div class="detail-row"><i class="ti ti-id-badge" style="font-size:16px;color:#4a5568;margin-top:1px;flex-shrink:0"></i><div><p class="label">CPF / CNPJ</p><p class="val">' + c.cpf + '</p></div></div>';
+  if (c.cro)    rows += '<div class="detail-row"><i class="ti ti-certificate" style="font-size:16px;color:#4a5568;margin-top:1px;flex-shrink:0"></i><div><p class="label">CRO</p><p class="val">' + c.cro + '</p></div></div>';
+  if (c.tel)    rows += '<div class="detail-row"><i class="ti ti-phone" style="font-size:16px;color:#4a5568;margin-top:1px;flex-shrink:0"></i><div><p class="label">Telefone</p><p class="val">' + c.tel + '</p></div></div>';
+  if (hasEnd)   rows += '<div class="detail-row"><i class="ti ti-map-pin" style="font-size:16px;color:#4a5568;margin-top:1px;flex-shrink:0"></i><div><p class="label">Endereco</p><p class="val">' + [c.end,c.bairro,c.cidade+(c.uf?' / '+c.uf:''),c.cep].filter(Boolean).join(', ') + '</p></div></div>';
+  if (c.obs)    rows += '<div class="detail-row"><i class="ti ti-note" style="font-size:16px;color:#4a5568;margin-top:1px;flex-shrink:0"></i><div><p class="label">Observacao</p><p class="val">' + c.obs + '</p></div></div>';
+
+  document.getElementById('detail-panel').innerHTML =
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:44px;height:44px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:500;color:' + fg + ';flex-shrink:0">' + initials(c.nome) + '</div><div style="flex:1"><p style="font-size:15px;font-weight:500;color:#f1f5f9">' + c.nome + '</p><p style="font-size:12px;color:#64748b">Registro ' + c.reg + ' . ' + MESES[viewMonth] + ' ' + viewYear + '</p></div>' + badge + '</div>' +
+    roNote +
+    '<div style="display:flex;gap:8px;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' + dt('recebido','ti-download','Extrato recebido') + dt('enviado','ti-upload','Extrato enviado') + dt('quitado','ti-circle-check','Quitado') + '</div>' +
+    finSection +
+    '<div>' + rows + '</div>';
+}
+
+function calcPreview(reg) {
+  var vM = parseFloat(document.getElementById('fin-valor-'+reg).value) || 0;
+  var vC = parseFloat(document.getElementById('fin-comp-'+reg).value)  || 0;
+  var vP = parseFloat(document.getElementById('fin-pago-'+reg).value)  || 0;
+  var elR = document.getElementById('prev-restante-'+reg);
+  var elC = document.getElementById('prev-comissao-'+reg);
+  if (elR) { elR.textContent = fmt(vM-vP); elR.style.color = vM-vP>0 ? '#ef4444' : '#22c55e'; }
+  if (elC) elC.textContent = fmt((vP - vC) * COMISSAO);
+}
+
+function selectClient(reg) {
+  selected = clients.find(function(c){return c.reg===reg;});
+  renderDetail(); doFilter();
+}
+
+function doFilter() {
+  var q  = document.getElementById('search').value.toLowerCase();
+  var uf = document.getElementById('estado-filter').value;
+  var sf = document.getElementById('status-filter').value;
+  var data = clients.filter(function(c) {
+    var text = [c.nome,c.cpf,c.cro,c.cidade,c.bairro,c.end,c.obs,c.tel].join(' ').toLowerCase();
+    return (!q || text.includes(q)) && (!uf || c.uf===uf) && (!sf || statusOf(c.reg)===sf);
+  }).sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); });
+  renderList(data);
+}
+
+// ── Tarefas ──────────────────────────────────────────────────
+
+async function loadTarefas() {
+  try {
+    var res = await sb.from('tarefas').select('*').eq('data', todayISO()).order('created_at');
+    if (res.error) throw res.error;
+    tarefas = res.data || [];
+  } catch(e) {
+    console.error('loadTarefas:', e);
+    tarefas = [];
+  }
+  renderTarefasClientList();
+  renderTarefasDetail();
+}
+
+function renderTarefasClientList() {
+  var panel = document.getElementById('tarefas-client-list');
+  if (!panel) return;
+  var searchEl = document.getElementById('tarefas-search');
+  var q = (searchEl ? searchEl.value : '').toLowerCase().trim();
+  var sorted = clients
+    .filter(function(c) { return !q || c.nome.toLowerCase().includes(q); })
+    .slice()
+    .sort(function(a,b) { return a.nome.localeCompare(b.nome); });
+  panel.innerHTML = sorted.map(function(c) {
+    var col = avatarColors[c.reg % avatarColors.length];
+    var bg = col[0], fg = col[1];
+    var isActive = selectedTarefaClient && selectedTarefaClient.reg===c.reg;
+    var ct   = tarefas.filter(function(t){return t.cliente_reg==c.reg && !t.arquivada;});
+    var done = ct.filter(function(t){return t.concluida;}).length;
+    var allDone = ct.length > 0 && done===ct.length;
+    var badge = ct.length
+      ? '<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px;background:' + (allDone?'#0d3d2b':'#3d2e1d') + ';color:' + (allDone?'#4ade80':'#fcd34d') + ';flex-shrink:0">' + ct.length + '</span>'
+      : '';
+    return '<div class="row-item' + (isActive?' active':'') + '" onclick="selectTarefaClient(' + c.reg + ')">' +
+      '<div style="width:32px;height:32px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:' + fg + ';flex-shrink:0">' + initials(c.nome) + '</div>' +
+      '<div style="min-width:0;flex:1"><p style="font-size:12px;font-weight:500;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + c.nome + '</p>' +
+      '<p style="font-size:11px;color:' + (ct.length ? (allDone?'#22c55e':'#fbbf24') : '#4a5568') + '">' + (ct.length ? done+'/'+ct.length+' tarefa'+(ct.length!==1?'s':'') : 'Sem tarefas hoje') + '</p></div>' +
+      badge + '</div>';
+  }).join('');
+}
+
+function renderTarefasDetail() {
+  var panel = document.getElementById('tarefas-detail-panel');
+  if (!panel) return;
+  if (!selectedTarefaClient) {
+    panel.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Selecione um cliente para ver as tarefas</p></div>';
+    return;
+  }
+  var c   = selectedTarefaClient;
+  var col = avatarColors[c.reg % avatarColors.length];
+  var bg = col[0], fg = col[1];
+  var all      = tarefas.filter(function(t){return t.cliente_reg==c.reg;});
+  var active   = all.filter(function(t){return !t.arquivada;});
+  var archived = all.filter(function(t){return t.arquivada;});
+  var done     = active.filter(function(t){return t.concluida;}).length;
+
+  var B = 'width:28px;height:28px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s';
+
+  function activeRow(t, idx) {
+    _tarefasMap[idx] = t.id;
+    var on = t.concluida;
+    return '<div class="task-item">' +
+      '<button onclick="toggleTarefa(_tarefasMap[' + idx + '])" title="' + (on?'Desmarcar':'Concluir') + '" style="' + B + ';border-radius:50%;border:0.5px solid ' + (on?'#22c55e':'rgba(255,255,255,0.15)') + ';background:' + (on?'#0d3d2b':'#1a1d27') + ';color:' + (on?'#22c55e':'#4a5568') + '"><i class="ti ' + (on?'ti-check':'ti-circle') + '" style="font-size:14px"></i></button>' +
+      '<span style="flex:1;font-size:13px;color:' + (on?'#4a5568':'#e2e8f0') + ';' + (on?'text-decoration:line-through':'') + '">' + t.texto + '</span>' +
+      '<button onclick="arquivarTarefa(_tarefasMap[' + idx + '])" title="Arquivar" style="' + B + ';border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#64748b"><i class="ti ti-archive" style="font-size:13px"></i></button>' +
+      '<button onclick="deleteTarefa(_tarefasMap[' + idx + '])" title="Excluir" style="' + B + ';border:0.5px solid rgba(239,68,68,0.3);background:#3d1d1d;color:#ef4444"><i class="ti ti-trash" style="font-size:13px"></i></button>' +
+      '</div>';
+  }
+
+  function archivedRow(t, idx) {
+    _tarefasMap[idx] = t.id;
+    return '<div class="task-item" style="opacity:0.65">' +
+      '<button onclick="desarquivarTarefa(_tarefasMap[' + idx + '])" title="Restaurar" style="' + B + ';border:0.5px solid rgba(147,197,253,0.3);background:#1a2a40;color:#93c5fd"><i class="ti ti-archive-off" style="font-size:13px"></i></button>' +
+      '<span style="flex:1;font-size:13px;color:#4a5568;text-decoration:line-through">' + t.texto + '</span>' +
+      '<button onclick="deleteTarefa(_tarefasMap[' + idx + '])" title="Excluir" style="' + B + ';border:0.5px solid rgba(239,68,68,0.3);background:#3d1d1d;color:#ef4444"><i class="ti ti-trash" style="font-size:13px"></i></button>' +
+      '</div>';
+  }
+
+  var activeHTML = active.length
+    ? active.map(function(t,i){return activeRow(t,i);}).join('')
+    : '<div style="text-align:center;padding:1.5rem 1rem;color:#4a5568"><i class="ti ti-clipboard-list" style="font-size:28px;margin-bottom:6px;display:block"></i><p style="font-size:13px">Nenhuma tarefa ativa para hoje</p></div>';
+
+  var archivedHTML = archived.length
+    ? '<div style="margin-top:12px;border-top:0.5px solid rgba(255,255,255,0.06);padding-top:8px">' +
+        '<button onclick="toggleArquivadas()" style="display:flex;align-items:center;gap:6px;width:100%;background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;padding:4px 2px;font-family:inherit">' +
+        '<i class="ti ti-archive" style="font-size:13px"></i><span>Arquivadas (' + archived.length + ')</span>' +
+        '<i class="ti ti-chevron-down" id="arquivadas-arrow" style="font-size:11px;margin-left:auto;transition:transform 0.2s;transform:' + (arquivadasOpen?'rotate(180deg)':'rotate(0deg)') + '"></i></button>' +
+        '<div id="arquivadas-section" style="display:' + (arquivadasOpen?'block':'none') + ';margin-top:6px">' + archived.map(function(t,i){return archivedRow(t,i+10000);}).join('') + '</div></div>'
+    : '';
+
+  var countBadge = active.length
+    ? '<span style="font-size:11px;color:#64748b;background:#22263a;border-radius:8px;padding:3px 10px;flex-shrink:0">' + done + '/' + active.length + ' concluida' + (done!==1?'s':'') + '</span>'
+    : '';
+
+  panel.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' +
+      '<div style="width:38px;height:38px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:' + fg + ';flex-shrink:0">' + initials(c.nome) + '</div>' +
+      '<div style="flex:1;min-width:0"><p style="font-size:14px;font-weight:500;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + c.nome + '</p>' +
+      '<p style="font-size:11px;color:#64748b">' + todayLabel() + '</p></div>' + countBadge + '</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:8px">' +
+      '<input type="text" id="tarefa-input" placeholder="Nova tarefa..." style="flex:1" onkeydown="if(event.key===\'Enter\')addTarefa()">' +
+      '<button id="tarefa-add-btn" class="task-add-btn" onclick="addTarefa()"><i class="ti ti-plus" style="font-size:15px"></i> Adicionar</button>' +
+    '</div>' +
+    '<div id="tarefa-error" style="display:none;font-size:12px;color:#fca5a5;background:#3d1d1d;border:0.5px solid rgba(239,68,68,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px"></div>' +
+    '<div style="max-height:380px;overflow-y:auto">' + activeHTML + archivedHTML + '</div>';
+
+  setTimeout(function(){var i=document.getElementById('tarefa-input');if(i)i.focus();}, 30);
+}
+
+function selectTarefaClient(reg) {
+  selectedTarefaClient = clients.find(function(c){return c.reg===reg;});
+  renderTarefasClientList();
+  renderTarefasDetail();
+}
+
+async function addTarefa() {
+  if (!selectedTarefaClient) return;
+  var input  = document.getElementById('tarefa-input');
+  var btn    = document.getElementById('tarefa-add-btn');
+  var errEl  = document.getElementById('tarefa-error');
+  if (!input) return;
+  var texto = input.value.trim();
+  if (!texto) return;
+
+  input.disabled = true;
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.55'; }
+  if (errEl) errEl.style.display = 'none';
+
+  try {
+    var res = await sb.from('tarefas')
+      .insert({texto:texto, concluida:false, data:todayISO(), cliente_reg:selectedTarefaClient.reg})
+      .select()
+      .single();
+    if (res.error) throw res.error;
+    tarefas.push(res.data);
+    renderTarefasClientList();
+    renderTarefasDetail();
+    var newInput = document.getElementById('tarefa-input');
+    if (newInput) newInput.focus();
+  } catch(e) {
+    console.error('addTarefa:', e);
+    input.disabled = false;
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+    if (errEl) {
+      errEl.textContent = e.message || 'Erro ao salvar tarefa.';
+      errEl.style.display = 'block';
+    }
+  }
+}
+
+var _tarefasMap = {};
+
+async function toggleTarefa(id) {
+  var t = tarefas.find(function(x){return x.id==id;});
+  if (!t) return;
+  var res = await sb.from('tarefas').update({concluida:!t.concluida}).eq('id', id);
+  if (res.error) { console.error('toggleTarefa:', res.error.message); return; }
+  await loadTarefas();
+}
+
+async function deleteTarefa(id) {
+  var res = await sb.from('tarefas').delete().eq('id', id);
+  if (res.error) { console.error('deleteTarefa:', res.error.message); return; }
+  await loadTarefas();
+}
+
+async function arquivarTarefa(id) {
+  var res = await sb.from('tarefas').update({arquivada:true}).eq('id', id);
+  if (res.error) { console.error('arquivarTarefa:', res.error.message); return; }
+  await loadTarefas();
+}
+
+async function desarquivarTarefa(id) {
+  var res = await sb.from('tarefas').update({arquivada:false}).eq('id', id);
+  if (res.error) { console.error('desarquivarTarefa:', res.error.message); return; }
+  await loadTarefas();
+}
+
+function toggleArquivadas() {
+  arquivadasOpen = !arquivadasOpen;
+  var sec   = document.getElementById('arquivadas-section');
+  var arrow = document.getElementById('arquivadas-arrow');
+  if (sec)   sec.style.display = arquivadasOpen ? 'block' : 'none';
+  if (arrow) arrow.style.transform = arquivadasOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+function switchToTarefas() {
+  closeMonthDD();
+  viewMode = 'tarefas';
+  document.getElementById('clientes-view').style.display = 'none';
+  document.getElementById('tarefas-view').style.display  = 'block';
+  document.getElementById('inove-view').style.display    = 'none';
+  renderMonthTabs();
+  loadTarefas();
+}
+
+// ── Init ─────────────────────────────────────────────────────
+
+async function loadFretesMes() {
+  try {
+    var res = await sb.from('config_mes').select('valor_frete').eq('mes', viewMonth).eq('ano', viewYear).maybeSingle();
+    fretesMes = (res.data && res.data.valor_frete) ? Number(res.data.valor_frete) : 0;
+  } catch(e) { fretesMes = 0; }
+  var el = document.getElementById('input-frete-mes');
+  if (el) el.value = fretesMes || '';
+  updateCounts();
+}
+
+async function saveFretesMes() {
+  var el = document.getElementById('input-frete-mes');
+  fretesMes = parseFloat(el ? el.value : 0) || 0;
+  updateCounts();
+  var res = await sb.from('config_mes').upsert(
+    {mes: viewMonth, ano: viewYear, valor_frete: fretesMes},
+    {onConflict: 'mes,ano'}
+  );
+  if (res.error) console.error('saveFretesMes:', res.error.message);
+}
+
+async function init() {
+  dbState = await loadMonthData(currentMonth, currentYear);
+  document.getElementById('loading-overlay').style.display = 'none';
+  renderMonthTabs(); updateCounts(); doFilter();
+  loadFretesMes();
+}
+
+init();
+
+// ── Inove 3D ─────────────────────────────────────────────────
+
+var inovePedidos         = [];
+var selectedInoveClient  = null;
+var inoveFinalizadosOpen = false;
+var _inoveMap            = {};
+
+function switchToInove() {
+  closeMonthDD();
+  viewMode = 'inove';
+  document.getElementById('clientes-view').style.display = 'none';
+  document.getElementById('tarefas-view').style.display  = 'none';
+  document.getElementById('inove-view').style.display    = 'block';
+  renderMonthTabs();
+  loadInovePedidos();
+}
+
+async function loadInovePedidos() {
+  try {
+    var res = await sb.from('inove_pedidos').select('*').order('created_at', {ascending: true});
+    if (res.error) throw res.error;
+    inovePedidos = res.data || [];
+  } catch(e) {
+    console.error('loadInovePedidos:', e);
+    inovePedidos = [];
+  }
+  renderInoveClientList();
+  renderInoveDetail();
+}
+
+function renderInoveClientList() {
+  var panel = document.getElementById('inove-client-list');
+  if (!panel) return;
+  var searchEl = document.getElementById('inove-client-search');
+  var q = (searchEl ? searchEl.value : '').toLowerCase().trim();
+  var sorted = clients
+    .filter(function(c){ return !q || c.nome.toLowerCase().includes(q); })
+    .slice()
+    .sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); });
+  panel.innerHTML = sorted.map(function(c) {
+    var col    = avatarColors[c.reg % avatarColors.length];
+    var bg = col[0], fg = col[1];
+    var isAct  = selectedInoveClient && selectedInoveClient.reg===c.reg;
+    var todos  = inovePedidos.filter(function(p){ return p.cliente_reg==c.reg; });
+    var ativos = todos.filter(function(p){ return p.status!=='finalizado'; });
+    var allOk  = todos.length>0 && ativos.length===0;
+    var badge  = todos.length
+      ? '<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px;background:'+(allOk?'#0d3d2b':'#2a2010')+';color:'+(allOk?'#4ade80':'#fbbf24')+';flex-shrink:0">'+(allOk?'✓':ativos.length)+'</span>'
+      : '';
+    var sub    = todos.length ? (allOk?'Tudo finalizado':ativos.length+' em aberto') : 'Sem pedidos';
+    var subClr = todos.length ? (allOk?'#22c55e':'#fbbf24') : '#4a5568';
+    return '<div class="row-item'+(isAct?' active':'')+'" onclick="selectInoveClient('+c.reg+')">'+
+      '<div style="width:32px;height:32px;border-radius:50%;background:'+bg+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:'+fg+';flex-shrink:0">'+initials(c.nome)+'</div>'+
+      '<div style="min-width:0;flex:1">'+
+        '<p style="font-size:12px;font-weight:500;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+c.nome+'</p>'+
+        '<p style="font-size:11px;color:'+subClr+'">'+sub+'</p>'+
+      '</div>'+badge+
+    '</div>';
+  }).join('');
+}
+
+function selectInoveClient(reg) {
+  selectedInoveClient  = clients.find(function(c){ return c.reg===reg; });
+  inoveFinalizadosOpen = false;
+  renderInoveClientList();
+  renderInoveDetail();
+}
+
+function renderInoveDetail() {
+  var panel = document.getElementById('inove-detail-panel');
+  if (!panel) return;
+  if (!selectedInoveClient) {
+    panel.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px"><i class="ti ti-box" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Selecione um cliente para ver os pedidos</p></div>';
+    return;
+  }
+  var c      = selectedInoveClient;
+  var col    = avatarColors[c.reg % avatarColors.length];
+  var bg = col[0], fg = col[1];
+  var todos  = inovePedidos.filter(function(p){ return p.cliente_reg==c.reg; });
+  var ativos = todos.filter(function(p){ return p.status!=='finalizado'; });
+  var finais = todos.filter(function(p){ return p.status==='finalizado'; });
+  var B = 'width:28px;height:28px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s';
+
+  function ativoRow(p, idx) {
+    _inoveMap[idx] = p.id;
+    return '<div class="task-item">'+
+      '<button onclick="finalizarInovePedido(_inoveMap['+idx+'])" title="Finalizar" style="'+B+';border-radius:50%;border:0.5px solid rgba(255,255,255,0.15);background:#1a1d27;color:#4a5568"><i class="ti ti-circle" style="font-size:14px"></i></button>'+
+      '<span style="flex:1;font-size:13px;color:#e2e8f0">'+(p.descricao||'-')+'</span>'+
+      '<button onclick="deleteInovePedido(_inoveMap['+idx+'])" title="Excluir" style="'+B+';border:0.5px solid rgba(239,68,68,0.3);background:#3d1d1d;color:#ef4444"><i class="ti ti-trash" style="font-size:13px"></i></button>'+
+    '</div>';
+  }
+  function finalRow(p, idx) {
+    _inoveMap[idx] = p.id;
+    return '<div class="task-item" style="opacity:0.65">'+
+      '<button onclick="desfinalizarInovePedido(_inoveMap['+idx+'])" title="Reabrir" style="'+B+';border-radius:50%;border:0.5px solid #22c55e;background:#0d3d2b;color:#22c55e"><i class="ti ti-check" style="font-size:14px"></i></button>'+
+      '<span style="flex:1;font-size:13px;color:#4a5568;text-decoration:line-through">'+(p.descricao||'-')+'</span>'+
+      '<button onclick="deleteInovePedido(_inoveMap['+idx+'])" title="Excluir" style="'+B+';border:0.5px solid rgba(239,68,68,0.3);background:#3d1d1d;color:#ef4444"><i class="ti ti-trash" style="font-size:13px"></i></button>'+
+    '</div>';
+  }
+
+  var ativosHTML = ativos.length
+    ? ativos.map(function(p,i){ return ativoRow(p,i); }).join('')
+    : '<div style="text-align:center;padding:1.5rem 1rem;color:#4a5568"><i class="ti ti-package" style="font-size:28px;margin-bottom:6px;display:block"></i><p style="font-size:13px">Nenhum pedido em aberto</p></div>';
+
+  var finaisHTML = finais.length
+    ? '<div style="margin-top:12px;border-top:0.5px solid rgba(255,255,255,0.06);padding-top:8px">'+
+        '<button onclick="toggleInoveFinalizados()" style="display:flex;align-items:center;gap:6px;width:100%;background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;padding:4px 2px;font-family:inherit">'+
+          '<i class="ti ti-circle-check" style="font-size:13px"></i><span>Finalizados ('+finais.length+')</span>'+
+          '<i class="ti ti-chevron-down" id="inove-fin-arrow" style="font-size:11px;margin-left:auto;transition:transform 0.2s;transform:'+(inoveFinalizadosOpen?'rotate(180deg)':'rotate(0deg)')+'"></i>'+
+        '</button>'+
+        '<div id="inove-fin-section" style="display:'+(inoveFinalizadosOpen?'block':'none')+';margin-top:6px">'+
+          finais.map(function(p,i){ return finalRow(p,i+10000); }).join('')+
+        '</div>'+
+      '</div>'
+    : '';
+
+  var countBadge = ativos.length
+    ? '<span style="font-size:11px;color:#64748b;background:#22263a;border-radius:8px;padding:3px 10px;flex-shrink:0">'+ativos.length+' em aberto</span>'
+    : '';
+
+  panel.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">'+
+      '<div style="width:38px;height:38px;border-radius:50%;background:'+bg+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:'+fg+';flex-shrink:0">'+initials(c.nome)+'</div>'+
+      '<div style="flex:1;min-width:0"><p style="font-size:14px;font-weight:500;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+c.nome+'</p>'+
+      '<p style="font-size:11px;color:#64748b">Pedidos Inove 3D</p></div>'+countBadge+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:8px">'+
+      '<input type="text" id="inove-input" placeholder="Novo pedido ao Inove..." style="flex:1" onkeydown="if(event.key===\'Enter\')addInovePedido()">'+
+      '<button id="inove-add-btn" class="task-add-btn" onclick="addInovePedido()"><i class="ti ti-plus" style="font-size:15px"></i> Adicionar</button>'+
+    '</div>'+
+    '<div id="inove-add-error" style="display:none;font-size:12px;color:#fca5a5;background:#3d1d1d;border:0.5px solid rgba(239,68,68,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px"></div>'+
+    '<div style="max-height:380px;overflow-y:auto">'+ativosHTML+finaisHTML+'</div>';
+
+  setTimeout(function(){ var i=document.getElementById('inove-input'); if(i) i.focus(); }, 30);
+}
+
+async function addInovePedido() {
+  if (!selectedInoveClient) return;
+  var input = document.getElementById('inove-input');
+  var btn   = document.getElementById('inove-add-btn');
+  var errEl = document.getElementById('inove-add-error');
+  if (!input) return;
+  var texto = input.value.trim();
+  if (!texto) return;
+  input.disabled = true;
+  if (btn) { btn.disabled=true; btn.style.opacity='0.55'; }
+  if (errEl) errEl.style.display='none';
+  try {
+    var res = await sb.from('inove_pedidos')
+      .insert({descricao:texto, cliente_reg:selectedInoveClient.reg, status:'ativo', data_pedido:todayISO(), prazo:null})
+      .select().single();
+    if (res.error) throw res.error;
+    inovePedidos.push(res.data);
+    renderInoveClientList();
+    renderInoveDetail();
+    var ni = document.getElementById('inove-input');
+    if (ni) ni.focus();
+  } catch(e) {
+    console.error('addInovePedido:', e);
+    input.disabled = false;
+    if (btn) { btn.disabled=false; btn.style.opacity=''; }
+    if (errEl) { errEl.textContent=e.message||'Erro ao salvar.'; errEl.style.display='block'; }
+  }
+}
+
+async function finalizarInovePedido(id) {
+  var res = await sb.from('inove_pedidos').update({status:'finalizado'}).eq('id',id);
+  if (res.error) { console.error('finalizarInovePedido:', res.error.message); return; }
+  inovePedidos.forEach(function(p){ if(p.id===id) p.status='finalizado'; });
+  renderInoveClientList(); renderInoveDetail();
+}
+
+async function desfinalizarInovePedido(id) {
+  var res = await sb.from('inove_pedidos').update({status:'ativo'}).eq('id',id);
+  if (res.error) { console.error('desfinalizarInovePedido:', res.error.message); return; }
+  inovePedidos.forEach(function(p){ if(p.id===id) p.status='ativo'; });
+  renderInoveClientList(); renderInoveDetail();
+}
+
+async function deleteInovePedido(id) {
+  var res = await sb.from('inove_pedidos').delete().eq('id',id);
+  if (res.error) { console.error('deleteInovePedido:', res.error.message); return; }
+  inovePedidos = inovePedidos.filter(function(p){ return p.id!==id; });
+  renderInoveClientList(); renderInoveDetail();
+}
+
+function toggleInoveFinalizados() {
+  inoveFinalizadosOpen = !inoveFinalizadosOpen;
+  var sec   = document.getElementById('inove-fin-section');
+  var arrow = document.getElementById('inove-fin-arrow');
+  if (sec)   sec.style.display = inoveFinalizadosOpen ? 'block' : 'none';
+  if (arrow) arrow.style.transform = inoveFinalizadosOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+// ── Relatório Cadastro de Clientes ───────────────────────────
+
+function gerarRelatorioClientes() {
+  var { jsPDF } = window.jspdf;
+  var doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.setTextColor(30, 41, 59);
+  doc.text('Ideali Laboratório - Cadastro de Clientes', 14, 18);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  var agora = new Date().toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  doc.text('Gerado em: ' + agora + '   •   Total: ' + clients.length + ' clientes', 14, 24);
+
+  var sortedClients = clients.slice().sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); });
+
+  var rows = sortedClients.map(function(c) {
+    var endParts = [c.end, c.bairro, c.cidade + (c.uf ? ' / ' + c.uf : ''), c.cep ? 'CEP ' + c.cep : ''].filter(Boolean);
+    return [
+      c.nome       || '-',
+      c.cpf        || '-',
+      c.cro        || '-',
+      endParts.join(', ') || '-',
+      c.tel        || '-',
+      c.obs        || '-'
+    ];
+  });
+
+  doc.autoTable({
+    startY: 29,
+    head: [['Nome', 'CPF / CNPJ', 'CRO', 'Endereço Completo', 'Telefone', 'Observação']],
+    body: rows,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [12, 74, 110],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8,
+      cellPadding: 3
+    },
+    bodyStyles: { fontSize: 7.5, cellPadding: 2.5, overflow: 'linebreak' },
+    columnStyles: {
+      0: { cellWidth: 52 },
+      1: { cellWidth: 35 },
+      2: { cellWidth: 26 },
+      3: { cellWidth: 80 },
+      4: { cellWidth: 28 },
+      5: { cellWidth: 41 }
+    },
+    alternateRowStyles: { fillColor: [240, 247, 255] },
+    didParseCell: function(data) {
+      if (data.row.index % 2 === 0 && data.section === 'body') {
+        data.cell.styles.fillColor = [255, 255, 255];
+      }
+    }
+  });
+
+  var pages = doc.internal.getNumberOfPages();
+  for (var i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(148, 163, 184);
+    doc.text('Página ' + i + ' de ' + pages, doc.internal.pageSize.width - 14, doc.internal.pageSize.height - 6, { align: 'right' });
+    doc.text('Ideali Laboratório', 14, doc.internal.pageSize.height - 6);
+  }
+
+  doc.save('cadastro-clientes.pdf');
+}
+
+// ── Relatório PDF ────────────────────────────────────────────
+
+function gerarRelatorioPDF() {
+  var { jsPDF } = window.jspdf;
+  var doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  var mesNome = MESES[viewMonth];
+  var titulo  = 'Ideali Laboratório - Relatório ' + mesNome + ' ' + viewYear;
+
+  // ── Cabeçalho ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.setTextColor(30, 41, 59);
+  doc.text(titulo, 14, 18);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  var agora = new Date().toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  doc.text('Gerado em: ' + agora, 14, 24);
+
+  // ── Dados da tabela ──
+  var rawRest   = [];
+  var rawStatus = [];
+  var rows = [];
+  var totVal = 0, totComp = 0, totPago = 0, totRest = 0;
+
+  clients.forEach(function(c) {
+    var s   = dbState[c.reg] || {};
+    var vm  = Number(s.valor_mes        || 0);
+    var vc  = Number(s.valor_componente || 0);
+    var vp  = Number(s.valor_pago       || 0);
+    var rest = vm - vp;
+    totVal  += vm;
+    totComp += vc;
+    totPago += vp;
+    totRest += rest;
+
+    var st = statusOf(c.reg);
+    rawRest.push(rest);
+    rawStatus.push(st);
+
+    var stLabel = st.charAt(0).toUpperCase() + st.slice(1);
+    rows.push([c.nome, fmt(vm), fmt(vc), fmt(vp), fmt(rest), stLabel]);
+  });
+
+  // Linha de totais
+  rows.push(['TOTAL', fmt(totVal), fmt(totComp), fmt(totPago), fmt(totRest), '']);
+
+  doc.autoTable({
+    startY: 29,
+    head: [['Nome', 'Valor do Mês', 'Componente', 'Valor Pago', 'Restante', 'Status']],
+    body: rows,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [29, 78, 216],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8.5,
+      cellPadding: 3
+    },
+    bodyStyles: { fontSize: 8, cellPadding: 2.5 },
+    columnStyles: {
+      0: { cellWidth: 72 },
+      1: { halign: 'right', cellWidth: 32 },
+      2: { halign: 'right', cellWidth: 32 },
+      3: { halign: 'right', cellWidth: 32 },
+      4: { halign: 'right', cellWidth: 32 },
+      5: { halign: 'center', cellWidth: 24 }
+    },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    didParseCell: function(data) {
+      var ri = data.row.index;
+      var ci = data.column.index;
+      var isTotalRow = (ri === rows.length - 1);
+
+      if (isTotalRow) {
+        data.cell.styles.fontStyle   = 'bold';
+        data.cell.styles.fillColor   = [30, 41, 59];
+        data.cell.styles.textColor   = [241, 245, 249];
+      } else {
+        if (ci === 4) {
+          data.cell.styles.textColor = rawRest[ri] > 0 ? [220, 38, 38] : [22, 163, 74];
+        }
+        if (ci === 5) {
+          var stv = rawStatus[ri];
+          data.cell.styles.textColor = (stv === 'quitado' || stv === 'enviado' || stv === 'recebido')
+            ? [22, 163, 74]
+            : [220, 38, 38];
+        }
+      }
+    }
+  });
+
+  // ── Resumo financeiro ──
+  var comBruta = (totPago - totComp) * COMISSAO;
+  var comLiq   = comBruta - fretesMes;
+
+  var resumoY = doc.lastAutoTable.finalY + 10;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(30, 41, 59);
+  doc.text('Resumo Financeiro', 14, resumoY);
+
+  doc.autoTable({
+    startY: resumoY + 4,
+    head: [['Descrição', 'Valor']],
+    body: [
+      ['Comissão Bruta (17% sobre pago - componente)', fmt(comBruta)],
+      ['Correio / Motoboy do mês',                     fmt(fretesMes)],
+      ['Comissão Líquida (bruta - frete)',              fmt(comLiq)]
+    ],
+    theme: 'grid',
+    headStyles: {
+      fillColor: [30, 41, 59],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8.5,
+      cellPadding: 3
+    },
+    bodyStyles: { fontSize: 9, cellPadding: 3 },
+    columnStyles: {
+      0: { cellWidth: 130 },
+      1: { halign: 'right', cellWidth: 40 }
+    },
+    tableWidth: 170,
+    didParseCell: function(data) {
+      if (data.row.index === 2) {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.textColor = [161, 98, 7];
+      }
+    }
+  });
+
+  doc.save('relatorio-' + mesNome.toLowerCase() + '-' + viewYear + '.pdf');
+}
+</script>
+</body>
+</html>
