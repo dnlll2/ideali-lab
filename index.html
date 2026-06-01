@@ -74,6 +74,14 @@ button{font-family:inherit;cursor:pointer}
 .sb-item.active{background:#1a2a40;color:#93c5fd}
 .sb-icon{width:32px;height:32px;border-radius:8px;background:#22263a;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
 .sb-divider{height:0.5px;background:rgba(255,255,255,0.07);margin:8px 20px}
+.dash-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:10px;padding:1rem}
+.dash-g5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.dash-g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.dash-g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.dash-tab-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem}
+@media(max-width:767px){
+  .dash-g5,.dash-g4,.dash-g3{grid-template-columns:1fr !important}
+}
 @media(max-width:767px){
   body{padding:0.6rem 0.5rem}
   #app-header{flex-wrap:wrap;gap:6px}
@@ -124,6 +132,10 @@ button{font-family:inherit;cursor:pointer}
     <div class="sb-item" id="sb-inove" onclick="sbNav('inove')">
       <div class="sb-icon">🏭</div>
       <span>Inove 3D</span>
+    </div>
+    <div class="sb-item" id="sb-dashboard" onclick="sbNav('dashboard')">
+      <div class="sb-icon">📊</div>
+      <span>Dashboard</span>
     </div>
     <div class="sb-divider"></div>
     <div class="sb-item" onclick="closeSidebar();gerarRelatorioPDF()">
@@ -274,6 +286,18 @@ button{font-family:inherit;cursor:pointer}
       </div>
       <div class="card" id="inove-form-panel"></div>
     </div>
+  </div>
+
+  <div id="dashboard-view" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+      <p style="font-size:16px;font-weight:600;color:#f1f5f9">📊 Dashboard</p>
+      <div class="dash-tab-row" style="margin-bottom:0">
+        <button id="dash-tab-clientes"    class="tab-tarefa active" onclick="setDashTab('clientes')">Clientes</button>
+        <button id="dash-tab-financeiro"  class="tab-tarefa"        onclick="setDashTab('financeiro')">Financeiro</button>
+        <button id="dash-tab-inove"       class="tab-tarefa"        onclick="setDashTab('inove')">Inove 3D</button>
+      </div>
+    </div>
+    <div id="dashboard-content" class="card" style="min-height:300px;padding:1.25rem"></div>
   </div>
 
 </div>
@@ -571,9 +595,10 @@ async function switchMonth(m, y) {
   var ts = document.getElementById('tarefas-search');
   if (ts) ts.value = '';
   viewMode = 'clientes';
-  document.getElementById('clientes-view').style.display = 'block';
-  document.getElementById('tarefas-view').style.display  = 'none';
-  document.getElementById('inove-view').style.display    = 'none';
+  document.getElementById('clientes-view').style.display   = 'block';
+  document.getElementById('tarefas-view').style.display    = 'none';
+  document.getElementById('inove-view').style.display      = 'none';
+  document.getElementById('dashboard-view').style.display  = 'none';
   viewMonth = m; viewYear = y; selected = null;
   document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Carregando...</p></div>';
   dbState = await loadMonthData(m, y);
@@ -733,7 +758,7 @@ function closeSidebar() {
   document.getElementById('sidebar-overlay').classList.remove('open');
 }
 function updateSidebarActive() {
-  ['clientes','tarefas','inove'].forEach(function(v) {
+  ['clientes','tarefas','inove','dashboard'].forEach(function(v) {
     var el = document.getElementById('sb-'+v);
     if (el) el.classList.toggle('active', viewMode===v);
   });
@@ -743,11 +768,195 @@ function sbNav(target) {
   if (target==='clientes') { switchMonth(viewMonth, viewYear); }
   else if (target==='tarefas') { switchToTarefas(); }
   else if (target==='inove') { switchToInove(); }
+  else if (target==='dashboard') { switchToDashboard(); }
 }
 
 document.addEventListener('keydown', function(e) {
   if (e.key==='Escape') closeSidebar();
 });
+
+// ── Dashboard ─────────────────────────────────────────────────
+
+var dashTab       = 'clientes';
+var dashChartData = [];
+
+function switchToDashboard() {
+  closeMonthDD();
+  viewMode = 'dashboard';
+  document.getElementById('clientes-view').style.display   = 'none';
+  document.getElementById('tarefas-view').style.display    = 'none';
+  document.getElementById('inove-view').style.display      = 'none';
+  document.getElementById('dashboard-view').style.display  = 'block';
+  var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
+  var tg = document.getElementById('tarefas-grid');  if (tg) tg.classList.remove('mob-detail');
+  renderMonthTabs();
+  if (!inovePedidos.length) loadInovePedidos();
+  loadDashChartData();
+}
+
+function setDashTab(t) {
+  dashTab = t;
+  ['clientes','financeiro','inove'].forEach(function(v) {
+    var el = document.getElementById('dash-tab-'+v);
+    if (el) el.className = 'tab-tarefa' + (v===t?' active':'');
+  });
+  renderDashboard();
+}
+
+function renderDashboard() {
+  var p = document.getElementById('dashboard-content');
+  if (!p) return;
+  if (dashTab==='clientes')    p.innerHTML = renderDashClientes();
+  else if (dashTab==='financeiro') p.innerHTML = renderDashFinanceiro();
+  else if (dashTab==='inove')  p.innerHTML = renderDashInove();
+}
+
+async function loadDashChartData() {
+  dashChartData = [];
+  for (var i = 3; i >= 0; i--) {
+    var m = currentMonth - i, y = currentYear;
+    if (m < 0) { m += 12; y--; }
+    try {
+      var res = await sb.from('controle_mensal').select('valor_mes,valor_pago').eq('mes',m).eq('ano',y);
+      var pago = 0, valor = 0;
+      (res.data||[]).forEach(function(r){ pago += Number(r.valor_pago||0); valor += Number(r.valor_mes||0); });
+      dashChartData.push({m:m, y:y, nome:MESES[m].substring(0,3), pago:pago, valor:valor});
+    } catch(e) {
+      dashChartData.push({m:m, y:y, nome:MESES[m].substring(0,3), pago:0, valor:0});
+    }
+  }
+  renderDashboard();
+}
+
+function renderDashClientes() {
+  var rec=0, env=0, qui=0, pen=0;
+  clients.forEach(function(c) {
+    var v = dbState[c.reg]||{};
+    if (v.quitado) qui++;
+    else if (v.enviado) env++;
+    else if (v.recebido) rec++;
+    else pen++;
+  });
+  var stats = [
+    {l:'Total',    v:clients.length, clr:'#93c5fd'},
+    {l:'Quitados', v:qui,            clr:'#4ade80'},
+    {l:'Enviados', v:env,            clr:'#4ade80'},
+    {l:'Recebidos',v:rec,            clr:'#94a3b8'},
+    {l:'Pendentes',v:pen,            clr:'#fca5a5'},
+  ];
+  var cards = stats.map(function(s) {
+    return '<div class="dash-card"><p class="label" style="margin-bottom:6px">'+s.l+'</p>'+
+      '<p style="font-size:32px;font-weight:700;color:'+s.clr+'">'+s.v+'</p></div>';
+  }).join('');
+
+  var comTarefas = clients
+    .filter(function(c){ return tarefasAbertas[c.reg]>0; })
+    .sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); });
+
+  var tarefasSec = comTarefas.length
+    ? '<div style="margin-top:18px"><p style="font-size:12px;font-weight:600;color:#fb923c;margin-bottom:8px"><i class="ti ti-alert-triangle" style="font-size:13px"></i> Clientes com tarefas em aberto</p>'+
+        comTarefas.map(function(c) {
+          var col = avatarColors[c.reg % avatarColors.length];
+          return '<div onclick="irParaTarefasCliente('+c.reg+')" style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:#22263a;border-radius:8px;margin-bottom:6px;cursor:pointer;transition:background 0.1s" onmouseover="this.style.background=\'#2d3250\'" onmouseout="this.style.background=\'#22263a\'">'+
+            '<div style="width:30px;height:30px;border-radius:50%;background:'+col[0]+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:'+col[1]+';flex-shrink:0">'+initials(c.nome)+'</div>'+
+            '<span style="font-size:13px;color:#e2e8f0;flex:1">'+c.nome+'</span>'+
+            '<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:#3d2000;color:#fb923c">'+tarefasAbertas[c.reg]+' aberta'+(tarefasAbertas[c.reg]!==1?'s':'')+'</span>'+
+            '<i class="ti ti-arrow-right" style="font-size:13px;color:#4a5568"></i></div>';
+        }).join('')+
+      '</div>'
+    : '<p style="font-size:13px;color:#22c55e;margin-top:16px;display:flex;align-items:center;gap:6px"><i class="ti ti-circle-check" style="font-size:16px"></i> Nenhum cliente com tarefas em aberto</p>';
+
+  return '<div class="dash-g5">'+cards+'</div>'+tarefasSec;
+}
+
+function renderDashFinanceiro() {
+  var totVal=0, totPago=0, totComp=0;
+  clients.forEach(function(c) {
+    var v = dbState[c.reg]||{};
+    totVal  += Number(v.valor_mes||0);
+    totPago += Number(v.valor_pago||0);
+    totComp += Number(v.valor_componente||0);
+  });
+  var comBruta = (totPago - totComp) * COMISSAO;
+  var comLiq   = comBruta - fretesMes;
+
+  var cards = [
+    {l:'Total a receber',    v:fmt(totVal),   clr:'#f1f5f9'},
+    {l:'Total pago',         v:fmt(totPago),  clr:'#4ade80'},
+    {l:'Total componentes',  v:fmt(totComp),  clr:'#94a3b8'},
+    {l:'Comissão bruta(17%)',v:fmt(comBruta), clr:'#fbbf24'},
+    {l:'Desconto frete',     v:fmt(fretesMes),clr:'#fca5a5'},
+    {l:'Comissão líquida',   v:fmt(comLiq),   clr:'#fbbf24'},
+  ].map(function(s) {
+    return '<div class="dash-card"><p class="label" style="margin-bottom:6px">'+s.l+'</p>'+
+      '<p style="font-size:20px;font-weight:600;color:'+s.clr+'">'+s.v+'</p></div>';
+  }).join('');
+
+  var chart = dashChartData.length ? buildBarChart() : '<p style="color:#4a5568;font-size:12px;padding:1rem">Carregando gráfico...</p>';
+
+  return '<div class="dash-g3">'+cards+'</div>'+
+    '<div style="margin-top:18px"><p style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px">Últimos 4 meses — Pago (verde) vs. A receber (azul)</p>'+chart+'</div>';
+}
+
+function buildBarChart() {
+  var W=460, H=180, pL=10, pR=10, pB=32, pT=24;
+  var cW=W-pL-pR, cH=H-pB-pT;
+  var maxVal=0;
+  dashChartData.forEach(function(d){ maxVal=Math.max(maxVal,d.valor,d.pago); });
+  if (maxVal===0) maxVal=1;
+  var gW=cW/4, bW=Math.floor(gW*0.28);
+
+  var els='';
+  // legend
+  els+='<rect x="'+pL+'" y="5" width="10" height="10" rx="2" fill="#3b82f6" opacity="0.85"/>'+
+       '<text x="'+(pL+14)+'" y="14" font-size="10" fill="#64748b">A receber</text>'+
+       '<rect x="'+(pL+74)+'" y="5" width="10" height="10" rx="2" fill="#22c55e" opacity="0.85"/>'+
+       '<text x="'+(pL+88)+'" y="14" font-size="10" fill="#64748b">Pago</text>';
+  // baseline
+  els+='<line x1="'+pL+'" y1="'+(pT+cH)+'" x2="'+(W-pR)+'" y2="'+(pT+cH)+'" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>';
+
+  dashChartData.forEach(function(d,i) {
+    var cx=pL+i*gW+gW/2;
+    var hV=Math.max((d.valor/maxVal)*cH,0), hP=Math.max((d.pago/maxVal)*cH,0);
+    var xV=cx-bW-2, xP=cx+2;
+    if (hV>0) els+='<rect x="'+xV+'" y="'+(pT+cH-hV)+'" width="'+bW+'" height="'+hV+'" rx="3" fill="#3b82f6" opacity="0.75"/>';
+    if (hP>0) els+='<rect x="'+xP+'" y="'+(pT+cH-hP)+'" width="'+bW+'" height="'+hP+'" rx="3" fill="#22c55e" opacity="0.85"/>';
+    // value on top of pago bar
+    if (d.pago>0) {
+      var lbl=d.pago>=1000?(d.pago/1000).toFixed(1)+'k':String(Math.round(d.pago));
+      els+='<text x="'+(xP+bW/2)+'" y="'+(pT+cH-hP-4)+'" text-anchor="middle" font-size="9" fill="#4ade80">'+lbl+'</text>';
+    }
+    // month label
+    var mLabel=d.nome+(d.y!==currentYear?' '+d.y:'');
+    els+='<text x="'+cx+'" y="'+(H-8)+'" text-anchor="middle" font-size="11" fill="#64748b">'+mLabel+'</text>';
+  });
+
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:'+H+'px;display:block">'+els+'</svg>';
+}
+
+function renderDashInove() {
+  var pend = inovePedidos.filter(function(p){return p.status==='pendente'||p.status==='ativo';}).length;
+  var exec = inovePedidos.filter(function(p){return p.status==='em_execucao';}).length;
+  var fin  = inovePedidos.filter(function(p){return p.status==='finalizado';}).length;
+  var tot  = inovePedidos.length;
+
+  var cards = [
+    {l:'Total de tarefas', v:tot,  clr:'#93c5fd', ico:'ti-list'},
+    {l:'Pendentes',        v:pend, clr:'#94a3b8', ico:'ti-clock-pause'},
+    {l:'Em execução',      v:exec, clr:'#fb923c', ico:'ti-clock'},
+    {l:'Finalizadas',      v:fin,  clr:'#4ade80', ico:'ti-circle-check'},
+  ].map(function(s) {
+    return '<div class="dash-card">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'+
+        '<i class="ti '+s.ico+'" style="font-size:20px;color:'+s.clr+'"></i>'+
+        '<p class="label">'+s.l+'</p>'+
+      '</div>'+
+      '<p style="font-size:36px;font-weight:700;color:'+s.clr+'">'+s.v+'</p>'+
+    '</div>';
+  }).join('');
+
+  return '<div class="dash-g4">'+cards+'</div>';
+}
 
 function mobBack() {
   var g = document.getElementById('clientes-grid');
@@ -1031,9 +1240,10 @@ function toggleArquivadas() {
 function switchToTarefas() {
   closeMonthDD();
   viewMode = 'tarefas';
-  document.getElementById('clientes-view').style.display = 'none';
-  document.getElementById('tarefas-view').style.display  = 'block';
-  document.getElementById('inove-view').style.display    = 'none';
+  document.getElementById('clientes-view').style.display   = 'none';
+  document.getElementById('tarefas-view').style.display    = 'block';
+  document.getElementById('inove-view').style.display      = 'none';
+  document.getElementById('dashboard-view').style.display  = 'none';
   var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
   renderMonthTabs();
   loadTarefas();
@@ -1097,9 +1307,10 @@ var _inoveMap            = {};
 function switchToInove() {
   closeMonthDD();
   viewMode = 'inove';
-  document.getElementById('clientes-view').style.display = 'none';
-  document.getElementById('tarefas-view').style.display  = 'none';
-  document.getElementById('inove-view').style.display    = 'block';
+  document.getElementById('clientes-view').style.display   = 'none';
+  document.getElementById('tarefas-view').style.display    = 'none';
+  document.getElementById('inove-view').style.display      = 'block';
+  document.getElementById('dashboard-view').style.display  = 'none';
   var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
   var tg = document.getElementById('tarefas-grid');  if (tg) tg.classList.remove('mob-detail');
   renderMonthTabs();
