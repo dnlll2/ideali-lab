@@ -75,12 +75,20 @@ button{font-family:inherit;cursor:pointer}
 .sb-icon{width:32px;height:32px;border-radius:8px;background:#22263a;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
 .sb-divider{height:0.5px;background:rgba(255,255,255,0.07);margin:8px 20px}
 .dash-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:10px;padding:1rem}
-.dash-g5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
 .dash-g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .dash-g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .dash-tab-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem}
+.dash-section{margin-top:20px}
+.dash-section-title{font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px;padding-bottom:8px;border-bottom:0.5px solid rgba(255,255,255,0.06)}
+.dash-table{width:100%;border-collapse:collapse;font-size:12px}
+.dash-table th{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;padding:7px 10px;text-align:left;border-bottom:0.5px solid rgba(255,255,255,0.08);white-space:nowrap}
+.dash-table td{padding:8px 10px;border-bottom:0.5px solid rgba(255,255,255,0.05);color:#e2e8f0;vertical-align:middle}
+.dash-table tbody tr:last-child td{border-bottom:none}
+.dash-table tbody tr:hover td{background:rgba(255,255,255,0.025)}
+.dash-status-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:6px;white-space:nowrap}
 @media(max-width:767px){
-  .dash-g5,.dash-g4,.dash-g3{grid-template-columns:1fr !important}
+  .dash-g4,.dash-g3{grid-template-columns:1fr !important}
+  .dash-card{padding:0.75rem}
 }
 @media(max-width:767px){
   body{padding:0.6rem 0.5rem}
@@ -297,12 +305,12 @@ button{font-family:inherit;cursor:pointer}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
       <p style="font-size:16px;font-weight:600;color:#f1f5f9">📊 Dashboard</p>
       <div class="dash-tab-row" style="margin-bottom:0">
-        <button id="dash-tab-clientes"    class="tab-tarefa active" onclick="setDashTab('clientes')">Clientes</button>
-        <button id="dash-tab-financeiro"  class="tab-tarefa"        onclick="setDashTab('financeiro')">Financeiro</button>
-        <button id="dash-tab-inove"       class="tab-tarefa"        onclick="setDashTab('inove')">Inove 3D</button>
+        <button id="dash-tab-clientes"   class="tab-tarefa active" onclick="setDashTab('clientes')">🧑‍🤝‍🧑 Clientes</button>
+        <button id="dash-tab-producao"   class="tab-tarefa"        onclick="setDashTab('producao')">⚙️ Produção</button>
+        <button id="dash-tab-financeiro" class="tab-tarefa"        onclick="setDashTab('financeiro')">💰 Financeiro</button>
       </div>
     </div>
-    <div id="dashboard-content" class="card" style="min-height:300px;padding:1.25rem"></div>
+    <div id="dashboard-content" style="min-height:300px"></div>
   </div>
 
 </div>
@@ -904,8 +912,8 @@ function renderThemePicker() {
 
 // ── Dashboard ─────────────────────────────────────────────────
 
-var dashTab       = 'clientes';
-var dashChartData = [];
+var dashTab    = 'clientes';
+var dashHistory = []; // 6 meses: {m,y,nome,pago,valor,quitados}
 
 function switchToDashboard() {
   closeMonthDD();
@@ -918,12 +926,12 @@ function switchToDashboard() {
   var tg = document.getElementById('tarefas-grid');  if (tg) tg.classList.remove('mob-detail');
   renderMonthTabs();
   if (!inovePedidos.length) loadInovePedidos();
-  loadDashChartData();
+  loadDashHistory();
 }
 
 function setDashTab(t) {
   dashTab = t;
-  ['clientes','financeiro','inove'].forEach(function(v) {
+  ['clientes','producao','financeiro'].forEach(function(v) {
     var el = document.getElementById('dash-tab-'+v);
     if (el) el.className = 'tab-tarefa' + (v===t?' active':'');
   });
@@ -934,155 +942,250 @@ function renderDashboard() {
   var p = document.getElementById('dashboard-content');
   if (!p) return;
   if (dashTab==='clientes')    p.innerHTML = renderDashClientes();
+  else if (dashTab==='producao')  p.innerHTML = renderDashProducao();
   else if (dashTab==='financeiro') p.innerHTML = renderDashFinanceiro();
-  else if (dashTab==='inove')  p.innerHTML = renderDashInove();
 }
 
-async function loadDashChartData() {
-  dashChartData = [];
-  for (var i = 3; i >= 0; i--) {
+async function loadDashHistory() {
+  dashHistory = [];
+  for (var i = 5; i >= 0; i--) {
     var m = currentMonth - i, y = currentYear;
     if (m < 0) { m += 12; y--; }
     try {
-      var res = await sb.from('controle_mensal').select('valor_mes,valor_pago').eq('mes',m).eq('ano',y);
-      var pago = 0, valor = 0;
-      (res.data||[]).forEach(function(r){ pago += Number(r.valor_pago||0); valor += Number(r.valor_mes||0); });
-      dashChartData.push({m:m, y:y, nome:MESES[m].substring(0,3), pago:pago, valor:valor});
+      var res = await sb.from('controle_mensal').select('valor_mes,valor_pago,quitado').eq('mes',m).eq('ano',y);
+      var pago=0, valor=0, quitados=0;
+      (res.data||[]).forEach(function(r){ pago+=Number(r.valor_pago||0); valor+=Number(r.valor_mes||0); if(r.quitado)quitados++; });
+      dashHistory.push({m:m,y:y,nome:MESES[m].substring(0,3),pago:pago,valor:valor,quitados:quitados});
     } catch(e) {
-      dashChartData.push({m:m, y:y, nome:MESES[m].substring(0,3), pago:0, valor:0});
+      dashHistory.push({m:m,y:y,nome:MESES[m].substring(0,3),pago:0,valor:0,quitados:0});
     }
   }
   renderDashboard();
 }
 
+// ── Aba Clientes ──────────────────────────────────────────────
+
 function renderDashClientes() {
-  var rec=0, env=0, qui=0, pen=0;
+  var rec=0,env=0,qui=0,pen=0,comAtiv=0,comPed=0;
   clients.forEach(function(c) {
-    var v = dbState[c.reg]||{};
-    if (v.quitado) qui++;
-    else if (v.enviado) env++;
-    else if (v.recebido) rec++;
-    else pen++;
+    var v=dbState[c.reg]||{};
+    if(v.quitado)qui++; else if(v.enviado)env++; else if(v.recebido)rec++; else pen++;
+    if(v.recebido||v.enviado||v.quitado||Number(v.valor_mes||0)>0) comAtiv++;
+    if(Number(v.valor_mes||0)>0) comPed++;
   });
-  var stats = [
-    {l:'Total',    v:clients.length, clr:'#93c5fd'},
-    {l:'Quitados', v:qui,            clr:'#4ade80'},
-    {l:'Enviados', v:env,            clr:'#4ade80'},
-    {l:'Recebidos',v:rec,            clr:'#94a3b8'},
-    {l:'Pendentes',v:pen,            clr:'#fca5a5'},
-  ];
-  var cards = stats.map(function(s) {
-    return '<div class="dash-card"><p class="label" style="margin-bottom:6px">'+s.l+'</p>'+
-      '<p style="font-size:32px;font-weight:700;color:'+s.clr+'">'+s.v+'</p></div>';
+
+  var cards3=[
+    {ico:'ti-users',      l:'Total de clientes',  v:clients.length, clr:'#93c5fd',bg:'#1d3a6e'},
+    {ico:'ti-activity',   l:'Ativos no mês',       v:comAtiv,        clr:'#4ade80',bg:'#0d3d2b'},
+    {ico:'ti-file-dollar',l:'Com pedido aberto',   v:comPed,         clr:'#fbbf24',bg:'#2a2010'},
+  ].map(function(s){
+    return '<div class="dash-card" style="background:'+s.bg+';border-color:rgba(255,255,255,0.1);display:flex;align-items:center;gap:14px">'+
+      '<i class="ti '+s.ico+'" style="font-size:28px;color:'+s.clr+';flex-shrink:0"></i>'+
+      '<div><p class="label" style="margin-bottom:4px">'+s.l+'</p><p style="font-size:28px;font-weight:700;color:'+s.clr+'">'+s.v+'</p></div></div>';
   }).join('');
 
-  var comTarefas = clients
-    .filter(function(c){ return tarefasAbertas[c.reg]>0; })
-    .sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); });
+  var statusRows=[['Quitado','#22c55e',qui],['Enviado','#3b82f6',env],['Recebido','#fbbf24',rec],['Pendente','#ef4444',pen]].map(function(r){
+    var pct=clients.length>0?Math.round(r[2]/clients.length*100):0;
+    return '<tr><td><span class="dash-status-badge" style="background:'+r[1]+'22;color:'+r[1]+'">'+r[0]+'</span></td>'+
+      '<td style="font-weight:600;color:'+r[1]+'">'+r[2]+'</td>'+
+      '<td><div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+r[1]+';border-radius:3px"></div></div></td></tr>';
+  }).join('');
 
-  var tarefasSec = comTarefas.length
-    ? '<div style="margin-top:18px"><p style="font-size:12px;font-weight:600;color:#fb923c;margin-bottom:8px"><i class="ti ti-alert-triangle" style="font-size:13px"></i> Clientes com tarefas em aberto</p>'+
-        comTarefas.map(function(c) {
-          var col = avatarColors[c.reg % avatarColors.length];
-          return '<div onclick="irParaTarefasCliente('+c.reg+')" style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:#22263a;border-radius:8px;margin-bottom:6px;cursor:pointer;transition:background 0.1s" onmouseover="this.style.background=\'#2d3250\'" onmouseout="this.style.background=\'#22263a\'">'+
-            '<div style="width:30px;height:30px;border-radius:50%;background:'+col[0]+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:'+col[1]+';flex-shrink:0">'+initials(c.nome)+'</div>'+
-            '<span style="font-size:13px;color:#e2e8f0;flex:1">'+c.nome+'</span>'+
-            '<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:#3d2000;color:#fb923c">'+tarefasAbertas[c.reg]+' aberta'+(tarefasAbertas[c.reg]!==1?'s':'')+'</span>'+
-            '<i class="ti ti-arrow-right" style="font-size:13px;color:#4a5568"></i></div>';
-        }).join('')+
-      '</div>'
-    : '<p style="font-size:13px;color:#22c55e;margin-top:16px;display:flex;align-items:center;gap:6px"><i class="ti ti-circle-check" style="font-size:16px"></i> Nenhum cliente com tarefas em aberto</p>';
+  var statusTable='<div class="dash-section card" style="padding:1rem">'+
+    '<p class="dash-section-title"><i class="ti ti-chart-pie" style="font-size:14px"></i> Clientes por status — '+MESES[viewMonth]+' '+viewYear+'</p>'+
+    '<div style="overflow-x:auto"><table class="dash-table"><thead><tr><th>Status</th><th>Qtd</th><th style="width:55%">Distribuição</th></tr></thead>'+
+    '<tbody>'+statusRows+'</tbody></table></div></div>';
 
-  return '<div class="dash-g5">'+cards+'</div>'+tarefasSec;
+  var lineChart=dashHistory.length>=2
+    ? '<div class="dash-section card" style="padding:1rem">'+
+        '<p class="dash-section-title"><i class="ti ti-trending-up" style="font-size:14px"></i> Quitados — últimos 6 meses</p>'+
+        buildLineChart(dashHistory.map(function(d){return {nome:d.nome,value:d.quitados};}), '#22c55e')+
+      '</div>' : '';
+
+  var risco=clients.filter(function(c){
+    var v=dbState[c.reg]||{};
+    return Number(v.valor_mes||0)>0&&!v.quitado;
+  }).sort(function(a,b){
+    var va=dbState[a.reg]||{},vb=dbState[b.reg]||{};
+    return (Number(vb.valor_mes||0)-Number(vb.valor_pago||0))-(Number(va.valor_mes||0)-Number(va.valor_pago||0));
+  });
+
+  var riscoRows=risco.map(function(c){
+    var v=dbState[c.reg]||{},vm=Number(v.valor_mes||0),vp=Number(v.valor_pago||0),rest=vm-vp;
+    var st=v.enviado?['Enviado','#3b82f6']:v.recebido?['Recebido','#fbbf24']:['Pendente','#ef4444'];
+    return '<tr><td style="font-weight:500">'+c.nome+'</td><td>'+fmt(vm)+'</td>'+
+      '<td style="color:#22c55e">'+fmt(vp)+'</td>'+
+      '<td style="color:'+(rest>0?'#ef4444':'#22c55e')+';font-weight:600">'+fmt(rest)+'</td>'+
+      '<td><span class="dash-status-badge" style="background:'+st[1]+'22;color:'+st[1]+'">'+st[0]+'</span></td></tr>';
+  }).join('');
+
+  var riscoSection='<div class="dash-section card" style="padding:1rem">'+
+    '<p class="dash-section-title"><i class="ti ti-alert-triangle" style="font-size:14px;color:#fb923c"></i> Zona de risco — pagamentos em aberto</p>'+
+    (risco.length
+      ? '<div style="overflow-x:auto"><table class="dash-table"><thead><tr><th>Cliente</th><th>A receber</th><th>Pago</th><th>Restante</th><th>Status</th></tr></thead><tbody>'+riscoRows+'</tbody></table></div>'
+      : '<p style="font-size:13px;color:#22c55e;display:flex;align-items:center;gap:6px"><i class="ti ti-circle-check" style="font-size:16px"></i> Sem pagamentos em aberto</p>')+
+  '</div>';
+
+  var anivSection='<div class="dash-section card" style="padding:1rem">'+
+    '<p class="dash-section-title"><i class="ti ti-cake" style="font-size:14px;color:#c4b5fd"></i> Aniversariantes</p>'+
+    '<p style="font-size:12px;color:#4a5568;font-style:italic">Cadastre a data de aniversário nos registros para ativar esta seção.</p></div>';
+
+  return '<div class="dash-g3">'+cards3+'</div>'+statusTable+lineChart+riscoSection+anivSection;
 }
+
+// ── Aba Produção ──────────────────────────────────────────────
+
+function renderDashProducao() {
+  var tot=inovePedidos.length;
+  var fin=inovePedidos.filter(function(p){return p.status==='finalizado';}).length;
+  var pend=inovePedidos.filter(function(p){return p.status==='pendente'||p.status==='ativo';}).length;
+  var exec=inovePedidos.filter(function(p){return p.status==='em_execucao';}).length;
+
+  var cards4=[
+    {ico:'ti-list',        l:'Tarefas cadastradas',v:tot, clr:'#93c5fd'},
+    {ico:'ti-circle-check',l:'Finalizadas',        v:fin, clr:'#4ade80'},
+    {ico:'ti-clock-pause', l:'Pendentes',          v:pend,clr:'#94a3b8'},
+    {ico:'ti-clock',       l:'Em execução',        v:exec,clr:'#fb923c'},
+  ].map(function(s){
+    return '<div class="dash-card" style="display:flex;align-items:center;gap:12px">'+
+      '<i class="ti '+s.ico+'" style="font-size:26px;color:'+s.clr+';flex-shrink:0"></i>'+
+      '<div><p class="label" style="margin-bottom:4px">'+s.l+'</p><p style="font-size:26px;font-weight:700;color:'+s.clr+'">'+s.v+'</p></div></div>';
+  }).join('');
+
+  function clienteNome(reg){if(!reg)return'—';var c=clients.find(function(x){return x.reg==reg;});return c?c.nome:'—';}
+  function stBadge(st){
+    var cfg=st==='finalizado'?['#22c55e','Finalizado']:st==='em_execucao'?['#3b82f6','Em execução']:['#64748b','Pendente'];
+    return '<span class="dash-status-badge" style="background:'+cfg[0]+'22;color:'+cfg[0]+'">'+cfg[1]+'</span>';
+  }
+
+  var recentes=inovePedidos.slice().sort(function(a,b){
+    return new Date(b.created_at||b.data_pedido||0)-new Date(a.created_at||a.data_pedido||0);
+  }).slice(0,10);
+
+  var tabelaRows=recentes.map(function(p){
+    return '<tr><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(p.descricao||'—')+'</td>'+
+      '<td style="color:#94a3b8;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">'+clienteNome(p.cliente_reg)+'</td>'+
+      '<td style="color:#4a5568;white-space:nowrap">'+fmtDate(p.data_pedido)+'</td>'+
+      '<td>'+stBadge(p.status)+'</td></tr>';
+  }).join('');
+
+  var tabelaSection='<div class="dash-section card" style="padding:1rem">'+
+    '<p class="dash-section-title"><i class="ti ti-table" style="font-size:14px"></i> Últimas tarefas Inove</p>'+
+    (recentes.length
+      ? '<div style="overflow-x:auto"><table class="dash-table"><thead><tr><th>Descrição</th><th>Cliente</th><th>Data</th><th>Status</th></tr></thead><tbody>'+tabelaRows+'</tbody></table></div>'
+      : '<p style="font-size:13px;color:#4a5568">Nenhuma tarefa cadastrada.</p>')+
+  '</div>';
+
+  var barSection='<div class="dash-section card" style="padding:1rem">'+
+    '<p class="dash-section-title"><i class="ti ti-chart-bar" style="font-size:14px"></i> Tarefas por mês</p>'+
+    buildBarChartProd()+'</div>';
+
+  return '<div class="dash-g4">'+cards4+'</div>'+tabelaSection+barSection;
+}
+
+// ── Aba Financeiro ────────────────────────────────────────────
 
 function renderDashFinanceiro() {
-  var totVal=0, totPago=0, totComp=0;
-  clients.forEach(function(c) {
-    var v = dbState[c.reg]||{};
-    totVal  += Number(v.valor_mes||0);
-    totPago += Number(v.valor_pago||0);
-    totComp += Number(v.valor_componente||0);
-  });
-  var comBruta = (totPago - totComp) * COMISSAO;
-  var comLiq   = comBruta - fretesMes;
+  var totVal=0,totPago=0,totComp=0;
+  clients.forEach(function(c){var v=dbState[c.reg]||{};totVal+=Number(v.valor_mes||0);totPago+=Number(v.valor_pago||0);totComp+=Number(v.valor_componente||0);});
+  var comBruta=(totPago-totComp)*COMISSAO, comLiq=comBruta-fretesMes, emAtraso=totVal-totPago;
 
-  var cards = [
-    {l:'Total a receber',    v:fmt(totVal),   clr:'#f1f5f9'},
-    {l:'Total pago',         v:fmt(totPago),  clr:'#4ade80'},
-    {l:'Total componentes',  v:fmt(totComp),  clr:'#94a3b8'},
-    {l:'Comissão bruta(17%)',v:fmt(comBruta), clr:'#fbbf24'},
-    {l:'Desconto frete',     v:fmt(fretesMes),clr:'#fca5a5'},
-    {l:'Comissão líquida',   v:fmt(comLiq),   clr:'#fbbf24'},
-  ].map(function(s) {
-    return '<div class="dash-card"><p class="label" style="margin-bottom:6px">'+s.l+'</p>'+
-      '<p style="font-size:20px;font-weight:600;color:'+s.clr+'">'+s.v+'</p></div>';
+  var cards4=[
+    {ico:'ti-cash',        l:'Total a receber',  v:fmt(totVal),   clr:'#f1f5f9'},
+    {ico:'ti-alert-circle',l:'Em aberto',         v:fmt(emAtraso), clr:emAtraso>0?'#ef4444':'#22c55e'},
+    {ico:'ti-circle-check',l:'Faturamento pago',  v:fmt(totPago),  clr:'#4ade80'},
+    {ico:'ti-truck',       l:'Fretes/motoboy',    v:fmt(fretesMes),clr:'#fca5a5'},
+  ].map(function(s){
+    return '<div class="dash-card" style="display:flex;align-items:center;gap:12px">'+
+      '<i class="ti '+s.ico+'" style="font-size:24px;color:'+s.clr+';flex-shrink:0"></i>'+
+      '<div><p class="label" style="margin-bottom:4px">'+s.l+'</p><p style="font-size:20px;font-weight:700;color:'+s.clr+'">'+s.v+'</p></div></div>';
   }).join('');
 
-  var chart = dashChartData.length ? buildBarChart() : '<p style="color:#4a5568;font-size:12px;padding:1rem">Carregando gráfico...</p>';
+  var vendasCard='<div class="dash-section card" style="padding:1rem;display:grid;grid-template-columns:repeat(3,1fr);gap:16px">'+
+    '<div><p class="label" style="margin-bottom:6px">Comissão bruta (17%)</p><p style="font-size:22px;font-weight:700;color:#fbbf24">'+fmt(comBruta)+'</p></div>'+
+    '<div><p class="label" style="margin-bottom:6px">Desconto fretes</p><p style="font-size:22px;font-weight:700;color:#fca5a5">'+fmt(fretesMes)+'</p></div>'+
+    '<div><p class="label" style="margin-bottom:6px">Comissão líquida</p><p style="font-size:22px;font-weight:700;color:#fbbf24">'+fmt(comLiq)+'</p></div>'+
+  '</div>';
 
-  return '<div class="dash-g3">'+cards+'</div>'+
-    '<div style="margin-top:18px"><p style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px">Últimos 4 meses — Pago (verde) vs. A receber (azul)</p>'+chart+'</div>';
+  var barSection='<div class="dash-section card" style="padding:1rem">'+
+    '<p class="dash-section-title"><i class="ti ti-chart-bar" style="font-size:14px"></i> Faturamento — últimos 4 meses</p>'+
+    buildBarChartFin()+'</div>';
+
+  var comRows=clients.filter(function(c){return Number(dbState[c.reg]&&dbState[c.reg].valor_pago||0)>0;})
+    .sort(function(a,b){return Number(dbState[b.reg]&&dbState[b.reg].valor_pago||0)-Number(dbState[a.reg]&&dbState[a.reg].valor_pago||0);})
+    .map(function(c){
+      var v=dbState[c.reg]||{},vm=Number(v.valor_mes||0),vp=Number(v.valor_pago||0),vc=Number(v.valor_componente||0),com=(vp-vc)*COMISSAO;
+      return '<tr><td style="font-weight:500">'+c.nome+'</td><td>'+fmt(vm)+'</td><td style="color:#22c55e">'+fmt(vp)+'</td><td style="color:#94a3b8">'+fmt(vc)+'</td><td style="color:#fbbf24;font-weight:600">'+fmt(com)+'</td></tr>';
+    }).join('');
+
+  var comTable='<div class="dash-section card" style="padding:1rem">'+
+    '<p class="dash-section-title"><i class="ti ti-percentage" style="font-size:14px;color:#fbbf24"></i> Comissões por cliente — '+MESES[viewMonth]+'</p>'+
+    (comRows
+      ? '<div style="overflow-x:auto"><table class="dash-table"><thead><tr><th>Cliente</th><th>A receber</th><th>Pago</th><th>Componente</th><th>Comissão</th></tr></thead><tbody>'+comRows+'</tbody></table></div>'
+      : '<p style="font-size:13px;color:#4a5568">Nenhum pagamento registrado neste mês.</p>')+
+  '</div>';
+
+  return '<div class="dash-g4">'+cards4+'</div>'+vendasCard+barSection+comTable;
 }
 
-function buildBarChart() {
-  var W=460, H=180, pL=10, pR=10, pB=32, pT=24;
-  var cW=W-pL-pR, cH=H-pB-pT;
-  var maxVal=0;
-  dashChartData.forEach(function(d){ maxVal=Math.max(maxVal,d.valor,d.pago); });
-  if (maxVal===0) maxVal=1;
-  var gW=cW/4, bW=Math.floor(gW*0.28);
+// ── SVG Charts ────────────────────────────────────────────────
 
+function buildLineChart(points, color) {
+  var W=460,H=160,pL=10,pR=10,pB=28,pT=24;
+  var cW=W-pL-pR,cH=H-pB-pT,n=points.length; if(!n)return'';
+  var maxV=0; points.forEach(function(p){if(p.value>maxV)maxV=p.value;}); if(!maxV)maxV=1;
+  var pts=points.map(function(d,i){return {x:pL+(n===1?cW/2:(i/(n-1))*cW),y:pT+cH-(d.value/maxV)*cH*0.88,v:d.value,nome:d.nome};});
   var els='';
-  // legend
-  els+='<rect x="'+pL+'" y="5" width="10" height="10" rx="2" fill="#3b82f6" opacity="0.85"/>'+
-       '<text x="'+(pL+14)+'" y="14" font-size="10" fill="#64748b">A receber</text>'+
-       '<rect x="'+(pL+74)+'" y="5" width="10" height="10" rx="2" fill="#22c55e" opacity="0.85"/>'+
-       '<text x="'+(pL+88)+'" y="14" font-size="10" fill="#64748b">Pago</text>';
-  // baseline
-  els+='<line x1="'+pL+'" y1="'+(pT+cH)+'" x2="'+(W-pR)+'" y2="'+(pT+cH)+'" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>';
-
-  dashChartData.forEach(function(d,i) {
-    var cx=pL+i*gW+gW/2;
-    var hV=Math.max((d.valor/maxVal)*cH,0), hP=Math.max((d.pago/maxVal)*cH,0);
-    var xV=cx-bW-2, xP=cx+2;
-    if (hV>0) els+='<rect x="'+xV+'" y="'+(pT+cH-hV)+'" width="'+bW+'" height="'+hV+'" rx="3" fill="#3b82f6" opacity="0.75"/>';
-    if (hP>0) els+='<rect x="'+xP+'" y="'+(pT+cH-hP)+'" width="'+bW+'" height="'+hP+'" rx="3" fill="#22c55e" opacity="0.85"/>';
-    // value on top of pago bar
-    if (d.pago>0) {
-      var lbl=d.pago>=1000?(d.pago/1000).toFixed(1)+'k':String(Math.round(d.pago));
-      els+='<text x="'+(xP+bW/2)+'" y="'+(pT+cH-hP-4)+'" text-anchor="middle" font-size="9" fill="#4ade80">'+lbl+'</text>';
-    }
-    // month label
-    var mLabel=d.nome+(d.y!==currentYear?' '+d.y:'');
-    els+='<text x="'+cx+'" y="'+(H-8)+'" text-anchor="middle" font-size="11" fill="#64748b">'+mLabel+'</text>';
+  for(var gi=0;gi<=3;gi++){var gy=pT+(gi/3)*cH;els+='<line x1="'+pL+'" y1="'+gy+'" x2="'+(W-pR)+'" y2="'+gy+'" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>';}
+  var aD='M'+pts[0].x+','+(pT+cH)+' '+pts.map(function(p){return 'L'+p.x+','+p.y;}).join(' ')+' L'+pts[n-1].x+','+(pT+cH)+' Z';
+  els+='<path d="'+aD+'" fill="'+color+'" opacity="0.1"/>';
+  var lD=pts.map(function(p,i){return(i?'L':'M')+p.x+','+p.y;}).join(' ');
+  els+='<path d="'+lD+'" stroke="'+color+'" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+  pts.forEach(function(p){
+    els+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="'+color+'" stroke="#0f1117" stroke-width="2"/>';
+    els+='<text x="'+p.x+'" y="'+(p.y-9)+'" text-anchor="middle" font-size="10" fill="'+color+'">'+p.v+'</text>';
+    els+='<text x="'+p.x+'" y="'+(H-5)+'" text-anchor="middle" font-size="10" fill="#64748b">'+p.nome+'</text>';
   });
-
   return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:'+H+'px;display:block">'+els+'</svg>';
 }
 
-function renderDashInove() {
-  var pend = inovePedidos.filter(function(p){return p.status==='pendente'||p.status==='ativo';}).length;
-  var exec = inovePedidos.filter(function(p){return p.status==='em_execucao';}).length;
-  var fin  = inovePedidos.filter(function(p){return p.status==='finalizado';}).length;
-  var tot  = inovePedidos.length;
+function buildBarChartProd() {
+  var months=[];
+  for(var i=5;i>=0;i--){var m=currentMonth-i,y=currentYear;if(m<0){m+=12;y--;}months.push({m:m,y:y,nome:MESES[m].substring(0,3),total:0,fin:0});}
+  inovePedidos.forEach(function(p){
+    var dp=p.data_pedido||p.created_at; if(!dp)return;
+    var pts=dp.split(/[-T]/),py=parseInt(pts[0]),pm=parseInt(pts[1])-1;
+    for(var j=0;j<months.length;j++){if(months[j].m===pm&&months[j].y===py){months[j].total++;if(p.status==='finalizado')months[j].fin++;break;}}
+  });
+  return buildGroupedBars(months.map(function(d){return {nome:d.nome,a:d.total,b:d.fin};}), '#3b82f6','#22c55e','Total','Finalizadas');
+}
 
-  var cards = [
-    {l:'Total de tarefas', v:tot,  clr:'#93c5fd', ico:'ti-list'},
-    {l:'Pendentes',        v:pend, clr:'#94a3b8', ico:'ti-clock-pause'},
-    {l:'Em execução',      v:exec, clr:'#fb923c', ico:'ti-clock'},
-    {l:'Finalizadas',      v:fin,  clr:'#4ade80', ico:'ti-circle-check'},
-  ].map(function(s) {
-    return '<div class="dash-card">'+
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'+
-        '<i class="ti '+s.ico+'" style="font-size:20px;color:'+s.clr+'"></i>'+
-        '<p class="label">'+s.l+'</p>'+
-      '</div>'+
-      '<p style="font-size:36px;font-weight:700;color:'+s.clr+'">'+s.v+'</p>'+
-    '</div>';
-  }).join('');
+function buildBarChartFin() {
+  var data=dashHistory.slice(-4); if(!data.length)return'<p style="color:#4a5568;font-size:12px">Carregando...</p>';
+  return buildGroupedBars(data.map(function(d){return {nome:d.nome,a:d.valor,b:d.pago};}), '#3b82f6','#22c55e','A receber','Pago');
+}
 
-  return '<div class="dash-g4">'+cards+'</div>';
+function buildGroupedBars(data, colorA, colorB, labelA, labelB) {
+  var W=460,H=180,pL=10,pR=10,pB=32,pT=28;
+  var cW=W-pL-pR,cH=H-pB-pT,n=data.length; if(!n)return'';
+  var maxV=0; data.forEach(function(d){if(d.a>maxV)maxV=d.a;if(d.b>maxV)maxV=d.b;}); if(!maxV)maxV=1;
+  var gW=cW/n,bW=Math.max(8,Math.floor(gW*0.28));
+  var els='';
+  var lAx=pL+14+labelA.length*5+10;
+  els+='<rect x="'+pL+'" y="6" width="10" height="10" rx="2" fill="'+colorA+'" opacity="0.85"/>'+
+       '<text x="'+(pL+14)+'" y="15" font-size="10" fill="#64748b">'+labelA+'</text>'+
+       '<rect x="'+lAx+'" y="6" width="10" height="10" rx="2" fill="'+colorB+'" opacity="0.85"/>'+
+       '<text x="'+(lAx+14)+'" y="15" font-size="10" fill="#64748b">'+labelB+'</text>';
+  els+='<line x1="'+pL+'" y1="'+(pT+cH)+'" x2="'+(W-pR)+'" y2="'+(pT+cH)+'" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>';
+  data.forEach(function(d,i){
+    var cx=pL+i*gW+gW/2,hA=Math.max((d.a/maxV)*cH,0),hB=Math.max((d.b/maxV)*cH,0);
+    var xA=cx-bW-2,xB=cx+2;
+    if(hA>0)els+='<rect x="'+xA+'" y="'+(pT+cH-hA)+'" width="'+bW+'" height="'+hA+'" rx="3" fill="'+colorA+'" opacity="0.75"/>';
+    if(hB>0)els+='<rect x="'+xB+'" y="'+(pT+cH-hB)+'" width="'+bW+'" height="'+hB+'" rx="3" fill="'+colorB+'" opacity="0.85"/>';
+    if(hB>0){var lbl=d.b>=1000?(d.b/1000).toFixed(1)+'k':String(Math.round(d.b));els+='<text x="'+(xB+bW/2)+'" y="'+(pT+cH-hB-4)+'" text-anchor="middle" font-size="9" fill="'+colorB+'">'+lbl+'</text>';}
+    els+='<text x="'+cx+'" y="'+(H-8)+'" text-anchor="middle" font-size="11" fill="#64748b">'+d.nome+'</text>';
+  });
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:'+H+'px;display:block">'+els+'</svg>';
 }
 
 function mobBack() {
