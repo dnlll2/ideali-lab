@@ -147,6 +147,11 @@ button{font-family:inherit;cursor:pointer}
       <span>Relatório Clientes</span>
     </div>
   </nav>
+  <div style="padding:14px 20px 20px;border-top:0.5px solid rgba(255,255,255,0.08)">
+    <p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Tema</p>
+    <div id="sb-theme-picker" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+    <p id="sb-theme-name" style="font-size:11px;color:#4a5568;margin-top:8px"></p>
+  </div>
 </div>
 
 <div id="loading-overlay" class="loading-overlay">
@@ -752,6 +757,7 @@ function openSidebar() {
   document.getElementById('sidebar').classList.add('open');
   document.getElementById('sidebar-overlay').classList.add('open');
   updateSidebarActive();
+  renderThemePicker();
 }
 function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
@@ -774,6 +780,127 @@ function sbNav(target) {
 document.addEventListener('keydown', function(e) {
   if (e.key==='Escape') closeSidebar();
 });
+
+// ── Temas ─────────────────────────────────────────────────────
+
+var THEMES = {
+  sombra: {
+    name:'Sombra', swatch:'#3b82f6',
+    bg:'#0f1117', sbg:'#13151f', card:'#1a1d27', sec:'#22263a',
+    hover:'#2d3250', active:'#1a2a40', border:'rgba(255,255,255,0.08)',
+    text:'#e2e8f0', muted:'#94a3b8', dim:'#64748b',
+    accent:'#3b82f6', success:'#22c55e', warn:'#fbbf24', danger:'#ef4444'
+  },
+  terminal: {
+    name:'Terminal', swatch:'#00ff41',
+    bg:'#010b01', sbg:'#010601', card:'#081408', sec:'#0b1e0b',
+    hover:'#102810', active:'#0a200a', border:'rgba(0,255,65,0.12)',
+    text:'#a8ffb8', muted:'#4db860', dim:'#2a6e3a',
+    accent:'#00ff41', success:'#00cc33', warn:'#c8ff00', danger:'#ff3333'
+  },
+  forja: {
+    name:'Forja', swatch:'#d4a017',
+    bg:'#120e06', sbg:'#0e0a04', card:'#1c1508', sec:'#261c0a',
+    hover:'#30220c', active:'#281a08', border:'rgba(180,130,20,0.18)',
+    text:'#ead6a0', muted:'#a08050', dim:'#6b5535',
+    accent:'#d4a017', success:'#78b040', warn:'#e8b420', danger:'#c0392b'
+  },
+  trincheira: {
+    name:'Trincheira', swatch:'#7a9a3c',
+    bg:'#09100a', sbg:'#060d07', card:'#111a0f', sec:'#182015',
+    hover:'#1e2a1a', active:'#182415', border:'rgba(100,130,60,0.18)',
+    text:'#c0c8b0', muted:'#7a8c68', dim:'#4e5a42',
+    accent:'#7a9a3c', success:'#6b8c42', warn:'#b8a040', danger:'#9c3a2a'
+  },
+  cosmos: {
+    name:'Cosmos', swatch:'#00b4d8',
+    bg:'#04081a', sbg:'#020612', card:'#081428', sec:'#0c1c38',
+    hover:'#102240', active:'#0c1e3a', border:'rgba(0,180,216,0.14)',
+    text:'#c0e8f8', muted:'#5aaccc', dim:'#2e7a9a',
+    accent:'#00b4d8', success:'#48cae4', warn:'#90e0ef', danger:'#ef476f'
+  },
+  codigo: {
+    name:'Código', swatch:'#007acc',
+    bg:'#1e1e1e', sbg:'#252526', card:'#252526', sec:'#2d2d30',
+    hover:'#37373d', active:'#094771', border:'rgba(255,255,255,0.1)',
+    text:'#d4d4d4', muted:'#888888', dim:'#6a6a6a',
+    accent:'#007acc', success:'#4ec9b0', warn:'#dcdcaa', danger:'#f44747'
+  }
+};
+
+var currentTheme = localStorage.getItem('ideali-theme') || 'sombra';
+
+function applyTheme(name) {
+  var t = THEMES[name]; if (!t) return;
+  currentTheme = name;
+  localStorage.setItem('ideali-theme', name);
+
+  var css = [
+    'body{background:'+t.bg+' !important;color:'+t.text+' !important}',
+    '.card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '#sidebar{background:'+t.sbg+' !important;border-color:'+t.border+' !important}',
+    '.sb-logo{border-color:'+t.border+' !important}',
+    '.sb-item:hover{background:'+t.hover+' !important;color:'+t.text+' !important}',
+    '.sb-item.active{background:'+t.active+' !important;color:'+t.accent+' !important}',
+    '.sb-icon{background:'+t.sec+' !important}',
+    '.sb-divider{background:'+t.border+' !important}',
+    '.sb-close{background:'+t.sec+' !important;color:'+t.muted+' !important;border-color:'+t.border+' !important}',
+    '.hamburger{background:'+t.sec+' !important;color:'+t.muted+' !important;border-color:'+t.border+' !important}',
+    '.hamburger:hover{background:'+t.hover+' !important;color:'+t.text+' !important}',
+    'input,select{background:'+t.sec+' !important;color:'+t.text+' !important;border-color:'+t.border+' !important}',
+    'input::placeholder{color:'+t.dim+' !important}',
+    'input:focus,select:focus{border-color:'+t.accent+' !important;box-shadow:0 0 0 3px '+t.accent+'28 !important}',
+    '.row-item:hover{background:'+t.hover+' !important}',
+    '.row-item.active{background:'+t.active+' !important}',
+    '.task-item{background:'+t.sec+' !important;border-color:'+t.border+' !important}',
+    '.fin-card{background:'+t.sec+' !important}',
+    '.counter-card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.tab-tarefa{background:'+t.sec+' !important;color:'+t.muted+' !important;border-color:'+t.border+' !important}',
+    '.tab-tarefa:hover{background:'+t.hover+' !important;color:'+t.text+' !important}',
+    '.tab-tarefa.active{background:'+t.active+' !important;color:'+t.accent+' !important;border-color:'+t.accent+' !important}',
+    '.task-add-btn{background:'+t.accent+' !important}',
+    '.task-add-btn:hover{filter:brightness(1.15)}',
+    '.save-btn{background:'+t.accent+' !important}',
+    '.save-btn:hover{filter:brightness(1.15)}',
+    '.sync-dot{background:'+t.success+' !important}',
+    '.sync-dot.error{background:'+t.danger+' !important}',
+    '.sync-dot.syncing{background:'+t.warn+' !important}',
+    '.month-dd-btn{background:'+t.sec+' !important;color:'+t.text+' !important;border-color:'+t.border+' !important}',
+    '.month-dd-btn:hover,.month-dd-btn:focus{background:'+t.hover+' !important}',
+    '.month-dd-btn.cur{background:'+t.active+' !important;border-color:'+t.accent+' !important;color:'+t.accent+' !important}',
+    '#month-dd-list{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.month-dd-item:hover{background:'+t.hover+' !important;color:'+t.text+' !important}',
+    '.month-dd-item.sel{background:'+t.active+' !important;color:'+t.accent+' !important}',
+    '.dash-card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '#sidebar-overlay{background:rgba(0,0,0,0.65) !important}',
+    '.mob-back{background:'+t.sec+' !important;color:'+t.muted+' !important;border-color:'+t.border+' !important}',
+    '.sealed-banner{background:'+t.active+' !important}'
+  ].join('\n');
+
+  var el = document.getElementById('theme-style');
+  if (!el) { el = document.createElement('style'); el.id = 'theme-style'; document.head.appendChild(el); }
+  el.textContent = css;
+
+  renderThemePicker();
+}
+
+function renderThemePicker() {
+  var p = document.getElementById('sb-theme-picker');
+  var n = document.getElementById('sb-theme-name');
+  if (!p) return;
+  p.innerHTML = Object.keys(THEMES).map(function(k) {
+    var t = THEMES[k];
+    var active = k === currentTheme;
+    return '<button onclick="applyTheme(\''+k+'\')" title="'+t.name+'" '+
+      'style="width:26px;height:26px;border-radius:50%;background:'+t.swatch+';'+
+      'border:'+(active?'3px solid #fff':'2px solid rgba(255,255,255,0.15)')+';'+
+      'cursor:pointer;transition:transform 0.15s;outline:none" '+
+      'onmouseover="document.getElementById(\'sb-theme-name\').textContent=\''+t.name+'\';this.style.transform=\'scale(1.2)\'" '+
+      'onmouseout="document.getElementById(\'sb-theme-name\').textContent=\''+THEMES[currentTheme].name+'\';this.style.transform=\'scale(1)\'">'+
+      '</button>';
+  }).join('');
+  if (n) n.textContent = THEMES[currentTheme].name;
+}
 
 // ── Dashboard ─────────────────────────────────────────────────
 
@@ -1273,6 +1400,7 @@ async function saveFretesMes() {
 }
 
 async function init() {
+  applyTheme(currentTheme);
   dbState = await loadMonthData(currentMonth, currentYear);
   document.getElementById('loading-overlay').style.display = 'none';
   renderMonthTabs(); updateCounts(); doFilter();
