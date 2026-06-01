@@ -60,6 +60,26 @@ button{font-family:inherit;cursor:pointer}
 .month-dd-item.sel{background:#1a2a40;color:#93c5fd}
 .month-dd-item.fech{color:#4ade80}
 .mob-back{display:none}
+#cp-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:400;opacity:0;pointer-events:none;transition:opacity 0.25s}
+#cp-overlay.open{opacity:1;pointer-events:all}
+#cp-panel{position:fixed;top:0;right:-500px;width:460px;max-width:96vw;height:100vh;background:#1a1d27;border-left:0.5px solid rgba(255,255,255,0.1);z-index:401;display:flex;flex-direction:column;transition:right 0.28s cubic-bezier(0.4,0,0.2,1)}
+#cp-panel.open{right:0}
+.cp-header{padding:18px 20px;border-bottom:0.5px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:12px;flex-shrink:0}
+.cp-body{flex:1;overflow-y:auto;padding:18px 20px}
+.cp-footer{padding:14px 20px;border-top:0.5px solid rgba(255,255,255,0.08);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0}
+.cf-group{margin-bottom:14px}
+.cf-label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px}
+.cf-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cad-table{width:100%;border-collapse:collapse;font-size:12px}
+.cad-table th{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;padding:10px 12px;text-align:left;border-bottom:0.5px solid rgba(255,255,255,0.1);white-space:nowrap;background:#1a1d27;position:sticky;top:0;z-index:2}
+.cad-table td{padding:10px 12px;border-bottom:0.5px solid rgba(255,255,255,0.05);vertical-align:middle;color:#e2e8f0}
+.cad-table tbody tr{transition:background 0.1s;cursor:pointer}
+.cad-table tbody tr:hover td{background:rgba(255,255,255,0.04)}
+.cad-btn-primary{height:36px;padding:0 16px;border-radius:8px;border:none;background:#1d4ed8;color:#fff;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit;transition:background 0.15s;white-space:nowrap}
+.cad-btn-primary:hover{background:#2563eb}
+.cad-btn-ghost{height:36px;padding:0 16px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit;transition:all 0.15s}
+.cad-btn-ghost:hover{background:#2d3250;color:#e2e8f0}
+@media(max-width:767px){.cf-row2{grid-template-columns:1fr !important}}
 .hamburger{width:38px;height:38px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;flex-shrink:0}
 .hamburger:hover{background:#2d3250;color:#e2e8f0}
 #sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:300;opacity:0;pointer-events:none;transition:opacity 0.25s}
@@ -145,6 +165,10 @@ button{font-family:inherit;cursor:pointer}
       <div class="sb-icon">📊</div>
       <span>Dashboard</span>
     </div>
+    <div class="sb-item" id="sb-cadastro" onclick="sbNav('cadastro')">
+      <div class="sb-icon">👥</div>
+      <span>Cadastro de Clientes</span>
+    </div>
     <div class="sb-divider"></div>
     <div class="sb-item" onclick="closeSidebar();gerarRelatorioPDF()">
       <div class="sb-icon">📄</div>
@@ -159,6 +183,22 @@ button{font-family:inherit;cursor:pointer}
     <p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Tema</p>
     <div id="sb-theme-picker" style="display:flex;flex-wrap:wrap;gap:8px"></div>
     <p id="sb-theme-name" style="font-size:11px;color:#4a5568;margin-top:8px"></p>
+  </div>
+</div>
+
+<div id="cp-overlay" onclick="closeClientePanel()"></div>
+<div id="cp-panel">
+  <div class="cp-header">
+    <div style="flex:1;min-width:0">
+      <p id="cp-title" style="font-size:15px;font-weight:600;color:#f1f5f9">Novo Cliente</p>
+      <p id="cp-subtitle" style="font-size:11px;color:#64748b;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Preencha os dados</p>
+    </div>
+    <button class="sb-close" onclick="closeClientePanel()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="cp-body" id="cp-form"></div>
+  <div class="cp-footer">
+    <button class="cad-btn-ghost" onclick="closeClientePanel()">Cancelar</button>
+    <button class="cad-btn-primary" id="cp-save-btn" onclick="saveClientePanel()"><i class="ti ti-device-floppy" style="font-size:14px"></i> Salvar</button>
   </div>
 </div>
 
@@ -311,6 +351,43 @@ button{font-family:inherit;cursor:pointer}
       </div>
     </div>
     <div id="dashboard-content" style="min-height:300px"></div>
+  </div>
+
+  <div id="cadastro-view" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
+      <div>
+        <p style="font-size:18px;font-weight:600;color:#f1f5f9">👥 Clientes</p>
+        <p id="cad-count" style="font-size:12px;color:#64748b;margin-top:2px">25 registros</p>
+      </div>
+      <button class="cad-btn-primary" onclick="openClientePanel(null)"><i class="ti ti-plus" style="font-size:15px"></i> Novo Cliente</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px;position:relative">
+        <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;color:#4a5568"></i>
+        <input type="text" id="cad-search" placeholder="Buscar por nome, CPF, cidade..." style="width:100%;padding-left:34px" oninput="renderCadastroTable()">
+      </div>
+      <select id="cad-status-filter" style="width:130px" onchange="renderCadastroTable()">
+        <option value="">Todos status</option>
+        <option value="ativo">Ativo</option>
+        <option value="inativo">Inativo</option>
+      </select>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="overflow-x:auto;max-height:65vh">
+        <table class="cad-table">
+          <thead><tr>
+            <th style="width:46px">#</th>
+            <th>Nome</th>
+            <th>CPF / CNPJ</th>
+            <th>CRO</th>
+            <th>Cidade / UF</th>
+            <th>Telefone</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody id="cad-tbody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -612,6 +689,7 @@ async function switchMonth(m, y) {
   document.getElementById('tarefas-view').style.display    = 'none';
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'none';
+  hideCadastroView();
   viewMonth = m; viewYear = y; selected = null;
   document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Carregando...</p></div>';
   dbState = await loadMonthData(m, y);
@@ -772,7 +850,7 @@ function closeSidebar() {
   document.getElementById('sidebar-overlay').classList.remove('open');
 }
 function updateSidebarActive() {
-  ['clientes','tarefas','inove','dashboard'].forEach(function(v) {
+  ['clientes','tarefas','inove','dashboard','cadastro'].forEach(function(v) {
     var el = document.getElementById('sb-'+v);
     if (el) el.classList.toggle('active', viewMode===v);
   });
@@ -783,10 +861,16 @@ function sbNav(target) {
   else if (target==='tarefas') { switchToTarefas(); }
   else if (target==='inove') { switchToInove(); }
   else if (target==='dashboard') { switchToDashboard(); }
+  else if (target==='cadastro') { switchToCadastro(); }
+}
+
+function hideCadastroView() {
+  var el = document.getElementById('cadastro-view');
+  if (el) el.style.display = 'none';
 }
 
 document.addEventListener('keydown', function(e) {
-  if (e.key==='Escape') closeSidebar();
+  if (e.key==='Escape') { closeSidebar(); closeClientePanel(); }
 });
 
 // ── Temas ─────────────────────────────────────────────────────
@@ -922,6 +1006,7 @@ function switchToDashboard() {
   document.getElementById('tarefas-view').style.display    = 'none';
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'block';
+  hideCadastroView();
   var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
   var tg = document.getElementById('tarefas-grid');  if (tg) tg.classList.remove('mob-detail');
   renderMonthTabs();
@@ -1186,6 +1271,170 @@ function buildGroupedBars(data, colorA, colorB, labelA, labelB) {
     els+='<text x="'+cx+'" y="'+(H-8)+'" text-anchor="middle" font-size="11" fill="#64748b">'+d.nome+'</text>';
   });
   return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:'+H+'px;display:block">'+els+'</svg>';
+}
+
+// ── Cadastro de Clientes ──────────────────────────────────────
+
+var selectedClienteReg = null;
+
+async function loadCadastroClientes() {
+  try {
+    var res = await sb.from('cadastro_clientes').select('*');
+    if (res.error) throw res.error;
+    (res.data||[]).forEach(function(row) {
+      var idx = -1;
+      for (var i=0;i<clients.length;i++){if(clients[i].reg===row.reg){idx=i;break;}}
+      var obj={reg:row.reg,nome:row.nome||'',cpf:row.cpf||'',cro:row.cro||'',
+        end:row.end_str||'',bairro:row.bairro||'',cidade:row.cidade||'',
+        uf:row.uf||'',cep:row.cep||'',tel:row.tel||'',email:row.email||'',
+        obs:row.obs||'',status:row.status||'ativo'};
+      if(idx>=0)clients[idx]=obj; else clients.push(obj);
+    });
+    clients.sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR');});
+    doFilter();
+  } catch(e){console.error('loadCadastroClientes:',e);}
+}
+
+function switchToCadastro() {
+  closeMonthDD();
+  viewMode = 'cadastro';
+  document.getElementById('clientes-view').style.display   = 'none';
+  document.getElementById('tarefas-view').style.display    = 'none';
+  document.getElementById('inove-view').style.display      = 'none';
+  document.getElementById('dashboard-view').style.display  = 'none';
+  document.getElementById('cadastro-view').style.display   = 'block';
+  var cg=document.getElementById('clientes-grid');if(cg)cg.classList.remove('mob-detail');
+  var tg=document.getElementById('tarefas-grid');if(tg)tg.classList.remove('mob-detail');
+  renderMonthTabs();
+  renderCadastroTable();
+}
+
+function renderCadastroTable() {
+  var q=(document.getElementById('cad-search')||{value:''}).value.toLowerCase().trim();
+  var sf=(document.getElementById('cad-status-filter')||{value:''}).value;
+  var sorted=clients.slice().sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR');});
+  var filtered=sorted.filter(function(c){
+    var st=c.status||'ativo';
+    if(sf&&st!==sf)return false;
+    var txt=[c.nome,c.cpf||'',c.cro||'',c.cidade||'',c.uf||'',c.tel||'',c.email||''].join(' ').toLowerCase();
+    return !q||txt.includes(q);
+  });
+  var ce=document.getElementById('cad-count');
+  if(ce)ce.textContent=filtered.length+' registro'+(filtered.length!==1?'s':'');
+  var tb=document.getElementById('cad-tbody');
+  if(!tb)return;
+  tb.innerHTML=filtered.map(function(c){
+    var st=c.status||'ativo';
+    var sc=st==='inativo'?'#ef4444':'#22c55e',sb='rgba('+(st==='inativo'?'239,68,68':'34,197,94')+',0.12)';
+    var col=avatarColors[c.reg%avatarColors.length];
+    var cid=(c.cidade||'')+(c.cidade&&c.uf?' / '+(c.uf||''):c.uf?c.uf:'—');
+    return '<tr onclick="openClientePanel('+c.reg+')">'+
+      '<td style="color:#4a5568;font-size:11px">'+c.reg+'</td>'+
+      '<td><div style="display:flex;align-items:center;gap:8px">'+
+        '<div style="width:28px;height:28px;border-radius:50%;background:'+col[0]+';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:'+col[1]+';flex-shrink:0">'+initials(c.nome)+'</div>'+
+        '<span style="font-weight:500">'+escHtml(c.nome)+'</span></div></td>'+
+      '<td style="color:#94a3b8">'+(c.cpf||'—')+'</td>'+
+      '<td style="color:#94a3b8">'+(c.cro||'—')+'</td>'+
+      '<td style="color:#94a3b8">'+cid+'</td>'+
+      '<td style="color:#94a3b8">'+(c.tel||'—')+'</td>'+
+      '<td><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:'+sb+';color:'+sc+'">'+(st==='inativo'?'Inativo':'Ativo')+'</span></td>'+
+    '</tr>';
+  }).join('');
+}
+
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function openClientePanel(reg) {
+  selectedClienteReg = reg;
+  var c=reg!==null?clients.find(function(x){return x.reg===reg;}):null;
+  var te=document.getElementById('cp-title'),se=document.getElementById('cp-subtitle');
+  if(te)te.textContent=c?'Editar Cliente':'Novo Cliente';
+  if(se)se.textContent=c?c.nome:'Preencha os dados do cliente';
+  var form=document.getElementById('cp-form');if(!form)return;
+  var UFS=['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+  var ufO=UFS.map(function(u){return '<option value="'+u+'"'+(c&&c.uf===u?' selected':'')+'>'+u+'</option>';}).join('');
+  form.innerHTML=
+    '<div class="cf-group"><label class="cf-label">Nome <span style="color:#ef4444">*</span></label>'+
+      '<input type="text" id="cf-nome" style="width:100%" value="'+(c?escHtml(c.nome):'')+'"></div>'+
+    '<div class="cf-row2">'+
+      '<div class="cf-group"><label class="cf-label">CPF / CNPJ</label><input type="text" id="cf-cpf" style="width:100%" value="'+(c?escHtml(c.cpf||''):'')+'"></div>'+
+      '<div class="cf-group"><label class="cf-label">CRO</label><input type="text" id="cf-cro" style="width:100%" value="'+(c?escHtml(c.cro||''):'')+'"></div>'+
+    '</div>'+
+    '<div class="cf-group"><label class="cf-label">Endereço</label>'+
+      '<input type="text" id="cf-end" style="width:100%" value="'+(c?escHtml(c.end||''):'')+'"></div>'+
+    '<div class="cf-row2">'+
+      '<div class="cf-group"><label class="cf-label">Bairro</label><input type="text" id="cf-bairro" style="width:100%" value="'+(c?escHtml(c.bairro||''):'')+'"></div>'+
+      '<div class="cf-group"><label class="cf-label">CEP</label><input type="text" id="cf-cep" style="width:100%" value="'+(c?escHtml(c.cep||''):'')+'"></div>'+
+    '</div>'+
+    '<div class="cf-row2">'+
+      '<div class="cf-group"><label class="cf-label">Cidade</label><input type="text" id="cf-cidade" style="width:100%" value="'+(c?escHtml(c.cidade||''):'')+'"></div>'+
+      '<div class="cf-group"><label class="cf-label">UF</label><select id="cf-uf" style="width:100%"><option value="">—</option>'+ufO+'</select></div>'+
+    '</div>'+
+    '<div class="cf-row2">'+
+      '<div class="cf-group"><label class="cf-label">Telefone</label><input type="text" id="cf-tel" style="width:100%" value="'+(c?escHtml(c.tel||''):'')+'"></div>'+
+      '<div class="cf-group"><label class="cf-label">Email</label><input type="email" id="cf-email" style="width:100%" value="'+(c?escHtml(c.email||''):'')+'"></div>'+
+    '</div>'+
+    '<div class="cf-group"><label class="cf-label">Observação</label>'+
+      '<textarea id="cf-obs" style="width:100%;height:70px;resize:vertical;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:13px;background:#22263a;color:#e2e8f0;outline:none;font-family:inherit">'+escHtml(c&&c.obs||'')+'</textarea></div>'+
+    '<div class="cf-group"><label class="cf-label">Status</label>'+
+      '<select id="cf-status" style="width:100%">'+
+        '<option value="ativo"'+((!c||c.status!=='inativo')?' selected':'')+'>Ativo</option>'+
+        '<option value="inativo"'+((c&&c.status==='inativo')?' selected':'')+'>Inativo</option>'+
+      '</select></div>'+
+    '<div id="cp-error" style="display:none;font-size:12px;color:#fca5a5;background:#3d1d1d;border:0.5px solid rgba(239,68,68,0.3);border-radius:8px;padding:8px 12px"></div>';
+  document.getElementById('cp-overlay').classList.add('open');
+  document.getElementById('cp-panel').classList.add('open');
+  setTimeout(function(){var i=document.getElementById('cf-nome');if(i)i.focus();},80);
+}
+
+function closeClientePanel() {
+  document.getElementById('cp-overlay').classList.remove('open');
+  document.getElementById('cp-panel').classList.remove('open');
+  selectedClienteReg = null;
+}
+
+async function saveClientePanel() {
+  var nome=(document.getElementById('cf-nome')||{value:''}).value.trim();
+  var errEl=document.getElementById('cp-error');
+  if(!nome){if(errEl){errEl.textContent='Nome é obrigatório.';errEl.style.display='block';}return;}
+  if(errEl)errEl.style.display='none';
+  var btn=document.getElementById('cp-save-btn');
+  if(btn){btn.disabled=true;btn.style.opacity='0.55';}
+  var isNew=selectedClienteReg===null;
+  var reg=isNew?clients.reduce(function(mx,c){return Math.max(mx,c.reg);},0)+1:selectedClienteReg;
+  var obj={reg:reg,nome:nome,
+    cpf:(document.getElementById('cf-cpf')||{value:''}).value.trim(),
+    cro:(document.getElementById('cf-cro')||{value:''}).value.trim(),
+    end_str:(document.getElementById('cf-end')||{value:''}).value.trim(),
+    bairro:(document.getElementById('cf-bairro')||{value:''}).value.trim(),
+    cidade:(document.getElementById('cf-cidade')||{value:''}).value.trim(),
+    uf:(document.getElementById('cf-uf')||{value:''}).value,
+    cep:(document.getElementById('cf-cep')||{value:''}).value.trim(),
+    tel:(document.getElementById('cf-tel')||{value:''}).value.trim(),
+    email:(document.getElementById('cf-email')||{value:''}).value.trim(),
+    obs:(document.getElementById('cf-obs')||{value:''}).value.trim(),
+    status:(document.getElementById('cf-status')||{value:'ativo'}).value,
+    updated_at:new Date().toISOString()
+  };
+  try {
+    var res=await sb.from('cadastro_clientes').upsert(obj,{onConflict:'reg'});
+    if(res.error)throw res.error;
+    var clientObj={reg:reg,nome:obj.nome,cpf:obj.cpf,cro:obj.cro,end:obj.end_str,
+      bairro:obj.bairro,cidade:obj.cidade,uf:obj.uf,cep:obj.cep,tel:obj.tel,
+      email:obj.email,obs:obj.obs,status:obj.status};
+    var idx=-1;for(var i=0;i<clients.length;i++){if(clients[i].reg===reg){idx=i;break;}}
+    if(idx>=0)clients[idx]=clientObj;else clients.push(clientObj);
+    closeClientePanel();
+    renderCadastroTable();
+    doFilter();
+    var tb2=document.getElementById('total-badge');
+    if(tb2)tb2.textContent=clients.length+' clientes';
+  } catch(e){
+    console.error('saveClientePanel:',e);
+    if(errEl){errEl.textContent=e.message||'Erro ao salvar.';errEl.style.display='block';}
+  } finally {
+    if(btn){btn.disabled=false;btn.style.opacity='';}
+  }
 }
 
 function mobBack() {
@@ -1474,6 +1723,7 @@ function switchToTarefas() {
   document.getElementById('tarefas-view').style.display    = 'block';
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'none';
+  hideCadastroView();
   var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
   renderMonthTabs();
   loadTarefas();
@@ -1509,6 +1759,7 @@ async function init() {
   renderMonthTabs(); updateCounts(); doFilter();
   loadFretesMes();
   loadTarefasAbertas();
+  loadCadastroClientes();
 }
 
 init();
@@ -1542,6 +1793,7 @@ function switchToInove() {
   document.getElementById('tarefas-view').style.display    = 'none';
   document.getElementById('inove-view').style.display      = 'block';
   document.getElementById('dashboard-view').style.display  = 'none';
+  hideCadastroView();
   var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
   var tg = document.getElementById('tarefas-grid');  if (tg) tg.classList.remove('mob-detail');
   renderMonthTabs();
