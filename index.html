@@ -652,7 +652,7 @@ function renderTarefasClientList() {
     var bg = col[0], fg = col[1];
     var isActive = selectedTarefaClient && selectedTarefaClient.reg===c.reg;
     var ct   = tarefas.filter(function(t){return t.cliente_reg==c.reg && !t.arquivada;});
-    var done = ct.filter(function(t){return t.concluida;}).length;
+    var done = ct.filter(function(t){return t.status==='concluida'||(!t.status&&t.concluida);}).length;
     var allDone = ct.length > 0 && done===ct.length;
     var badge = ct.length
       ? '<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px;background:' + (allDone?'#0d3d2b':'#3d2e1d') + ';color:' + (allDone?'#4ade80':'#fcd34d') + ';flex-shrink:0">' + ct.length + '</span>'
@@ -678,16 +678,29 @@ function renderTarefasDetail() {
   var all      = tarefas.filter(function(t){return t.cliente_reg==c.reg;});
   var active   = all.filter(function(t){return !t.arquivada;});
   var archived = all.filter(function(t){return t.arquivada;});
-  var done     = active.filter(function(t){return t.concluida;}).length;
+  var done     = active.filter(function(t){return t.status==='concluida'||(!t.status&&t.concluida);}).length;
 
   var B = 'width:28px;height:28px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s';
 
   function activeRow(t, idx) {
     _tarefasMap[idx] = t.id;
-    var on = t.concluida;
-    return '<div class="task-item">' +
-      '<button onclick="toggleTarefa(_tarefasMap[' + idx + '])" title="' + (on?'Desmarcar':'Concluir') + '" style="' + B + ';border-radius:50%;border:0.5px solid ' + (on?'#22c55e':'rgba(255,255,255,0.15)') + ';background:' + (on?'#0d3d2b':'#1a1d27') + ';color:' + (on?'#22c55e':'#4a5568') + '"><i class="ti ' + (on?'ti-check':'ti-circle') + '" style="font-size:14px"></i></button>' +
-      '<div style="flex:1;min-width:0"><span style="font-size:13px;color:' + (on?'#4a5568':'#e2e8f0') + ';' + (on?'text-decoration:line-through':'') + '">' + t.texto + '</span>' +
+    var st     = t.status || (t.concluida ? 'concluida' : 'pendente');
+    var isDone = st === 'concluida';
+    var isExec = st === 'em_execucao';
+    var itemExtra = isExec ? ';background:#2a1a04;border-color:rgba(251,146,60,0.3)' : '';
+    var textClr  = isDone ? '#4a5568' : (isExec ? '#fde68a' : '#e2e8f0');
+    var textDec  = isDone ? 'text-decoration:line-through' : '';
+    var circBrd  = isDone ? '#22c55e' : 'rgba(255,255,255,0.15)';
+    var circBg   = isDone ? '#0d3d2b' : '#1a1d27';
+    var circClr  = isDone ? '#22c55e' : '#4a5568';
+    var circIco  = isDone ? 'ti-check' : 'ti-circle';
+    var clkBrd   = isExec ? 'rgba(251,146,60,0.7)' : 'rgba(255,255,255,0.1)';
+    var clkBg    = isExec ? '#3d1f00' : '#1a1d27';
+    var clkClr   = isExec ? '#fb923c' : '#4a5568';
+    return '<div class="task-item" style="' + itemExtra + '">' +
+      '<button onclick="toggleTarefa(_tarefasMap[' + idx + '])" title="' + (isDone?'Desmarcar':'Concluir') + '" style="' + B + ';border-radius:50%;border:0.5px solid ' + circBrd + ';background:' + circBg + ';color:' + circClr + '"><i class="ti ' + circIco + '" style="font-size:14px"></i></button>' +
+      '<button onclick="setEmExecucao(_tarefasMap[' + idx + '])" title="' + (isExec?'Remover execução':'Em execução') + '" style="' + B + ';border:0.5px solid ' + clkBrd + ';background:' + clkBg + ';color:' + clkClr + '"><i class="ti ti-clock" style="font-size:14px"></i></button>' +
+      '<div style="flex:1;min-width:0"><span style="font-size:13px;color:' + textClr + ';' + textDec + '">' + t.texto + '</span>' +
       '<p style="font-size:10px;color:#4a5568;margin-top:1px">' + fmtDate(t.data) + '</p></div>' +
       '<button onclick="arquivarTarefa(_tarefasMap[' + idx + '])" title="Arquivar" style="' + B + ';border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#64748b"><i class="ti ti-archive" style="font-size:13px"></i></button>' +
       '<button onclick="deleteTarefa(_tarefasMap[' + idx + '])" title="Excluir" style="' + B + ';border:0.5px solid rgba(239,68,68,0.3);background:#3d1d1d;color:#ef4444"><i class="ti ti-trash" style="font-size:13px"></i></button>' +
@@ -756,7 +769,7 @@ async function addTarefa() {
 
   try {
     var res = await sb.from('tarefas')
-      .insert({texto:texto, concluida:false, data:todayISO(), cliente_reg:selectedTarefaClient.reg})
+      .insert({texto:texto, concluida:false, status:'pendente', data:todayISO(), cliente_reg:selectedTarefaClient.reg})
       .select()
       .single();
     if (res.error) throw res.error;
@@ -781,8 +794,20 @@ var _tarefasMap = {};
 async function toggleTarefa(id) {
   var t = tarefas.find(function(x){return x.id==id;});
   if (!t) return;
-  var res = await sb.from('tarefas').update({concluida:!t.concluida}).eq('id', id);
+  var cur  = t.status || (t.concluida ? 'concluida' : 'pendente');
+  var next = (cur === 'concluida') ? 'pendente' : 'concluida';
+  var res  = await sb.from('tarefas').update({status:next, concluida:next==='concluida'}).eq('id', id);
   if (res.error) { console.error('toggleTarefa:', res.error.message); return; }
+  await loadTarefas();
+}
+
+async function setEmExecucao(id) {
+  var t = tarefas.find(function(x){return x.id==id;});
+  if (!t) return;
+  var cur  = t.status || (t.concluida ? 'concluida' : 'pendente');
+  var next = (cur === 'em_execucao') ? 'pendente' : 'em_execucao';
+  var res  = await sb.from('tarefas').update({status:next, concluida:false}).eq('id', id);
+  if (res.error) { console.error('setEmExecucao:', res.error.message); return; }
   await loadTarefas();
 }
 
