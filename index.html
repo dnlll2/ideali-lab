@@ -245,6 +245,7 @@ var selected     = null;
 var dbState      = {};
 var viewMode     = 'clientes';
 var tarefas      = [];
+var tarefasAbertas = {};
 var selectedTarefaClient = null;
 var extraMonths  = [];
 var monthDDOpen  = false;
@@ -500,6 +501,7 @@ async function switchMonth(m, y) {
   dbState = await loadMonthData(m, y);
   renderMonthTabs(); updateCounts(); doFilter();
   loadFretesMes();
+  loadTarefasAbertas();
   document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Selecione um cliente</p></div>';
 }
 
@@ -536,7 +538,8 @@ function renderList(data) {
       : '';
     return '<div class="row-item' + (isActive?' active':'') + '" onclick="selectClient(' + c.reg + ')">' +
       '<div style="width:32px;height:32px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:' + fg + ';flex-shrink:0">' + initials(c.nome) + '</div>' +
-      '<div style="min-width:0;flex:1"><p style="font-size:12px;font-weight:500;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + c.nome + '</p>' +
+      '<div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:4px"><p style="font-size:12px;font-weight:500;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">' + c.nome + '</p>' +
+      (tarefasAbertas[c.reg] ? '<i class="ti ti-alert-triangle" style="font-size:12px;color:#fb923c;flex-shrink:0" title="' + tarefasAbertas[c.reg] + ' tarefa(s) em aberto"></i>' : '') + '</div>' +
       '<p style="font-size:11px;color:#64748b">' + cidadeUF + '</p>' + valorLine + '</div>' +
       '<div style="display:flex;gap:5px;align-items:center">' + tickBtn(c.reg,'recebido','ti-download','receb.') + tickBtn(c.reg,'enviado','ti-upload','enviado') + tickBtn(c.reg,'quitado','ti-circle-check','quitado') + '</div></div>';
   }).join('');
@@ -615,6 +618,27 @@ function doFilter() {
 
 // ── Tarefas ──────────────────────────────────────────────────
 
+function buildTarefasAbertas() {
+  tarefasAbertas = {};
+  tarefas.forEach(function(t) {
+    if (!t.arquivada && !t.concluida && t.status !== 'concluida') {
+      if (t.cliente_reg) tarefasAbertas[t.cliente_reg] = (tarefasAbertas[t.cliente_reg]||0) + 1;
+    }
+  });
+}
+
+async function loadTarefasAbertas() {
+  try {
+    var res = await sb.from('tarefas').select('cliente_reg').eq('arquivada', false).eq('concluida', false);
+    if (res.error) throw res.error;
+    tarefasAbertas = {};
+    (res.data||[]).forEach(function(t) {
+      if (t.cliente_reg) tarefasAbertas[t.cliente_reg] = (tarefasAbertas[t.cliente_reg]||0) + 1;
+    });
+  } catch(e) { console.error('loadTarefasAbertas:', e); }
+  doFilter();
+}
+
 async function loadTarefas() {
   try {
     var res = await sb.from('tarefas').select('*').order('created_at');
@@ -624,6 +648,7 @@ async function loadTarefas() {
     console.error('loadTarefas:', e);
     tarefas = [];
   }
+  buildTarefasAbertas();
   renderTarefasClientList();
   renderTarefasDetail();
 }
@@ -871,6 +896,7 @@ async function init() {
   document.getElementById('loading-overlay').style.display = 'none';
   renderMonthTabs(); updateCounts(); doFilter();
   loadFretesMes();
+  loadTarefasAbertas();
 }
 
 init();
