@@ -59,6 +59,32 @@ button{font-family:inherit;cursor:pointer}
 .month-dd-item:hover{background:#22263a;color:#e2e8f0}
 .month-dd-item.sel{background:#1a2a40;color:#93c5fd}
 .month-dd-item.fech{color:#4ade80}
+.mob-back{display:none}
+@media(max-width:767px){
+  body{padding:0.6rem 0.5rem}
+  #app-header{flex-wrap:wrap;gap:6px}
+  #app-header>div:last-child{order:-1;width:100%;justify-content:space-between}
+  #tabs-row{overflow-x:auto;flex-wrap:nowrap !important;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  #tabs-row::-webkit-scrollbar{display:none}
+  #clientes-grid,#tarefas-grid{grid-template-columns:1fr !important}
+  #inove-grid{grid-template-columns:1fr !important}
+  #list-panel{max-height:none !important}
+  #tarefas-client-wrap{max-height:none !important}
+  #counters-4{grid-template-columns:repeat(2,1fr) !important}
+  #counters-3a,#counters-3b{grid-template-columns:repeat(2,1fr) !important}
+  #detail-panel{display:none !important}
+  #clientes-grid.mob-detail #list-panel{display:none}
+  #clientes-grid.mob-detail #detail-panel{display:block !important}
+  #tarefas-detail-panel{display:none !important}
+  #tarefas-grid.mob-detail #tarefas-client-wrap{display:none}
+  #tarefas-grid.mob-detail #tarefas-detail-panel{display:block !important}
+  .mob-back{display:flex !important}
+  input,select{height:44px;font-size:16px !important}
+  .tick-btn{width:34px;height:34px}
+  .task-add-btn{height:44px}
+  .task-item{padding:10px}
+  .row-item{padding:11px 8px}
+}
 </style>
 </head>
 <body>
@@ -79,7 +105,7 @@ button{font-family:inherit;cursor:pointer}
 
 <div style="max-width:1000px;margin:0 auto">
 
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+  <div id="app-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
     <div>
       <p style="font-size:20px;font-weight:500;color:#f1f5f9">Ideali Laboratorio</p>
       <p style="font-size:13px;color:#64748b">Controle mensal de clientes</p>
@@ -90,7 +116,7 @@ button{font-family:inherit;cursor:pointer}
     </div>
   </div>
 
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center">
+  <div id="tabs-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center">
     <span style="font-size:12px;color:#64748b;margin-right:4px">Mes:</span>
     <div style="position:relative">
       <button id="month-dd-btn" class="month-dd-btn" onclick="toggleMonthDD()">
@@ -135,7 +161,7 @@ button{font-family:inherit;cursor:pointer}
       </select>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:12px">
+    <div id="clientes-grid" style="display:grid;grid-template-columns:1fr 1.6fr;gap:12px">
       <div class="card" style="padding:0.5rem;max-height:560px;overflow-y:auto" id="list-panel"></div>
       <div class="card" id="detail-panel">
         <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px">
@@ -147,19 +173,19 @@ button{font-family:inherit;cursor:pointer}
 
     <p id="no-results" style="display:none;text-align:center;color:#64748b;font-size:13px;padding:1rem">Nenhum cliente encontrado.</p>
 
-    <div style="margin-top:1rem;display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+    <div id="counters-4" style="margin-top:1rem;display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
       <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Recebido</p><p style="font-size:24px;font-weight:500;color:#22c55e" id="count-recebido">0</p></div>
       <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Enviado</p><p style="font-size:24px;font-weight:500;color:#22c55e" id="count-enviado">0</p></div>
       <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Quitado</p><p style="font-size:24px;font-weight:500;color:#22c55e" id="count-quitado">0</p></div>
       <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Pendente</p><p style="font-size:24px;font-weight:500;color:#ef4444" id="count-pendente">0</p></div>
     </div>
 
-    <div style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+    <div id="counters-3a" style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
       <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total a receber</p><p style="font-size:18px;font-weight:500;color:#f1f5f9" id="total-valor">R$ 0,00</p></div>
       <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total pago</p><p style="font-size:18px;font-weight:500;color:#22c55e" id="total-pago">R$ 0,00</p></div>
       <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total componentes</p><p style="font-size:18px;font-weight:500;color:#94a3b8" id="total-comp">R$ 0,00</p></div>
     </div>
-    <div style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+    <div id="counters-3b" style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
       <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Correio/Motoboy do mes (R$)</p><div style="display:flex;gap:6px;align-items:center;margin-top:2px"><input type="number" id="input-frete-mes" placeholder="0,00" min="0" step="0.01" style="height:30px;font-size:14px;font-weight:500;flex:1;background:#0f1117;border-color:rgba(255,255,255,0.08)" onkeydown="if(event.key==='Enter')saveFretesMes()"><button onclick="saveFretesMes()" style="height:30px;padding:0 10px;border-radius:6px;border:none;background:#1d4ed8;color:#fff;font-size:11px;cursor:pointer;font-family:inherit">Salvar</button></div></div>
       <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissao bruta (17%)</p><p style="font-size:18px;font-weight:500;color:#fbbf24" id="total-com-bruta">R$ 0,00</p></div>
       <div class="counter-card"><p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissao liquida (17%)</p><p style="font-size:18px;font-weight:500;color:#fbbf24" id="total-com-liq">R$ 0,00</p></div>
@@ -168,8 +194,8 @@ button{font-family:inherit;cursor:pointer}
   </div>
 
   <div id="tarefas-view" style="display:none">
-    <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:12px">
-      <div class="card" style="padding:0.5rem;display:flex;flex-direction:column;max-height:580px">
+    <div id="tarefas-grid" style="display:grid;grid-template-columns:1fr 1.6fr;gap:12px">
+      <div id="tarefas-client-wrap" class="card" style="padding:0.5rem;display:flex;flex-direction:column;max-height:580px">
         <div style="position:relative;margin-bottom:6px;flex-shrink:0">
           <i class="ti ti-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:14px;color:#4a5568"></i>
           <input type="text" id="tarefas-search" placeholder="Buscar cliente..." style="width:100%;padding-left:30px;height:32px;font-size:12px" oninput="renderTarefasClientList()">
@@ -186,7 +212,7 @@ button{font-family:inherit;cursor:pointer}
   </div>
 
   <div id="inove-view" style="display:none">
-    <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:12px;align-items:start">
+    <div id="inove-grid" style="display:grid;grid-template-columns:1.6fr 1fr;gap:12px;align-items:start">
       <div class="card" style="padding:0.5rem;display:flex;flex-direction:column;max-height:600px">
         <div style="position:relative;margin-bottom:6px;flex-shrink:0">
           <i class="ti ti-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:14px;color:#4a5568"></i>
@@ -583,6 +609,7 @@ function renderDetail() {
   if (c.obs)    rows += '<div class="detail-row"><i class="ti ti-note" style="font-size:16px;color:#4a5568;margin-top:1px;flex-shrink:0"></i><div><p class="label">Observacao</p><p class="val">' + c.obs + '</p></div></div>';
 
   document.getElementById('detail-panel').innerHTML =
+    '<button class="mob-back" onclick="mobBack()" style="align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:13px;margin-bottom:14px"><i class="ti ti-arrow-left" style="font-size:14px"></i> Voltar</button>' +
     '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:44px;height:44px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:500;color:' + fg + ';flex-shrink:0">' + initials(c.nome) + '</div><div style="flex:1"><p style="font-size:15px;font-weight:500;color:#f1f5f9">' + c.nome + '</p><p style="font-size:12px;color:#64748b">Registro ' + c.reg + ' . ' + MESES[viewMonth] + ' ' + viewYear + '</p></div>' + badge + '</div>' +
     roNote +
     '<div style="display:flex;gap:8px;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' + dt('recebido','ti-download','Extrato recebido') + dt('enviado','ti-upload','Extrato enviado') + dt('quitado','ti-circle-check','Quitado') + '</div>' +
@@ -600,8 +627,24 @@ function calcPreview(reg) {
   if (elC) elC.textContent = fmt((vP - vC) * COMISSAO);
 }
 
+function isMobile() { return window.innerWidth < 768; }
+
+function mobBack() {
+  var g = document.getElementById('clientes-grid');
+  if (g) g.classList.remove('mob-detail');
+  selected = null; doFilter();
+}
+
+function mobBackTarefas() {
+  var g = document.getElementById('tarefas-grid');
+  if (g) g.classList.remove('mob-detail');
+  selectedTarefaClient = null;
+  renderTarefasClientList(); renderTarefasDetail();
+}
+
 function selectClient(reg) {
   selected = clients.find(function(c){return c.reg===reg;});
+  if (isMobile()) { var g = document.getElementById('clientes-grid'); if (g) g.classList.add('mob-detail'); }
   renderDetail(); doFilter();
 }
 
@@ -755,6 +798,7 @@ function renderTarefasDetail() {
     : '';
 
   panel.innerHTML =
+    '<button class="mob-back" onclick="mobBackTarefas()" style="align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:13px;margin-bottom:14px"><i class="ti ti-arrow-left" style="font-size:14px"></i> Voltar</button>' +
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' +
       '<div style="width:38px;height:38px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:' + fg + ';flex-shrink:0">' + initials(c.nome) + '</div>' +
       '<div style="flex:1;min-width:0"><p style="font-size:14px;font-weight:500;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + c.nome + '</p>' +
@@ -771,6 +815,7 @@ function renderTarefasDetail() {
 
 function selectTarefaClient(reg) {
   selectedTarefaClient = clients.find(function(c){return c.reg===reg;});
+  if (isMobile()) { var g = document.getElementById('tarefas-grid'); if (g) g.classList.add('mob-detail'); }
   renderTarefasClientList();
   renderTarefasDetail();
 }
@@ -864,6 +909,7 @@ function switchToTarefas() {
   document.getElementById('clientes-view').style.display = 'none';
   document.getElementById('tarefas-view').style.display  = 'block';
   document.getElementById('inove-view').style.display    = 'none';
+  var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
   renderMonthTabs();
   loadTarefas();
 }
@@ -913,6 +959,8 @@ function switchToInove() {
   document.getElementById('clientes-view').style.display = 'none';
   document.getElementById('tarefas-view').style.display  = 'none';
   document.getElementById('inove-view').style.display    = 'block';
+  var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
+  var tg = document.getElementById('tarefas-grid');  if (tg) tg.classList.remove('mob-detail');
   renderMonthTabs();
   renderInoveForm();
   loadInovePedidos();
