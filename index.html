@@ -889,8 +889,8 @@ function renderDetail() {
     : '<div class="fin-card" style="margin-bottom:14px">'+
         '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px"><i class="ti ti-currency-dollar" style="font-size:13px;vertical-align:-1px"></i> Valores</p>'+
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'+
-          '<div><p class="label" style="margin-bottom:5px">Valor do mes (R$)</p><input class="fin-input" type="number" id="fin-valor-'+c.reg+'" value="'+(valorMes||'')+'" placeholder="0,00" min="0" step="0.01" oninput="calcPreview('+c.reg+')"></div>'+
-          '<div><p class="label" style="margin-bottom:5px">Valor pago (R$)</p><input class="fin-input" type="number" id="fin-pago-'+c.reg+'" value="'+(valorPago||'')+'" placeholder="0,00" min="0" step="0.01" oninput="calcPreview('+c.reg+')"></div>'+
+          '<div><p class="label" style="margin-bottom:5px">Valor do mes (R$)</p><input class="fin-input" type="number" id="fin-valor-'+c.reg+'" value="'+(Number(cv.valor_mes)||0)+'" placeholder="0,00" min="0" step="0.01" oninput="calcPreview('+c.reg+')"></div>'+
+          '<div><p class="label" style="margin-bottom:5px">Valor pago (R$)</p><input class="fin-input" type="number" id="fin-pago-'+c.reg+'" value="'+(Number(cv.valor_pago)||0)+'" placeholder="0,00" min="0" step="0.01" oninput="calcPreview('+c.reg+')"></div>'+
         '</div>'+
         '<div style="display:flex;gap:8px;align-items:center">'+
           '<div style="flex:1;background:#0f1117;border-radius:8px;padding:8px"><p class="label">Restante</p><p style="font-size:14px;font-weight:500;color:#ef4444" id="prev-restante-'+c.reg+'">'+fmt(restante)+'</p></div>'+
@@ -901,7 +901,7 @@ function renderDetail() {
         '<div style="border-top:0.5px solid rgba(255,255,255,0.08);margin:14px 0"></div>'+
         '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px"><i class="ti ti-scissors" style="font-size:13px;vertical-align:-1px"></i> Descontos</p>'+
         '<div style="display:flex;gap:8px;align-items:flex-end">'+
-          '<div style="flex:1"><p class="label" style="margin-bottom:5px">Componente (R$)</p><input class="fin-input" type="number" id="fin-comp-'+c.reg+'" value="'+(valorComp||'')+'" placeholder="0,00" min="0" step="0.01" oninput="calcPreview('+c.reg+')"></div>'+
+          '<div style="flex:1"><p class="label" style="margin-bottom:5px">Componente (R$)</p><input class="fin-input" type="number" id="fin-comp-'+c.reg+'" value="'+(Number(cv.valor_componente)||0)+'" placeholder="0,00" min="0" step="0.01" oninput="calcPreview('+c.reg+')"></div>'+
           '<button class="save-btn" onclick="saveFinanceiro('+c.reg+')"><i class="ti ti-device-floppy" style="font-size:13px"></i> Salvar</button>'+
         '</div>'+
       '</div>';
