@@ -567,7 +567,7 @@ async function upsertRow(reg, data) {
   var res = await sb.from('controle_mensal').upsert(payload, {onConflict:'cliente_reg,mes,ano'});
   if (res.error) {
     // coluna valor_componente ainda nao existe: retenta sem ela
-    if (res.error.code === 'PGRST204' && res.error.message && res.error.message.includes('valor_componente')) {
+    if (res.error.message && res.error.message.includes('valor_componente')) {
       console.warn('upsertRow: coluna valor_componente ausente — salvando sem ela. Execute no Supabase SQL Editor:\nALTER TABLE controle_mensal ADD COLUMN IF NOT EXISTS valor_componente numeric(10,2) DEFAULT 0;');
       var payloadSem = Object.assign({}, payload);
       delete payloadSem.valor_componente;
