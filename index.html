@@ -629,10 +629,16 @@ function toggleEditHistorico() {
 async function saveFinanceiro(reg) {
   if (!isCurrentMonth() && !historicoEditMode) return;
   var s = dbState[reg] || {};
-  var vM = parseFloat(document.getElementById('fin-valor-'+reg).value) || 0;
-  var vC = parseFloat(document.getElementById('fin-comp-'+reg).value)  || 0;
-  var vP = parseFloat(document.getElementById('fin-pago-'+reg).value)  || 0;
+  var elValor = document.getElementById('fin-valor-'+reg);
+  var elComp  = document.getElementById('fin-comp-'+reg);
+  var elPago  = document.getElementById('fin-pago-'+reg);
+  var vM = parseFloat(elValor ? elValor.value : '') || 0;
+  var vC = parseFloat(elComp  ? elComp.value  : '') || 0;
+  var vP = parseFloat(elPago  ? elPago.value  : '') || 0;
+  console.log('[saveFinanceiro] reg='+reg+' | inputs encontrados: fin-valor='+(!!elValor)+' fin-comp='+(!!elComp)+' fin-pago='+(!!elPago));
+  console.log('[saveFinanceiro] valores lidos: valor_mes='+vM+' valor_pago='+vP+' valor_componente='+vC);
   var ok = await upsertRow(reg, {recebido:s.recebido||false,enviado:s.enviado||false,quitado:s.quitado||false,valor_mes:vM,valor_pago:vP,valor_componente:vC});
+  console.log('[saveFinanceiro] resultado upsert: ok='+ok);
   if (ok === false) {
     var errEl = document.getElementById('conn-error');
     var msgEl = document.getElementById('conn-error-msg');
@@ -642,6 +648,7 @@ async function saveFinanceiro(reg) {
   }
   s.valor_mes = vM; s.valor_componente = vC; s.valor_pago = vP;
   dbState[reg] = s;
+  console.log('[saveFinanceiro] dbState['+reg+'] atualizado:', JSON.stringify(dbState[reg]));
   updateCounts();
   doFilter();
   var btns = document.querySelectorAll('.save-btn[onclick="saveFinanceiro('+reg+')"]');
