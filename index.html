@@ -492,10 +492,11 @@ var clients = [
 var now = new Date();
 var currentMonth = now.getMonth();
 var currentYear  = now.getFullYear();
-var viewMonth    = currentMonth;
-var viewYear     = currentYear;
-var selected     = null;
-var dbState      = {};
+var viewMonth        = currentMonth;
+var viewYear         = currentYear;
+var selected         = null;
+var dbState          = {};
+var historicoEditMode = false;
 var viewMode     = 'clientes';
 var tarefas      = [];
 var tarefasAbertas = {};
@@ -620,8 +621,13 @@ async function toggle(reg, tipo, e) {
   upsertRow(reg, {recebido:s.recebido,enviado:s.enviado,quitado:s.quitado,valor_mes:s.valor_mes,valor_pago:s.valor_pago,valor_componente:s.valor_componente||0});
 }
 
+function toggleEditHistorico() {
+  historicoEditMode = !historicoEditMode;
+  renderDetail();
+}
+
 async function saveFinanceiro(reg) {
-  if (!isCurrentMonth()) return;
+  if (!isCurrentMonth() && !historicoEditMode) return;
   var s = dbState[reg] || {};
   var vM = parseFloat(document.getElementById('fin-valor-'+reg).value) || 0;
   var vC = parseFloat(document.getElementById('fin-comp-'+reg).value)  || 0;
@@ -649,7 +655,7 @@ async function saveFinanceiro(reg) {
 }
 
 async function clearFinanceiro(reg) {
-  if (!isCurrentMonth()) return;
+  if (!isCurrentMonth() && !historicoEditMode) return;
   var s = dbState[reg] || {};
   s.valor_mes = 0; s.valor_componente = 0; s.valor_pago = 0;
   dbState[reg] = s;
@@ -779,7 +785,7 @@ async function switchMonth(m, y) {
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'none';
   hideCadastroView(); hidePedidosView();
-  viewMonth = m; viewYear = y; selected = null;
+  viewMonth = m; viewYear = y; selected = null; historicoEditMode = false;
   document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Carregando...</p></div>';
   dbState = await loadMonthData(m, y);
   renderMonthTabs(); updateCounts(); doFilter();
@@ -835,7 +841,7 @@ function renderDetail() {
   var bg = col[0], fg = col[1];
   var cv = dbState[c.reg] || {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0};
   var hasEnd  = c.end || c.bairro || c.cidade;
-  var ro      = !isCurrentMonth();
+  var ro      = !isCurrentMonth() && !historicoEditMode;
   var valorMes = Number(cv.valor_mes||0), valorPago = Number(cv.valor_pago||0), valorComp = Number(cv.valor_componente||0);
   var restante = valorMes - valorPago, comissao = (valorPago - valorComp) * COMISSAO;
 
@@ -852,7 +858,11 @@ function renderDetail() {
     return '<button class="tick-btn detail-tick' + (on?' on':'') + '" onclick="toggle(' + c.reg + ',\'' + tipo + '\',event)" ' + (ro?'disabled':'') + ' style="color:' + (on?'#22c55e':'#64748b') + '"><i class="ti ' + (on?'ti-check':icon) + '" style="font-size:14px"></i> ' + label + '</button>';
   }
 
-  var roNote = ro ? '<p style="font-size:11px;color:#4a5568;margin-bottom:10px"><i class="ti ti-lock" style="font-size:12px"></i> Historico - nao editavel</p>' : '';
+  var roNote = isCurrentMonth() ? '' :
+    historicoEditMode
+      ? '<button onclick="toggleEditHistorico()" style="display:flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;border:0.5px solid rgba(251,191,36,0.5);background:rgba(251,191,36,0.08);color:#fbbf24;font-size:12px;cursor:pointer;margin-bottom:10px"><i class="ti ti-lock" style="font-size:13px"></i> Travar edição</button>'
+      : '<button onclick="toggleEditHistorico()" style="display:flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;border:0.5px solid rgba(99,102,241,0.5);background:rgba(99,102,241,0.08);color:#818cf8;font-size:12px;cursor:pointer;margin-bottom:10px"><i class="ti ti-pencil" style="font-size:13px"></i> Editar mês</button>' +
+        '<p style="font-size:11px;color:#4a5568;margin-bottom:10px"><i class="ti ti-lock" style="font-size:12px"></i> Historico - nao editavel</p>';
 
   var finSection = ro
     ? '<div class="fin-card" style="margin-bottom:14px">'+
@@ -1710,6 +1720,7 @@ function mobBackTarefas() {
 
 function selectClient(reg) {
   selected = clients.find(function(c){return c.reg===reg;});
+  historicoEditMode = false;
   if (isMobile()) { var g = document.getElementById('clientes-grid'); if (g) g.classList.add('mob-detail'); }
   renderDetail(); doFilter();
 }
