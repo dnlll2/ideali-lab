@@ -539,15 +539,25 @@ function todayLabel() {
 // ── Clientes / Meses ─────────────────────────────────────────
 
 async function loadMonthData(m, y) {
+  console.log('[loadMonthData] mes=' + m + ' ano=' + y);
   try {
     var res = await sb.from('controle_mensal').select('*').eq('mes',m).eq('ano',y);
     if (res.error) throw res.error;
+    var rows = res.data || [];
+    console.log('[loadMonthData] ' + rows.length + ' registros encontrados');
     var state = {};
     clients.forEach(function(c) {
       state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0};
     });
-    res.data.forEach(function(r) {
-      state[r.cliente_reg] = {recebido:r.recebido,enviado:r.enviado,quitado:r.quitado,valor_mes:r.valor_mes||0,valor_pago:r.valor_pago||0,valor_componente:r.valor_componente||0};
+    rows.forEach(function(r) {
+      state[r.cliente_reg] = {
+        recebido: !!r.recebido,
+        enviado:  !!r.enviado,
+        quitado:  !!r.quitado,
+        valor_mes:        Number(r.valor_mes)        || 0,
+        valor_pago:       Number(r.valor_pago)       || 0,
+        valor_componente: Number(r.valor_componente) || 0
+      };
     });
     return state;
   } catch(e) {
@@ -559,6 +569,15 @@ async function loadMonthData(m, y) {
     if (msg) msg.textContent = e.message || 'Erro de conexao';
     return {};
   }
+}
+
+function mesTemDados(state) {
+  var keys = Object.keys(state);
+  for (var i = 0; i < keys.length; i++) {
+    var s = state[keys[i]];
+    if (s.valor_mes > 0 || s.recebido || s.enviado || s.quitado) return true;
+  }
+  return false;
 }
 
 async function upsertRow(reg, data) {
@@ -1985,6 +2004,17 @@ async function saveFretesMes() {
 async function init() {
   applyTheme(currentTheme);
   dbState = await loadMonthData(currentMonth, currentYear);
+  // Se o mês atual está vazio, recua automaticamente para o mês anterior
+  if (!mesTemDados(dbState)) {
+    var prevM = currentMonth === 0 ? 11 : currentMonth - 1;
+    var prevY = currentMonth === 0 ? currentYear - 1 : currentYear;
+    var prevData = await loadMonthData(prevM, prevY);
+    if (mesTemDados(prevData)) {
+      console.log('[init] Mês atual vazio — alternando para mes=' + prevM + ' ano=' + prevY);
+      viewMonth = prevM; viewYear = prevY;
+      dbState = prevData;
+    }
+  }
   document.getElementById('loading-overlay').style.display = 'none';
   renderMonthTabs(); updateCounts(); doFilter();
   loadFretesMes();
