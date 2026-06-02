@@ -626,17 +626,26 @@ async function saveFinanceiro(reg) {
   var vM = parseFloat(document.getElementById('fin-valor-'+reg).value) || 0;
   var vC = parseFloat(document.getElementById('fin-comp-'+reg).value)  || 0;
   var vP = parseFloat(document.getElementById('fin-pago-'+reg).value)  || 0;
-  s.valor_mes = vM; s.valor_componente = vC; s.valor_pago = vP;
-  dbState[reg] = s;
-  updateCounts();
   var ok = await upsertRow(reg, {recebido:s.recebido||false,enviado:s.enviado||false,quitado:s.quitado||false,valor_mes:vM,valor_pago:vP,valor_componente:vC});
-  renderDetail();
   if (ok === false) {
     var errEl = document.getElementById('conn-error');
     var msgEl = document.getElementById('conn-error-msg');
     if (errEl) errEl.style.display = 'flex';
     if (msgEl) msgEl.textContent = 'Erro ao salvar financeiro. Verifique o console (F12).';
+    return;
   }
+  s.valor_mes = vM; s.valor_componente = vC; s.valor_pago = vP;
+  dbState[reg] = s;
+  updateCounts();
+  doFilter();
+  var btns = document.querySelectorAll('.save-btn[onclick="saveFinanceiro('+reg+')"]');
+  btns.forEach(function(btn) {
+    var orig = btn.innerHTML;
+    btn.innerHTML = '<i class="ti ti-check" style="font-size:13px"></i> Salvo!';
+    btn.style.background = '#16a34a';
+    btn.style.color = '#fff';
+    setTimeout(function() { btn.innerHTML = orig; btn.style.background = ''; btn.style.color = ''; }, 2000);
+  });
 }
 
 async function clearFinanceiro(reg) {
@@ -2480,3 +2489,4 @@ function gerarRelatorioPDF() {
 </script>
 </body>
 </html>
+
