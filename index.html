@@ -708,12 +708,24 @@ button{font-family:inherit;cursor:pointer}
         </div>
         <div>
           <p class="label" style="margin-bottom:4px">Tipo</p>
-          <select id="gasto-tipo" style="height:36px;width:130px">
+          <select id="gasto-tipo" style="height:36px;width:120px">
             <option value="motoboy">🛵 Motoboy</option>
             <option value="uber">🚗 Uber</option>
             <option value="correio">📦 Correio</option>
             <option value="outro">📌 Outro</option>
           </select>
+        </div>
+        <div>
+          <p class="label" style="margin-bottom:4px">Laboratório/Origem</p>
+          <div style="display:flex;gap:5px;align-items:center">
+            <select id="gasto-origem" style="height:36px;width:120px" onchange="toggleOrigemOutro()">
+              <option value="Inove 3D">🏭 Inove 3D</option>
+              <option value="Danilo">👤 Danilo</option>
+              <option value="Cliente">👥 Cliente</option>
+              <option value="Outro">✏️ Outro</option>
+            </select>
+            <input type="text" id="gasto-origem-outro" placeholder="Especifique..." style="height:36px;width:110px;display:none" onkeydown="if(event.key==='Enter')addGasto()">
+          </div>
         </div>
         <button id="btn-add-gasto" onclick="addGasto()" style="height:36px;padding:0 16px;border-radius:8px;border:none;background:#1d4ed8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;white-space:nowrap;transition:background 0.15s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#1d4ed8'"><i class="ti ti-plus" style="font-size:14px"></i> Adicionar</button>
       </div>
@@ -3659,7 +3671,14 @@ function switchToGastos() {
   updateSidebarActive();
   var di = document.getElementById('gasto-data');
   if (di && !di.value) di.value = todayISO();
+  toggleOrigemOutro();
   renderGastos();
+}
+
+function toggleOrigemOutro() {
+  var sel = document.getElementById('gasto-origem');
+  var inp = document.getElementById('gasto-origem-outro');
+  if (sel && inp) inp.style.display = sel.value === 'Outro' ? '' : 'none';
 }
 
 async function loadGastos() {
@@ -3710,9 +3729,13 @@ function renderGastos() {
   container.innerHTML = gastos.map(function(g) {
     var tc = GASTO_TIPOS[g.tipo] || GASTO_TIPOS['outro'];
     var dataStr = g.data ? new Date(g.data + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
-    return '<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' +
+    var origemBadge = g.origem
+      ? '<span style="font-size:11px;padding:2px 8px;border-radius:5px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.1);color:#94a3b8;white-space:nowrap;flex-shrink:0">' + g.origem + '</span>'
+      : '';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' +
       '<span style="font-size:12px;color:#64748b;white-space:nowrap;min-width:74px">' + dataStr + '</span>' +
       '<span style="flex:1;font-size:13px;color:#e2e8f0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (g.descricao || '') + '</span>' +
+      origemBadge +
       '<span style="font-size:11px;padding:3px 9px;border-radius:6px;background:' + tc.bg + ';border:0.5px solid ' + tc.border + ';color:' + tc.color + ';white-space:nowrap;flex-shrink:0">' + tc.icon + ' ' + tc.label + '</span>' +
       '<span style="font-size:14px;font-weight:600;color:#f1f5f9;white-space:nowrap;flex-shrink:0;min-width:80px;text-align:right">' + fmt(Number(g.valor) || 0) + '</span>' +
       '<button onclick="deleteGasto(\'' + g.id + '\')" title="Deletar" style="width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(239,68,68,0.4);background:#3d1d1d;color:#ef4444;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0"><i class="ti ti-trash" style="font-size:13px"></i></button>' +
@@ -3724,11 +3747,19 @@ function renderGastos() {
   '</div>';
 }
 
+function getOrigemValue() {
+  var sel = document.getElementById('gasto-origem');
+  var inp = document.getElementById('gasto-origem-outro');
+  if (!sel) return '';
+  return sel.value === 'Outro' ? (inp && inp.value.trim() ? inp.value.trim() : 'Outro') : sel.value;
+}
+
 async function addGasto() {
   var dataVal = document.getElementById('gasto-data').value;
   var desc    = document.getElementById('gasto-desc').value.trim();
   var valor   = parseFloat(document.getElementById('gasto-valor').value) || 0;
   var tipo    = document.getElementById('gasto-tipo').value;
+  var origem  = getOrigemValue();
 
   if (!dataVal)   { alert('Informe a data.'); return; }
   if (!desc)      { alert('Informe a descrição.'); return; }
@@ -3737,13 +3768,17 @@ async function addGasto() {
   var btn = document.getElementById('btn-add-gasto');
   if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
 
-  var res = await sb.from('gastos_entrega').insert({
-    descricao: desc, valor: valor, tipo: tipo,
-    data: dataVal, mes: viewMonth, ano: viewYear
-  });
+  var payload = { descricao: desc, valor: valor, tipo: tipo, data: dataVal, mes: viewMonth, ano: viewYear, origem: origem };
+  var res = await sb.from('gastos_entrega').insert(payload);
+
+  // Fallback: coluna origem ainda não existe — salva sem ela
+  if (res.error && res.error.message && res.error.message.toLowerCase().includes('origem')) {
+    console.warn('[addGasto] Coluna "origem" não existe. Rode: ALTER TABLE gastos_entrega ADD COLUMN IF NOT EXISTS origem text DEFAULT \'\';');
+    delete payload.origem;
+    res = await sb.from('gastos_entrega').insert(payload);
+  }
 
   if (btn) { btn.disabled = false; btn.style.opacity = ''; }
-
   if (res.error) { alert('Erro ao salvar: ' + res.error.message); return; }
 
   document.getElementById('gasto-desc').value  = '';
