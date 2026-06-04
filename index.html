@@ -987,7 +987,7 @@ async function loadMonthData(m, y) {
     console.log('[loadMonthData] ' + rows.length + ' registros encontrados');
     var state = {};
     clients.forEach(function(c) {
-      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0};
+      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0,obs_pagamento:''};
     });
     rows.forEach(function(r) {
       state[r.cliente_reg] = {
@@ -996,7 +996,8 @@ async function loadMonthData(m, y) {
         quitado:  !!r.quitado,
         valor_mes:        Number(r.valor_mes)        || 0,
         valor_pago:       Number(r.valor_pago)       || 0,
-        valor_componente: Number(r.valor_componente) || 0
+        valor_componente: Number(r.valor_componente) || 0,
+        obs_pagamento:    r.obs_pagamento            || ''
       };
     });
     return state;
@@ -1025,14 +1026,21 @@ async function upsertRow(reg, data) {
   var payload = {cliente_reg:reg, mes:viewMonth, ano:viewYear, updated_at:new Date().toISOString(), ...data};
   var res = await sb.from('controle_mensal').upsert(payload, {onConflict:'cliente_reg,mes,ano'});
   if (res.error) {
-    // coluna valor_componente ainda nao existe: retenta sem ela
-    if (res.error.message && res.error.message.includes('valor_componente')) {
-      console.warn('upsertRow: coluna valor_componente ausente — salvando sem ela. Execute no Supabase SQL Editor:\nALTER TABLE controle_mensal ADD COLUMN IF NOT EXISTS valor_componente numeric(10,2) DEFAULT 0;');
+    var msg = res.error.message || '';
+    // Retenta removendo colunas que ainda não existem no banco
+    if (msg.includes('valor_componente') || msg.includes('obs_pagamento')) {
       var payloadSem = Object.assign({}, payload);
-      delete payloadSem.valor_componente;
+      if (msg.includes('valor_componente')) {
+        console.warn('upsertRow: coluna valor_componente ausente. Execute: ALTER TABLE controle_mensal ADD COLUMN IF NOT EXISTS valor_componente numeric(10,2) DEFAULT 0;');
+        delete payloadSem.valor_componente;
+      }
+      if (msg.includes('obs_pagamento')) {
+        console.warn('upsertRow: coluna obs_pagamento ausente. Execute: ALTER TABLE controle_mensal ADD COLUMN IF NOT EXISTS obs_pagamento text DEFAULT \'\';');
+        delete payloadSem.obs_pagamento;
+      }
       var res2 = await sb.from('controle_mensal').upsert(payloadSem, {onConflict:'cliente_reg,mes,ano'});
       if (res2.error) {
-        console.error('upsertRow (sem valor_componente):', res2.error);
+        console.error('upsertRow (retry):', res2.error);
         setSyncStatus('error');
         return false;
       }
@@ -1071,15 +1079,17 @@ async function saveFinanceiro(reg) {
   var elValor = document.getElementById('fin-valor-'+reg);
   var elComp  = document.getElementById('fin-comp-'+reg);
   var elPago  = document.getElementById('fin-pago-'+reg);
-  var vM = parseFloat(elValor ? elValor.value : '') || 0;
-  var vC = parseFloat(elComp  ? elComp.value  : '') || 0;
-  var vP = parseFloat(elPago  ? elPago.value  : '') || 0;
+  var elObs   = document.getElementById('fin-obs-'+reg);
+  var vM   = parseFloat(elValor ? elValor.value : '') || 0;
+  var vC   = parseFloat(elComp  ? elComp.value  : '') || 0;
+  var vP   = parseFloat(elPago  ? elPago.value  : '') || 0;
+  var vObs = elObs ? elObs.value.trim() : '';
 
   // Referência capturada ANTES do await para garantir acesso após re-render da lista
   var btns = Array.from(document.querySelectorAll('.save-btn[data-reg="'+reg+'"]'));
   btns.forEach(function(btn) { btn.disabled = true; });
 
-  var ok = await upsertRow(reg, {recebido:s.recebido||false,enviado:s.enviado||false,quitado:s.quitado||false,valor_mes:vM,valor_pago:vP,valor_componente:vC});
+  var ok = await upsertRow(reg, {recebido:s.recebido||false,enviado:s.enviado||false,quitado:s.quitado||false,valor_mes:vM,valor_pago:vP,valor_componente:vC,obs_pagamento:vObs});
 
   if (ok === false) {
     btns.forEach(function(btn) { btn.disabled = false; });
@@ -1091,7 +1101,7 @@ async function saveFinanceiro(reg) {
   }
 
   // 1) Atualiza dbState localmente — sem recarregar do banco
-  s.valor_mes = vM; s.valor_componente = vC; s.valor_pago = vP;
+  s.valor_mes = vM; s.valor_componente = vC; s.valor_pago = vP; s.obs_pagamento = vObs;
   dbState[reg] = s;
   // 2) Atualiza rodapé (totais/comissões)
   updateCounts();
@@ -1369,6 +1379,7 @@ function renderDetail() {
         '<div style="border-top:0.5px solid rgba(255,255,255,0.08);margin:12px 0"></div>'+
         '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px"><i class="ti ti-scissors" style="font-size:13px;vertical-align:-1px"></i> Descontos</p>'+
         '<div><p class="label">Componente</p><p style="font-size:15px;font-weight:500;color:#94a3b8">'+fmt(valorComp)+'</p></div>'+
+        (cv.obs_pagamento ? '<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.08)"><p class="label" style="margin-bottom:3px"><i class="ti ti-message" style="font-size:12px;vertical-align:-1px"></i> Observação</p><p style="font-size:13px;color:#e2e8f0">'+escHtml(cv.obs_pagamento)+'</p></div>' : '')+
       '</div>'
     : '<div class="fin-card" style="margin-bottom:14px">'+
         '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px"><i class="ti ti-currency-dollar" style="font-size:13px;vertical-align:-1px"></i> Valores</p>'+
@@ -1381,6 +1392,10 @@ function renderDetail() {
           '<div style="flex:1;background:#0f1117;border-radius:8px;padding:8px"><p class="label">Comissao (17%)</p><p style="font-size:14px;font-weight:500;color:#fbbf24" id="prev-comissao-'+c.reg+'">'+fmt(comissao)+'</p></div>'+
           '<button class="save-btn" data-reg="'+c.reg+'" onclick="saveFinanceiro('+c.reg+')"><i class="ti ti-device-floppy" style="font-size:13px"></i> Salvar</button>'+
           '<button onclick="clearFinanceiro('+c.reg+')" title="Zerar valores" style="height:32px;width:36px;border-radius:8px;border:0.5px solid rgba(239,68,68,0.4);background:#3d1d1d;color:#ef4444;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0"><i class="ti ti-trash" style="font-size:14px"></i></button>'+
+        '</div>'+
+        '<div id="fin-obs-wrap-'+c.reg+'" style="margin-top:10px;'+(restante>0?'':'display:none')+'">'+
+          '<p class="label" style="margin-bottom:5px"><i class="ti ti-message" style="font-size:12px;vertical-align:-1px"></i> Motivo / Observação do pagamento</p>'+
+          '<textarea id="fin-obs-'+c.reg+'" style="width:100%;height:54px;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 10px;font-size:13px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit;resize:none" placeholder="Ex: Aguardando, vai pagar dia X">'+escHtml(cv.obs_pagamento||'')+'</textarea>'+
         '</div>'+
         '<div style="border-top:0.5px solid rgba(255,255,255,0.08);margin:14px 0"></div>'+
         '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px"><i class="ti ti-scissors" style="font-size:13px;vertical-align:-1px"></i> Descontos</p>'+
@@ -1425,6 +1440,9 @@ function calcPreview(reg) {
   var elC = document.getElementById('prev-comissao-'+reg);
   if (elR) { elR.textContent = fmt(vM-vP); elR.style.color = vM-vP>0 ? '#ef4444' : '#22c55e'; }
   if (elC) elC.textContent = fmt((vP - vC) * COMISSAO);
+  // Mostra/esconde campo de obs quando há saldo pendente
+  var obsWrap = document.getElementById('fin-obs-wrap-'+reg);
+  if (obsWrap) obsWrap.style.display = (vM - vP > 0) ? '' : 'none';
 }
 
 function isMobile() { return window.innerWidth < 768; }
