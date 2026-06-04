@@ -2000,7 +2000,15 @@ var selectedClienteReg = null;
 async function loadCadastroClientes() {
   try {
     var res = await sb.from('cadastro_clientes').select('*');
-    if (res.error) throw res.error;
+    if (res.error) {
+      // 404 = tabela ainda não existe; não é erro crítico
+      if (res.error.code === 'PGRST116' || (res.error.message && res.error.message.includes('does not exist'))) {
+        console.warn('[loadCadastroClientes] Tabela cadastro_clientes não encontrada — usando lista local.');
+      } else {
+        console.warn('[loadCadastroClientes]', res.error.message);
+      }
+      return;
+    }
     (res.data||[]).forEach(function(row) {
       var idx = -1;
       for (var i=0;i<clients.length;i++){if(clients[i].reg===row.reg){idx=i;break;}}
@@ -2012,7 +2020,7 @@ async function loadCadastroClientes() {
     });
     clients.sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR');});
     doFilter();
-  } catch(e){console.error('loadCadastroClientes:',e);}
+  } catch(e){ console.warn('[loadCadastroClientes]', e.message||e); }
 }
 
 function switchToCadastro() {
@@ -2046,7 +2054,7 @@ function renderCadastroTable() {
   if(!tb)return;
   tb.innerHTML=filtered.map(function(c){
     var st=c.status||'ativo';
-    var sc=st==='inativo'?'#ef4444':'#22c55e',sb='rgba('+(st==='inativo'?'239,68,68':'34,197,94')+',0.12)';
+    var statusClr=st==='inativo'?'#ef4444':'#22c55e',statusBg='rgba('+(st==='inativo'?'239,68,68':'34,197,94')+',0.12)';
     var col=avatarColors[c.reg%avatarColors.length];
     var cid=(c.cidade||'')+(c.cidade&&c.uf?' / '+(c.uf||''):c.uf?c.uf:'—');
     return '<tr onclick="openClientePanel('+c.reg+')">'+
@@ -2058,7 +2066,7 @@ function renderCadastroTable() {
       '<td style="color:#94a3b8">'+(c.cro||'—')+'</td>'+
       '<td style="color:#94a3b8">'+cid+'</td>'+
       '<td style="color:#94a3b8">'+(c.tel||'—')+'</td>'+
-      '<td><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:'+sb+';color:'+sc+'">'+(st==='inativo'?'Inativo':'Ativo')+'</span></td>'+
+      '<td><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:'+statusBg+';color:'+statusClr+'">'+(st==='inativo'?'Inativo':'Ativo')+'</span></td>'+
     '</tr>';
   }).join('');
 }
