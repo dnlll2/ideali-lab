@@ -3669,8 +3669,9 @@ async function loadGastos() {
       .order('data', {ascending: false});
     if (res.error) throw res.error;
     gastos = res.data || [];
+    console.log('[loadGastos] ' + gastos.length + ' registro(s) carregado(s) para mes=' + viewMonth + ' ano=' + viewYear);
   } catch(e) {
-    console.error('[loadGastos]', e.message || e);
+    console.error('[loadGastos] ERRO:', e.message || e);
     gastos = [];
   }
   updateFretesMesFromGastos();
@@ -3895,6 +3896,7 @@ function parseImportCorreios(textArg) {
   prevEl.style.display = '';
   var btn = document.getElementById('btn-confirmar-import');
   btn.disabled = false; btn.style.opacity = ''; btn.textContent = 'Importar ' + importRows.length + ' registro(s)';
+  console.log('[ImportCorreios] Preview pronto: ' + importRows.length + ' linha(s) válidas, ' + erros + ' ignorada(s). Total: R$ ' + totalImp.toFixed(2));
 }
 
 async function confirmImportCorreios() {
@@ -3902,14 +3904,21 @@ async function confirmImportCorreios() {
   var btn = document.getElementById('btn-confirmar-import');
   btn.disabled = true; btn.textContent = 'Importando...'; btn.style.opacity = '0.6';
 
+  console.log('[ImportCorreios] Iniciando insert de ' + importRows.length + ' linha(s). mes=' + viewMonth + ' ano=' + viewYear);
+  console.log('[ImportCorreios] Primeiro registro:', JSON.stringify(importRows[0]));
+  console.log('[ImportCorreios] Último registro:',  JSON.stringify(importRows[importRows.length - 1]));
+
   var res = await sb.from('gastos_entrega').insert(importRows);
+
   if (res.error) {
+    console.error('[ImportCorreios] ERRO no insert:', res.error.message, res.error);
     btn.disabled = false; btn.style.opacity = '';
     document.getElementById('imp-erro').textContent = 'Erro ao importar: ' + res.error.message;
     document.getElementById('imp-erro').style.display = '';
     return;
   }
 
+  console.log('[ImportCorreios] Insert OK — ' + importRows.length + ' registro(s) salvo(s) com tipo=correio.');
   closeImportCorreios();
   await loadGastos();
 }
