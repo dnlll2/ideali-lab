@@ -1073,7 +1073,7 @@ async function saveFinanceiro(reg) {
   var vC = parseFloat(elComp  ? elComp.value  : '') || 0;
   var vP = parseFloat(elPago  ? elPago.value  : '') || 0;
 
-  // Captura botões ANTES do await (referência ao DOM atual)
+  // Referência capturada ANTES do await para garantir acesso após re-render da lista
   var btns = Array.from(document.querySelectorAll('.save-btn[data-reg="'+reg+'"]'));
   btns.forEach(function(btn) { btn.disabled = true; });
 
@@ -1088,13 +1088,14 @@ async function saveFinanceiro(reg) {
     return;
   }
 
-  // Atualiza dbState e totais imediatamente
+  // 1) Atualiza dbState localmente — sem recarregar do banco
   s.valor_mes = vM; s.valor_componente = vC; s.valor_pago = vP;
   dbState[reg] = s;
+  // 2) Atualiza rodapé (totais/comissões)
   updateCounts();
+  // 3) Atualiza lista de clientes com novo estado
   doFilter();
-
-  // Feedback "✓ Salvo!" nos botões capturados antes do await
+  // 4) Feedback "✓ Salvo!" verde por 2s nos botões do painel de detalhe
   btns.forEach(function(btn) {
     var orig = btn.innerHTML;
     btn.disabled = false;
