@@ -683,6 +683,7 @@ button{font-family:inherit;cursor:pointer}
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <button onclick="openImportCorreios()" style="height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(96,165,250,0.4);background:rgba(96,165,250,0.08);color:#60a5fa;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;white-space:nowrap">📋 Importar Extrato Correios</button>
+        <button onclick="gerarGastosPDF()" style="height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.08);color:#fca5a5;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;white-space:nowrap">📄 Gerar Relatório PDF</button>
         <div class="counter-card" style="display:flex;align-items:center;gap:10px;padding:10px 16px">
           <i class="ti ti-cash" style="font-size:22px;color:#fbbf24"></i>
           <div>
@@ -3718,6 +3719,149 @@ function gerarReciboPDF() {
   doc.save('recibo-'+cliente.nome.split(' ')[0].toLowerCase()+'-'+numero+'.pdf');
 }
 
+// ── Relatório PDF de Gastos ──────────────────────────────────
+
+function gerarGastosPDF() {
+  if (!gastos.length) { alert('Nenhum lançamento neste mês para gerar relatório.'); return; }
+
+  var doc    = new jspdf.jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  var W      = 210, margin = 14;
+  var mesNome = MESES[viewMonth] || ('Mês ' + (viewMonth + 1));
+  var titulo = 'Relatório de Gastos — ' + mesNome + ' ' + viewYear;
+
+  // ── Header ──
+  doc.setFillColor(15, 17, 23);
+  doc.rect(0, 0, W, 38, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(241, 245, 249);
+  doc.text('IDEALI LABORATORIO', margin, 14);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text('Laboratorio de Protese Dental', margin, 20);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(251, 191, 36);
+  doc.text('GASTOS DE ENTREGA', W - margin, 13, {align:'right'});
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(148, 163, 184);
+  doc.text(mesNome + ' ' + viewYear, W - margin, 20, {align:'right'});
+  doc.text('Emissão: ' + new Date().toLocaleDateString('pt-BR'), W - margin, 26, {align:'right'});
+
+  // ── Agrupa por tipo ──
+  var groups = {};
+  GASTOS_TIPO_ORDER.forEach(function(t) { groups[t] = []; });
+  gastos.forEach(function(g) {
+    var t = groups[g.tipo] !== undefined ? g.tipo : 'outro';
+    groups[t].push(g);
+  });
+
+  // ── Cores dos tipos para PDF ──
+  var TIPO_COLORS = {
+    correio: { hdr:[14,30,50],  txt:[96,165,250]  },
+    motoboy: { hdr:[40,30,10],  txt:[251,191,36]  },
+    uber:    { hdr:[25,20,50],  txt:[167,139,250] },
+    outro:   { hdr:[20,22,30],  txt:[148,163,184] }
+  };
+
+  var body  = [];
+  var total = 0;
+
+  GASTOS_TIPO_ORDER.forEach(function(tipo) {
+    var items = groups[tipo];
+    if (!items.length) return;
+    var tc      = GASTO_TIPOS[tipo];
+    var clr     = TIPO_COLORS[tipo];
+    var subtotal = items.reduce(function(s, g) { return s + (Number(g.valor) || 0); }, 0);
+    total += subtotal;
+
+    // Linha de cabeçalho da seção
+    body.push([{
+      content: tc.icon + ' ' + tc.label.toUpperCase(),
+      colSpan: 5,
+      styles: { fillColor: clr.hdr, textColor: clr.txt, fontStyle: 'bold', fontSize: 9, cellPadding: {top:4,bottom:4,left:4,right:4} }
+    }]);
+
+    // Itens
+    items.forEach(function(g) {
+      var dataStr = g.data ? new Date(g.data + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+      body.push([
+        dataStr,
+        g.descricao || '—',
+        g.origem    || '—',
+        tc.label,
+        { content: fmt(Number(g.valor)||0), styles: { halign:'right' } }
+      ]);
+    });
+
+    // Subtotal da seção
+    body.push([{
+      content: 'Subtotal ' + tc.label,
+      colSpan: 4,
+      styles: { fillColor:[26,29,39], fontStyle:'bold', textColor:clr.txt, fontSize:9 }
+    }, {
+      content: fmt(subtotal),
+      styles: { fillColor:[26,29,39], fontStyle:'bold', textColor:clr.txt, halign:'right', fontSize:9 }
+    }]);
+  });
+
+  // Total geral
+  body.push([{
+    content: 'TOTAL GERAL',
+    colSpan: 4,
+    styles: { fillColor:[15,17,23], fontStyle:'bold', textColor:[251,191,36], fontSize:11 }
+  }, {
+    content: fmt(total),
+    styles: { fillColor:[15,17,23], fontStyle:'bold', textColor:[251,191,36], halign:'right', fontSize:11 }
+  }]);
+
+  doc.autoTable({
+    head: [[
+      {content:'Data',        styles:{halign:'left'}},
+      {content:'Descrição',   styles:{halign:'left'}},
+      {content:'Solicitante', styles:{halign:'left'}},
+      {content:'Tipo',        styles:{halign:'left'}},
+      {content:'Valor',       styles:{halign:'right'}}
+    ]],
+    body: body,
+    startY: 44,
+    margin: {left: margin, right: margin},
+    headStyles: { fillColor:[26,29,39], textColor:[100,116,139], fontStyle:'bold', fontSize:8, cellPadding:3 },
+    bodyStyles: { fontSize:8, cellPadding:3, textColor:[226,232,240], fillColor:[22,25,36] },
+    alternateRowStyles: { fillColor:[26,29,39] },
+    columnStyles: {
+      0: { cellWidth:22 },
+      1: { cellWidth:'auto' },
+      2: { cellWidth:24 },
+      3: { cellWidth:20 },
+      4: { cellWidth:22, halign:'right' }
+    },
+    tableWidth: W - margin * 2,
+    didParseCell: function(data) {
+      // Mantém estilos customizados das linhas de cabeçalho/subtotal/total
+      if (data.row.raw && data.row.raw[0] && data.row.raw[0].styles) {
+        Object.assign(data.cell.styles, data.row.raw[0].styles);
+      }
+    }
+  });
+
+  // Footer
+  var pageCount = doc.internal.getNumberOfPages();
+  for (var i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFillColor(15,17,23);
+    doc.rect(0, 285, W, 12, 'F');
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100,116,139);
+    doc.text('Ideali Laboratorio — ' + titulo + ' — Gerado em ' + new Date().toLocaleString('pt-BR'), W/2, 292, {align:'center'});
+  }
+
+  doc.save('gastos-' + mesNome.toLowerCase().replace(/\s/g,'-') + '-' + viewYear + '.pdf');
+}
+
 // ── Gastos Motoboy/Uber ───────────────────────────────────────
 
 var GASTO_TIPOS = {
@@ -3772,6 +3916,8 @@ function updateFretesMesFromGastos() {
   updateCounts();
 }
 
+var GASTOS_TIPO_ORDER = ['correio', 'motoboy', 'uber', 'outro'];
+
 function renderGastos() {
   var label = document.getElementById('gastos-mes-label');
   if (label) label.textContent = (MESES[viewMonth] || viewMonth) + ' ' + viewYear;
@@ -3789,26 +3935,52 @@ function renderGastos() {
     return;
   }
 
-  container.innerHTML = gastos.map(function(g) {
+  // Agrupa por tipo
+  var groups = {};
+  GASTOS_TIPO_ORDER.forEach(function(t) { groups[t] = []; });
+  gastos.forEach(function(g) {
+    var t = groups[g.tipo] !== undefined ? g.tipo : 'outro';
+    groups[t].push(g);
+  });
+
+  function rowItem(g) {
     var tc = GASTO_TIPOS[g.tipo] || GASTO_TIPOS['outro'];
     var dataStr = g.data ? new Date(g.data + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
     var origemBadge = g.origem
-      ? '<span style="font-size:11px;padding:2px 8px;border-radius:5px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.1);color:#94a3b8;white-space:nowrap;flex-shrink:0">' + g.origem + '</span>'
+      ? '<span style="font-size:11px;padding:2px 7px;border-radius:5px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.1);color:#94a3b8;white-space:nowrap;flex-shrink:0">' + g.origem + '</span>'
       : '';
-    return '<div style="display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' +
+    return '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:0.5px solid rgba(255,255,255,0.05)">' +
       '<span style="font-size:12px;color:#64748b;white-space:nowrap;min-width:74px">' + dataStr + '</span>' +
       '<span style="flex:1;font-size:13px;color:#e2e8f0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (g.descricao || '') + '</span>' +
       origemBadge +
-      '<span style="font-size:11px;padding:3px 9px;border-radius:6px;background:' + tc.bg + ';border:0.5px solid ' + tc.border + ';color:' + tc.color + ';white-space:nowrap;flex-shrink:0">' + tc.icon + ' ' + tc.label + '</span>' +
       '<span style="font-size:14px;font-weight:600;color:#f1f5f9;white-space:nowrap;flex-shrink:0;min-width:80px;text-align:right">' + fmt(Number(g.valor) || 0) + '</span>' +
       '<button onclick="openEditGasto(\'' + g.id + '\')" title="Editar" style="width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(99,102,241,0.4);background:rgba(99,102,241,0.1);color:#818cf8;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0"><i class="ti ti-pencil" style="font-size:13px"></i></button>' +
       '<button onclick="deleteGasto(\'' + g.id + '\')" title="Deletar" style="width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(239,68,68,0.4);background:#3d1d1d;color:#ef4444;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0"><i class="ti ti-trash" style="font-size:13px"></i></button>' +
       '</div>';
-  }).join('') +
-  '<div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:12px 14px;border-top:0.5px solid rgba(255,255,255,0.1);background:#13151f">' +
-    '<span style="font-size:13px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em">Total</span>' +
+  }
+
+  var html = '';
+  GASTOS_TIPO_ORDER.forEach(function(tipo) {
+    var items = groups[tipo];
+    if (!items.length) return;
+    var tc = GASTO_TIPOS[tipo];
+    var subtotal = items.reduce(function(s, g) { return s + (Number(g.valor) || 0); }, 0);
+    // Cabeçalho da seção
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:' + tc.bg + ';border-top:0.5px solid ' + tc.border + ';border-bottom:0.5px solid ' + tc.border + '">' +
+      '<span style="font-size:12px;font-weight:700;color:' + tc.color + ';letter-spacing:0.04em">' + tc.icon + ' ' + tc.label.toUpperCase() + '</span>' +
+      '<span style="font-size:13px;font-weight:700;color:' + tc.color + '">' + fmt(subtotal) + '</span>' +
+    '</div>';
+    // Itens da seção
+    items.forEach(function(g) { html += rowItem(g); });
+  });
+
+  // Total geral
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-top:0.5px solid rgba(255,255,255,0.12);background:#13151f">' +
+    '<span style="font-size:13px;font-weight:600;color:#f1f5f9;text-transform:uppercase;letter-spacing:0.06em">Total Geral</span>' +
     '<span style="font-size:18px;font-weight:700;color:#fbbf24">' + fmt(total) + '</span>' +
   '</div>';
+
+  container.innerHTML = html;
 }
 
 function getOrigemValue() {
