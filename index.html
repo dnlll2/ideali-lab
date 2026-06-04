@@ -849,7 +849,7 @@ function isCurrentMonth() { return viewMonth===currentMonth && viewYear===curren
 
 async function toggle(reg, tipo, e) {
   e.stopPropagation();
-  if (!isCurrentMonth()) return;
+  if (!isCurrentMonth() && !historicoEditMode) return;
   var s = dbState[reg] || {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0};
   s[tipo] = !s[tipo];
   dbState[reg] = s;
@@ -872,29 +872,40 @@ async function saveFinanceiro(reg) {
   var vM = parseFloat(elValor ? elValor.value : '') || 0;
   var vC = parseFloat(elComp  ? elComp.value  : '') || 0;
   var vP = parseFloat(elPago  ? elPago.value  : '') || 0;
-  console.log('[saveFinanceiro] reg='+reg+' | inputs encontrados: fin-valor='+(!!elValor)+' fin-comp='+(!!elComp)+' fin-pago='+(!!elPago));
-  console.log('[saveFinanceiro] valores lidos: valor_mes='+vM+' valor_pago='+vP+' valor_componente='+vC);
+
+  // Captura botões ANTES do await (referência ao DOM atual)
+  var btns = Array.from(document.querySelectorAll('.save-btn[data-reg="'+reg+'"]'));
+  btns.forEach(function(btn) { btn.disabled = true; });
+
   var ok = await upsertRow(reg, {recebido:s.recebido||false,enviado:s.enviado||false,quitado:s.quitado||false,valor_mes:vM,valor_pago:vP,valor_componente:vC});
-  console.log('[saveFinanceiro] resultado upsert: ok='+ok);
+
   if (ok === false) {
+    btns.forEach(function(btn) { btn.disabled = false; });
     var errEl = document.getElementById('conn-error');
     var msgEl = document.getElementById('conn-error-msg');
     if (errEl) errEl.style.display = 'flex';
     if (msgEl) msgEl.textContent = 'Erro ao salvar financeiro. Verifique o console (F12).';
     return;
   }
+
+  // Atualiza dbState e totais imediatamente
   s.valor_mes = vM; s.valor_componente = vC; s.valor_pago = vP;
   dbState[reg] = s;
-  console.log('[saveFinanceiro] dbState['+reg+'] atualizado:', JSON.stringify(dbState[reg]));
   updateCounts();
   doFilter();
-  var btns = document.querySelectorAll('.save-btn[onclick="saveFinanceiro('+reg+')"]');
+
+  // Feedback "✓ Salvo!" nos botões capturados antes do await
   btns.forEach(function(btn) {
     var orig = btn.innerHTML;
-    btn.innerHTML = '<i class="ti ti-check" style="font-size:13px"></i> Salvo!';
+    btn.disabled = false;
+    btn.innerHTML = '✓ Salvo!';
     btn.style.background = '#16a34a';
     btn.style.color = '#fff';
-    setTimeout(function() { btn.innerHTML = orig; btn.style.background = ''; btn.style.color = ''; }, 2000);
+    setTimeout(function() {
+      btn.innerHTML = orig;
+      btn.style.background = '';
+      btn.style.color = '';
+    }, 2000);
   });
 }
 
@@ -1051,7 +1062,7 @@ document.addEventListener('click', function(e) {
 function tickBtn(reg, tipo, icon, label) {
   var s  = dbState[reg] || {};
   var on = s[tipo];
-  var dis = !isCurrentMonth() ? 'disabled' : '';
+  var dis = (!isCurrentMonth() && !historicoEditMode) ? 'disabled' : '';
   return '<div class="tick-col"><button class="tick-btn' + (on?' on':'') + '" onclick="toggle(' + reg + ',\'' + tipo + '\',event)" title="' + label + '" ' + dis + '><i class="ti ' + (on?'ti-check':icon) + '"></i></button><span class="tick-label' + (on?' on':'') + '">' + label + '</span></div>';
 }
 
@@ -1134,14 +1145,14 @@ function renderDetail() {
         '<div style="display:flex;gap:8px;align-items:center">'+
           '<div style="flex:1;background:#0f1117;border-radius:8px;padding:8px"><p class="label">Restante</p><p style="font-size:14px;font-weight:500;color:#ef4444" id="prev-restante-'+c.reg+'">'+fmt(restante)+'</p></div>'+
           '<div style="flex:1;background:#0f1117;border-radius:8px;padding:8px"><p class="label">Comissao (17%)</p><p style="font-size:14px;font-weight:500;color:#fbbf24" id="prev-comissao-'+c.reg+'">'+fmt(comissao)+'</p></div>'+
-          '<button class="save-btn" onclick="saveFinanceiro('+c.reg+')"><i class="ti ti-device-floppy" style="font-size:13px"></i> Salvar</button>'+
+          '<button class="save-btn" data-reg="'+c.reg+'" onclick="saveFinanceiro('+c.reg+')"><i class="ti ti-device-floppy" style="font-size:13px"></i> Salvar</button>'+
           '<button onclick="clearFinanceiro('+c.reg+')" title="Zerar valores" style="height:32px;width:36px;border-radius:8px;border:0.5px solid rgba(239,68,68,0.4);background:#3d1d1d;color:#ef4444;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0"><i class="ti ti-trash" style="font-size:14px"></i></button>'+
         '</div>'+
         '<div style="border-top:0.5px solid rgba(255,255,255,0.08);margin:14px 0"></div>'+
         '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px"><i class="ti ti-scissors" style="font-size:13px;vertical-align:-1px"></i> Descontos</p>'+
         '<div style="display:flex;gap:8px;align-items:flex-end">'+
           '<div style="flex:1"><p class="label" style="margin-bottom:5px">Componente (R$)</p><input class="fin-input" type="number" id="fin-comp-'+c.reg+'" value="'+(Number(cv.valor_componente)||0)+'" placeholder="0,00" min="0" step="0.01" oninput="calcPreview('+c.reg+')"></div>'+
-          '<button class="save-btn" onclick="saveFinanceiro('+c.reg+')"><i class="ti ti-device-floppy" style="font-size:13px"></i> Salvar</button>'+
+          '<button class="save-btn" data-reg="'+c.reg+'" onclick="saveFinanceiro('+c.reg+')"><i class="ti ti-device-floppy" style="font-size:13px"></i> Salvar</button>'+
         '</div>'+
       '</div>';
 
