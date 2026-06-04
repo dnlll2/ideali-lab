@@ -3009,15 +3009,17 @@ function cobPopulateClientes() {
     var c = clients.find(function(x){return x.reg==sel.value;});
     document.getElementById('cob-preview-cliente').textContent = c ? c.nome : '—';
     if (c) {
+      console.log('[Cobrança] cliente_reg=' + c.reg + ' nome="' + c.nome + '" buscando mes=' + viewMonth + ' ano=' + viewYear + ' (currentMonth=' + currentMonth + ')');
       try {
         var res = await sb.from('controle_mensal').select('valor_mes,valor_pago,valor_componente')
-          .eq('cliente_reg', c.reg).eq('mes', currentMonth).eq('ano', currentYear).single();
+          .eq('cliente_reg', c.reg).eq('mes', viewMonth).eq('ano', viewYear).single();
+        console.log('[Cobrança] resultado supabase:', res.data, res.error ? 'ERRO:'+res.error.message : '');
         if (res.data) {
           document.getElementById('cob-total').value = res.data.valor_mes || 0;
           document.getElementById('cob-pago').value  = res.data.valor_pago || 0;
           cobCalcSaldo();
         }
-      } catch(e) {}
+      } catch(e) { console.error('[Cobrança] catch:', e); }
     }
   };
   document.getElementById('cob-vencimento').onchange = function() {
@@ -3214,18 +3216,20 @@ async function reciboOnClienteChange() {
     return;
   }
   document.getElementById('rec-preview-cliente').textContent = c.nome;
+  console.log('[Recibo] cliente_reg=' + reg + ' nome="' + c.nome + '" buscando mes=' + viewMonth + ' ano=' + viewYear + ' (currentMonth=' + currentMonth + ')');
   try {
     var res = await sb.from('controle_mensal').select('valor_mes,valor_pago,valor_componente')
-      .eq('cliente_reg', reg).eq('mes', currentMonth).eq('ano', currentYear).single();
+      .eq('cliente_reg', reg).eq('mes', viewMonth).eq('ano', viewYear).single();
+    console.log('[Recibo] resultado supabase:', res.data, res.error ? 'ERRO:'+res.error.message : '');
     if (res.data) {
       document.getElementById('rec-total').value    = res.data.valor_mes  || 0;
       document.getElementById('rec-recebido').value = res.data.valor_pago || 0;
     }
-  } catch(e) {}
-  var mesNomeAtual = MESES[currentMonth] || (currentMonth+1);
+  } catch(e) { console.error('[Recibo] catch:', e); }
+  var mesNomeAtual = MESES[viewMonth] || (viewMonth+1);
   if (!document.getElementById('rec-descricao').value) {
     document.getElementById('rec-descricao').value =
-      'Servicos de Laboratorio de Protese Dental - ' + mesNomeAtual + '/' + currentYear;
+      'Servicos de Laboratorio de Protese Dental - ' + mesNomeAtual + '/' + viewYear;
   }
   reciboUpdatePreview();
 }
