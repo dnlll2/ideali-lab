@@ -200,6 +200,10 @@ button{font-family:inherit;cursor:pointer}
       <div class="sb-icon">🧾</div>
       <span>Recibo de Pagamento</span>
     </div>
+    <div class="sb-item" id="sb-gastos" onclick="sbNav('gastos')">
+      <div class="sb-icon">🛵</div>
+      <span>Gastos Motoboy/Uber</span>
+    </div>
   </nav>
   <div style="padding:14px 20px 20px;border-top:0.5px solid rgba(255,255,255,0.08)">
     <p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Tema</p>
@@ -659,6 +663,53 @@ button{font-family:inherit;cursor:pointer}
     </div>
   </div>
 
+  <div id="gastos-view" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
+      <div>
+        <p style="font-size:20px;font-weight:600;color:#f1f5f9">🛵 Gastos Motoboy/Uber</p>
+        <p style="font-size:13px;color:#64748b;margin-top:2px" id="gastos-mes-label">Carregando...</p>
+      </div>
+      <div class="counter-card" style="display:flex;align-items:center;gap:10px;padding:10px 16px">
+        <i class="ti ti-cash" style="font-size:22px;color:#fbbf24"></i>
+        <div>
+          <p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">Total do Mês</p>
+          <p style="font-size:22px;font-weight:700;color:#fbbf24" id="gastos-total">R$ 0,00</p>
+        </div>
+      </div>
+    </div>
+    <!-- Formulário de adição -->
+    <div class="card" style="padding:1rem;margin-bottom:1rem">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
+        <div>
+          <p class="label" style="margin-bottom:4px">Data</p>
+          <input type="date" id="gasto-data" style="height:36px;width:130px">
+        </div>
+        <div style="flex:1;min-width:160px">
+          <p class="label" style="margin-bottom:4px">Descrição</p>
+          <input type="text" id="gasto-desc" placeholder="Ex: Entrega cliente X" style="height:36px;width:100%" onkeydown="if(event.key==='Enter')addGasto()">
+        </div>
+        <div>
+          <p class="label" style="margin-bottom:4px">Valor (R$)</p>
+          <input type="number" id="gasto-valor" placeholder="0,00" min="0" step="0.01" style="height:36px;width:100px" onkeydown="if(event.key==='Enter')addGasto()">
+        </div>
+        <div>
+          <p class="label" style="margin-bottom:4px">Tipo</p>
+          <select id="gasto-tipo" style="height:36px;width:130px">
+            <option value="motoboy">🛵 Motoboy</option>
+            <option value="uber">🚗 Uber</option>
+            <option value="correio">📦 Correio</option>
+            <option value="outro">📌 Outro</option>
+          </select>
+        </div>
+        <button id="btn-add-gasto" onclick="addGasto()" style="height:36px;padding:0 16px;border-radius:8px;border:none;background:#1d4ed8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;white-space:nowrap;transition:background 0.15s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#1d4ed8'"><i class="ti ti-plus" style="font-size:14px"></i> Adicionar</button>
+      </div>
+    </div>
+    <!-- Lista de lançamentos -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div id="gastos-list" style="max-height:55vh;overflow-y:auto"></div>
+    </div>
+  </div>
+
   <div id="cadastro-view" style="display:none">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
       <div>
@@ -751,6 +802,7 @@ var monthDDOpen  = false;
 var arquivadasOpen = false;
 var fretesMes        = 0;
 var outrosDescontos  = 0;
+var gastos           = [];
 
 var avatarColors = [
   ['#1d3a6e','#93c5fd'],['#0d3d2b','#4ade80'],['#2e1d6e','#c4b5fd'],
@@ -1065,7 +1117,7 @@ async function switchMonth(m, y) {
   document.getElementById('tarefas-view').style.display    = 'none';
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'none';
-  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView();
+  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView();
   viewMonth = m; viewYear = y; selected = null; historicoEditMode = false;
   document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Carregando...</p></div>';
   var loadedData = await loadMonthData(m, y);
@@ -1074,6 +1126,7 @@ async function switchMonth(m, y) {
   renderMonthTabs(); updateCounts(); doFilter();
   loadFretesMes();
   loadTarefasAbertas();
+  loadGastos();
   document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Selecione um cliente</p></div>';
 }
 
@@ -1232,7 +1285,7 @@ function closeSidebar() {
   document.getElementById('sidebar-overlay').classList.remove('open');
 }
 function updateSidebarActive() {
-  ['clientes','tarefas','inove','dashboard','cadastro','pedidos','orcamento','cobranca','recibo'].forEach(function(v) {
+  ['clientes','tarefas','inove','dashboard','cadastro','pedidos','orcamento','cobranca','recibo','gastos'].forEach(function(v) {
     var el = document.getElementById('sb-'+v);
     if (el) el.classList.toggle('active', viewMode===v);
   });
@@ -1248,6 +1301,7 @@ function sbNav(target) {
   else if (target==='orcamento') { switchToOrcamento(); }
   else if (target==='cobranca') { switchToCobranca(); }
   else if (target==='recibo') { switchToRecibo(); }
+  else if (target==='gastos') { switchToGastos(); }
 }
 
 function hideCadastroView() {
@@ -1268,6 +1322,10 @@ function hideCobrancaView() {
 }
 function hideReciboView() {
   var el = document.getElementById('recibo-view');
+  if (el) el.style.display = 'none';
+}
+function hideGastosView() {
+  var el = document.getElementById('gastos-view');
   if (el) el.style.display = 'none';
 }
 
@@ -1408,7 +1466,7 @@ function switchToDashboard() {
   document.getElementById('tarefas-view').style.display    = 'none';
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'block';
-  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView();
+  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView();
   var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
   var tg = document.getElementById('tarefas-grid');  if (tg) tg.classList.remove('mob-detail');
   renderMonthTabs();
@@ -1696,7 +1754,7 @@ function switchToPedidos() {
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'none';
   document.getElementById('pedidos-view').style.display    = 'block';
-  hideCadastroView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView();
+  hideCadastroView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView();
   var cg=document.getElementById('clientes-grid');if(cg)cg.classList.remove('mob-detail');
   var tg=document.getElementById('tarefas-grid');if(tg)tg.classList.remove('mob-detail');
   renderMonthTabs();
@@ -2291,7 +2349,7 @@ function switchToTarefas() {
   document.getElementById('tarefas-view').style.display    = 'block';
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'none';
-  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView();
+  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView();
   var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
   renderMonthTabs();
   loadTarefas();
@@ -2360,6 +2418,7 @@ async function init() {
   renderMonthTabs(); updateCounts(); doFilter();
   loadFretesMes();
   loadTarefasAbertas();
+  loadGastos();
   loadCadastroClientes();
 }
 
@@ -2394,7 +2453,7 @@ function switchToInove() {
   document.getElementById('tarefas-view').style.display    = 'none';
   document.getElementById('inove-view').style.display      = 'block';
   document.getElementById('dashboard-view').style.display  = 'none';
-  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView();
+  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView();
   var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
   var tg = document.getElementById('tarefas-grid');  if (tg) tg.classList.remove('mob-detail');
   renderMonthTabs();
@@ -2824,7 +2883,7 @@ function gerarRelatorioPDF() {
 var orcItemCount = 0;
 
 function hideAllViews() {
-  ['clientes','tarefas','inove','dashboard','pedidos','cadastro','orcamento','cobranca','recibo'].forEach(function(v) {
+  ['clientes','tarefas','inove','dashboard','pedidos','cadastro','orcamento','cobranca','recibo','gastos'].forEach(function(v) {
     var el = document.getElementById(v+'-view');
     if (el) el.style.display = 'none';
   });
@@ -3498,6 +3557,117 @@ function gerarReciboPDF() {
   doc.text('Ideali Laboratorio - Documento gerado em '+new Date().toLocaleString('pt-BR'), W/2, 292, {align:'center'});
 
   doc.save('recibo-'+cliente.nome.split(' ')[0].toLowerCase()+'-'+numero+'.pdf');
+}
+
+// ── Gastos Motoboy/Uber ───────────────────────────────────────
+
+var GASTO_TIPOS = {
+  motoboy: { label:'Motoboy', icon:'🛵', bg:'rgba(251,191,36,0.15)',  border:'rgba(251,191,36,0.5)',  color:'#fbbf24' },
+  uber:    { label:'Uber',    icon:'🚗', bg:'rgba(167,139,250,0.15)', border:'rgba(167,139,250,0.5)', color:'#a78bfa' },
+  correio: { label:'Correio', icon:'📦', bg:'rgba(96,165,250,0.15)',  border:'rgba(96,165,250,0.5)',  color:'#60a5fa' },
+  outro:   { label:'Outro',   icon:'📌', bg:'rgba(148,163,184,0.15)', border:'rgba(148,163,184,0.5)', color:'#94a3b8' }
+};
+
+function switchToGastos() {
+  hideAllViews();
+  viewMode = 'gastos';
+  document.getElementById('gastos-view').style.display = '';
+  updateSidebarActive();
+  var di = document.getElementById('gasto-data');
+  if (di && !di.value) di.value = todayISO();
+  renderGastos();
+}
+
+async function loadGastos() {
+  try {
+    var res = await sb.from('gastos_entrega').select('*')
+      .eq('mes', viewMonth).eq('ano', viewYear)
+      .order('data', {ascending: false});
+    if (res.error) throw res.error;
+    gastos = res.data || [];
+  } catch(e) {
+    console.error('[loadGastos]', e.message || e);
+    gastos = [];
+  }
+  updateFretesMesFromGastos();
+  if (viewMode === 'gastos') renderGastos();
+}
+
+function updateFretesMesFromGastos() {
+  var totCorMot = 0;
+  gastos.forEach(function(g) { totCorMot += Number(g.valor) || 0; });
+  fretesMes = totCorMot;
+  var elF = document.getElementById('input-frete-mes');
+  if (elF) elF.value = totCorMot > 0 ? totCorMot : '';
+  updateCounts();
+}
+
+function renderGastos() {
+  var label = document.getElementById('gastos-mes-label');
+  if (label) label.textContent = (MESES[viewMonth] || viewMonth) + ' ' + viewYear;
+
+  var total = 0;
+  gastos.forEach(function(g) { total += Number(g.valor) || 0; });
+  var elTot = document.getElementById('gastos-total');
+  if (elTot) elTot.textContent = fmt(total);
+
+  var container = document.getElementById('gastos-list');
+  if (!container) return;
+
+  if (!gastos.length) {
+    container.innerHTML = '<p style="text-align:center;color:#4a5568;font-size:13px;padding:2.5rem">Nenhum lançamento neste mês.</p>';
+    return;
+  }
+
+  container.innerHTML = gastos.map(function(g) {
+    var tc = GASTO_TIPOS[g.tipo] || GASTO_TIPOS['outro'];
+    var dataStr = g.data ? new Date(g.data + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' +
+      '<span style="font-size:12px;color:#64748b;white-space:nowrap;min-width:74px">' + dataStr + '</span>' +
+      '<span style="flex:1;font-size:13px;color:#e2e8f0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (g.descricao || '') + '</span>' +
+      '<span style="font-size:11px;padding:3px 9px;border-radius:6px;background:' + tc.bg + ';border:0.5px solid ' + tc.border + ';color:' + tc.color + ';white-space:nowrap;flex-shrink:0">' + tc.icon + ' ' + tc.label + '</span>' +
+      '<span style="font-size:14px;font-weight:600;color:#f1f5f9;white-space:nowrap;flex-shrink:0;min-width:80px;text-align:right">' + fmt(Number(g.valor) || 0) + '</span>' +
+      '<button onclick="deleteGasto(\'' + g.id + '\')" title="Deletar" style="width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(239,68,68,0.4);background:#3d1d1d;color:#ef4444;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0"><i class="ti ti-trash" style="font-size:13px"></i></button>' +
+      '</div>';
+  }).join('') +
+  '<div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:12px 14px;border-top:0.5px solid rgba(255,255,255,0.1);background:#13151f">' +
+    '<span style="font-size:13px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em">Total</span>' +
+    '<span style="font-size:18px;font-weight:700;color:#fbbf24">' + fmt(total) + '</span>' +
+  '</div>';
+}
+
+async function addGasto() {
+  var dataVal = document.getElementById('gasto-data').value;
+  var desc    = document.getElementById('gasto-desc').value.trim();
+  var valor   = parseFloat(document.getElementById('gasto-valor').value) || 0;
+  var tipo    = document.getElementById('gasto-tipo').value;
+
+  if (!dataVal)   { alert('Informe a data.'); return; }
+  if (!desc)      { alert('Informe a descrição.'); return; }
+  if (valor <= 0) { alert('Informe um valor maior que zero.'); return; }
+
+  var btn = document.getElementById('btn-add-gasto');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+
+  var res = await sb.from('gastos_entrega').insert({
+    descricao: desc, valor: valor, tipo: tipo,
+    data: dataVal, mes: viewMonth, ano: viewYear
+  });
+
+  if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+
+  if (res.error) { alert('Erro ao salvar: ' + res.error.message); return; }
+
+  document.getElementById('gasto-desc').value  = '';
+  document.getElementById('gasto-valor').value = '';
+  await loadGastos();
+}
+
+async function deleteGasto(id) {
+  if (!confirm('Deletar este lançamento?')) return;
+  var res = await sb.from('gastos_entrega').delete().eq('id', id);
+  if (res.error) { alert('Erro ao deletar: ' + res.error.message); return; }
+  await loadGastos();
 }
 </script>
 </body>
