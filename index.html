@@ -716,7 +716,7 @@ button{font-family:inherit;cursor:pointer}
           </select>
         </div>
         <div>
-          <p class="label" style="margin-bottom:4px">Laboratório/Origem</p>
+          <p class="label" style="margin-bottom:4px">Solicitante</p>
           <div style="display:flex;gap:5px;align-items:center">
             <select id="gasto-origem" style="height:36px;width:120px" onchange="toggleOrigemOutro()">
               <option value="Inove 3D">🏭 Inove 3D</option>
@@ -3734,20 +3734,39 @@ function renderGastos() {
     return;
   }
 
+  var ORIG_OPTS = ['Inove 3D', 'Danilo', 'Cliente', 'Outro'];
   container.innerHTML = gastos.map(function(g) {
     var tc = GASTO_TIPOS[g.tipo] || GASTO_TIPOS['outro'];
     var dataStr = g.data ? new Date(g.data + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
     var origemBadge = g.origem
       ? '<span style="font-size:11px;padding:2px 8px;border-radius:5px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.1);color:#94a3b8;white-space:nowrap;flex-shrink:0">' + g.origem + '</span>'
       : '';
-    return '<div style="display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' +
-      '<span style="font-size:12px;color:#64748b;white-space:nowrap;min-width:74px">' + dataStr + '</span>' +
-      '<span style="flex:1;font-size:13px;color:#e2e8f0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (g.descricao || '') + '</span>' +
-      origemBadge +
-      '<span style="font-size:11px;padding:3px 9px;border-radius:6px;background:' + tc.bg + ';border:0.5px solid ' + tc.border + ';color:' + tc.color + ';white-space:nowrap;flex-shrink:0">' + tc.icon + ' ' + tc.label + '</span>' +
-      '<span style="font-size:14px;font-weight:600;color:#f1f5f9;white-space:nowrap;flex-shrink:0;min-width:80px;text-align:right">' + fmt(Number(g.valor) || 0) + '</span>' +
-      '<button onclick="deleteGasto(\'' + g.id + '\')" title="Deletar" style="width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(239,68,68,0.4);background:#3d1d1d;color:#ef4444;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0"><i class="ti ti-trash" style="font-size:13px"></i></button>' +
-      '</div>';
+    // Pre-selects current origem value in the edit form
+    var curSel  = ORIG_OPTS.includes(g.origem) ? g.origem : (g.origem ? 'Outro' : 'Inove 3D');
+    var curOutro = ORIG_OPTS.includes(g.origem) ? '' : (g.origem || '');
+    var opts = ORIG_OPTS.map(function(o) {
+      return '<option value="' + o + '"' + (curSel === o ? ' selected' : '') + '>' + o + '</option>';
+    }).join('');
+    return '<div id="gasto-row-' + g.id + '" style="border-bottom:0.5px solid rgba(255,255,255,0.06)">' +
+      '<div style="display:flex;align-items:center;gap:8px;padding:11px 14px">' +
+        '<span style="font-size:12px;color:#64748b;white-space:nowrap;min-width:74px">' + dataStr + '</span>' +
+        '<span style="flex:1;font-size:13px;color:#e2e8f0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (g.descricao || '') + '</span>' +
+        origemBadge +
+        '<span style="font-size:11px;padding:3px 9px;border-radius:6px;background:' + tc.bg + ';border:0.5px solid ' + tc.border + ';color:' + tc.color + ';white-space:nowrap;flex-shrink:0">' + tc.icon + ' ' + tc.label + '</span>' +
+        '<span style="font-size:14px;font-weight:600;color:#f1f5f9;white-space:nowrap;flex-shrink:0;min-width:80px;text-align:right">' + fmt(Number(g.valor) || 0) + '</span>' +
+        '<button onclick="toggleEditSolicitante(\'' + g.id + '\')" title="Editar solicitante" style="width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(99,102,241,0.4);background:rgba(99,102,241,0.1);color:#818cf8;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0"><i class="ti ti-pencil" style="font-size:13px"></i></button>' +
+        '<button onclick="deleteGasto(\'' + g.id + '\')" title="Deletar" style="width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(239,68,68,0.4);background:#3d1d1d;color:#ef4444;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0"><i class="ti ti-trash" style="font-size:13px"></i></button>' +
+      '</div>' +
+      '<div id="gasto-edit-' + g.id + '" style="display:none;padding:8px 14px 12px;background:rgba(99,102,241,0.05);border-top:0.5px solid rgba(99,102,241,0.2)">' +
+        '<p style="font-size:11px;color:#818cf8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Editar Solicitante</p>' +
+        '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">' +
+          '<select id="gasto-sel-' + g.id + '" style="height:32px;width:120px;font-size:13px" onchange="toggleEditOutro(\'' + g.id + '\')">' + opts + '</select>' +
+          '<input type="text" id="gasto-inp-' + g.id + '" value="' + curOutro + '" placeholder="Especifique..." style="height:32px;width:110px;font-size:13px;' + (curSel === 'Outro' ? '' : 'display:none') + '">' +
+          '<button id="gasto-save-' + g.id + '" onclick="saveEditSolicitante(\'' + g.id + '\')" style="height:32px;padding:0 12px;border-radius:6px;border:none;background:#4f46e5;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap">✓ Salvar</button>' +
+          '<button onclick="toggleEditSolicitante(\'' + g.id + '\')" style="height:32px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">Cancelar</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
   }).join('') +
   '<div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:12px 14px;border-top:0.5px solid rgba(255,255,255,0.1);background:#13151f">' +
     '<span style="font-size:13px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em">Total</span>' +
@@ -3799,6 +3818,46 @@ async function deleteGasto(id) {
   var res = await sb.from('gastos_entrega').delete().eq('id', id);
   if (res.error) { alert('Erro ao deletar: ' + res.error.message); return; }
   await loadGastos();
+}
+
+function toggleEditSolicitante(id) {
+  var editDiv = document.getElementById('gasto-edit-' + id);
+  if (!editDiv) return;
+  var isOpen = editDiv.style.display !== 'none';
+  // Fecha todos os outros forms abertos
+  document.querySelectorAll('[id^="gasto-edit-"]').forEach(function(el) { el.style.display = 'none'; });
+  if (!isOpen) editDiv.style.display = '';
+}
+
+function toggleEditOutro(id) {
+  var sel = document.getElementById('gasto-sel-' + id);
+  var inp = document.getElementById('gasto-inp-' + id);
+  if (sel && inp) inp.style.display = sel.value === 'Outro' ? '' : 'none';
+}
+
+async function saveEditSolicitante(id) {
+  var sel = document.getElementById('gasto-sel-' + id);
+  var inp = document.getElementById('gasto-inp-' + id);
+  if (!sel) return;
+  var novaOrigem = sel.value === 'Outro'
+    ? (inp && inp.value.trim() ? inp.value.trim() : 'Outro')
+    : sel.value;
+
+  var btn = document.getElementById('gasto-save-' + id);
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+
+  var res = await sb.from('gastos_entrega').update({ origem: novaOrigem }).eq('id', id);
+
+  if (res.error) {
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Salvar'; }
+    alert('Erro ao salvar: ' + res.error.message);
+    return;
+  }
+
+  // Atualiza estado local sem recarregar tudo do banco
+  var g = gastos.find(function(x) { return x.id === id; });
+  if (g) g.origem = novaOrigem;
+  renderGastos();
 }
 
 // ── Importar Extrato Correios ─────────────────────────────────
