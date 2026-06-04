@@ -960,8 +960,10 @@ function fmt(v) {
 function setSyncStatus(status) {
   var cls = 'sync-dot' + (status==='syncing' ? ' syncing' : status==='error' ? ' error' : '');
   var lbl = status==='syncing' ? 'Salvando...' : status==='error' ? 'Erro de conexao' : 'Conectado';
-  document.getElementById('sync-dot').className = cls;
-  document.getElementById('sync-status').innerHTML = '<span class="' + cls + '"></span>' + lbl;
+  var dot = document.getElementById('sync-dot');
+  if (dot) dot.className = cls;
+  var txt = document.getElementById('sync-status');
+  if (txt) txt.innerHTML = '<span class="' + cls + '"></span>' + lbl;
 }
 
 function todayISO() {
