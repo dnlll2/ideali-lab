@@ -354,8 +354,10 @@ button{font-family:inherit;cursor:pointer}
         <div class="counter-card" style="min-width:130px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total a Receber</p><p style="font-size:20px;font-weight:500;color:#f1f5f9" id="total-valor">R$ 0,00</p></div>
         <div class="counter-card" style="min-width:120px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total Pago</p><p style="font-size:20px;font-weight:500;color:#22c55e" id="total-pago">R$ 0,00</p></div>
         <div class="counter-card" id="card-total-comp" style="min-width:130px;transition:background 0.2s,border 0.2s"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total Componentes</p><p style="font-size:20px;font-weight:500;color:#94a3b8" id="total-comp">R$ 0,00</p></div>
-        <div class="counter-card" style="min-width:175px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Correio/Motoboy (R$)</p><div style="display:flex;gap:5px;align-items:center"><input type="number" id="input-frete-mes" placeholder="0,00" min="0" step="0.01" style="height:28px;font-size:13px;font-weight:500;width:80px;background:#0f1117;border-color:rgba(255,255,255,0.08)" onkeydown="if(event.key==='Enter')saveFretesMes()"><button id="btn-salvar-frete" onclick="saveFretesMes()" style="height:28px;padding:0 8px;border-radius:6px;border:none;background:#1d4ed8;color:#fff;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap">Salvar</button></div></div>
-        <div class="counter-card" style="min-width:175px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Outros Descontos (R$)</p><div style="display:flex;gap:5px;align-items:center"><input type="number" id="input-outros-desc" placeholder="0,00" min="0" step="0.01" style="height:28px;font-size:13px;font-weight:500;width:80px;background:#0f1117;border-color:rgba(255,255,255,0.08)" onkeydown="if(event.key==='Enter')saveOutrosDescontos()"><button id="btn-salvar-outros" onclick="saveOutrosDescontos()" style="height:28px;padding:0 8px;border-radius:6px;border:none;background:#1d4ed8;color:#fff;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap">Salvar</button></div></div>
+        <div class="counter-card" style="min-width:110px;transition:background 0.2s,border 0.2s" id="card-correio"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">📦 Correio</p><p style="font-size:20px;font-weight:500;color:#64748b" id="total-correio">R$ 0,00</p></div>
+        <div class="counter-card" style="min-width:110px;transition:background 0.2s,border 0.2s" id="card-motoboy"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">🛵 Motoboy</p><p style="font-size:20px;font-weight:500;color:#64748b" id="total-motoboy">R$ 0,00</p></div>
+        <div class="counter-card" style="min-width:110px;transition:background 0.2s,border 0.2s" id="card-uber"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">🚗 Uber</p><p style="font-size:20px;font-weight:500;color:#64748b" id="total-uber">R$ 0,00</p></div>
+        <div class="counter-card" style="min-width:110px;transition:background 0.2s,border 0.2s" id="card-outros-g"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">📌 Outros</p><p style="font-size:20px;font-weight:500;color:#64748b" id="total-outros-g">R$ 0,00</p></div>
         <div class="counter-card" style="min-width:130px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissão Bruta (17%)</p><p style="font-size:20px;font-weight:500;color:#fbbf24" id="total-com-bruta">R$ 0,00</p></div>
         <div class="counter-card" style="min-width:120px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total Descontos</p><p style="font-size:20px;font-weight:500;color:#fca5a5" id="total-descontos">R$ 0,00</p></div>
         <div class="counter-card" style="min-width:120px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissão Líquida</p><p style="font-size:20px;font-weight:500;color:#fbbf24" id="total-com-liq">R$ 0,00</p></div>
@@ -868,6 +870,10 @@ var arquivadasOpen = false;
 var fretesMes        = 0;
 var outrosDescontos  = 0;
 var gastos           = [];
+var gastosCorreio    = 0;
+var gastosMotoboy    = 0;
+var gastosUber       = 0;
+var gastosOutro      = 0;
 
 var avatarColors = [
   ['#1d3a6e','#93c5fd'],['#0d3d2b','#4ade80'],['#2e1d6e','#c4b5fd'],
@@ -1064,8 +1070,9 @@ function updateCounts() {
   document.getElementById('count-enviado').textContent  = env;
   document.getElementById('count-quitado').textContent  = qui;
   document.getElementById('count-pendente').textContent = pen;
-  var comBruta      = (totPago - totComp) * COMISSAO;
-  var totalDescontos = fretesMes + outrosDescontos;
+  var comBruta       = (totPago - totComp) * COMISSAO;
+  var totalDescontos = gastosCorreio + gastosMotoboy + gastosUber + gastosOutro;
+  fretesMes = totalDescontos; // mantém compatibilidade com PDF/dashboard
   document.getElementById('total-valor').textContent     = fmt(totVal);
   document.getElementById('total-pago').textContent      = fmt(totPago);
   document.getElementById('total-comp').textContent      = fmt(totComp);
@@ -1073,6 +1080,18 @@ function updateCounts() {
   var elDesc = document.getElementById('total-descontos');
   if (elDesc) elDesc.textContent = fmt(totalDescontos);
   document.getElementById('total-com-liq').textContent   = fmt(comBruta - totalDescontos);
+  // Cards individuais por tipo (highlight colorido quando > 0)
+  function setGastoCard(cardId, valId, val, bg, border, color) {
+    var card = document.getElementById(cardId), vEl = document.getElementById(valId);
+    if (!card || !vEl) return;
+    vEl.textContent = fmt(val);
+    if (val > 0) { card.style.background=bg; card.style.border=border; vEl.style.color=color; }
+    else         { card.style.background=''; card.style.border=''; vEl.style.color='#64748b'; }
+  }
+  setGastoCard('card-correio',  'total-correio',  gastosCorreio, 'rgba(96,165,250,0.12)',  '0.5px solid rgba(96,165,250,0.4)',  '#60a5fa');
+  setGastoCard('card-motoboy',  'total-motoboy',  gastosMotoboy, 'rgba(251,191,36,0.12)',  '0.5px solid rgba(251,191,36,0.4)', '#fbbf24');
+  setGastoCard('card-uber',     'total-uber',     gastosUber,    'rgba(167,139,250,0.12)', '0.5px solid rgba(167,139,250,0.4)','#a78bfa');
+  setGastoCard('card-outros-g', 'total-outros-g', gastosOutro,   'rgba(148,163,184,0.12)', '0.5px solid rgba(148,163,184,0.4)','#94a3b8');
   document.getElementById('sealed-banner').style.display = isFechadoLocal() ? 'flex' : 'none';
   // Destaque laranja em Total Componentes quando > 0
   var compCard = document.getElementById('card-total-comp');
@@ -3659,11 +3678,14 @@ async function loadGastos() {
 }
 
 function updateFretesMesFromGastos() {
-  var totCorMot = 0;
-  gastos.forEach(function(g) { totCorMot += Number(g.valor) || 0; });
-  fretesMes = totCorMot;
-  var elF = document.getElementById('input-frete-mes');
-  if (elF) elF.value = totCorMot > 0 ? totCorMot : '';
+  gastosCorreio = 0; gastosMotoboy = 0; gastosUber = 0; gastosOutro = 0;
+  gastos.forEach(function(g) {
+    var v = Number(g.valor) || 0;
+    if (g.tipo === 'correio')      gastosCorreio  += v;
+    else if (g.tipo === 'motoboy') gastosMotoboy  += v;
+    else if (g.tipo === 'uber')    gastosUber     += v;
+    else                           gastosOutro    += v;
+  });
   updateCounts();
 }
 
