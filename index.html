@@ -2946,6 +2946,7 @@ function gerarRelatorioPDF() {
   // ── Dados da tabela ──
   var rawRest   = [];
   var rawStatus = [];
+  var rawObs    = [];
   var rows = [];
   var totVal = 0, totComp = 0, totPago = 0, totRest = 0;
 
@@ -2960,20 +2961,22 @@ function gerarRelatorioPDF() {
     totPago += vp;
     totRest += rest;
 
-    var st = statusOf(c.reg);
+    var st  = statusOf(c.reg);
+    var obs = (s.obs_pagamento || '').trim();
     rawRest.push(rest);
     rawStatus.push(st);
+    rawObs.push(obs);
 
     var stLabel = st.charAt(0).toUpperCase() + st.slice(1);
-    rows.push([c.nome, fmt(vm), fmt(vc), fmt(vp), fmt(rest), stLabel]);
+    rows.push([c.nome, fmt(vm), fmt(vc), fmt(vp), fmt(rest), stLabel, obs]);
   });
 
   // Linha de totais
-  rows.push(['TOTAL', fmt(totVal), fmt(totComp), fmt(totPago), fmt(totRest), '']);
+  rows.push(['TOTAL', fmt(totVal), fmt(totComp), fmt(totPago), fmt(totRest), '', '']);
 
   doc.autoTable({
     startY: 29,
-    head: [['Nome', 'Valor do Mês', 'Componente', 'Valor Pago', 'Restante', 'Status']],
+    head: [['Nome', 'Valor do Mês', 'Componente', 'Valor Pago', 'Restante', 'Status', 'Observação']],
     body: rows,
     theme: 'grid',
     headStyles: {
@@ -2985,12 +2988,13 @@ function gerarRelatorioPDF() {
     },
     bodyStyles: { fontSize: 8, cellPadding: 2.5 },
     columnStyles: {
-      0: { cellWidth: 72 },
-      1: { halign: 'right', cellWidth: 32 },
-      2: { halign: 'right', cellWidth: 32 },
-      3: { halign: 'right', cellWidth: 32 },
-      4: { halign: 'right', cellWidth: 32 },
-      5: { halign: 'center', cellWidth: 24 }
+      0: { cellWidth: 60 },
+      1: { halign: 'right', cellWidth: 27 },
+      2: { halign: 'right', cellWidth: 27 },
+      3: { halign: 'right', cellWidth: 27 },
+      4: { halign: 'right', cellWidth: 27 },
+      5: { halign: 'center', cellWidth: 22 },
+      6: { cellWidth: 'auto', fontStyle: 'italic', textColor: [100, 116, 139] }
     },
     alternateRowStyles: { fillColor: [245, 247, 250] },
     didParseCell: function(data) {
@@ -3011,6 +3015,11 @@ function gerarRelatorioPDF() {
           data.cell.styles.textColor = (stv === 'quitado' || stv === 'enviado' || stv === 'recebido')
             ? [22, 163, 74]
             : [220, 38, 38];
+        }
+        if (ci === 6 && rawObs[ri]) {
+          data.cell.styles.fontStyle  = 'italic';
+          data.cell.styles.textColor  = [71, 85, 105];
+          data.cell.styles.fontSize   = 7.5;
         }
       }
     }
