@@ -4824,6 +4824,10 @@ async function iaRunAction(p) {
   var where = p.where  || {};
   var res;
 
+  if (!IA_ALLOWED_COLS[table]) {
+    throw new Error('Tabela inválida retornada pelo modelo: "' + table + '". Tabelas permitidas: ' + Object.keys(IA_ALLOWED_COLS).join(', '));
+  }
+
   if (table === 'tarefas'       && !dados.data)        dados.data        = todayISO();
   if (table === 'inove_pedidos' && !dados.data_pedido) dados.data_pedido = todayISO();
   if (table === 'gastos_entrega' && !dados.data)       dados.data        = todayISO();
