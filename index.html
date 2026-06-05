@@ -4092,8 +4092,8 @@ function closeRelAndRun(fn) { fn(); }
 
 function gerarPagamentosPDF() {
   var { jsPDF } = window.jspdf;
-  var doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  var W = 210, margin = 14;
+  var doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  var W = 297, margin = 14;
   var mesNome = MESES[viewMonth];
   var titulo  = 'Relatório de Pagamentos — ' + mesNome + ' ' + viewYear;
 
@@ -4127,23 +4127,25 @@ function gerarPagamentosPDF() {
     rawRest.push(rest);
     rawStatus.push(st);
     var stLbl = rest <= 0 ? 'Quitado' : vp > 0 ? 'Parcial' : 'Pendente';
-    rows.push([c.nome, fmt(vm), fmt(vp), fmt(rest), stLbl]);
+    var obs   = (s.obs_pagamento || '').trim();
+    rows.push([c.nome, fmt(vm), fmt(vp), fmt(rest), stLbl, obs]);
   });
-  rows.push(['TOTAL', fmt(totVal), fmt(totPago), fmt(totRest), '']);
+  rows.push(['TOTAL', fmt(totVal), fmt(totPago), fmt(totRest), '', '']);
 
   doc.autoTable({
     startY: 36,
-    head: [['Cliente', 'A Receber', 'Pago', 'Restante', 'Status']],
+    head: [['Cliente', 'A Receber', 'Pago', 'Restante', 'Status', 'Observação']],
     body: rows,
     theme: 'grid',
     headStyles: { fillColor: [29, 78, 216], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9, cellPadding: 3 },
     bodyStyles: { fontSize: 8.5, cellPadding: 2.5 },
     columnStyles: {
-      0: { cellWidth: 80 },
+      0: { cellWidth: 85 },
       1: { halign: 'right', cellWidth: 30 },
       2: { halign: 'right', cellWidth: 30 },
       3: { halign: 'right', cellWidth: 30 },
-      4: { halign: 'center', cellWidth: 22 }
+      4: { halign: 'center', cellWidth: 22 },
+      5: { cellWidth: 'auto', textColor: [100, 116, 139], fontStyle: 'italic' }
     },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     didParseCell: function(data) {
