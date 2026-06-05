@@ -4715,16 +4715,17 @@ function iaStopMic() {
 var IA_SYSTEM_PROMPT = 'Você é um assistente de gestão de laboratório odontológico. Recebe comandos em linguagem natural e retorna APENAS um JSON válido (sem markdown, sem explicação extra) com a ação a executar.\n\n' +
 'Clientes disponíveis (use o campo reg como cliente_reg):\n{{CLIENTES}}\n\n' +
 'Mês atual: junho 2026 (mes=5, ano=2026). Mês anterior maio (mes=4).\n\n' +
-'Tabelas Supabase disponíveis:\n' +
+'Tabelas Supabase disponíveis — use SOMENTE as colunas listadas, sem campos extras:\n' +
 '- controle_mensal: {cliente_reg, mes, ano, valor_mes, valor_pago, valor_componente, obs_pagamento, recebido, enviado, quitado}\n' +
 '- tarefas: {texto, concluida, status, arquivada, cliente_reg, data} — status: pendente|em_execucao|concluida\n' +
-'- inove_pedidos: {descricao, cliente_reg, status, data_pedido} — status: pendente|em_execucao|finalizado\n' +
-'- pedidos: {descricao, cliente_reg, valor, data_prevista, status, observacao} — status: orcamento|producao|enviado|entregue|cancelado\n' +
-'- gastos_entrega: {valor, tipo, descricao, cliente_reg, mes, ano} — tipo: correio|motoboy|uber|outro\n' +
+'- inove_pedidos: {descricao, cliente_reg, status, data_pedido} — status: pendente|em_execucao|finalizado — para serviços Inove 3D\n' +
+'- pedidos: {descricao, cliente_reg, valor, data_prevista, status, observacao} — status: orcamento|producao|enviado|entregue|cancelado — para pedidos de laboratório\n' +
+'- gastos_entrega: {valor, tipo, descricao, data, cliente_reg, mes, ano} — tipo: correio|motoboy|uber|outro\n' +
 '- cadastro_clientes: {reg, nome, cpf, cro, end, bairro, cidade, uf, cep, tel, obs}\n\n' +
 'Operações suportadas: insert | update | upsert.\n' +
 'Para update e upsert inclua "where": {campo: valor} indicando o filtro.\n' +
-'Para controle_mensal sempre use upsert com where: {cliente_reg, mes, ano}.\n\n' +
+'Para controle_mensal sempre use upsert com where: {cliente_reg, mes, ano}.\n' +
+'IMPORTANTE: o campo "dados" deve conter APENAS colunas da tabela escolhida. Nunca inclua "cliente" (nome texto), "tipo_gasto" ou outros campos não listados.\n\n' +
 'Retorne EXATAMENTE este JSON (sem texto extra):\n' +
 '{"acao":"insert|update|upsert","tabela":"nome","dados":{campos},"where":{filtro_opcional},"mensagem":"confirmação em português"}\n\n' +
 'Se o comando for ambíguo ou inválido, retorne:\n' +
@@ -4800,6 +4801,23 @@ async function executeIA() {
   }
 }
 
+var IA_ALLOWED_COLS = {
+  controle_mensal:  ['cliente_reg','mes','ano','valor_mes','valor_pago','valor_componente','obs_pagamento','recebido','enviado','quitado'],
+  tarefas:          ['texto','concluida','status','arquivada','cliente_reg','data'],
+  inove_pedidos:    ['descricao','cliente_reg','status','data_pedido'],
+  pedidos:          ['descricao','cliente_reg','valor','data_prevista','status','observacao'],
+  gastos_entrega:   ['valor','tipo','descricao','data','cliente_reg','mes','ano'],
+  cadastro_clientes:['reg','nome','cpf','cro','end','bairro','cidade','uf','cep','tel','obs']
+};
+
+function iaFilterCols(table, obj) {
+  var allowed = IA_ALLOWED_COLS[table];
+  if (!allowed) return obj;
+  var out = {};
+  allowed.forEach(function(k) { if (obj[k] !== undefined) out[k] = obj[k]; });
+  return out;
+}
+
 async function iaRunAction(p) {
   var table = p.tabela;
   var dados = p.dados  || {};
@@ -4808,6 +4826,7 @@ async function iaRunAction(p) {
 
   if (table === 'tarefas'       && !dados.data)        dados.data        = todayISO();
   if (table === 'inove_pedidos' && !dados.data_pedido) dados.data_pedido = todayISO();
+  if (table === 'gastos_entrega' && !dados.data)       dados.data        = todayISO();
   if (table === 'controle_mensal') {
     if (dados.mes === undefined) dados.mes = currentMonth;
     if (dados.ano === undefined) dados.ano = currentYear;
@@ -4818,6 +4837,8 @@ async function iaRunAction(p) {
     if (dados.mes === undefined) dados.mes = viewMonth;
     if (dados.ano === undefined) dados.ano = viewYear;
   }
+
+  dados = iaFilterCols(table, dados);
 
   if (p.acao === 'insert') {
     res = await sb.from(table).insert(dados);
