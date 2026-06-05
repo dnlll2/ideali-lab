@@ -4628,6 +4628,7 @@ async function enviarComandoIA() {
     }
 
     var data = await resp.json();
+    console.log('[Gemini API] Resposta completa:', JSON.stringify(data, null, 2));
     var rawText = ((data.candidates[0].content.parts[0].text) || '').trim();
     // remove markdown code fences if present
     var jsonText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
