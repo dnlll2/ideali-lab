@@ -3929,13 +3929,19 @@ function toggleOrigemOutro() {
 }
 
 async function loadGastos() {
+  console.log('[loadGastos] Buscando: viewMonth=' + viewMonth + ' (' + (MESES[viewMonth]||viewMonth) + ') viewYear=' + viewYear + ' — filtro Supabase: mes=' + viewMonth + ' ano=' + viewYear);
   try {
     var res = await sb.from('gastos_entrega').select('*')
       .eq('mes', viewMonth).eq('ano', viewYear)
       .order('data', {ascending: false});
     if (res.error) throw res.error;
     gastos = res.data || [];
-    console.log('[loadGastos] ' + gastos.length + ' registro(s) carregado(s) para mes=' + viewMonth + ' ano=' + viewYear);
+    console.log('[loadGastos] Resultado: ' + gastos.length + ' registro(s). Erro: nenhum.');
+    if (gastos.length > 0) {
+      console.log('[loadGastos] Amostra (primeiro):', JSON.stringify(gastos[0]));
+    } else {
+      console.log('[loadGastos] Nenhum registro encontrado para mes=' + viewMonth + ' ano=' + viewYear);
+    }
   } catch(e) {
     console.error('[loadGastos] ERRO:', e.message || e);
     gastos = [];
