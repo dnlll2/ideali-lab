@@ -158,6 +158,23 @@ button{font-family:inherit;cursor:pointer}
   .task-item{padding:10px}
   .row-item{padding:11px 8px}
 }
+.ia-fab{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:#7c3aed;border:none;color:#fff;font-size:22px;cursor:pointer;z-index:600;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(124,58,237,0.5);transition:transform 0.2s,box-shadow 0.2s;line-height:1}
+.ia-fab:hover{transform:scale(1.1);box-shadow:0 6px 28px rgba(124,58,237,0.7)}
+#ia-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:601;opacity:0;pointer-events:none;transition:opacity 0.25s}
+#ia-overlay.open{opacity:1;pointer-events:all}
+#ia-panel{position:fixed;top:0;right:-500px;width:460px;max-width:96vw;height:100vh;background:#1a1d27;border-left:0.5px solid rgba(255,255,255,0.1);display:flex;flex-direction:column;z-index:602;transition:right 0.28s cubic-bezier(0.4,0,0.2,1)}
+#ia-panel.open{right:0}
+.ia-history-item{padding:10px 12px;border-radius:8px;background:#22263a;border:0.5px solid rgba(255,255,255,0.07);margin-bottom:8px;font-size:13px}
+.ia-history-cmd{color:#c4b5fd;font-weight:500;margin-bottom:4px;word-break:break-word}
+.ia-history-res{color:#94a3b8;font-size:12px;word-break:break-word}
+.ia-history-time{color:#4a5568;font-size:11px;margin-top:4px}
+.ia-mic-btn{width:36px;height:36px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s}
+.ia-mic-btn:hover{background:#2d3250;color:#e2e8f0}
+.ia-mic-btn.recording{background:#7c3aed;border-color:#7c3aed;color:#fff;animation:pulse 1s infinite}
+.ia-status{padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:4px;display:none;word-break:break-word}
+.ia-status.success{background:#0d3d2b;border:0.5px solid #22c55e;color:#4ade80;display:block}
+.ia-status.error{background:#3d1d1d;border:0.5px solid #ef4444;color:#fca5a5;display:block}
+.ia-status.loading{background:#1d3a6e;border:0.5px solid #3b82f6;color:#93c5fd;display:block}
 </style>
 </head>
 <body>
@@ -229,6 +246,13 @@ button{font-family:inherit;cursor:pointer}
     <p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Tema</p>
     <div id="sb-theme-picker" style="display:flex;flex-wrap:wrap;gap:8px"></div>
     <p id="sb-theme-name" style="font-size:11px;color:#4a5568;margin-top:8px"></p>
+    <div style="margin-top:14px;padding-top:12px;border-top:0.5px solid rgba(255,255,255,0.07)">
+      <p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:7px">Chave Groq (IA)</p>
+      <input type="password" id="sb-groq-key" placeholder="gsk_..." autocomplete="off"
+        style="width:100%;height:32px;font-size:12px"
+        oninput="saveGroqKey()">
+      <p id="sb-groq-status" style="font-size:11px;color:#4a5568;margin-top:4px"></p>
+    </div>
   </div>
 </div>
 
@@ -276,6 +300,46 @@ button{font-family:inherit;cursor:pointer}
     <span id="conn-error-msg" style="font-size:12px;color:#ef4444"></span>
   </div>
   <button onclick="document.getElementById('conn-error').style.display='none'" style="margin-left:auto;background:none;border:none;color:#64748b;font-size:18px;line-height:1;padding:0 4px">x</button>
+</div>
+
+<button class="ia-fab" onclick="openIAPanel()" title="Comando Rápido IA">⚡</button>
+
+<div id="ia-overlay" onclick="closeIAPanel()"></div>
+<div id="ia-panel">
+  <div class="cp-header">
+    <div style="width:36px;height:36px;border-radius:10px;background:#2e1d6e;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">⚡</div>
+    <div style="flex:1;min-width:0;margin-left:10px">
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9">Comando Rápido IA</p>
+      <p style="font-size:11px;color:#64748b;margin-top:2px">Groq · llama-3.3-70b-versatile</p>
+    </div>
+    <button class="sb-close" onclick="closeIAPanel()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="cp-body" style="display:flex;flex-direction:column;gap:12px">
+    <div>
+      <p class="label" style="margin-bottom:6px">Comando</p>
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <textarea id="ia-input" placeholder="Ex: Cria tarefa urgente para o Ricardo Cader&#10;Ex: Marca o Bruno Rocco como recebido em junho&#10;Ex: Registra gasto de R$ 15 de motoboy"
+          style="flex:1;min-height:90px;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:10px;font-size:14px;background:#22263a;color:#e2e8f0;outline:none;font-family:inherit;resize:vertical;line-height:1.5"
+          onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey))executeIA()"></textarea>
+        <button class="ia-mic-btn" id="ia-mic-btn" onclick="iaToggleMic()" title="Gravar áudio (pt-BR)">
+          <i class="ti ti-microphone"></i>
+        </button>
+      </div>
+      <p id="ia-mic-label" style="font-size:11px;color:#4a5568;margin-top:4px;min-height:16px"></p>
+    </div>
+    <button onclick="executeIA()" id="ia-exec-btn"
+      style="width:100%;height:40px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;transition:filter 0.15s">
+      <i class="ti ti-bolt"></i> Executar <span style="font-size:11px;opacity:0.65">(Ctrl+Enter)</span>
+    </button>
+    <div id="ia-status" class="ia-status"></div>
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <p class="label" style="margin-bottom:0">Histórico</p>
+        <button onclick="iaClearHistory()" style="font-size:11px;color:#4a5568;background:none;border:none;cursor:pointer;padding:0">Limpar</button>
+      </div>
+      <div id="ia-history" style="max-height:320px;overflow-y:auto"></div>
+    </div>
+  </div>
 </div>
 
 <div style="max-width:100%">
@@ -4924,6 +4988,256 @@ async function confirmImportCorreios() {
   closeImportCorreios();
   await loadGastos();
 }
+
+// ── Comando Rápido IA ────────────────────────────────────────────
+
+var GROQ_API_KEY = localStorage.getItem('ideali-groq-key') || '';
+var iaHistory    = JSON.parse(localStorage.getItem('ideali-ia-history') || '[]');
+var iaMicActive  = false;
+var iaSpeechRec  = null;
+
+function saveGroqKey() {
+  var el = document.getElementById('sb-groq-key');
+  if (!el) return;
+  GROQ_API_KEY = el.value.trim();
+  localStorage.setItem('ideali-groq-key', GROQ_API_KEY);
+  var st = document.getElementById('sb-groq-status');
+  if (st) st.textContent = GROQ_API_KEY ? '✓ Chave salva' : '';
+}
+
+function openIAPanel() {
+  document.getElementById('ia-overlay').classList.add('open');
+  document.getElementById('ia-panel').classList.add('open');
+  var keyEl = document.getElementById('sb-groq-key');
+  if (keyEl) { keyEl.value = GROQ_API_KEY; }
+  renderIAHistory();
+  setTimeout(function() { var el = document.getElementById('ia-input'); if (el) el.focus(); }, 300);
+}
+
+function closeIAPanel() {
+  document.getElementById('ia-overlay').classList.remove('open');
+  document.getElementById('ia-panel').classList.remove('open');
+  iaStopMic();
+}
+
+function iaSetStatus(msg, type) {
+  var el = document.getElementById('ia-status');
+  if (!el) return;
+  el.className = 'ia-status' + (type ? ' ' + type : '');
+  el.textContent = msg;
+}
+
+function iaToggleMic() {
+  if (iaMicActive) { iaStopMic(); return; }
+  iaStartMic();
+}
+
+function iaStartMic() {
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { iaSetStatus('Reconhecimento de voz não suportado neste navegador.', 'error'); return; }
+  iaSpeechRec = new SR();
+  iaSpeechRec.lang = 'pt-BR';
+  iaSpeechRec.continuous = false;
+  iaSpeechRec.interimResults = false;
+  iaSpeechRec.onresult = function(e) {
+    var text = e.results[0][0].transcript;
+    var inp  = document.getElementById('ia-input');
+    if (inp) inp.value = (inp.value ? inp.value + ' ' : '') + text;
+    iaStopMic();
+  };
+  iaSpeechRec.onerror = function(e) {
+    iaSetStatus('Erro no microfone: ' + e.error, 'error');
+    iaStopMic();
+  };
+  iaSpeechRec.onend = function() { if (iaMicActive) iaStopMic(); };
+  iaSpeechRec.start();
+  iaMicActive = true;
+  var btn = document.getElementById('ia-mic-btn');
+  if (btn) btn.classList.add('recording');
+  var lbl = document.getElementById('ia-mic-label');
+  if (lbl) lbl.textContent = '🔴 Gravando… fale seu comando em português';
+}
+
+function iaStopMic() {
+  if (iaSpeechRec) { try { iaSpeechRec.stop(); } catch(e){} iaSpeechRec = null; }
+  iaMicActive = false;
+  var btn = document.getElementById('ia-mic-btn');
+  if (btn) btn.classList.remove('recording');
+  var lbl = document.getElementById('ia-mic-label');
+  if (lbl) lbl.textContent = '';
+}
+
+var IA_SYSTEM_PROMPT = 'Você é um assistente de gestão de laboratório odontológico. Recebe comandos em linguagem natural e retorna APENAS um JSON válido (sem markdown, sem explicação extra) com a ação a executar.\n\n' +
+'Clientes disponíveis (use o campo reg como cliente_reg):\n{{CLIENTES}}\n\n' +
+'Mês atual: junho 2026 (mes=5, ano=2026). Mês anterior maio (mes=4).\n\n' +
+'Tabelas Supabase disponíveis:\n' +
+'- controle_mensal: {cliente_reg, mes, ano, valor_mes, valor_pago, valor_componente, obs_pagamento, recebido, enviado, quitado}\n' +
+'- tarefas: {texto, concluida, status, arquivada, cliente_reg, data} — status: pendente|em_execucao|concluida\n' +
+'- inove_pedidos: {descricao, cliente_reg, status, data_pedido} — status: pendente|em_execucao|finalizado\n' +
+'- pedidos: {descricao, cliente_reg, valor, data_prevista, status, observacao} — status: orcamento|producao|enviado|entregue|cancelado\n' +
+'- gastos_entrega: {valor, tipo, descricao, cliente_reg, mes, ano} — tipo: correio|motoboy|uber|outro\n' +
+'- cadastro_clientes: {reg, nome, cpf, cro, end, bairro, cidade, uf, cep, tel, obs}\n\n' +
+'Operações suportadas: insert | update | upsert.\n' +
+'Para update e upsert inclua "where": {campo: valor} indicando o filtro.\n' +
+'Para controle_mensal sempre use upsert com where: {cliente_reg, mes, ano}.\n\n' +
+'Retorne EXATAMENTE este JSON (sem texto extra):\n' +
+'{"acao":"insert|update|upsert","tabela":"nome","dados":{campos},"where":{filtro_opcional},"mensagem":"confirmação em português"}\n\n' +
+'Se o comando for ambíguo ou inválido, retorne:\n' +
+'{"acao":"erro","tabela":"","dados":{},"mensagem":"explicação em português"}';
+
+async function executeIA() {
+  var inp = document.getElementById('ia-input');
+  var btn = document.getElementById('ia-exec-btn');
+  if (!inp) return;
+  var prompt = inp.value.trim();
+  if (!prompt) { iaSetStatus('Digite um comando primeiro.', 'error'); return; }
+  if (!GROQ_API_KEY) {
+    iaSetStatus('Configure a chave Groq no menu lateral (⚙️ Chave Groq).', 'error');
+    return;
+  }
+
+  btn.disabled = true; btn.style.opacity = '0.55';
+  iaSetStatus('⏳ Processando com IA…', 'loading');
+  iaStopMic();
+
+  var clientList = clients.map(function(c) { return c.reg + ': ' + c.nome; }).join('\n');
+  var systemPrompt = IA_SYSTEM_PROMPT.replace('{{CLIENTES}}', clientList);
+
+  try {
+    var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + GROQ_API_KEY
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user',   content: prompt }
+        ],
+        max_tokens: 1000,
+        temperature: 0.1
+      })
+    });
+
+    if (!res.ok) {
+      var errData = {}; try { errData = await res.json(); } catch(e2) {}
+      var msg = (errData.error && errData.error.message) ? errData.error.message : 'Erro HTTP ' + res.status;
+      throw new Error(msg);
+    }
+
+    var data = await res.json();
+    var raw  = data.choices[0].message.content.trim();
+    raw = raw.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+    var parsed;
+    try { parsed = JSON.parse(raw); }
+    catch(e3) { throw new Error('Resposta inválida da IA: ' + raw.substring(0, 120)); }
+
+    if (parsed.acao === 'erro') {
+      iaSetStatus('⚠️ ' + parsed.mensagem, 'error');
+      iaAddToHistory(prompt, parsed.mensagem, false);
+      return;
+    }
+
+    await iaRunAction(parsed);
+    iaSetStatus('✅ ' + parsed.mensagem, 'success');
+    iaAddToHistory(prompt, parsed.mensagem, true);
+    inp.value = '';
+
+  } catch(e) {
+    console.error('[IA]', e);
+    iaSetStatus('❌ ' + (e.message || 'Falha na requisição'), 'error');
+    iaAddToHistory(prompt, 'Erro: ' + (e.message || 'desconhecido'), false);
+  } finally {
+    btn.disabled = false; btn.style.opacity = '';
+  }
+}
+
+async function iaRunAction(p) {
+  var table = p.tabela;
+  var dados = p.dados  || {};
+  var where = p.where  || {};
+  var res;
+
+  if (table === 'tarefas'       && !dados.data)        dados.data        = todayISO();
+  if (table === 'inove_pedidos' && !dados.data_pedido) dados.data_pedido = todayISO();
+  if (table === 'controle_mensal') {
+    if (dados.mes === undefined) dados.mes = currentMonth;
+    if (dados.ano === undefined) dados.ano = currentYear;
+    if (where.mes === undefined) where.mes = dados.mes;
+    if (where.ano === undefined) where.ano = dados.ano;
+  }
+  if (table === 'gastos_entrega') {
+    if (dados.mes === undefined) dados.mes = viewMonth;
+    if (dados.ano === undefined) dados.ano = viewYear;
+  }
+
+  if (p.acao === 'insert') {
+    res = await sb.from(table).insert(dados);
+  } else if (p.acao === 'update') {
+    var q = sb.from(table).update(dados);
+    Object.keys(where).forEach(function(k) { q = q.eq(k, where[k]); });
+    res = await q;
+  } else if (p.acao === 'upsert') {
+    var conflictCols = Object.keys(where).join(',') || undefined;
+    var payload = Object.assign({}, dados, where);
+    res = await sb.from(table).upsert(payload, conflictCols ? { onConflict: conflictCols } : undefined);
+  } else {
+    throw new Error('Ação não reconhecida: ' + p.acao);
+  }
+
+  if (res && res.error) throw new Error(res.error.message);
+
+  if (table === 'tarefas')         { await loadTarefas(); }
+  if (table === 'inove_pedidos')   { await loadInovePedidos(); }
+  if (table === 'pedidos')         { await loadPedidos(); }
+  if (table === 'gastos_entrega')  { await loadGastos(); }
+  if (table === 'controle_mensal') { dbState = await loadMonthData(viewMonth, viewYear); renderClientList(); renderDetail(selected); }
+  if (table === 'cadastro_clientes') { await loadCadastroClientes(); }
+}
+
+function iaAddToHistory(cmd, result, ok) {
+  var now  = new Date();
+  var time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  iaHistory.unshift({ cmd: cmd, result: result, ok: ok, time: time });
+  if (iaHistory.length > 10) iaHistory.pop();
+  try { localStorage.setItem('ideali-ia-history', JSON.stringify(iaHistory)); } catch(e) {}
+  renderIAHistory();
+}
+
+function iaClearHistory() {
+  iaHistory = [];
+  try { localStorage.removeItem('ideali-ia-history'); } catch(e) {}
+  renderIAHistory();
+}
+
+function renderIAHistory() {
+  var el = document.getElementById('ia-history');
+  if (!el) return;
+  if (!iaHistory.length) {
+    el.innerHTML = '<p style="font-size:13px;color:#4a5568;text-align:center;padding:16px 0">Nenhum comando executado ainda.</p>';
+    return;
+  }
+  el.innerHTML = iaHistory.map(function(h) {
+    return '<div class="ia-history-item">' +
+      '<div class="ia-history-cmd">' + escHtml(h.cmd) + '</div>' +
+      '<div class="ia-history-res" style="color:' + (h.ok ? '#4ade80' : '#fca5a5') + '">' + escHtml(h.result) + '</div>' +
+      '<div class="ia-history-time">' + escHtml(h.time) + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+// Populate GROQ key field after DOM is ready
+(function() {
+  function tryInitKey() {
+    var el = document.getElementById('sb-groq-key');
+    if (el) { if (GROQ_API_KEY) el.value = GROQ_API_KEY; return; }
+    setTimeout(tryInitKey, 400);
+  }
+  tryInitKey();
+})();
 </script>
 </body>
 </html>
