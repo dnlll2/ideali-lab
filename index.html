@@ -3902,15 +3902,24 @@ var GASTO_TIPOS = {
   outro:   { label:'Outro',   icon:'📌', bg:'rgba(148,163,184,0.15)', border:'rgba(148,163,184,0.5)', color:'#94a3b8' }
 };
 
+function gastoDefaultDate() {
+  // Se o mês visualizado for o mês atual usa hoje; caso contrário usa o dia 1 do mês
+  if (viewMonth === currentMonth && viewYear === currentYear) return todayISO();
+  var m = String(viewMonth + 1).padStart(2, '0');
+  return viewYear + '-' + m + '-01';
+}
+
 function switchToGastos() {
   hideAllViews();
   viewMode = 'gastos';
   document.getElementById('gastos-view').style.display = '';
   updateSidebarActive();
+  // Data padrão alinhada ao mês/ano visualizado
   var di = document.getElementById('gasto-data');
-  if (di && !di.value) di.value = todayISO();
+  if (di) di.value = gastoDefaultDate();
   toggleOrigemOutro();
-  renderGastos();
+  // Recarrega sempre do banco para garantir que reflete o viewMonth/viewYear atual
+  loadGastos();
 }
 
 function toggleOrigemOutro() {
@@ -3932,7 +3941,12 @@ async function loadGastos() {
     gastos = [];
   }
   updateFretesMesFromGastos();
-  if (viewMode === 'gastos') renderGastos();
+  if (viewMode === 'gastos') {
+    // Sincroniza a data padrão do formulário com o mês carregado
+    var di = document.getElementById('gasto-data');
+    if (di) di.value = gastoDefaultDate();
+    renderGastos();
+  }
 }
 
 function updateFretesMesFromGastos() {
