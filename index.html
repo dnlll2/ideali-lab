@@ -679,7 +679,10 @@ button{font-family:inherit;cursor:pointer}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
       <div>
         <p style="font-size:20px;font-weight:600;color:#f1f5f9">🛵 Gastos Motoboy/Uber</p>
-        <p style="font-size:13px;color:#64748b;margin-top:2px" id="gastos-mes-label">Carregando...</p>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:5px">
+          <i class="ti ti-calendar" style="font-size:13px;color:#64748b"></i>
+          <select id="gastos-mes-select" onchange="onGastosMesChange()" style="height:28px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#93c5fd;font-size:12px;padding:0 8px;cursor:pointer;font-family:inherit"></select>
+        </div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <button onclick="openImportCorreios()" style="height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(96,165,250,0.4);background:rgba(96,165,250,0.08);color:#60a5fa;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;white-space:nowrap">📋 Importar Extrato Correios</button>
@@ -939,6 +942,8 @@ var arquivadasOpen = false;
 var fretesMes        = 0;
 var outrosDescontos  = 0;
 var gastos           = [];
+var gastosMonth      = currentMonth;  // mês independente da tela de Gastos (0-indexed)
+var gastosYear       = currentYear;   // ano independente da tela de Gastos
 var gastosCorreio    = 0;
 var gastosMotoboy    = 0;
 var gastosUber       = 0;
@@ -1292,7 +1297,7 @@ async function switchMonth(m, y) {
   renderMonthTabs(); updateCounts(); doFilter();
   loadFretesMes();
   loadTarefasAbertas();
-  loadGastos();
+  reloadGastosFooter(viewMonth, viewYear);
   document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Selecione um cliente</p></div>';
 }
 
@@ -2600,7 +2605,7 @@ async function init() {
   renderMonthTabs(); updateCounts(); doFilter();
   loadFretesMes();
   loadTarefasAbertas();
-  loadGastos();
+  reloadGastosFooter(viewMonth, viewYear);
   loadCadastroClientes();
 }
 
@@ -3757,8 +3762,8 @@ function gerarGastosPDF() {
 
   var doc    = new jspdf.jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
   var W      = 210, margin = 14;
-  var mesNome = MESES[viewMonth] || ('Mês ' + (viewMonth + 1));
-  var titulo = 'Relatório de Gastos — ' + mesNome + ' ' + viewYear;
+  var mesNome = MESES[gastosMonth] || ('Mês ' + (gastosMonth + 1));
+  var titulo = 'Relatório de Gastos — ' + mesNome + ' ' + gastosYear;
 
   // ── Header ──
   doc.setFillColor(15, 17, 23);
@@ -3902,11 +3907,55 @@ var GASTO_TIPOS = {
   outro:   { label:'Outro',   icon:'📌', bg:'rgba(148,163,184,0.15)', border:'rgba(148,163,184,0.5)', color:'#94a3b8' }
 };
 
+function buildGastosMesSelect() {
+  var sel = document.getElementById('gastos-mes-select');
+  if (!sel) return;
+  sel.innerHTML = '';
+  // Últimos 6 meses + mês atual (7 opções)
+  for (var i = 6; i >= 0; i--) {
+    var m = currentMonth - i;
+    var y = currentYear;
+    while (m < 0) { m += 12; y--; }
+    var opt = document.createElement('option');
+    opt.value = m + ',' + y;
+    opt.textContent = (MESES[m] || m) + ' ' + y;
+    if (m === gastosMonth && y === gastosYear) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+function onGastosMesChange() {
+  var sel = document.getElementById('gastos-mes-select');
+  if (!sel) return;
+  var parts = sel.value.split(',');
+  gastosMonth = parseInt(parts[0]);
+  gastosYear  = parseInt(parts[1]);
+  loadGastos();
+}
+
+async function reloadGastosFooter(m, y) {
+  try {
+    var res = await sb.from('gastos_entrega').select('tipo,valor').eq('mes', m).eq('ano', y);
+    if (!res.error) {
+      var gc = 0, gm = 0, gu = 0, go = 0;
+      (res.data || []).forEach(function(g) {
+        var v = Number(g.valor) || 0;
+        if (g.tipo === 'correio')      gc += v;
+        else if (g.tipo === 'motoboy') gm += v;
+        else if (g.tipo === 'uber')    gu += v;
+        else                           go += v;
+      });
+      gastosCorreio = gc; gastosMotoboy = gm; gastosUber = gu; gastosOutro = go;
+      fretesMes = gc + gm + gu + go;
+      updateCounts();
+    }
+  } catch(e) { console.warn('[reloadGastosFooter]', e.message || e); }
+}
+
 function gastoDefaultDate() {
-  // Se o mês visualizado for o mês atual usa hoje; caso contrário usa o dia 1 do mês
-  if (viewMonth === currentMonth && viewYear === currentYear) return todayISO();
-  var m = String(viewMonth + 1).padStart(2, '0');
-  return viewYear + '-' + m + '-01';
+  if (gastosMonth === currentMonth && gastosYear === currentYear) return todayISO();
+  var m = String(gastosMonth + 1).padStart(2, '0');
+  return gastosYear + '-' + m + '-01';
 }
 
 function switchToGastos() {
@@ -3914,11 +3963,10 @@ function switchToGastos() {
   viewMode = 'gastos';
   document.getElementById('gastos-view').style.display = '';
   updateSidebarActive();
-  // Data padrão alinhada ao mês/ano visualizado
+  buildGastosMesSelect();
   var di = document.getElementById('gasto-data');
   if (di) di.value = gastoDefaultDate();
   toggleOrigemOutro();
-  // Recarrega sempre do banco para garantir que reflete o viewMonth/viewYear atual
   loadGastos();
 }
 
@@ -3929,18 +3977,18 @@ function toggleOrigemOutro() {
 }
 
 async function loadGastos() {
-  console.log('[loadGastos] Buscando: viewMonth=' + viewMonth + ' (' + (MESES[viewMonth]||viewMonth) + ') viewYear=' + viewYear + ' — filtro Supabase: mes=' + viewMonth + ' ano=' + viewYear);
+  console.log('[loadGastos] Buscando: gastosMonth=' + gastosMonth + ' (' + (MESES[gastosMonth]||gastosMonth) + ') gastosYear=' + gastosYear + ' — filtro Supabase: mes=' + gastosMonth + ' ano=' + gastosYear);
   try {
     var res = await sb.from('gastos_entrega').select('*')
-      .eq('mes', viewMonth).eq('ano', viewYear)
+      .eq('mes', gastosMonth).eq('ano', gastosYear)
       .order('data', {ascending: false});
     if (res.error) throw res.error;
     gastos = res.data || [];
-    console.log('[loadGastos] Resultado: ' + gastos.length + ' registro(s). Erro: nenhum.');
+    console.log('[loadGastos] Resultado: ' + gastos.length + ' registro(s) para mes=' + gastosMonth + ' ano=' + gastosYear);
     if (gastos.length > 0) {
       console.log('[loadGastos] Amostra (primeiro):', JSON.stringify(gastos[0]));
     } else {
-      console.log('[loadGastos] Nenhum registro encontrado para mes=' + viewMonth + ' ano=' + viewYear);
+      console.log('[loadGastos] Nenhum registro para mes=' + gastosMonth + ' ano=' + gastosYear);
     }
   } catch(e) {
     console.error('[loadGastos] ERRO:', e.message || e);
@@ -3971,7 +4019,7 @@ var GASTOS_TIPO_ORDER = ['correio', 'motoboy', 'uber', 'outro'];
 
 function renderGastos() {
   var label = document.getElementById('gastos-mes-label');
-  if (label) label.textContent = (MESES[viewMonth] || viewMonth) + ' ' + viewYear;
+  if (label) label.textContent = (MESES[gastosMonth] || gastosMonth) + ' ' + gastosYear;
 
   var total = 0;
   gastos.forEach(function(g) { total += Number(g.valor) || 0; });
@@ -4055,7 +4103,7 @@ async function addGasto() {
   var btn = document.getElementById('btn-add-gasto');
   if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
 
-  var payload = { descricao: desc, valor: valor, tipo: tipo, data: dataVal, mes: viewMonth, ano: viewYear, origem: origem };
+  var payload = { descricao: desc, valor: valor, tipo: tipo, data: dataVal, mes: gastosMonth, ano: gastosYear, origem: origem };
   var res = await sb.from('gastos_entrega').insert(payload);
 
   // Fallback: coluna origem ainda não existe — salva sem ela
@@ -4275,7 +4323,7 @@ function parseImportCorreios(textArg) {
     var dest  = (cols[iDest] || '').trim();
     var valor = parseValorImp(cols[iValor]);
     if (!data || !dest || valor <= 0) { erros++; continue; }
-    importRows.push({ data: data, descricao: 'Correio - ' + dest, valor: valor, tipo: 'correio', mes: viewMonth, ano: viewYear });
+    importRows.push({ data: data, descricao: 'Correio - ' + dest, valor: valor, tipo: 'correio', mes: gastosMonth, ano: gastosYear });
   }
 
   if (!importRows.length) {
