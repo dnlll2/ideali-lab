@@ -946,12 +946,12 @@ button{font-family:inherit;cursor:pointer}
       </div>
       <!-- Aviso de chave API -->
       <div id="ia-apikey-wrap" style="display:none;background:#2a2010;border:0.5px solid rgba(251,191,36,0.35);border-radius:8px;padding:12px 14px">
-        <p style="font-size:13px;color:#fbbf24;margin-bottom:8px;font-weight:500">⚠️ Configure a chave da API do Claude</p>
+        <p style="font-size:13px;color:#fbbf24;margin-bottom:8px;font-weight:500">⚠️ Configure a chave da API do Google Gemini (gratuita)</p>
         <div style="display:flex;gap:8px;align-items:center">
-          <input type="password" id="ia-apikey-input" placeholder="sk-ant-api03-..." style="flex:1;height:38px;font-size:13px">
+          <input type="password" id="ia-apikey-input" placeholder="AIzaSy..." style="flex:1;height:38px;font-size:13px">
           <button onclick="salvarChaveClaude()" style="height:38px;padding:0 14px;border-radius:8px;border:none;background:#1d4ed8;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap">Salvar</button>
         </div>
-        <p style="font-size:11px;color:#64748b;margin-top:6px">A chave fica salva localmente no navegador (localStorage), não vai para o servidor.</p>
+        <p style="font-size:11px;color:#64748b;margin-top:6px">Chave gratuita em <strong style="color:#93c5fd">aistudio.google.com/app/apikey</strong> — salva localmente no navegador, não vai ao servidor.</p>
       </div>
       <!-- Resultado -->
       <div id="ia-result" style="display:none"></div>
@@ -4469,13 +4469,13 @@ async function saveEditGasto() {
 
 // ── Comando Rápido IA ─────────────────────────────────────────
 
-var CLAUDE_API_KEY = localStorage.getItem('ideali_claude_key') || '';
+var GEMINI_API_KEY = localStorage.getItem('ideali_gemini_key') || '';
 var iaRecognition = null;
 var iaListening   = false;
 var iaHistory     = JSON.parse(localStorage.getItem('ideali_ia_history') || '[]');
 
 function openComandoIA() {
-  CLAUDE_API_KEY = localStorage.getItem('ideali_claude_key') || '';
+  GEMINI_API_KEY = localStorage.getItem('ideali_gemini_key') || '';
   document.getElementById('ia-overlay').classList.add('open');
   document.getElementById('ia-panel').classList.add('open');
   document.getElementById('ia-input').value = '';
@@ -4483,7 +4483,7 @@ function openComandoIA() {
   document.getElementById('ia-mic-status').textContent = '';
   var apWrap = document.getElementById('ia-apikey-wrap');
   var apInp  = document.getElementById('ia-apikey-input');
-  if (!CLAUDE_API_KEY) {
+  if (!GEMINI_API_KEY) {
     apWrap.style.display = '';
     if (apInp) apInp.value = '';
   } else {
@@ -4502,8 +4502,8 @@ function closeComandoIA() {
 function salvarChaveClaude() {
   var v = (document.getElementById('ia-apikey-input').value || '').trim();
   if (!v) return;
-  localStorage.setItem('ideali_claude_key', v);
-  CLAUDE_API_KEY = v;
+  localStorage.setItem('ideali_gemini_key', v);
+  GEMINI_API_KEY = v;
   document.getElementById('ia-apikey-wrap').style.display = 'none';
 }
 
@@ -4578,8 +4578,8 @@ async function enviarComandoIA() {
     document.getElementById('ia-input').focus();
     return;
   }
-  CLAUDE_API_KEY = localStorage.getItem('ideali_claude_key') || '';
-  if (!CLAUDE_API_KEY) {
+  GEMINI_API_KEY = localStorage.getItem('ideali_gemini_key') || '';
+  if (!GEMINI_API_KEY) {
     document.getElementById('ia-apikey-wrap').style.display = '';
     document.getElementById('ia-apikey-input').focus();
     return;
@@ -4605,19 +4605,14 @@ async function enviarComandoIA() {
     + '- Retorne JSON puro, sem blocos de código.';
 
   try {
-    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+    var geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY;
+    var resp = await fetch(geminiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 512,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: input }]
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ parts: [{ text: input }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 512 }
       })
     });
 
@@ -4625,11 +4620,13 @@ async function enviarComandoIA() {
       var errText = await resp.text();
       var errObj = {};
       try { errObj = JSON.parse(errText); } catch(e2) {}
-      throw new Error((errObj.error && errObj.error.message) || ('HTTP ' + resp.status + ': ' + errText.substring(0, 200)));
+      var errMsg = (errObj.error && errObj.error.message) || ('HTTP ' + resp.status + ': ' + errText.substring(0, 200));
+      if (resp.status === 400 && errMsg.includes('API_KEY')) throw new Error('Chave de API inválida. Verifique em aistudio.google.com/app/apikey');
+      throw new Error(errMsg);
     }
 
     var data = await resp.json();
-    var rawText = (data.content[0].text || '').trim();
+    var rawText = ((data.candidates[0].content.parts[0].text) || '').trim();
     // remove markdown code fences if present
     var jsonText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
     var parsed = JSON.parse(jsonText);
