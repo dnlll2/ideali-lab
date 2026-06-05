@@ -196,13 +196,9 @@ button{font-family:inherit;cursor:pointer}
       <span>Gerador de Cobrança</span>
     </div>
     <div class="sb-divider"></div>
-    <div class="sb-item" onclick="closeSidebar();gerarRelatorioPDF()">
-      <div class="sb-icon">📄</div>
-      <span>Relatório PDF</span>
-    </div>
-    <div class="sb-item" onclick="closeSidebar();gerarRelatorioClientes()">
-      <div class="sb-icon">👥</div>
-      <span>Relatório Clientes</span>
+    <div class="sb-item" id="sb-relatorios" onclick="sbNav('relatorios')">
+      <div class="sb-icon">📊</div>
+      <span>Relatórios</span>
     </div>
     <div class="sb-divider"></div>
     <div class="sb-item" id="sb-recibo" onclick="sbNav('recibo')">
@@ -700,6 +696,12 @@ button{font-family:inherit;cursor:pointer}
     <div class="card" style="padding:1rem;margin-bottom:1rem">
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
         <div>
+          <p class="label" style="margin-bottom:4px">Cliente (opcional)</p>
+          <select id="gasto-cliente" style="height:36px;width:160px" onchange="onGastoClienteChange()">
+            <option value="">— Nenhum/Geral —</option>
+          </select>
+        </div>
+        <div>
           <p class="label" style="margin-bottom:4px">Data</p>
           <input type="date" id="gasto-data" style="height:36px;width:130px">
         </div>
@@ -794,6 +796,50 @@ button{font-family:inherit;cursor:pointer}
   </div><!-- /gastos-edit-wrap -->
 
   </div><!-- /gastos-view -->
+
+  <div id="relatorios-view" style="display:none">
+    <div style="margin-bottom:1.5rem">
+      <p style="font-size:20px;font-weight:600;color:#f1f5f9">📊 Relatórios</p>
+      <p style="font-size:13px;color:#64748b;margin-top:2px">Gere e exporte relatórios — mês: <span id="rel-mes-label"></span></p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px">
+      <div onclick="closeRelAndRun(gerarRelatorioPDF)" class="card" style="cursor:pointer;padding:1.25rem;transition:background 0.15s" onmouseover="this.style.background='#22263a'" onmouseout="this.style.background=''">
+        <div style="font-size:28px;margin-bottom:10px">📄</div>
+        <p style="font-size:14px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Relatório Mensal</p>
+        <p style="font-size:12px;color:#64748b">Clientes, valores, status e comissão do mês</p>
+      </div>
+      <div onclick="closeRelAndRun(gerarPagamentosPDF)" class="card" style="cursor:pointer;padding:1.25rem;transition:background 0.15s" onmouseover="this.style.background='#22263a'" onmouseout="this.style.background=''">
+        <div style="font-size:28px;margin-bottom:10px">💳</div>
+        <p style="font-size:14px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Relatório de Pagamentos</p>
+        <p style="font-size:12px;color:#64748b">Sem comissão — ideal para compartilhar externamente</p>
+      </div>
+      <div onclick="closeRelAndRun(gerarRelatorioClientes)" class="card" style="cursor:pointer;padding:1.25rem;transition:background 0.15s" onmouseover="this.style.background='#22263a'" onmouseout="this.style.background=''">
+        <div style="font-size:28px;margin-bottom:10px">👥</div>
+        <p style="font-size:14px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Cadastro de Clientes</p>
+        <p style="font-size:12px;color:#64748b">Lista completa de clientes cadastrados</p>
+      </div>
+      <div onclick="sbNav('orcamento')" class="card" style="cursor:pointer;padding:1.25rem;transition:background 0.15s" onmouseover="this.style.background='#22263a'" onmouseout="this.style.background=''">
+        <div style="font-size:28px;margin-bottom:10px">💰</div>
+        <p style="font-size:14px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Gerador de Orçamento</p>
+        <p style="font-size:12px;color:#64748b">Crie orçamentos profissionais em PDF</p>
+      </div>
+      <div onclick="sbNav('cobranca')" class="card" style="cursor:pointer;padding:1.25rem;transition:background 0.15s" onmouseover="this.style.background='#22263a'" onmouseout="this.style.background=''">
+        <div style="font-size:28px;margin-bottom:10px">📋</div>
+        <p style="font-size:14px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Gerador de Cobrança</p>
+        <p style="font-size:12px;color:#64748b">Emita documentos de cobrança em PDF</p>
+      </div>
+      <div onclick="sbNav('recibo')" class="card" style="cursor:pointer;padding:1.25rem;transition:background 0.15s" onmouseover="this.style.background='#22263a'" onmouseout="this.style.background=''">
+        <div style="font-size:28px;margin-bottom:10px">🧾</div>
+        <p style="font-size:14px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Recibo de Pagamento</p>
+        <p style="font-size:12px;color:#64748b">Gere recibos de pagamento em PDF</p>
+      </div>
+      <div onclick="sbNav('gastos');setTimeout(gerarGastosPDF,400)" class="card" style="cursor:pointer;padding:1.25rem;transition:background 0.15s" onmouseover="this.style.background='#22263a'" onmouseout="this.style.background=''">
+        <div style="font-size:28px;margin-bottom:10px">📦</div>
+        <p style="font-size:14px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Relatório de Gastos</p>
+        <p style="font-size:12px;color:#64748b">Motoboy, Uber, Correio e outros por tipo</p>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal: Importar Extrato Correios -->
   <div id="import-correios-overlay" onclick="closeImportCorreios()"></div>
@@ -1288,7 +1334,7 @@ async function switchMonth(m, y) {
   document.getElementById('tarefas-view').style.display    = 'none';
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'none';
-  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView();
+  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
   viewMonth = m; viewYear = y; selected = null; historicoEditMode = false;
   document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Carregando...</p></div>';
   var loadedData = await loadMonthData(m, y);
@@ -1464,7 +1510,7 @@ function closeSidebar() {
   document.getElementById('sidebar-overlay').classList.remove('open');
 }
 function updateSidebarActive() {
-  ['clientes','tarefas','inove','dashboard','cadastro','pedidos','orcamento','cobranca','recibo','gastos'].forEach(function(v) {
+  ['clientes','tarefas','inove','dashboard','cadastro','pedidos','orcamento','cobranca','recibo','gastos','relatorios'].forEach(function(v) {
     var el = document.getElementById('sb-'+v);
     if (el) el.classList.toggle('active', viewMode===v);
   });
@@ -1480,7 +1526,8 @@ function sbNav(target) {
   else if (target==='orcamento') { switchToOrcamento(); }
   else if (target==='cobranca') { switchToCobranca(); }
   else if (target==='recibo') { switchToRecibo(); }
-  else if (target==='gastos') { switchToGastos(); }
+  else if (target==='gastos')     { switchToGastos(); }
+  else if (target==='relatorios') { switchToRelatorios(); }
 }
 
 function hideCadastroView() {
@@ -1505,6 +1552,10 @@ function hideReciboView() {
 }
 function hideGastosView() {
   var el = document.getElementById('gastos-view');
+  if (el) el.style.display = 'none';
+}
+function hideRelatoriosView() {
+  var el = document.getElementById('relatorios-view');
   if (el) el.style.display = 'none';
 }
 
@@ -1645,7 +1696,7 @@ function switchToDashboard() {
   document.getElementById('tarefas-view').style.display    = 'none';
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'block';
-  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView();
+  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
   var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
   var tg = document.getElementById('tarefas-grid');  if (tg) tg.classList.remove('mob-detail');
   renderMonthTabs();
@@ -1933,7 +1984,7 @@ function switchToPedidos() {
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'none';
   document.getElementById('pedidos-view').style.display    = 'block';
-  hideCadastroView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView();
+  hideCadastroView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
   var cg=document.getElementById('clientes-grid');if(cg)cg.classList.remove('mob-detail');
   var tg=document.getElementById('tarefas-grid');if(tg)tg.classList.remove('mob-detail');
   renderMonthTabs();
@@ -2536,7 +2587,7 @@ function switchToTarefas() {
   document.getElementById('tarefas-view').style.display    = 'block';
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'none';
-  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView();
+  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
   var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
   renderMonthTabs();
   loadTarefas();
@@ -2640,7 +2691,7 @@ function switchToInove() {
   document.getElementById('tarefas-view').style.display    = 'none';
   document.getElementById('inove-view').style.display      = 'block';
   document.getElementById('dashboard-view').style.display  = 'none';
-  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView();
+  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
   var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
   var tg = document.getElementById('tarefas-grid');  if (tg) tg.classList.remove('mob-detail');
   renderMonthTabs();
@@ -3079,7 +3130,7 @@ function gerarRelatorioPDF() {
 var orcItemCount = 0;
 
 function hideAllViews() {
-  ['clientes','tarefas','inove','dashboard','pedidos','cadastro','orcamento','cobranca','recibo','gastos'].forEach(function(v) {
+  ['clientes','tarefas','inove','dashboard','pedidos','cadastro','orcamento','cobranca','recibo','gastos','relatorios'].forEach(function(v) {
     var el = document.getElementById(v+'-view');
     if (el) el.style.display = 'none';
   });
@@ -3958,12 +4009,145 @@ function gastoDefaultDate() {
   return gastosYear + '-' + m + '-01';
 }
 
+function switchToRelatorios() {
+  hideAllViews();
+  viewMode = 'relatorios';
+  document.getElementById('relatorios-view').style.display = '';
+  updateSidebarActive();
+  var lbl = document.getElementById('rel-mes-label');
+  if (lbl) lbl.textContent = (MESES[viewMonth] || viewMonth) + ' ' + viewYear;
+}
+
+function closeRelAndRun(fn) { fn(); }
+
+function gerarPagamentosPDF() {
+  var { jsPDF } = window.jspdf;
+  var doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  var W = 210, margin = 14;
+  var mesNome = MESES[viewMonth];
+  var titulo  = 'Relatório de Pagamentos — ' + mesNome + ' ' + viewYear;
+
+  // Header limpo
+  doc.setFillColor(29, 78, 216);
+  doc.rect(0, 0, W, 30, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(255, 255, 255);
+  doc.text('IDEALI LABORATÓRIO', margin, 13);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(191, 219, 254);
+  doc.text(titulo, margin, 21);
+  doc.setTextColor(191, 219, 254);
+  doc.text('Emissão: ' + new Date().toLocaleDateString('pt-BR'), W - margin, 21, {align: 'right'});
+
+  var rows = [], rawRest = [], rawStatus = [];
+  var totVal = 0, totPago = 0, totRest = 0;
+
+  clients.forEach(function(c) {
+    var s   = dbState[c.reg] || {};
+    var vm  = Number(s.valor_mes  || 0);
+    var vp  = Number(s.valor_pago || 0);
+    var rest = vm - vp;
+    if (vm === 0 && vp === 0) return; // omite clientes sem dados
+    totVal  += vm;
+    totPago += vp;
+    totRest += rest;
+    var st = statusOf(c.reg);
+    rawRest.push(rest);
+    rawStatus.push(st);
+    var stLbl = rest <= 0 ? 'Quitado' : vp > 0 ? 'Parcial' : 'Pendente';
+    rows.push([c.nome, fmt(vm), fmt(vp), fmt(rest), stLbl]);
+  });
+  rows.push(['TOTAL', fmt(totVal), fmt(totPago), fmt(totRest), '']);
+
+  doc.autoTable({
+    startY: 36,
+    head: [['Cliente', 'A Receber', 'Pago', 'Restante', 'Status']],
+    body: rows,
+    theme: 'grid',
+    headStyles: { fillColor: [29, 78, 216], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9, cellPadding: 3 },
+    bodyStyles: { fontSize: 8.5, cellPadding: 2.5 },
+    columnStyles: {
+      0: { cellWidth: 80 },
+      1: { halign: 'right', cellWidth: 30 },
+      2: { halign: 'right', cellWidth: 30 },
+      3: { halign: 'right', cellWidth: 30 },
+      4: { halign: 'center', cellWidth: 22 }
+    },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    didParseCell: function(data) {
+      var ri = data.row.index, ci = data.column.index;
+      var isTotal = ri === rows.length - 1;
+      if (isTotal) {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fillColor = [241, 245, 249];
+      } else {
+        if (ci === 3) data.cell.styles.textColor = rawRest[ri] > 0 ? [220, 38, 38] : [22, 163, 74];
+        if (ci === 4) {
+          var st = rawStatus[ri];
+          data.cell.styles.textColor = st === 'quitado' ? [22, 163, 74] : st === 'enviado' || st === 'recebido' ? [37, 99, 235] : [220, 38, 38];
+        }
+      }
+    }
+  });
+
+  var fy = doc.lastAutoTable.finalY + 8;
+  doc.autoTable({
+    startY: fy,
+    head: [['Resumo', 'Valor']],
+    body: [
+      ['Total a Receber', fmt(totVal)],
+      ['Total Pago',      fmt(totPago)],
+      ['Total Pendente',  fmt(totRest)]
+    ],
+    theme: 'grid',
+    headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3 },
+    bodyStyles: { fontSize: 9, cellPadding: 3 },
+    columnStyles: { 0: { cellWidth: 80 }, 1: { halign: 'right', cellWidth: 30 } },
+    tableWidth: 110,
+    margin: { left: margin },
+    didParseCell: function(data) {
+      if (data.row.index === 2) data.cell.styles.textColor = [220, 38, 38];
+    }
+  });
+
+  doc.setFontSize(7.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Ideali Laboratório · ' + titulo + ' · Gerado em ' + new Date().toLocaleString('pt-BR'), W / 2, 289, {align: 'center'});
+  doc.save('pagamentos-' + mesNome.toLowerCase() + '-' + viewYear + '.pdf');
+}
+
+function onGastoClienteChange() {
+  var sel = document.getElementById('gasto-cliente');
+  var desc = document.getElementById('gasto-desc');
+  if (!sel || !desc) return;
+  var reg = parseInt(sel.value);
+  var c = clients.find(function(x) { return x.reg === reg; });
+  if (c && !desc.value.trim()) {
+    desc.value = 'Entrega - ' + c.nome;
+  }
+}
+
+function populateGastoClienteSelect() {
+  var sel = document.getElementById('gasto-cliente');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Nenhum/Geral —</option>';
+  clients.slice().sort(function(a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); }).forEach(function(c) {
+    var o = document.createElement('option');
+    o.value = c.reg;
+    o.textContent = c.nome;
+    sel.appendChild(o);
+  });
+}
+
 function switchToGastos() {
   hideAllViews();
   viewMode = 'gastos';
   document.getElementById('gastos-view').style.display = '';
   updateSidebarActive();
   buildGastosMesSelect();
+  populateGastoClienteSelect();
   var di = document.getElementById('gasto-data');
   if (di) di.value = gastoDefaultDate();
   toggleOrigemOutro();
@@ -4048,9 +4232,14 @@ function renderGastos() {
     var origemBadge = g.origem
       ? '<span style="font-size:11px;padding:2px 7px;border-radius:5px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.1);color:#94a3b8;white-space:nowrap;flex-shrink:0">' + g.origem + '</span>'
       : '';
+    var cliObj = g.cliente_reg ? clients.find(function(x){return x.reg===g.cliente_reg;}) : null;
+    var cliBadge = cliObj
+      ? '<span style="font-size:11px;padding:2px 7px;border-radius:5px;background:rgba(59,130,246,0.12);border:0.5px solid rgba(59,130,246,0.35);color:#93c5fd;white-space:nowrap;flex-shrink:0">' + cliObj.nome.split(' ')[0] + '</span>'
+      : '';
     return '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:0.5px solid rgba(255,255,255,0.05)">' +
       '<span style="font-size:12px;color:#64748b;white-space:nowrap;min-width:74px">' + dataStr + '</span>' +
       '<span style="flex:1;font-size:13px;color:#e2e8f0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (g.descricao || '') + '</span>' +
+      cliBadge +
       origemBadge +
       '<span style="font-size:14px;font-weight:600;color:#f1f5f9;white-space:nowrap;flex-shrink:0;min-width:80px;text-align:right">' + fmt(Number(g.valor) || 0) + '</span>' +
       '<button onclick="openEditGasto(\'' + g.id + '\')" title="Editar" style="width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(99,102,241,0.4);background:rgba(99,102,241,0.1);color:#818cf8;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0"><i class="ti ti-pencil" style="font-size:13px"></i></button>' +
@@ -4094,7 +4283,9 @@ async function addGasto() {
   var desc    = document.getElementById('gasto-desc').value.trim();
   var valor   = parseFloat(document.getElementById('gasto-valor').value) || 0;
   var tipo    = document.getElementById('gasto-tipo').value;
-  var origem  = getOrigemValue();
+  var origem     = getOrigemValue();
+  var cliSelEl   = document.getElementById('gasto-cliente');
+  var cliReg     = cliSelEl && cliSelEl.value ? parseInt(cliSelEl.value) : null;
 
   if (!dataVal)   { alert('Informe a data.'); return; }
   if (!desc)      { alert('Informe a descrição.'); return; }
@@ -4104,6 +4295,7 @@ async function addGasto() {
   if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
 
   var payload = { descricao: desc, valor: valor, tipo: tipo, data: dataVal, mes: gastosMonth, ano: gastosYear, origem: origem };
+  if (cliReg) payload.cliente_reg = cliReg;
   var res = await sb.from('gastos_entrega').insert(payload);
 
   // Fallback: coluna origem ainda não existe — salva sem ela
@@ -4118,6 +4310,8 @@ async function addGasto() {
 
   document.getElementById('gasto-desc').value  = '';
   document.getElementById('gasto-valor').value = '';
+  var cli = document.getElementById('gasto-cliente');
+  if (cli) cli.value = '';
   await loadGastos();
 }
 
