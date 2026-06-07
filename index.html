@@ -187,6 +187,10 @@ button{font-family:inherit;cursor:pointer}
       <div class="sb-icon">📋</div>
       <span>Tarefas</span>
     </div>
+    <div class="sb-item" id="sb-resumo" onclick="sbNav('resumo')">
+      <div class="sb-icon">📊</div>
+      <span>Resumo</span>
+    </div>
     <div class="sb-item" id="sb-inove" onclick="sbNav('inove')">
       <div class="sb-icon">🏭</div>
       <span>Inove 3D</span>
@@ -362,6 +366,7 @@ button{font-family:inherit;cursor:pointer}
     <div style="width:1px;height:20px;background:rgba(255,255,255,0.1);margin:0 6px;flex-shrink:0"></div>
     <button id="btn-tarefas" class="tab-tarefa" onclick="switchToTarefas()">Tarefas</button>
     <button id="btn-inove" class="tab-tarefa" onclick="switchToInove()">&#127981; Inove 3D</button>
+    <button id="btn-resumo" class="tab-tarefa" onclick="switchToResumo()">&#128203; Resumo</button>
     <button onclick="gerarRelatorioPDF()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:0.5px solid rgba(251,191,36,0.35);background:#2a2010;font-size:12px;color:#fbbf24;transition:all 0.15s;white-space:nowrap" onmouseover="this.style.background='#3d2e0e';this.style.borderColor='rgba(251,191,36,0.6)'" onmouseout="this.style.background='#2a2010';this.style.borderColor='rgba(251,191,36,0.35)'">&#128196; Relatório PDF</button>
     <button onclick="gerarRelatorioClientes()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:0.5px solid rgba(99,179,237,0.35);background:#0c1e2e;font-size:12px;color:#63b3ed;transition:all 0.15s;white-space:nowrap" onmouseover="this.style.background='#112233';this.style.borderColor='rgba(99,179,237,0.65)'" onmouseout="this.style.background='#0c1e2e';this.style.borderColor='rgba(99,179,237,0.35)'">&#128203; Relatório Clientes</button>
   </div>
@@ -459,6 +464,21 @@ button{font-family:inherit;cursor:pointer}
         <div style="overflow-y:auto;flex:1" id="inove-lista"></div>
       </div>
       <div class="card" id="inove-form-panel"></div>
+    </div>
+  </div>
+
+  <div id="resumo-view" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+      <div>
+        <p style="font-size:18px;font-weight:600;color:#f1f5f9">&#128203; Resumo de Tarefas</p>
+        <p id="resumo-subtitle" style="font-size:12px;color:#64748b;margin-top:2px">Carregando...</p>
+      </div>
+      <button onclick="renderResumoFeed()" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit;transition:all 0.15s" onmouseover="this.style.background='#2d3250';this.style.color='#e2e8f0'" onmouseout="this.style.background='#22263a';this.style.color='#94a3b8'">&#8635; Atualizar</button>
+    </div>
+    <div id="resumo-feed" style="display:flex;flex-direction:column;gap:6px;max-width:860px">
+      <div style="display:flex;align-items:center;justify-content:center;padding:40px 0">
+        <div class="spinner"></div>
+      </div>
     </div>
   </div>
 
@@ -1364,6 +1384,8 @@ function renderMonthTabs() {
   if (btnT) btnT.className = 'tab-tarefa' + (viewMode==='tarefas' ? ' active' : '');
   var btnI = document.getElementById('btn-inove');
   if (btnI) btnI.className = 'tab-tarefa' + (viewMode==='inove' ? ' active' : '');
+  var btnR = document.getElementById('btn-resumo');
+  if (btnR) btnR.className = 'tab-tarefa' + (viewMode==='resumo' ? ' active' : '');
 }
 
 function toggleMonthDD() {
@@ -1580,7 +1602,7 @@ function closeSidebar() {
   document.getElementById('sidebar-overlay').classList.remove('open');
 }
 function updateSidebarActive() {
-  ['clientes','tarefas','inove','dashboard','cadastro','pedidos','orcamento','cobranca','recibo','gastos','relatorios'].forEach(function(v) {
+  ['clientes','tarefas','inove','resumo','dashboard','cadastro','pedidos','orcamento','cobranca','recibo','gastos','relatorios'].forEach(function(v) {
     var el = document.getElementById('sb-'+v);
     if (el) el.classList.toggle('active', viewMode===v);
   });
@@ -1590,6 +1612,7 @@ function sbNav(target) {
   if (target==='clientes') { switchMonth(viewMonth, viewYear); }
   else if (target==='tarefas') { switchToTarefas(); }
   else if (target==='inove') { switchToInove(); }
+  else if (target==='resumo') { switchToResumo(); }
   else if (target==='dashboard') { switchToDashboard(); }
   else if (target==='cadastro') { switchToCadastro(); }
   else if (target==='pedidos') { switchToPedidos(); }
@@ -2769,6 +2792,117 @@ function switchToInove() {
   loadInovePedidos();
 }
 
+// ── Resumo ────────────────────────────────────────────────────
+
+function switchToResumo() {
+  closeMonthDD();
+  viewMode = 'resumo';
+  document.getElementById('clientes-view').style.display   = 'none';
+  document.getElementById('tarefas-view').style.display    = 'none';
+  document.getElementById('inove-view').style.display      = 'none';
+  document.getElementById('resumo-view').style.display     = 'block';
+  document.getElementById('dashboard-view').style.display  = 'none';
+  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
+  var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
+  var tg = document.getElementById('tarefas-grid');  if (tg) tg.classList.remove('mob-detail');
+  renderMonthTabs();
+  updateSidebarActive();
+  renderResumoFeed();
+}
+
+async function renderResumoFeed() {
+  var feed = document.getElementById('resumo-feed');
+  var sub  = document.getElementById('resumo-subtitle');
+  if (!feed) return;
+  feed.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:40px 0"><div class="spinner"></div></div>';
+
+  try {
+    var [resTarefas, resInove] = await Promise.all([
+      sb.from('tarefas').select('*').eq('concluida', false).eq('arquivada', false).order('created_at'),
+      sb.from('inove_pedidos').select('*').in('status', ['pendente','em_execucao']).order('created_at')
+    ]);
+
+    var tarefasData = resTarefas.error ? [] : (resTarefas.data || []);
+    var inoveData   = resInove.error   ? [] : (resInove.data   || []);
+
+    var items = [];
+
+    tarefasData.forEach(function(t) {
+      var cli = clients.find(function(c){ return c.reg == t.cliente_reg; });
+      items.push({
+        tipo:    'tarefa',
+        status:  t.status || 'pendente',
+        nome:    cli ? cli.nome : ('Cliente #' + t.cliente_reg),
+        texto:   t.texto || '',
+        data:    t.data || t.created_at || ''
+      });
+    });
+
+    inoveData.forEach(function(p) {
+      var cli = clients.find(function(c){ return c.reg == p.cliente_reg; });
+      items.push({
+        tipo:    'inove',
+        status:  p.status || 'pendente',
+        nome:    cli ? cli.nome : ('Cliente #' + p.cliente_reg),
+        texto:   p.descricao || '',
+        data:    p.data_pedido || p.created_at || ''
+      });
+    });
+
+    // Ordenar: em_execucao primeiro, depois pendente; dentro de cada grupo por nome
+    items.sort(function(a, b) {
+      var orA = a.status === 'em_execucao' ? 0 : 1;
+      var orB = b.status === 'em_execucao' ? 0 : 1;
+      if (orA !== orB) return orA - orB;
+      return a.nome.localeCompare(b.nome, 'pt-BR');
+    });
+
+    if (sub) sub.textContent = items.length + ' tarefa' + (items.length !== 1 ? 's' : '') + ' em aberto';
+
+    if (!items.length) {
+      feed.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 0;gap:10px"><i class="ti ti-circle-check" style="font-size:40px;color:#22c55e"></i><p style="font-size:14px;color:#4a5568">Nenhuma tarefa em aberto!</p></div>';
+      return;
+    }
+
+    var lastStatus = null;
+    feed.innerHTML = items.map(function(item) {
+      var isExec   = item.status === 'em_execucao';
+      var icon     = isExec ? '⚙️' : '📋';
+      var badgeBg  = isExec ? 'rgba(139,92,246,0.18)' : 'rgba(251,191,36,0.14)';
+      var badgeC   = isExec ? '#c4b5fd' : '#fbbf24';
+      var badgeTx  = isExec ? 'em execução' : 'pendente';
+      var tipoBg   = item.tipo === 'inove' ? 'rgba(99,179,237,0.13)' : '';
+      var tipoTag  = item.tipo === 'inove'
+        ? '<span style="font-size:10px;color:#60a5fa;background:rgba(96,165,250,0.13);border-radius:5px;padding:1px 7px;margin-left:6px;font-weight:500">Inove</span>'
+        : '';
+
+      var header = '';
+      if (item.status !== lastStatus) {
+        lastStatus = item.status;
+        var sectionLabel = isExec ? '⚙️ Em Execução' : '📋 Pendentes';
+        var sectionColor = isExec ? '#c4b5fd' : '#fbbf24';
+        header = '<div style="font-size:11px;font-weight:700;color:'+sectionColor+';text-transform:uppercase;letter-spacing:0.08em;padding:14px 0 6px 4px;border-bottom:0.5px solid rgba(255,255,255,0.07);margin-bottom:6px">'+sectionLabel+'</div>';
+      }
+
+      return header +
+        '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;' + (tipoBg ? 'border-left:3px solid rgba(96,165,250,0.4);' : 'border-left:3px solid rgba(139,92,246,0.3);') + '">' +
+          '<span style="font-size:18px;line-height:1;flex-shrink:0">'+icon+'</span>' +
+          '<div style="flex:1;min-width:0">' +
+            '<span style="font-size:14px;font-weight:600;color:#f1f5f9">'+item.nome+'</span>' +
+            tipoTag +
+            '<span style="font-size:13px;color:#94a3b8;margin-left:6px">— '+item.texto+'</span>' +
+          '</div>' +
+          '<span style="font-size:11px;font-weight:600;padding:2px 9px;border-radius:6px;background:'+badgeBg+';color:'+badgeC+';white-space:nowrap;flex-shrink:0">'+badgeTx+'</span>' +
+        '</div>';
+    }).join('');
+
+  } catch(e) {
+    console.error('renderResumoFeed:', e);
+    if (sub) sub.textContent = 'Erro ao carregar';
+    feed.innerHTML = '<div style="color:#ef4444;font-size:13px;padding:20px">Erro ao buscar tarefas: ' + (e.message || e) + '</div>';
+  }
+}
+
 function renderInoveForm() {
   var sorted = clients.slice().sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR');});
   var opts = '<option value="">Nenhum</option>' +
@@ -3200,7 +3334,7 @@ function gerarRelatorioPDF() {
 var orcItemCount = 0;
 
 function hideAllViews() {
-  ['clientes','tarefas','inove','dashboard','pedidos','cadastro','orcamento','cobranca','recibo','gastos','relatorios'].forEach(function(v) {
+  ['clientes','tarefas','inove','resumo','dashboard','pedidos','cadastro','orcamento','cobranca','recibo','gastos','relatorios'].forEach(function(v) {
     var el = document.getElementById(v+'-view');
     if (el) el.style.display = 'none';
   });
