@@ -1691,7 +1691,7 @@ function renderDetail() {
           '<button class="save-btn" data-reg="'+c.reg+'" onclick="saveFinanceiro('+c.reg+')"><i class="ti ti-device-floppy" style="font-size:13px"></i> Salvar</button>'+
           '<button onclick="clearFinanceiro('+c.reg+')" title="Zerar valores" style="height:32px;width:36px;border-radius:8px;border:0.5px solid rgba(239,68,68,0.4);background:#3d1d1d;color:#ef4444;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0"><i class="ti ti-trash" style="font-size:14px"></i></button>'+
         '</div>'+
-        '<div id="fin-obs-wrap-'+c.reg+'" style="margin-top:10px;'+(restante>0?'':'display:none')+'">'+
+        '<div id="fin-obs-wrap-'+c.reg+'" style="margin-top:10px;">'+
           '<p class="label" style="margin-bottom:5px"><i class="ti ti-message" style="font-size:12px;vertical-align:-1px"></i> Motivo / Observação do pagamento</p>'+
           '<textarea id="fin-obs-'+c.reg+'" style="width:100%;height:54px;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 10px;font-size:13px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit;resize:none" placeholder="Ex: Aguardando, vai pagar dia X">'+escHtml(cv.obs_pagamento||'')+'</textarea>'+
         '</div>'+
@@ -1739,9 +1739,7 @@ function calcPreview(reg) {
   var elC = document.getElementById('prev-comissao-'+reg);
   if (elR) { elR.textContent = fmt(vM-vP); elR.style.color = vM-vP>0 ? '#ef4444' : '#22c55e'; }
   if (elC) elC.textContent = fmt((vP - vC) * COMISSAO);
-  // Mostra/esconde campo de obs quando há saldo pendente
-  var obsWrap = document.getElementById('fin-obs-wrap-'+reg);
-  if (obsWrap) obsWrap.style.display = (vM - vP > 0) ? '' : 'none';
+  // campo obs sempre visível
 }
 
 function isMobile() { return window.innerWidth < 768; }
