@@ -1520,11 +1520,13 @@ function toggleCompMenu(reg, e) {
   if (list.length) {
     list.forEach(function(item, idx) {
       var label = 'Comprovante ' + (idx + 1);
-      html += '<button class="comp-menu-item" onclick="viewComprovante(\'' + item.url.replace(/'/g,'%27') + '\',event)"><i class="ti ti-eye" style="font-size:13px;color:#60a5fa"></i> ' + label + '</button>';
+      var safeName = item.name.replace(/'/g,'%27');
+      html += '<div style="display:flex;align-items:center;gap:2px;padding:2px 4px">' +
+        '<button class="comp-menu-item" style="flex:1" onclick="viewComprovante(\'' + item.url.replace(/'/g,'%27') + '\',event)"><i class="ti ti-eye" style="font-size:13px;color:#60a5fa"></i> ' + label + '</button>' +
+        '<button class="comp-menu-item" style="padding:8px 8px;color:#ef4444" onclick="deleteComprovante(' + reg + ',\'' + safeName + '\',event)" title="Apagar"><i class="ti ti-trash" style="font-size:13px;color:#ef4444"></i></button>' +
+        '</div>';
     });
-    if (list.length > 1) {
-      html += '<div style="height:0.5px;background:rgba(255,255,255,0.08);margin:3px 0"></div>';
-    }
+    html += '<div style="height:0.5px;background:rgba(255,255,255,0.08);margin:3px 0"></div>';
   }
   html += '<button class="comp-menu-item" onclick="triggerCompUpload(' + reg + ',event)"><i class="ti ti-upload" style="font-size:13px;color:#22c55e"></i> ' + (list.length ? 'Adicionar comprovante' : 'Anexar comprovante') + '</button>';
   menu.innerHTML = html;
@@ -1557,6 +1559,28 @@ function triggerCompUpload(reg, e) {
   var inp = document.getElementById('comp-file-input');
   inp.value = '';
   inp.click();
+}
+
+async function deleteComprovante(reg, filename, e) {
+  if (e) e.stopPropagation();
+  closeCompMenu();
+  if (!confirm('Apagar este comprovante?')) return;
+  setSyncStatus('syncing');
+  var folder = viewYear + '_' + viewMonth;
+  var path = folder + '/' + decodeURIComponent(filename);
+  var res = await sb.storage.from('comprovantes').remove([path]);
+  if (res.error) {
+    console.error('deleteComprovante:', res.error);
+    setSyncStatus('error');
+    alert('Erro ao apagar: ' + (res.error.message || 'desconhecido'));
+    return;
+  }
+  if (!dbState[reg]) dbState[reg] = {};
+  if (!dbState[reg].comprovantes) dbState[reg].comprovantes = [];
+  dbState[reg].comprovantes = dbState[reg].comprovantes.filter(function(item) { return item.name !== decodeURIComponent(filename); });
+  setSyncStatus('ok');
+  doFilter();
+  if (selected && selected.reg === reg) renderDetail();
 }
 
 async function handleCompFile(e) {
