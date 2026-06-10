@@ -348,7 +348,7 @@ function renderSummary(stateMap, gastos) {
 
   setEl('sum-total', total);
   setEl('sum-quit',  quitados);
-  setEl('sum-quit-pct', (clAtivos > 0 ? Math.round(quitados / clAtivos * 100) : 0) + '% dos ativos');
+  setEl('sum-quit-pct', quitados + ' de ' + clAtivos + ' — ' + (clAtivos > 0 ? Math.round(quitados / clAtivos * 100) : 0) + '%');
   var pctCl = clAtivos > 0 ? Math.round(clPagaram / clAtivos * 100) : 0;
   var corCl = pctCl >= 80 ? '#22c55e' : pctCl >= 50 ? '#fbbf24' : '#ef4444';
   setEl('sum-clpag', clPagaram + ' de ' + clAtivos + ' clientes ativos — ' + pctCl + '%');
