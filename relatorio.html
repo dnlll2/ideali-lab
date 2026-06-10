@@ -117,7 +117,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <div class="sec-title"><i class="ti ti-currency-dollar" style="font-size:13px"></i> Resumo Financeiro</div>
   <div class="fin-grid">
-    <div class="sum-card"><div class="lbl">Comissão bruta (17%)</div><div class="val" id="fin-com-bruta" style="font-size:16px;color:#fbbf24">-</div><div class="sub">17% do valor do mês</div></div>
+    <div class="sum-card"><div class="lbl">Comissão bruta (17%)</div><div class="val" id="fin-com-bruta" style="font-size:16px;color:#fbbf24">-</div><div class="sub" id="fin-com-bruta-sub">17% de (pago − componentes)</div></div>
     <div class="sum-card"><div class="lbl"><i class="ti ti-truck" style="font-size:12px;vertical-align:-1px"></i> Total gastos entrega</div><div class="val" id="fin-total-gastos" style="font-size:16px;color:#ef4444">-</div><div class="sub">Correio + Motoboy + Uber</div></div>
     <div class="sum-card highlight"><div class="lbl">Comissão líquida</div><div class="val" id="fin-com-liquida" style="font-size:16px;color:#fbbf24">-</div><div class="sub">Bruta − gastos entrega</div></div>
     <div class="sum-card"><div class="lbl"><i class="ti ti-mail" style="font-size:12px;vertical-align:-1px"></i> Gastos Correio</div><div class="val" id="fin-correio" style="font-size:16px;color:#60a5fa">-</div><div class="sub" id="fin-correio-qtd"></div></div>
@@ -291,15 +291,14 @@ function clearSummary() {
 
 function renderSummary(stateMap, gastos) {
   var total = clients.length;
-  var quitados = 0, totalValor = 0, totalPago = 0, comBruta = 0;
+  var quitados = 0, totalValor = 0, totalPago = 0, totalComp = 0;
 
   clients.forEach(function(c) {
     var s = stateMap[c.reg] || {};
     if (s.quitado) quitados++;
-    var vm = s.valor_mes || 0;
-    totalValor += vm;
-    totalPago  += s.valor_pago || 0;
-    comBruta   += vm * 0.17;
+    totalValor += Number(s.valor_mes        || 0);
+    totalPago  += Number(s.valor_pago       || 0);
+    totalComp  += Number(s.valor_componente || 0);
   });
 
   setEl('sum-total', total);
@@ -309,12 +308,17 @@ function renderSummary(stateMap, gastos) {
   setEl('sum-pago',  fmt(totalPago));
   setEl('sum-pago-pct', (totalValor > 0 ? Math.round(totalPago / totalValor * 100) : 0) + '% do faturado');
 
-  // Financial section
+  // Fórmula idêntica ao index.html:
+  // comBruta = (totPago - totComp) * 0.17
+  // totalDescontos = correio + motoboy + uber + outro
+  // comLiquida = comBruta - totalDescontos
   gastos = gastos || {correio:0, motoboy:0, uber:0, outro:0, qtdC:0, qtdM:0, qtdU:0};
+  var comBruta    = (totalPago - totalComp) * 0.17;
   var totalGastos = gastos.correio + gastos.motoboy + gastos.uber + gastos.outro;
   var comLiquida  = comBruta - totalGastos;
 
   setEl('fin-com-bruta',    fmt(comBruta));
+  setEl('fin-com-bruta-sub', '17% de (pago ' + fmt(totalPago) + ' − comp. ' + fmt(totalComp) + ')');
   setEl('fin-total-gastos', fmt(totalGastos));
   setEl('fin-com-liquida',  fmt(comLiquida));
   setEl('fin-correio',      fmt(gastos.correio));
@@ -324,7 +328,6 @@ function renderSummary(stateMap, gastos) {
   setEl('fin-uber',         fmt(gastos.uber));
   setEl('fin-uber-qtd',     gastos.qtdU + ' lançamento' + (gastos.qtdU !== 1 ? 's' : ''));
 
-  // Color comissão líquida: red if negative
   var elLiq = document.getElementById('fin-com-liquida');
   if (elLiq) elLiq.style.color = comLiquida < 0 ? '#ef4444' : '#fbbf24';
 }
