@@ -318,10 +318,9 @@ function renderSummary(stateMap, gastos) {
 
   clients.forEach(function(c) {
     var s = stateMap[c.reg] || {};
-    if (s.quitado) quitados++;
     var vM = Number(s.valor_mes  || 0);
     var vP = Number(s.valor_pago || 0);
-    if (vM > 0) { clAtivos++; if (vP > 0) clPagaram++; }
+    if (vM > 0) { clAtivos++; if (s.quitado) quitados++; if (vP > 0) clPagaram++; }
     totalValor += vM;
     totalPago  += vP;
     totalComp  += Number(s.valor_componente || 0);
@@ -329,7 +328,7 @@ function renderSummary(stateMap, gastos) {
 
   setEl('sum-total', total);
   setEl('sum-quit',  quitados);
-  setEl('sum-quit-pct', Math.round(quitados / total * 100) + '% quitados');
+  setEl('sum-quit-pct', (clAtivos > 0 ? Math.round(quitados / clAtivos * 100) : 0) + '% dos ativos');
   setEl('sum-valor', fmt(totalValor));
   setEl('sum-pago',  fmt(totalPago));
   setEl('sum-pago-pct', (totalValor > 0 ? Math.round(totalPago / totalValor * 100) : 0) + '% do faturado');
