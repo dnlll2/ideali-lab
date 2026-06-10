@@ -377,8 +377,10 @@ function renderTable(stateMap) {
         }).join('')
       : '<span class="no-comp">-</span>';
 
+    var obs = s.obs_pagamento ? '<div style="font-size:11px;color:#94a3b8;margin-top:2px;display:flex;align-items:flex-start;gap:4px"><i class="ti ti-message" style="font-size:11px;color:#64748b;flex-shrink:0;margin-top:1px"></i><span style="word-break:break-word">' + escHtml(s.obs_pagamento) + '</span></div>' : '';
+
     return '<tr>' +
-      '<td><div class="name-cell"><div class="avatar" style="background:' + bg + ';color:' + fg + '">' + initials(c.nome) + '</div><div><div class="client-name">' + escHtml(c.nome) + '</div><div class="client-city">' + escHtml(c.cidade + ' / ' + c.uf) + '</div></div></div></td>' +
+      '<td><div class="name-cell"><div class="avatar" style="background:' + bg + ';color:' + fg + '">' + initials(c.nome) + '</div><div style="min-width:0"><div class="client-name">' + escHtml(c.nome) + '</div><div class="client-city">' + escHtml(c.cidade + ' / ' + c.uf) + '</div>' + obs + '</div></div></td>' +
       '<td>' + statusHtml + '</td>' +
       '<td>' + ticksHtml + '</td>' +
       '<td>' + valorMesHtml + '</td>' +
