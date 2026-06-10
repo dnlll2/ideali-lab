@@ -315,14 +315,16 @@ function clearSummary() {
 
 function renderSummary(stateMap, gastos) {
   var total = clients.length;
-  var quitados = 0, clPagaram = 0, totalValor = 0, totalPago = 0, totalComp = 0;
+  var quitados = 0, clAtivos = 0, clPagaram = 0, totalValor = 0, totalPago = 0, totalComp = 0;
 
   clients.forEach(function(c) {
     var s = stateMap[c.reg] || {};
     if (s.quitado) quitados++;
-    if (Number(s.valor_pago || 0) > 0) clPagaram++;
-    totalValor += Number(s.valor_mes        || 0);
-    totalPago  += Number(s.valor_pago       || 0);
+    var vM = Number(s.valor_mes  || 0);
+    var vP = Number(s.valor_pago || 0);
+    if (vM > 0) { clAtivos++; if (vP > 0) clPagaram++; }
+    totalValor += vM;
+    totalPago  += vP;
     totalComp  += Number(s.valor_componente || 0);
   });
 
@@ -333,9 +335,9 @@ function renderSummary(stateMap, gastos) {
   setEl('sum-pago',  fmt(totalPago));
   setEl('sum-pago-pct', (totalValor > 0 ? Math.round(totalPago / totalValor * 100) : 0) + '% do faturado');
 
-  var pctCl = total > 0 ? Math.round(clPagaram / total * 100) : 0;
+  var pctCl = clAtivos > 0 ? Math.round(clPagaram / clAtivos * 100) : 0;
   var corCl = pctCl >= 80 ? '#22c55e' : pctCl >= 50 ? '#fbbf24' : '#ef4444';
-  setEl('sum-clpag', clPagaram + ' de ' + total + ' — ' + pctCl + '%');
+  setEl('sum-clpag', clPagaram + ' de ' + clAtivos + ' clientes ativos — ' + pctCl + '%');
   setBarWidth('sum-clpag-bar', pctCl, corCl);
 
   var pctVal = totalValor > 0 ? Math.round(totalPago / totalValor * 100) : 0;
