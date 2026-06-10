@@ -1147,23 +1147,27 @@ async function loadMonthData(m, y) {
     console.log('[loadMonthData] ' + rows.length + ' registros encontrados');
 
     // Build comprovante map from Storage files (path: {y}_{m}/reg{reg}_{ts}.ext)
+    // compMap[reg] = array of {name, url} sorted by name (oldest first)
     var compMap = {};
     if (!storRes.error && storRes.data) {
       storRes.data.forEach(function(f) {
         var match = f.name.match(/^reg(\d+)_/);
         if (match) {
           var reg = parseInt(match[1]);
-          // Keep latest file if multiple exist for same reg
-          if (!compMap[reg] || f.name > compMap[reg].name) {
-            compMap[reg] = sb.storage.from('comprovantes').getPublicUrl(folder + '/' + f.name).data.publicUrl;
-          }
+          if (!compMap[reg]) compMap[reg] = [];
+          compMap[reg].push({
+            name: f.name,
+            url: sb.storage.from('comprovantes').getPublicUrl(folder + '/' + f.name).data.publicUrl
+          });
         }
       });
+      // Sort each client's files by filename (timestamp-based = chronological)
+      Object.keys(compMap).forEach(function(k) { compMap[k].sort(function(a,b){return a.name<b.name?-1:1;}); });
     }
 
     var state = {};
     clients.forEach(function(c) {
-      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0,obs_pagamento:'',comprovante_url:compMap[c.reg]||null};
+      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0,obs_pagamento:'',comprovantes:compMap[c.reg]||[]};
     });
     rows.forEach(function(r) {
       state[r.cliente_reg] = {
@@ -1174,7 +1178,7 @@ async function loadMonthData(m, y) {
         valor_pago:       Number(r.valor_pago)       || 0,
         valor_componente: Number(r.valor_componente) || 0,
         obs_pagamento:    r.obs_pagamento            || '',
-        comprovante_url:  compMap[r.cliente_reg]     || null
+        comprovantes:     compMap[r.cliente_reg]     || []
       };
     });
     return state;
@@ -1493,8 +1497,10 @@ function tickBtn(reg, tipo, icon, label) {
 
 function compClipBtn(reg) {
   var s = dbState[reg] || {};
-  var has = !!s.comprovante_url;
-  return '<div class="comp-clip-col"><button class="comp-clip' + (has?' has-comp':'') + '" onclick="toggleCompMenu(' + reg + ',event)" title="' + (has?'Comprovante anexado - clique para ver/trocar':'Anexar comprovante') + '"><i class="ti ti-paperclip"></i></button><span class="comp-lbl' + (has?' has-comp':'') + '">' + (has?'comp.':'clipe') + '</span></div>';
+  var list = s.comprovantes || [];
+  var n = list.length;
+  var badge = n > 1 ? '<span style="position:absolute;top:-4px;right:-4px;background:#3b82f6;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;line-height:1">' + n + '</span>' : '';
+  return '<div class="comp-clip-col" style="position:relative"><button class="comp-clip' + (n?'has-comp':'') + '" style="position:relative" onclick="toggleCompMenu(' + reg + ',event)" title="' + (n?n+' comprovante'+(n>1?'s':'')+' - clique para ver/adicionar':'Anexar comprovante') + '"><i class="ti ti-paperclip"></i>' + badge + '</button><span class="comp-lbl' + (n?' has-comp':'') + '">' + (n?n+'comp.':'clipe') + '</span></div>';
 }
 
 var _compMenuReg = null;
@@ -1506,24 +1512,28 @@ function toggleCompMenu(reg, e) {
   if (existing) { existing.remove(); if (_compMenuReg === reg) { _compMenuReg = null; return; } }
   _compMenuReg = reg;
   var s = dbState[reg] || {};
-  var has = !!s.comprovante_url;
+  var list = s.comprovantes || [];
   var menu = document.createElement('div');
   menu.id = 'comp-menu-popup';
   menu.className = 'comp-menu-popup';
-  if (has) {
-    menu.innerHTML =
-      '<button class="comp-menu-item" onclick="viewComprovante(\'' + s.comprovante_url.replace(/'/g,'%27') + '\',event)"><i class="ti ti-eye" style="font-size:13px;color:#60a5fa"></i> Ver comprovante</button>' +
-      '<button class="comp-menu-item" onclick="triggerCompUpload(' + reg + ',event)"><i class="ti ti-refresh" style="font-size:13px;color:#fbbf24"></i> Trocar comprovante</button>';
-  } else {
-    menu.innerHTML =
-      '<button class="comp-menu-item" onclick="triggerCompUpload(' + reg + ',event)"><i class="ti ti-upload" style="font-size:13px;color:#22c55e"></i> Anexar comprovante</button>';
+  var html = '';
+  if (list.length) {
+    list.forEach(function(item, idx) {
+      var label = 'Comprovante ' + (idx + 1);
+      html += '<button class="comp-menu-item" onclick="viewComprovante(\'' + item.url.replace(/'/g,'%27') + '\',event)"><i class="ti ti-eye" style="font-size:13px;color:#60a5fa"></i> ' + label + '</button>';
+    });
+    if (list.length > 1) {
+      html += '<div style="height:0.5px;background:rgba(255,255,255,0.08);margin:3px 0"></div>';
+    }
   }
+  html += '<button class="comp-menu-item" onclick="triggerCompUpload(' + reg + ',event)"><i class="ti ti-upload" style="font-size:13px;color:#22c55e"></i> ' + (list.length ? 'Adicionar comprovante' : 'Anexar comprovante') + '</button>';
+  menu.innerHTML = html;
   document.body.appendChild(menu);
   var rect = e.target.closest('button').getBoundingClientRect();
   var top = rect.bottom + 4;
   var left = rect.right - menu.offsetWidth;
   if (left < 8) left = 8;
-  if (top + 100 > window.innerHeight) top = rect.top - menu.offsetHeight - 4;
+  if (top + 120 > window.innerHeight) top = rect.top - menu.offsetHeight - 4;
   menu.style.top = top + 'px';
   menu.style.left = left + 'px';
 }
@@ -1567,7 +1577,8 @@ async function handleCompFile(e) {
   }
   var publicUrl = sb.storage.from('comprovantes').getPublicUrl(path).data.publicUrl;
   if (!dbState[reg]) dbState[reg] = {};
-  dbState[reg].comprovante_url = publicUrl;
+  if (!dbState[reg].comprovantes) dbState[reg].comprovantes = [];
+  dbState[reg].comprovantes.push({name: filename, url: publicUrl});
   setSyncStatus('ok');
   doFilter();
   if (selected && selected.reg === reg) renderDetail();
@@ -1691,8 +1702,7 @@ function renderDetail() {
     tarefasBanner +
     roNote +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' + dt('recebido','ti-download','Extrato recebido') + dt('enviado','ti-upload','Extrato enviado') + dt('quitado','ti-circle-check','Quitado') +
-    '<button class="comp-clip' + (cv.comprovante_url?' has-comp':'') + '" style="width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:13px;height:30px" onclick="toggleCompMenu(' + c.reg + ',event)">' +
-    '<i class="ti ti-paperclip" style="font-size:14px"></i> ' + (cv.comprovante_url ? '<span style="color:#22c55e">Comprovante</span>' : 'Comprovante') + '</button>' + '</div>' +
+    (function(){var cl=cv.comprovantes||[];var n=cl.length;return '<button class="comp-clip'+(n?' has-comp':'')+'" style="width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:13px;height:30px" onclick="toggleCompMenu('+c.reg+',event)"><i class="ti ti-paperclip" style="font-size:14px"></i> '+(n?'<span style="color:#22c55e">'+n+' comprovante'+(n>1?'s':'')+'</span>':'Comprovante')+'</button>';})() + '</div>' +
     finSection +
     '<div>' + rows + '</div>';
 }

@@ -198,10 +198,31 @@ async function loadAndRender() {
   document.getElementById('error-area').innerHTML = '';
 
   try {
-    var res = await sb.from('controle_mensal').select('*').eq('mes', viewMonth).eq('ano', viewYear);
-    if (res.error) throw res.error;
+    var folder = viewYear + '_' + viewMonth;
+    var [dbRes, storRes] = await Promise.all([
+      sb.from('controle_mensal').select('*').eq('mes', viewMonth).eq('ano', viewYear),
+      sb.storage.from('comprovantes').list(folder)
+    ]);
+    if (dbRes.error) throw dbRes.error;
 
-    var rows = res.data || [];
+    // Build comprovante map from Storage (path: {y}_{m}/reg{reg}_{ts}.ext)
+    var compMap = {};
+    if (!storRes.error && storRes.data) {
+      storRes.data.forEach(function(f) {
+        var match = f.name.match(/^reg(\d+)_/);
+        if (match) {
+          var reg = parseInt(match[1]);
+          if (!compMap[reg]) compMap[reg] = [];
+          compMap[reg].push({
+            name: f.name,
+            url: sb.storage.from('comprovantes').getPublicUrl(folder + '/' + f.name).data.publicUrl
+          });
+        }
+      });
+      Object.keys(compMap).forEach(function(k) { compMap[k].sort(function(a,b){return a.name<b.name?-1:1;}); });
+    }
+
+    var rows = dbRes.data || [];
     var stateMap = {};
     rows.forEach(function(r) {
       stateMap[r.cliente_reg] = {
@@ -212,8 +233,13 @@ async function loadAndRender() {
         valor_pago:       Number(r.valor_pago)       || 0,
         valor_componente: Number(r.valor_componente) || 0,
         obs_pagamento:    r.obs_pagamento            || '',
-        comprovante_url:  r.comprovante_url          || null
+        comprovantes:     compMap[r.cliente_reg]     || []
       };
+    });
+    // Add clients that have comprovantes but no DB row yet
+    Object.keys(compMap).forEach(function(k) {
+      var reg = parseInt(k);
+      if (!stateMap[reg]) stateMap[reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0,obs_pagamento:'',comprovantes:compMap[reg]};
     });
 
     renderSummary(stateMap);
@@ -293,8 +319,11 @@ function renderTable(stateMap) {
     var valorMesHtml = vm > 0 ? '<span class="valor-mes">' + fmt(vm) + '</span>' : '<span class="valor-zero">-</span>';
     var valorPagoHtml = vp > 0 ? '<span class="valor-pago">' + fmt(vp) + '</span>' : '<span class="valor-zero">-</span>';
 
-    var compHtml = s.comprovante_url
-      ? '<a class="comp-btn" href="' + escHtml(s.comprovante_url) + '" target="_blank" rel="noopener"><i class="ti ti-paperclip" style="font-size:12px"></i> Ver</a>'
+    var comps = s.comprovantes || [];
+    var compHtml = comps.length
+      ? comps.map(function(item, idx) {
+          return '<a class="comp-btn" href="' + escHtml(item.url) + '" target="_blank" rel="noopener" style="margin-bottom:3px"><i class="ti ti-paperclip" style="font-size:12px"></i> ' + (comps.length > 1 ? 'Ver ' + (idx+1) : 'Ver') + '</a>';
+        }).join('')
       : '<span class="no-comp">-</span>';
 
     return '<tr>' +
@@ -303,7 +332,7 @@ function renderTable(stateMap) {
       '<td>' + ticksHtml + '</td>' +
       '<td>' + valorMesHtml + '</td>' +
       '<td>' + valorPagoHtml + '</td>' +
-      '<td>' + compHtml + '</td>' +
+      '<td><div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start">' + compHtml + '</div></td>' +
       '</tr>';
   }).join('');
 
