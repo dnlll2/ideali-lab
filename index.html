@@ -1137,13 +1137,33 @@ function todayLabel() {
 async function loadMonthData(m, y) {
   console.log('[loadMonthData] mes=' + m + ' ano=' + y);
   try {
-    var res = await sb.from('controle_mensal').select('*').eq('mes',m).eq('ano',y);
-    if (res.error) throw res.error;
-    var rows = res.data || [];
+    var folder = y + '_' + m;
+    var [dbRes, storRes] = await Promise.all([
+      sb.from('controle_mensal').select('*').eq('mes',m).eq('ano',y),
+      sb.storage.from('comprovantes').list(folder)
+    ]);
+    if (dbRes.error) throw dbRes.error;
+    var rows = dbRes.data || [];
     console.log('[loadMonthData] ' + rows.length + ' registros encontrados');
+
+    // Build comprovante map from Storage files (path: {y}_{m}/reg{reg}_{ts}.ext)
+    var compMap = {};
+    if (!storRes.error && storRes.data) {
+      storRes.data.forEach(function(f) {
+        var match = f.name.match(/^reg(\d+)_/);
+        if (match) {
+          var reg = parseInt(match[1]);
+          // Keep latest file if multiple exist for same reg
+          if (!compMap[reg] || f.name > compMap[reg].name) {
+            compMap[reg] = sb.storage.from('comprovantes').getPublicUrl(folder + '/' + f.name).data.publicUrl;
+          }
+        }
+      });
+    }
+
     var state = {};
     clients.forEach(function(c) {
-      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0,obs_pagamento:'',comprovante_url:null};
+      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0,obs_pagamento:'',comprovante_url:compMap[c.reg]||null};
     });
     rows.forEach(function(r) {
       state[r.cliente_reg] = {
@@ -1154,7 +1174,7 @@ async function loadMonthData(m, y) {
         valor_pago:       Number(r.valor_pago)       || 0,
         valor_componente: Number(r.valor_componente) || 0,
         obs_pagamento:    r.obs_pagamento            || '',
-        comprovante_url:  r.comprovante_url          || null
+        comprovante_url:  compMap[r.cliente_reg]     || null
       };
     });
     return state;
@@ -1185,7 +1205,7 @@ async function upsertRow(reg, data) {
   if (res.error) {
     var msg = res.error.message || '';
     // Retenta removendo colunas que ainda não existem no banco
-    if (msg.includes('valor_componente') || msg.includes('obs_pagamento') || msg.includes('comprovante_url')) {
+    if (msg.includes('valor_componente') || msg.includes('obs_pagamento')) {
       var payloadSem = Object.assign({}, payload);
       if (msg.includes('valor_componente')) {
         console.warn('upsertRow: coluna valor_componente ausente. Execute: ALTER TABLE controle_mensal ADD COLUMN IF NOT EXISTS valor_componente numeric(10,2) DEFAULT 0;');
@@ -1194,10 +1214,6 @@ async function upsertRow(reg, data) {
       if (msg.includes('obs_pagamento')) {
         console.warn('upsertRow: coluna obs_pagamento ausente. Execute: ALTER TABLE controle_mensal ADD COLUMN IF NOT EXISTS obs_pagamento text DEFAULT \'\';');
         delete payloadSem.obs_pagamento;
-      }
-      if (msg.includes('comprovante_url')) {
-        console.warn('upsertRow: coluna comprovante_url ausente. Execute: ALTER TABLE controle_mensal ADD COLUMN IF NOT EXISTS comprovante_url text;');
-        delete payloadSem.comprovante_url;
       }
       var res2 = await sb.from('controle_mensal').upsert(payloadSem, {onConflict:'cliente_reg,mes,ano'});
       if (res2.error) {
@@ -1539,7 +1555,9 @@ async function handleCompFile(e) {
   var reg = _compUploadReg;
   setSyncStatus('syncing');
   var ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-  var path = 'reg' + reg + '/' + viewMonth + '_' + viewYear + '_' + Date.now() + '.' + ext;
+  // Path: {year}_{month}/reg{reg}_{timestamp}.ext  — grouped by month, no DB column needed
+  var folder = viewYear + '_' + viewMonth;
+  var path = folder + '/reg' + reg + '_' + Date.now() + '.' + ext;
   var upRes = await sb.storage.from('comprovantes').upload(path, file, {cacheControl:'3600', upsert:true});
   if (upRes.error) {
     console.error('upload comprovante:', upRes.error);
@@ -1547,16 +1565,7 @@ async function handleCompFile(e) {
     alert('Erro ao enviar arquivo: ' + (upRes.error.message || 'desconhecido'));
     return;
   }
-  var publicUrl = sb.storage.from('comprovantes').getPublicUrl(upRes.data.path).data.publicUrl;
-  var dbRes = await sb.from('controle_mensal').upsert({cliente_reg:reg, mes:viewMonth, ano:viewYear, comprovante_url:publicUrl}, {onConflict:'cliente_reg,mes,ano'});
-  if (dbRes.error) {
-    console.error('save comprovante_url:', dbRes.error);
-    if ((dbRes.error.message||'').includes('comprovante_url')) {
-      alert('Execute no SQL Editor do Supabase:\nALTER TABLE controle_mensal ADD COLUMN IF NOT EXISTS comprovante_url text;');
-    }
-    setSyncStatus('error');
-    return;
-  }
+  var publicUrl = sb.storage.from('comprovantes').getPublicUrl(path).data.publicUrl;
   if (!dbState[reg]) dbState[reg] = {};
   dbState[reg].comprovante_url = publicUrl;
   setSyncStatus('ok');
