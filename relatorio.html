@@ -398,7 +398,7 @@ function renderTable(stateMap) {
       : '<span class="no-comp">-</span>';
 
     var obsIcon = s.obs_pagamento
-      ? '<button class="obs-icon" onclick="openObsModal(' + JSON.stringify(c.nome) + ',' + JSON.stringify(s.obs_pagamento) + ',event)" title="Ver observação"><i class="ti ti-message-circle" style="font-size:11px"></i></button>'
+      ? '<button class="obs-icon" data-nome="' + escHtml(c.nome) + '" data-obs="' + escHtml(s.obs_pagamento) + '" onclick="openObsModal(this,event)" title="Ver observação"><i class="ti ti-message-circle" style="font-size:11px"></i></button>'
       : '';
 
     return '<tr>' +
@@ -424,14 +424,12 @@ function renderTable(stateMap) {
     '</table>';
 }
 
-function openObsModal(nome, obs, e) {
+function openObsModal(btn, e) {
   if (e) e.stopPropagation();
-  document.getElementById('obs-modal-name').textContent = nome;
-  document.getElementById('obs-modal-text').textContent = obs;
-  var overlay = document.getElementById('obs-overlay');
-  var modal   = document.getElementById('obs-modal');
-  overlay.classList.add('open');
-  modal.style.display = 'block';
+  document.getElementById('obs-modal-name').textContent = btn.getAttribute('data-nome');
+  document.getElementById('obs-modal-text').textContent = btn.getAttribute('data-obs');
+  document.getElementById('obs-overlay').classList.add('open');
+  document.getElementById('obs-modal').style.display = 'block';
 }
 
 function closeObsModal() {
