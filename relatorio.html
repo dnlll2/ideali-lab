@@ -63,6 +63,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .print-btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit;transition:all 0.15s}
 .print-btn:hover{background:#2d3250;color:#e2e8f0}
 .footer{margin-top:1.5rem;text-align:center;font-size:11px;color:#4a5568}
+.obs-icon{width:20px;height:20px;border-radius:50%;border:none;background:rgba(96,165,250,0.15);color:#60a5fa;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s;padding:0;vertical-align:middle;margin-left:4px}
+.obs-icon:hover{background:rgba(96,165,250,0.3)}
+#obs-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:900;display:none}
+#obs-overlay.open{display:block}
+#obs-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1d27;border:0.5px solid rgba(255,255,255,0.12);border-radius:12px;padding:20px 22px;z-index:901;width:360px;max-width:92vw;box-shadow:0 16px 48px rgba(0,0,0,0.5)}
+#obs-modal-name{font-size:13px;font-weight:600;color:#f1f5f9;margin-bottom:10px;padding-right:28px}
+#obs-modal-text{font-size:13px;color:#94a3b8;line-height:1.6;word-break:break-word}
+#obs-modal-close{position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#64748b;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+#obs-modal-close:hover{background:#2d3250;color:#e2e8f0}
 @media(max-width:767px){
   body{padding:0.75rem}
   .summary-grid,.fin-grid{grid-template-columns:1fr 1fr}
@@ -133,6 +142,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 
   <div class="footer">Ideali Laboratório · Relatório gerado em <span id="gen-date"></span></div>
+</div>
+
+<div id="obs-overlay" onclick="closeObsModal()"></div>
+<div id="obs-modal" style="display:none;position:fixed">
+  <button id="obs-modal-close" onclick="closeObsModal()"><i class="ti ti-x"></i></button>
+  <div id="obs-modal-name"></div>
+  <div id="obs-modal-text"></div>
 </div>
 
 <script>
@@ -381,10 +397,12 @@ function renderTable(stateMap) {
         }).join('')
       : '<span class="no-comp">-</span>';
 
-    var obs = s.obs_pagamento ? '<div style="font-size:11px;color:#94a3b8;margin-top:2px;display:flex;align-items:flex-start;gap:4px"><i class="ti ti-message" style="font-size:11px;color:#64748b;flex-shrink:0;margin-top:1px"></i><span style="word-break:break-word">' + escHtml(s.obs_pagamento) + '</span></div>' : '';
+    var obsIcon = s.obs_pagamento
+      ? '<button class="obs-icon" onclick="openObsModal(' + JSON.stringify(c.nome) + ',' + JSON.stringify(s.obs_pagamento) + ',event)" title="Ver observação"><i class="ti ti-message-circle" style="font-size:11px"></i></button>'
+      : '';
 
     return '<tr>' +
-      '<td><div class="name-cell"><div class="avatar" style="background:' + bg + ';color:' + fg + '">' + initials(c.nome) + '</div><div style="min-width:0"><div class="client-name">' + escHtml(c.nome) + '</div><div class="client-city">' + escHtml(c.cidade + ' / ' + c.uf) + '</div>' + obs + '</div></div></td>' +
+      '<td><div class="name-cell"><div class="avatar" style="background:' + bg + ';color:' + fg + '">' + initials(c.nome) + '</div><div style="min-width:0"><div style="display:flex;align-items:center;gap:0"><span class="client-name">' + escHtml(c.nome) + '</span>' + obsIcon + '</div><div class="client-city">' + escHtml(c.cidade + ' / ' + c.uf) + '</div></div></div></td>' +
       '<td>' + statusHtml + '</td>' +
       '<td>' + ticksHtml + '</td>' +
       '<td>' + valorMesHtml + '</td>' +
@@ -404,6 +422,21 @@ function renderTable(stateMap) {
     '</tr></thead>' +
     '<tbody>' + rows + '</tbody>' +
     '</table>';
+}
+
+function openObsModal(nome, obs, e) {
+  if (e) e.stopPropagation();
+  document.getElementById('obs-modal-name').textContent = nome;
+  document.getElementById('obs-modal-text').textContent = obs;
+  var overlay = document.getElementById('obs-overlay');
+  var modal   = document.getElementById('obs-modal');
+  overlay.classList.add('open');
+  modal.style.display = 'block';
+}
+
+function closeObsModal() {
+  document.getElementById('obs-overlay').classList.remove('open');
+  document.getElementById('obs-modal').style.display = 'none';
 }
 
 // init
