@@ -367,8 +367,12 @@ function renderTable(stateMap) {
 
     var vm = s.valor_mes  || 0;
     var vp = s.valor_pago || 0;
-    var valorMesHtml = vm > 0 ? '<span class="valor-mes">' + fmt(vm) + '</span>' : '<span class="valor-zero">-</span>';
+    var restante = vm - vp;
+    var valorMesHtml  = vm > 0 ? '<span class="valor-mes">' + fmt(vm) + '</span>' : '<span class="valor-zero">-</span>';
     var valorPagoHtml = vp > 0 ? '<span class="valor-pago">' + fmt(vp) + '</span>' : '<span class="valor-zero">-</span>';
+    var restaHtml = (restante > 0 && vm > 0)
+      ? '<div style="display:flex;align-items:center;gap:4px;margin-top:3px"><span style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.04em">Resta:</span><span style="font-size:12px;font-weight:600;color:#ef4444">' + fmt(restante) + '</span></div>'
+      : '';
 
     var comps = s.comprovantes || [];
     var compHtml = comps.length
@@ -384,7 +388,7 @@ function renderTable(stateMap) {
       '<td>' + statusHtml + '</td>' +
       '<td>' + ticksHtml + '</td>' +
       '<td>' + valorMesHtml + '</td>' +
-      '<td>' + valorPagoHtml + '</td>' +
+      '<td><div>' + valorPagoHtml + restaHtml + '</div></td>' +
       '<td><div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start">' + compHtml + '</div></td>' +
       '</tr>';
   }).join('');
