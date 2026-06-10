@@ -165,6 +165,17 @@ button{font-family:inherit;cursor:pointer}
 .ia-status.success{background:#0d3d2b;border:0.5px solid #22c55e;color:#4ade80;display:block}
 .ia-status.error{background:#3d1d1d;border:0.5px solid #ef4444;color:#fca5a5;display:block}
 .ia-status.loading{background:#1d3a6e;border:0.5px solid #3b82f6;color:#93c5fd;display:block}
+.comp-clip{width:26px;height:26px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.15);background:#22263a;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:#4a5568;transition:all 0.15s;flex-shrink:0}
+.comp-clip.has-comp{background:#0d3d2b;border-color:#22c55e;color:#22c55e}
+.comp-clip:hover{border-color:#3b82f6;color:#60a5fa;background:#1d3a6e}
+.comp-clip-col{display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0}
+.comp-lbl{font-size:10px;color:#4a5568;text-align:center;line-height:1.1}
+.comp-lbl.has-comp{color:#22c55e;font-weight:500}
+.comp-menu-popup{position:fixed;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.14);border-radius:10px;padding:4px;z-index:800;min-width:175px;box-shadow:0 8px 28px rgba(0,0,0,0.5)}
+.comp-menu-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:7px;cursor:pointer;font-size:12px;color:#94a3b8;transition:background 0.1s;white-space:nowrap;border:none;background:none;font-family:inherit;width:100%;text-align:left}
+.comp-menu-item:hover{background:#22263a;color:#e2e8f0}
+.comp-uploading{opacity:0.5;pointer-events:none}
+@media(max-width:767px){.comp-clip{width:34px;height:34px;font-size:14px}}
 </style>
 </head>
 <body>
@@ -281,6 +292,8 @@ button{font-family:inherit;cursor:pointer}
     <button class="cad-btn-primary" id="cp-save-btn" onclick="saveClientePanel()"><i class="ti ti-device-floppy" style="font-size:14px"></i> Salvar</button>
   </div>
 </div>
+
+<input type="file" id="comp-file-input" accept="image/*,application/pdf" style="display:none" onchange="handleCompFile(event)">
 
 <div id="loading-overlay" class="loading-overlay">
   <div class="spinner"></div>
@@ -1129,7 +1142,7 @@ async function loadMonthData(m, y) {
     console.log('[loadMonthData] ' + rows.length + ' registros encontrados');
     var state = {};
     clients.forEach(function(c) {
-      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0,obs_pagamento:''};
+      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0,obs_pagamento:'',comprovante_url:null};
     });
     rows.forEach(function(r) {
       state[r.cliente_reg] = {
@@ -1139,7 +1152,8 @@ async function loadMonthData(m, y) {
         valor_mes:        Number(r.valor_mes)        || 0,
         valor_pago:       Number(r.valor_pago)       || 0,
         valor_componente: Number(r.valor_componente) || 0,
-        obs_pagamento:    r.obs_pagamento            || ''
+        obs_pagamento:    r.obs_pagamento            || '',
+        comprovante_url:  r.comprovante_url          || null
       };
     });
     return state;
@@ -1170,7 +1184,7 @@ async function upsertRow(reg, data) {
   if (res.error) {
     var msg = res.error.message || '';
     // Retenta removendo colunas que ainda não existem no banco
-    if (msg.includes('valor_componente') || msg.includes('obs_pagamento')) {
+    if (msg.includes('valor_componente') || msg.includes('obs_pagamento') || msg.includes('comprovante_url')) {
       var payloadSem = Object.assign({}, payload);
       if (msg.includes('valor_componente')) {
         console.warn('upsertRow: coluna valor_componente ausente. Execute: ALTER TABLE controle_mensal ADD COLUMN IF NOT EXISTS valor_componente numeric(10,2) DEFAULT 0;');
@@ -1179,6 +1193,10 @@ async function upsertRow(reg, data) {
       if (msg.includes('obs_pagamento')) {
         console.warn('upsertRow: coluna obs_pagamento ausente. Execute: ALTER TABLE controle_mensal ADD COLUMN IF NOT EXISTS obs_pagamento text DEFAULT \'\';');
         delete payloadSem.obs_pagamento;
+      }
+      if (msg.includes('comprovante_url')) {
+        console.warn('upsertRow: coluna comprovante_url ausente. Execute: ALTER TABLE controle_mensal ADD COLUMN IF NOT EXISTS comprovante_url text;');
+        delete payloadSem.comprovante_url;
       }
       var res2 = await sb.from('controle_mensal').upsert(payloadSem, {onConflict:'cliente_reg,mes,ano'});
       if (res2.error) {
@@ -1443,6 +1461,8 @@ document.addEventListener('click', function(e) {
   var btn  = document.getElementById('month-dd-btn');
   var list = document.getElementById('month-dd-list');
   if (monthDDOpen && btn && list && !btn.contains(e.target) && !list.contains(e.target)) closeMonthDD();
+  var cm = document.getElementById('comp-menu-popup');
+  if (cm && !cm.contains(e.target)) closeCompMenu();
 });
 
 // ── Lista e detalhe de clientes ──────────────────────────────
@@ -1452,6 +1472,95 @@ function tickBtn(reg, tipo, icon, label) {
   var on = s[tipo];
   var dis = (!isCurrentMonth() && !historicoEditMode) ? 'disabled' : '';
   return '<div class="tick-col"><button class="tick-btn' + (on?' on':'') + '" onclick="toggle(' + reg + ',\'' + tipo + '\',event)" title="' + label + '" ' + dis + '><i class="ti ' + (on?'ti-check':icon) + '"></i></button><span class="tick-label' + (on?' on':'') + '">' + label + '</span></div>';
+}
+
+function compClipBtn(reg) {
+  var s = dbState[reg] || {};
+  var has = !!s.comprovante_url;
+  return '<div class="comp-clip-col"><button class="comp-clip' + (has?' has-comp':'') + '" onclick="toggleCompMenu(' + reg + ',event)" title="' + (has?'Comprovante anexado - clique para ver/trocar':'Anexar comprovante') + '"><i class="ti ti-paperclip"></i></button><span class="comp-lbl' + (has?' has-comp':'') + '">' + (has?'comp.':'clipe') + '</span></div>';
+}
+
+var _compMenuReg = null;
+var _compUploadReg = null;
+
+function toggleCompMenu(reg, e) {
+  e.stopPropagation();
+  var existing = document.getElementById('comp-menu-popup');
+  if (existing) { existing.remove(); if (_compMenuReg === reg) { _compMenuReg = null; return; } }
+  _compMenuReg = reg;
+  var s = dbState[reg] || {};
+  var has = !!s.comprovante_url;
+  var menu = document.createElement('div');
+  menu.id = 'comp-menu-popup';
+  menu.className = 'comp-menu-popup';
+  if (has) {
+    menu.innerHTML =
+      '<button class="comp-menu-item" onclick="viewComprovante(\'' + s.comprovante_url.replace(/'/g,'%27') + '\',event)"><i class="ti ti-eye" style="font-size:13px;color:#60a5fa"></i> Ver comprovante</button>' +
+      '<button class="comp-menu-item" onclick="triggerCompUpload(' + reg + ',event)"><i class="ti ti-refresh" style="font-size:13px;color:#fbbf24"></i> Trocar comprovante</button>';
+  } else {
+    menu.innerHTML =
+      '<button class="comp-menu-item" onclick="triggerCompUpload(' + reg + ',event)"><i class="ti ti-upload" style="font-size:13px;color:#22c55e"></i> Anexar comprovante</button>';
+  }
+  document.body.appendChild(menu);
+  var rect = e.target.closest('button').getBoundingClientRect();
+  var top = rect.bottom + 4;
+  var left = rect.right - menu.offsetWidth;
+  if (left < 8) left = 8;
+  if (top + 100 > window.innerHeight) top = rect.top - menu.offsetHeight - 4;
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+}
+
+function closeCompMenu() {
+  var m = document.getElementById('comp-menu-popup');
+  if (m) m.remove();
+  _compMenuReg = null;
+}
+
+function viewComprovante(url, e) {
+  if (e) e.stopPropagation();
+  closeCompMenu();
+  window.open(url, '_blank');
+}
+
+function triggerCompUpload(reg, e) {
+  if (e) e.stopPropagation();
+  closeCompMenu();
+  _compUploadReg = reg;
+  var inp = document.getElementById('comp-file-input');
+  inp.value = '';
+  inp.click();
+}
+
+async function handleCompFile(e) {
+  var file = e.target.files[0];
+  if (!file || !_compUploadReg) return;
+  var reg = _compUploadReg;
+  setSyncStatus('syncing');
+  var ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  var path = 'reg' + reg + '/' + viewMonth + '_' + viewYear + '_' + Date.now() + '.' + ext;
+  var upRes = await sb.storage.from('comprovantes').upload(path, file, {cacheControl:'3600', upsert:true});
+  if (upRes.error) {
+    console.error('upload comprovante:', upRes.error);
+    setSyncStatus('error');
+    alert('Erro ao enviar arquivo: ' + (upRes.error.message || 'desconhecido'));
+    return;
+  }
+  var publicUrl = sb.storage.from('comprovantes').getPublicUrl(upRes.data.path).data.publicUrl;
+  var dbRes = await sb.from('controle_mensal').upsert({cliente_reg:reg, mes:viewMonth, ano:viewYear, comprovante_url:publicUrl}, {onConflict:'cliente_reg,mes,ano'});
+  if (dbRes.error) {
+    console.error('save comprovante_url:', dbRes.error);
+    if ((dbRes.error.message||'').includes('comprovante_url')) {
+      alert('Execute no SQL Editor do Supabase:\nALTER TABLE controle_mensal ADD COLUMN IF NOT EXISTS comprovante_url text;');
+    }
+    setSyncStatus('error');
+    return;
+  }
+  if (!dbState[reg]) dbState[reg] = {};
+  dbState[reg].comprovante_url = publicUrl;
+  setSyncStatus('ok');
+  doFilter();
+  if (selected && selected.reg === reg) renderDetail();
 }
 
 function renderList(data) {
@@ -1475,7 +1584,7 @@ function renderList(data) {
       '<div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:4px"><p style="font-size:12px;font-weight:500;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">' + c.nome + '</p>' +
       (tarefasAbertas[c.reg] ? '<i class="ti ti-alert-triangle" style="font-size:12px;color:#fb923c;flex-shrink:0" title="' + tarefasAbertas[c.reg] + ' tarefa(s) em aberto"></i>' : '') + '</div>' +
       '<p style="font-size:11px;color:#64748b">' + cidadeUF + '</p>' + valorLine + '</div>' +
-      '<div style="display:flex;gap:5px;align-items:center">' + tickBtn(c.reg,'recebido','ti-download','receb.') + tickBtn(c.reg,'enviado','ti-upload','enviado') + tickBtn(c.reg,'quitado','ti-circle-check','quitado') + '</div></div>';
+      '<div style="display:flex;gap:5px;align-items:center">' + tickBtn(c.reg,'recebido','ti-download','receb.') + tickBtn(c.reg,'enviado','ti-upload','enviado') + tickBtn(c.reg,'quitado','ti-circle-check','quitado') + compClipBtn(c.reg) + '</div></div>';
   }).join('');
 }
 
@@ -1571,7 +1680,9 @@ function renderDetail() {
     '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:44px;height:44px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:500;color:' + fg + ';flex-shrink:0">' + initials(c.nome) + '</div><div style="flex:1"><p style="font-size:15px;font-weight:500;color:#f1f5f9">' + c.nome + '</p><p style="font-size:12px;color:#64748b">Registro ' + c.reg + ' . ' + MESES[viewMonth] + ' ' + viewYear + '</p></div>' + badge + '</div>' +
     tarefasBanner +
     roNote +
-    '<div style="display:flex;gap:8px;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' + dt('recebido','ti-download','Extrato recebido') + dt('enviado','ti-upload','Extrato enviado') + dt('quitado','ti-circle-check','Quitado') + '</div>' +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' + dt('recebido','ti-download','Extrato recebido') + dt('enviado','ti-upload','Extrato enviado') + dt('quitado','ti-circle-check','Quitado') +
+    '<button class="comp-clip' + (cv.comprovante_url?' has-comp':'') + '" style="width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:13px;height:30px" onclick="toggleCompMenu(' + c.reg + ',event)">' +
+    '<i class="ti ti-paperclip" style="font-size:14px"></i> ' + (cv.comprovante_url ? '<span style="color:#22c55e">Comprovante</span>' : 'Comprovante') + '</button>' + '</div>' +
     finSection +
     '<div>' + rows + '</div>';
 }
