@@ -18,11 +18,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nav-btn{width:34px;height:34px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
 .nav-btn:hover{background:#2d3250;color:#e2e8f0}
 .month-label{font-size:14px;font-weight:500;color:#e2e8f0;min-width:130px;text-align:center}
-.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem}
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem}
+.fin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem}
 .sum-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px 16px}
+.sum-card.highlight{border-color:rgba(251,191,36,0.35);background:#1d1a10}
 .sum-card .lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px}
 .sum-card .val{font-size:20px;font-weight:600;color:#f1f5f9}
 .sum-card .sub{font-size:11px;color:#64748b;margin-top:2px}
+.sec-title{font-size:11px;font-weight:600;color:#4a5568;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;display:flex;align-items:center;gap:6px;padding-bottom:6px;border-bottom:0.5px solid rgba(255,255,255,0.06)}
 .table-wrap{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden}
 .rel-table{width:100%;border-collapse:collapse}
 .rel-table th{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;padding:11px 14px;text-align:left;border-bottom:0.5px solid rgba(255,255,255,0.08);background:#1a1d27;white-space:nowrap;position:sticky;top:0;z-index:1}
@@ -62,7 +65,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .footer{margin-top:1.5rem;text-align:center;font-size:11px;color:#4a5568}
 @media(max-width:767px){
   body{padding:0.75rem}
-  .summary-grid{grid-template-columns:1fr 1fr}
+  .summary-grid,.fin-grid{grid-template-columns:1fr 1fr}
   .rel-table th:nth-child(4),.rel-table td:nth-child(4),
   .rel-table th:nth-child(5),.rel-table td:nth-child(5){display:none}
   .header{gap:10px}
@@ -104,11 +107,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <div id="error-area"></div>
 
-  <div class="summary-grid" id="summary-grid">
+  <div class="sec-title"><i class="ti ti-users" style="font-size:13px"></i> Clientes</div>
+  <div class="summary-grid">
     <div class="sum-card"><div class="lbl">Total clientes</div><div class="val" id="sum-total">-</div><div class="sub">cadastrados</div></div>
     <div class="sum-card"><div class="lbl">Quitados</div><div class="val" id="sum-quit" style="color:#4ade80">-</div><div class="sub" id="sum-quit-pct"></div></div>
     <div class="sum-card"><div class="lbl">Valor do mês</div><div class="val" id="sum-valor" style="font-size:16px;color:#fbbf24">-</div><div class="sub">total faturado</div></div>
     <div class="sum-card"><div class="lbl">Valor pago</div><div class="val" id="sum-pago" style="font-size:16px;color:#22c55e">-</div><div class="sub" id="sum-pago-pct"></div></div>
+  </div>
+
+  <div class="sec-title"><i class="ti ti-currency-dollar" style="font-size:13px"></i> Resumo Financeiro</div>
+  <div class="fin-grid">
+    <div class="sum-card"><div class="lbl">Comissão bruta (17%)</div><div class="val" id="fin-com-bruta" style="font-size:16px;color:#fbbf24">-</div><div class="sub">17% do valor do mês</div></div>
+    <div class="sum-card"><div class="lbl"><i class="ti ti-truck" style="font-size:12px;vertical-align:-1px"></i> Total gastos entrega</div><div class="val" id="fin-total-gastos" style="font-size:16px;color:#ef4444">-</div><div class="sub">Correio + Motoboy + Uber</div></div>
+    <div class="sum-card highlight"><div class="lbl">Comissão líquida</div><div class="val" id="fin-com-liquida" style="font-size:16px;color:#fbbf24">-</div><div class="sub">Bruta − gastos entrega</div></div>
+    <div class="sum-card"><div class="lbl"><i class="ti ti-mail" style="font-size:12px;vertical-align:-1px"></i> Gastos Correio</div><div class="val" id="fin-correio" style="font-size:16px;color:#60a5fa">-</div><div class="sub" id="fin-correio-qtd"></div></div>
+    <div class="sum-card"><div class="lbl"><i class="ti ti-motorbike" style="font-size:12px;vertical-align:-1px"></i> Gastos Motoboy</div><div class="val" id="fin-motoboy" style="font-size:16px;color:#fbbf24">-</div><div class="sub" id="fin-motoboy-qtd"></div></div>
+    <div class="sum-card"><div class="lbl"><i class="ti ti-car" style="font-size:12px;vertical-align:-1px"></i> Gastos Uber</div><div class="val" id="fin-uber" style="font-size:16px;color:#a78bfa">-</div><div class="sub" id="fin-uber-qtd"></div></div>
   </div>
 
   <div class="table-wrap">
@@ -199,9 +213,10 @@ async function loadAndRender() {
 
   try {
     var folder = viewYear + '_' + viewMonth;
-    var [dbRes, storRes] = await Promise.all([
+    var [dbRes, storRes, gastosRes] = await Promise.all([
       sb.from('controle_mensal').select('*').eq('mes', viewMonth).eq('ano', viewYear),
-      sb.storage.from('comprovantes').list(folder)
+      sb.storage.from('comprovantes').list(folder),
+      sb.from('gastos_entrega').select('tipo,valor').eq('mes', viewMonth).eq('ano', viewYear)
     ]);
     if (dbRes.error) throw dbRes.error;
 
@@ -242,7 +257,19 @@ async function loadAndRender() {
       if (!stateMap[reg]) stateMap[reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0,obs_pagamento:'',comprovantes:compMap[reg]};
     });
 
-    renderSummary(stateMap);
+    // Aggregate gastos de entrega
+    var gastos = {correio:0, motoboy:0, uber:0, outro:0, qtdC:0, qtdM:0, qtdU:0};
+    if (!gastosRes.error && gastosRes.data) {
+      gastosRes.data.forEach(function(g) {
+        var v = Number(g.valor) || 0;
+        if      (g.tipo === 'correio')  { gastos.correio  += v; gastos.qtdC++; }
+        else if (g.tipo === 'motoboy')  { gastos.motoboy  += v; gastos.qtdM++; }
+        else if (g.tipo === 'uber')     { gastos.uber     += v; gastos.qtdU++; }
+        else                            { gastos.outro    += v; }
+      });
+    }
+
+    renderSummary(stateMap, gastos);
     renderTable(stateMap);
   } catch(e) {
     console.error('loadAndRender:', e);
@@ -253,32 +280,53 @@ async function loadAndRender() {
   }
 }
 
+function setEl(id, val) { var e = document.getElementById(id); if (e) e.textContent = val; }
+
 function clearSummary() {
-  ['sum-total','sum-quit','sum-quit-pct','sum-valor','sum-pago','sum-pago-pct'].forEach(function(id) {
-    var el = document.getElementById(id); if (el) el.textContent = '-';
-  });
+  ['sum-total','sum-quit','sum-quit-pct','sum-valor','sum-pago','sum-pago-pct',
+   'fin-com-bruta','fin-total-gastos','fin-com-liquida',
+   'fin-correio','fin-correio-qtd','fin-motoboy','fin-motoboy-qtd','fin-uber','fin-uber-qtd'
+  ].forEach(function(id) { setEl(id, '-'); });
 }
 
-function renderSummary(stateMap) {
-  var total   = clients.length;
-  var quitados = 0, pendentes = 0;
-  var totalValor = 0, totalPago = 0;
+function renderSummary(stateMap, gastos) {
+  var total = clients.length;
+  var quitados = 0, totalValor = 0, totalPago = 0, comBruta = 0;
 
   clients.forEach(function(c) {
     var s = stateMap[c.reg] || {};
     if (s.quitado) quitados++;
-    else pendentes++;
-    totalValor += s.valor_mes || 0;
+    var vm = s.valor_mes || 0;
+    totalValor += vm;
     totalPago  += s.valor_pago || 0;
+    comBruta   += vm * 0.17;
   });
 
-  document.getElementById('sum-total').textContent = total;
-  document.getElementById('sum-quit').textContent  = quitados;
-  document.getElementById('sum-quit-pct').textContent = Math.round(quitados/total*100) + '% quitados';
-  document.getElementById('sum-valor').textContent = fmt(totalValor);
-  document.getElementById('sum-pago').textContent  = fmt(totalPago);
-  var pct = totalValor > 0 ? Math.round(totalPago/totalValor*100) : 0;
-  document.getElementById('sum-pago-pct').textContent = pct + '% do faturado';
+  setEl('sum-total', total);
+  setEl('sum-quit',  quitados);
+  setEl('sum-quit-pct', Math.round(quitados / total * 100) + '% quitados');
+  setEl('sum-valor', fmt(totalValor));
+  setEl('sum-pago',  fmt(totalPago));
+  setEl('sum-pago-pct', (totalValor > 0 ? Math.round(totalPago / totalValor * 100) : 0) + '% do faturado');
+
+  // Financial section
+  gastos = gastos || {correio:0, motoboy:0, uber:0, outro:0, qtdC:0, qtdM:0, qtdU:0};
+  var totalGastos = gastos.correio + gastos.motoboy + gastos.uber + gastos.outro;
+  var comLiquida  = comBruta - totalGastos;
+
+  setEl('fin-com-bruta',    fmt(comBruta));
+  setEl('fin-total-gastos', fmt(totalGastos));
+  setEl('fin-com-liquida',  fmt(comLiquida));
+  setEl('fin-correio',      fmt(gastos.correio));
+  setEl('fin-correio-qtd',  gastos.qtdC + ' lançamento' + (gastos.qtdC !== 1 ? 's' : ''));
+  setEl('fin-motoboy',      fmt(gastos.motoboy));
+  setEl('fin-motoboy-qtd',  gastos.qtdM + ' lançamento' + (gastos.qtdM !== 1 ? 's' : ''));
+  setEl('fin-uber',         fmt(gastos.uber));
+  setEl('fin-uber-qtd',     gastos.qtdU + ' lançamento' + (gastos.qtdU !== 1 ? 's' : ''));
+
+  // Color comissão líquida: red if negative
+  var elLiq = document.getElementById('fin-com-liquida');
+  if (elLiq) elLiq.style.color = comLiquida < 0 ? '#ef4444' : '#fbbf24';
 }
 
 function renderTable(stateMap) {
