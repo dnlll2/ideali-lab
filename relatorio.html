@@ -146,16 +146,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
   </div>
 
-  <div class="sec-title"><i class="ti ti-currency-dollar" style="font-size:13px"></i> Resumo Financeiro</div>
-  <div class="fin-grid">
-    <div class="sum-card"><div class="lbl">Comissão bruta (17%)</div><div class="val" id="fin-com-bruta" style="font-size:16px;color:#fbbf24">-</div><div class="sub" id="fin-com-bruta-sub">17% de (pago − componentes)</div></div>
-    <div class="sum-card"><div class="lbl"><i class="ti ti-truck" style="font-size:12px;vertical-align:-1px"></i> Total gastos entrega</div><div class="val" id="fin-total-gastos" style="font-size:16px;color:#ef4444">-</div><div class="sub">Correio + Motoboy + Uber</div></div>
-    <div class="sum-card highlight"><div class="lbl">Comissão líquida</div><div class="val" id="fin-com-liquida" style="font-size:16px;color:#fbbf24">-</div><div class="sub">Bruta − gastos entrega</div></div>
-    <div class="sum-card"><div class="lbl"><i class="ti ti-mail" style="font-size:12px;vertical-align:-1px"></i> Gastos Correio</div><div class="val" id="fin-correio" style="font-size:16px;color:#60a5fa">-</div><div class="sub" id="fin-correio-qtd"></div></div>
-    <div class="sum-card"><div class="lbl"><i class="ti ti-motorbike" style="font-size:12px;vertical-align:-1px"></i> Gastos Motoboy</div><div class="val" id="fin-motoboy" style="font-size:16px;color:#fbbf24">-</div><div class="sub" id="fin-motoboy-qtd"></div></div>
-    <div class="sum-card"><div class="lbl"><i class="ti ti-car" style="font-size:12px;vertical-align:-1px"></i> Gastos Uber</div><div class="val" id="fin-uber" style="font-size:16px;color:#a78bfa">-</div><div class="sub" id="fin-uber-qtd"></div></div>
-  </div>
-
   <div class="table-wrap">
     <div id="table-area" class="loading">
       <div class="spinner"></div>
@@ -251,10 +241,9 @@ async function loadAndRender() {
 
   try {
     var folder = viewYear + '_' + viewMonth;
-    var [dbRes, storRes, gastosRes] = await Promise.all([
+    var [dbRes, storRes] = await Promise.all([
       sb.from('controle_mensal').select('*').eq('mes', viewMonth).eq('ano', viewYear),
-      sb.storage.from('comprovantes').list(folder),
-      sb.from('gastos_entrega').select('tipo,valor').eq('mes', viewMonth).eq('ano', viewYear)
+      sb.storage.from('comprovantes').list(folder)
     ]);
     if (dbRes.error) throw dbRes.error;
 
@@ -295,19 +284,7 @@ async function loadAndRender() {
       if (!stateMap[reg]) stateMap[reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0,obs_pagamento:'',comprovantes:compMap[reg]};
     });
 
-    // Aggregate gastos de entrega
-    var gastos = {correio:0, motoboy:0, uber:0, outro:0, qtdC:0, qtdM:0, qtdU:0};
-    if (!gastosRes.error && gastosRes.data) {
-      gastosRes.data.forEach(function(g) {
-        var v = Number(g.valor) || 0;
-        if      (g.tipo === 'correio')  { gastos.correio  += v; gastos.qtdC++; }
-        else if (g.tipo === 'motoboy')  { gastos.motoboy  += v; gastos.qtdM++; }
-        else if (g.tipo === 'uber')     { gastos.uber     += v; gastos.qtdU++; }
-        else                            { gastos.outro    += v; }
-      });
-    }
-
-    renderSummary(stateMap, gastos);
+    renderSummary(stateMap);
     renderTable(stateMap);
   } catch(e) {
     console.error('loadAndRender:', e);
@@ -324,15 +301,13 @@ function setBarWidth(id, pct, color) { var e = document.getElementById(id); if (
 function clearSummary() {
   ['sum-total','sum-quit','sum-quit-pct',
    'sum-clpag','sum-clpag-sub',
-   'fat-pct','fat-valor','fat-pago','fat-pendente',
-   'fin-com-bruta','fin-total-gastos','fin-com-liquida',
-   'fin-correio','fin-correio-qtd','fin-motoboy','fin-motoboy-qtd','fin-uber','fin-uber-qtd'
+   'fat-pct','fat-valor','fat-pago','fat-pendente'
   ].forEach(function(id) { setEl(id, '-'); });
   setBarWidth('sum-clpag-bar', 0, '#4a5568');
   setBarWidth('fat-bar', 0, '#4a5568');
 }
 
-function renderSummary(stateMap, gastos) {
+function renderSummary(stateMap) {
   var total = clients.length;
   var quitados = 0, clAtivos = 0, clPagaram = 0, totalValor = 0, totalPago = 0, totalComp = 0;
 
@@ -363,28 +338,6 @@ function renderSummary(stateMap, gastos) {
   setEl('fat-pendente', fmt(pendente > 0 ? pendente : 0));
   setBarWidth('fat-bar', pctVal, corVal);
 
-  // Fórmula idêntica ao index.html:
-  // comBruta = (totPago - totComp) * 0.17
-  // totalDescontos = correio + motoboy + uber + outro
-  // comLiquida = comBruta - totalDescontos
-  gastos = gastos || {correio:0, motoboy:0, uber:0, outro:0, qtdC:0, qtdM:0, qtdU:0};
-  var comBruta    = (totalPago - totalComp) * 0.17;
-  var totalGastos = gastos.correio + gastos.motoboy + gastos.uber + gastos.outro;
-  var comLiquida  = comBruta - totalGastos;
-
-  setEl('fin-com-bruta',    fmt(comBruta));
-  setEl('fin-com-bruta-sub', '17% de (pago ' + fmt(totalPago) + ' − comp. ' + fmt(totalComp) + ')');
-  setEl('fin-total-gastos', fmt(totalGastos));
-  setEl('fin-com-liquida',  fmt(comLiquida));
-  setEl('fin-correio',      fmt(gastos.correio));
-  setEl('fin-correio-qtd',  gastos.qtdC + ' lançamento' + (gastos.qtdC !== 1 ? 's' : ''));
-  setEl('fin-motoboy',      fmt(gastos.motoboy));
-  setEl('fin-motoboy-qtd',  gastos.qtdM + ' lançamento' + (gastos.qtdM !== 1 ? 's' : ''));
-  setEl('fin-uber',         fmt(gastos.uber));
-  setEl('fin-uber-qtd',     gastos.qtdU + ' lançamento' + (gastos.qtdU !== 1 ? 's' : ''));
-
-  var elLiq = document.getElementById('fin-com-liquida');
-  if (elLiq) elLiq.style.color = comLiquida < 0 ? '#ef4444' : '#fbbf24';
 }
 
 function renderTable(stateMap) {
