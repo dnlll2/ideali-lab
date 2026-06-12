@@ -73,6 +73,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #comp-banner .banner-text{flex:1;line-height:1.4}
 #comp-banner .banner-ok{background:rgba(255,255,255,0.2);border:1.5px solid rgba(255,255,255,0.6);color:#fff;padding:5px 18px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;flex-shrink:0;transition:background 0.15s;letter-spacing:0.03em}
 #comp-banner .banner-ok:hover{background:rgba(255,255,255,0.35)}
+.novo-badge{display:inline-flex;align-items:center;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px;background:#ea580c;color:#fff;letter-spacing:0.07em;margin-left:6px;vertical-align:middle;flex-shrink:0;animation:novoPulse 1.8s ease-in-out infinite}
+@keyframes novoPulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(234,88,12,0.6)}60%{opacity:0.85;box-shadow:0 0 0 5px rgba(234,88,12,0)}}
 .obs-icon{height:22px;padding:0 7px;border-radius:5px;border:none;background:#92400e;color:#fcd34d;font-size:10px;font-weight:700;letter-spacing:0.04em;cursor:pointer;display:inline-flex;align-items:center;gap:3px;flex-shrink:0;transition:background 0.15s;font-family:inherit;white-space:nowrap}
 .obs-icon:hover{background:#b45309}
 #obs-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:900;display:none}
@@ -298,8 +300,9 @@ async function loadAndRender() {
     });
 
     renderSummary(stateMap);
-    renderTable(stateMap);
-    checkNewComprovantes(stateMap);
+    var newCompMap = computeNewComprovantes(stateMap);
+    renderTable(stateMap, newCompMap);
+    showBannerIfNeeded(stateMap, newCompMap);
   } catch(e) {
     console.error('loadAndRender:', e);
     document.getElementById('error-area').innerHTML =
@@ -354,7 +357,8 @@ function renderSummary(stateMap) {
 
 }
 
-function renderTable(stateMap) {
+function renderTable(stateMap, newCompMap) {
+  newCompMap = newCompMap || {};
   var area = document.getElementById('table-area');
 
   var sorted = clients.slice().sort(function(a,b) {
@@ -408,7 +412,7 @@ function renderTable(stateMap) {
       : '';
 
     return '<tr>' +
-      '<td><div class="name-cell"><div class="avatar" style="background:' + bg + ';color:' + fg + '">' + initials(c.nome) + '</div><div style="min-width:0"><div class="client-name">' + escHtml(c.nome) + '</div><div class="client-city">' + escHtml(c.cidade + ' / ' + c.uf) + '</div></div></div></td>' +
+      '<td><div class="name-cell"><div class="avatar" style="background:' + bg + ';color:' + fg + '">' + initials(c.nome) + '</div><div style="min-width:0"><div class="client-name">' + escHtml(c.nome) + (newCompMap[c.reg] ? '<span class="novo-badge">NOVO</span>' : '') + '</div><div class="client-city">' + escHtml(c.cidade + ' / ' + c.uf) + '</div></div></div></td>' +
       '<td>' + statusHtml + '</td>' +
       '<td>' + ticksHtml + '</td>' +
       '<td>' + valorMesHtml + '</td>' +
@@ -470,35 +474,34 @@ function saveComprovanteSnapshot(stateMap, seen, monthKey) {
   try { localStorage.setItem(LS_COMP_KEY, JSON.stringify(seen)); } catch(e) {}
 }
 
-function checkNewComprovantes(stateMap) {
-  _bannerStateMap = stateMap;
+// Retorna {reg: nome} para clientes com comprovante novo; {} na primeira visita (salva baseline)
+function computeNewComprovantes(stateMap) {
   var seen = loadSeenComprovantes();
   var monthKey = getMonthKey();
-
-  // Primeira visita neste mês: salvar baseline silenciosamente, sem exibir banner
   if (seen[monthKey] === undefined) {
     saveComprovanteSnapshot(stateMap, seen, monthKey);
-    return;
+    return {};
   }
-
   var seenMonth = seen[monthKey];
-  var newClients = [];
-
+  var result = {};
   clients.forEach(function(c) {
     var comps = (stateMap[c.reg] || {}).comprovantes || [];
     if (!comps.length) return;
     var currentUrls = comps.map(function(item) { return item.url; });
     var seenUrls = seenMonth[String(c.reg)] || [];
     var hasNew = currentUrls.some(function(url) { return seenUrls.indexOf(url) === -1; });
-    if (hasNew) newClients.push(c.nome);
+    if (hasNew) result[c.reg] = c.nome;
   });
+  return result;
+}
 
-  if (!newClients.length) return;
-
-  var text = newClients.length === 1
-    ? 'Novo comprovante de pagamento: ' + newClients[0]
-    : newClients.length + ' novos comprovantes de pagamento: ' + newClients.join(', ');
-
+function showBannerIfNeeded(stateMap, newCompMap) {
+  _bannerStateMap = stateMap;
+  var names = Object.keys(newCompMap).map(function(k) { return newCompMap[k]; });
+  if (!names.length) return;
+  var text = names.length === 1
+    ? 'Novo comprovante de pagamento: ' + names[0]
+    : names.length + ' novos comprovantes de pagamento: ' + names.join(', ');
   document.getElementById('comp-banner-text').textContent = text;
   var banner = document.getElementById('comp-banner');
   banner.style.display = 'flex';
@@ -507,6 +510,8 @@ function checkNewComprovantes(stateMap) {
 
 function dismissBanner() {
   hideBanner();
+  var badges = document.querySelectorAll('.novo-badge');
+  for (var i = 0; i < badges.length; i++) badges[i].remove();
   var seen = loadSeenComprovantes();
   var monthKey = getMonthKey();
   if (!seen[monthKey]) seen[monthKey] = {};
