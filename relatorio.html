@@ -461,10 +461,27 @@ function hideBanner() {
   document.body.style.paddingTop = '';
 }
 
+function saveComprovanteSnapshot(stateMap, seen, monthKey) {
+  seen[monthKey] = {};
+  clients.forEach(function(c) {
+    var comps = (stateMap[c.reg] || {}).comprovantes || [];
+    if (comps.length) seen[monthKey][String(c.reg)] = comps.map(function(item) { return item.url; });
+  });
+  try { localStorage.setItem(LS_COMP_KEY, JSON.stringify(seen)); } catch(e) {}
+}
+
 function checkNewComprovantes(stateMap) {
   _bannerStateMap = stateMap;
   var seen = loadSeenComprovantes();
-  var seenMonth = seen[getMonthKey()] || {};
+  var monthKey = getMonthKey();
+
+  // Primeira visita neste mês: salvar baseline silenciosamente, sem exibir banner
+  if (seen[monthKey] === undefined) {
+    saveComprovanteSnapshot(stateMap, seen, monthKey);
+    return;
+  }
+
+  var seenMonth = seen[monthKey];
   var newClients = [];
 
   clients.forEach(function(c) {
