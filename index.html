@@ -176,6 +176,14 @@ button{font-family:inherit;cursor:pointer}
 .comp-menu-item:hover{background:#22263a;color:#e2e8f0}
 .comp-uploading{opacity:0.5;pointer-events:none}
 @media(max-width:767px){.comp-clip{width:34px;height:34px;font-size:14px}}
+/* ── Home Panel ───────────────────────────────── */
+.home-tab-btn{padding:10px 20px;border:none;background:transparent;color:#94a3b8;font-size:13px;font-family:inherit;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;white-space:nowrap;flex-shrink:0}
+.home-tab-btn:hover{background:rgba(255,255,255,0.04);color:#e2e8f0}
+.home-tab-btn.active{color:#60a5fa;border-bottom-color:#3b82f6;background:rgba(59,130,246,0.07)}
+.home-item-card{background:#22263a;border-radius:10px;padding:18px 20px;border:0.5px solid rgba(255,255,255,0.08);min-height:120px}
+.home-dot{height:8px;border-radius:4px;background:rgba(255,255,255,0.18);transition:all 0.3s;cursor:pointer;flex-shrink:0}
+@keyframes homeSlideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.home-slide-in{animation:homeSlideIn 0.3s ease}
 </style>
 </head>
 <body>
@@ -190,9 +198,13 @@ button{font-family:inherit;cursor:pointer}
     <button class="sb-close" onclick="closeSidebar()"><i class="ti ti-x"></i></button>
   </div>
   <nav style="padding:8px 0;flex:1">
-    <div class="sb-item" id="sb-clientes" onclick="sbNav('clientes')">
+    <div class="sb-item" id="sb-home" onclick="sbNav('home')">
       <div class="sb-icon">🏠</div>
-      <span>Clientes</span>
+      <span>Home</span>
+    </div>
+    <div class="sb-item" id="sb-clientes" onclick="sbNav('contas-receber')">
+      <div class="sb-icon">💰</div>
+      <span>Contas a Receber</span>
     </div>
     <div class="sb-item" id="sb-tarefas" onclick="sbNav('tarefas')">
       <div class="sb-icon">📋</div>
@@ -377,11 +389,37 @@ button{font-family:inherit;cursor:pointer}
     </div>
     <button onclick="addNextMonth()" title="Adicionar proximo mes" style="width:32px;height:32px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.15s" onmouseover="this.style.background='#2d3250';this.style.color='#e2e8f0'" onmouseout="this.style.background='#22263a';this.style.color='#94a3b8'">+</button>
     <div style="width:1px;height:20px;background:rgba(255,255,255,0.1);margin:0 6px;flex-shrink:0"></div>
+    <button id="btn-home" class="tab-tarefa" onclick="switchToHome()">🏠 Home</button>
+    <button id="btn-contasreceber" class="tab-tarefa" onclick="switchToContasReceber()">💰 Contas a Receber</button>
     <button id="btn-tarefas" class="tab-tarefa" onclick="switchToTarefas()">Tarefas</button>
     <button id="btn-inove" class="tab-tarefa" onclick="switchToInove()">&#127981; Inove 3D</button>
     <button id="btn-resumo" class="tab-tarefa" onclick="switchToResumo()">&#128203; Resumo</button>
     <button onclick="gerarRelatorioPDF()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:0.5px solid rgba(251,191,36,0.35);background:#2a2010;font-size:12px;color:#fbbf24;transition:all 0.15s;white-space:nowrap" onmouseover="this.style.background='#3d2e0e';this.style.borderColor='rgba(251,191,36,0.6)'" onmouseout="this.style.background='#2a2010';this.style.borderColor='rgba(251,191,36,0.35)'">&#128196; Relatório PDF</button>
     <button onclick="gerarRelatorioClientes()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:0.5px solid rgba(99,179,237,0.35);background:#0c1e2e;font-size:12px;color:#63b3ed;transition:all 0.15s;white-space:nowrap" onmouseover="this.style.background='#112233';this.style.borderColor='rgba(99,179,237,0.65)'" onmouseout="this.style.background='#0c1e2e';this.style.borderColor='rgba(99,179,237,0.35)'">&#128203; Relatório Clientes</button>
+  </div>
+
+  <div id="home-view" style="display:none">
+    <div style="max-width:860px">
+      <div style="margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <p style="font-size:20px;font-weight:600;color:#f1f5f9">🏠 Home</p>
+          <p id="home-subtitle" style="font-size:12px;color:#64748b;margin-top:2px">Carregando...</p>
+        </div>
+        <button onclick="loadHomeData()" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit;transition:all 0.15s" onmouseover="this.style.background='#2d3250';this.style.color='#e2e8f0'" onmouseout="this.style.background='#22263a';this.style.color='#94a3b8'">&#8635; Atualizar</button>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="display:flex;background:#13151f;border-bottom:0.5px solid rgba(255,255,255,0.1);overflow-x:auto;scrollbar-width:none">
+          <button id="home-tab-pedidos"   class="home-tab-btn active" onclick="switchHomeTab('pedidos')">📦 Pedidos</button>
+          <button id="home-tab-urgencia"  class="home-tab-btn"        onclick="switchHomeTab('urgencia')">🚨 Urgência</button>
+          <button id="home-tab-lembretes" class="home-tab-btn"        onclick="switchHomeTab('lembretes')">📝 Lembretes</button>
+        </div>
+        <div id="home-carousel-area" style="min-height:200px;padding:1.25rem;position:relative"
+             onmouseenter="homePauseCarousel()" onmouseleave="homeResumeCarousel()">
+          <div id="home-carousel-content"></div>
+          <div id="home-carousel-footer" style="display:flex;align-items:center;justify-content:center;gap:5px;margin-top:14px;flex-wrap:wrap"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="clientes-view">
@@ -1419,6 +1457,10 @@ function renderMonthTabs() {
     }).join('');
   }
 
+  var btnH = document.getElementById('btn-home');
+  if (btnH) btnH.className = 'tab-tarefa' + (viewMode==='home' ? ' active' : '');
+  var btnCR = document.getElementById('btn-contasreceber');
+  if (btnCR) btnCR.className = 'tab-tarefa' + (viewMode==='clientes' ? ' active' : '');
   var btnT = document.getElementById('btn-tarefas');
   if (btnT) btnT.className = 'tab-tarefa' + (viewMode==='tarefas' ? ' active' : '');
   var btnI = document.getElementById('btn-inove');
@@ -1465,7 +1507,7 @@ async function switchMonth(m, y) {
   document.getElementById('tarefas-view').style.display    = 'none';
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'none';
-  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
+  hideHomeView(); hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
   viewMonth = m; viewYear = y; selected = null; historicoEditMode = false;
   document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Carregando...</p></div>';
   var loadedData = await loadMonthData(m, y);
@@ -1755,14 +1797,16 @@ function closeSidebar() {
   document.getElementById('sidebar-overlay').classList.remove('open');
 }
 function updateSidebarActive() {
-  ['clientes','tarefas','inove','resumo','dashboard','cadastro','pedidos','orcamento','cobranca','recibo','gastos','relatorios'].forEach(function(v) {
+  ['home','clientes','tarefas','inove','resumo','dashboard','cadastro','pedidos','orcamento','cobranca','recibo','gastos','relatorios'].forEach(function(v) {
     var el = document.getElementById('sb-'+v);
     if (el) el.classList.toggle('active', viewMode===v);
   });
 }
 function sbNav(target) {
   closeSidebar();
-  if (target==='clientes') { switchMonth(viewMonth, viewYear); }
+  if (target==='home') { switchToHome(); }
+  else if (target==='contas-receber') { switchToContasReceber(); }
+  else if (target==='clientes') { switchToContasReceber(); }
   else if (target==='tarefas') { switchToTarefas(); }
   else if (target==='inove') { switchToInove(); }
   else if (target==='resumo') { switchToResumo(); }
@@ -1942,7 +1986,7 @@ function switchToDashboard() {
   document.getElementById('tarefas-view').style.display    = 'none';
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'block';
-  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
+  hideHomeView(); hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
   var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
   var tg = document.getElementById('tarefas-grid');  if (tg) tg.classList.remove('mob-detail');
   renderMonthTabs();
@@ -2230,7 +2274,7 @@ function switchToPedidos() {
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'none';
   document.getElementById('pedidos-view').style.display    = 'block';
-  hideCadastroView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
+  hideHomeView(); hideCadastroView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
   var cg=document.getElementById('clientes-grid');if(cg)cg.classList.remove('mob-detail');
   var tg=document.getElementById('tarefas-grid');if(tg)tg.classList.remove('mob-detail');
   renderMonthTabs();
@@ -2267,7 +2311,7 @@ function renderPedidosTable() {
       '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#94a3b8">'+escHtml(p.descricao||'—')+'</td>'+
       '<td style="color:#64748b;white-space:nowrap">'+(p.data_prevista?fmtDate(p.data_prevista):'—')+'</td>'+
       '<td style="color:#4ade80;font-weight:500;white-space:nowrap">'+fmt(p.valor||0)+'</td>'+
-      '<td><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:'+st.bg+';color:'+st.c+'">'+st.l+'</span></td>'+
+      '<td style="white-space:nowrap"><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:'+st.bg+';color:'+st.c+'">'+st.l+'</span>'+(p.urgente?' <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;background:#3d1d1d;color:#fca5a5">🚨</span>':'')+' </td>'+
     '</tr>';
   }).join('');
 }
@@ -2314,6 +2358,9 @@ function openPedidoPanel(id) {
       '<div class="cf-group"><label class="cf-label">Data prevista</label><input type="date" id="pf-data" style="width:100%" value="'+(p&&p.data_prevista?p.data_prevista:'')+'"></div>'+
     '</div>'+
     '<div class="cf-group"><label class="cf-label">Status</label><select id="pf-status" style="width:100%">'+stOpts+'</select></div>'+
+    '<div class="cf-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:#22263a;border-radius:8px;border:0.5px solid rgba(255,255,255,0.08)">'+
+      '<input type="checkbox" id="pf-urgente"'+(p&&p.urgente?' checked':'')+' style="width:16px;height:16px;cursor:pointer;accent-color:#ef4444">'+
+      '<span style="font-size:13px;color:#fca5a5;font-weight:500">🚨 Marcar como Urgente</span></label></div>'+
     '<div class="cf-group"><label class="cf-label">Observação</label>'+
       '<textarea id="pf-obs" style="width:100%;height:70px;resize:vertical;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:13px;background:#22263a;color:#e2e8f0;outline:none;font-family:inherit">'+escHtml(p&&p.observacao||'')+'</textarea></div>'+
     statusBtns+
@@ -2343,7 +2390,8 @@ async function savePedidoPanel() {
     valor:parseFloat((document.getElementById('pf-valor')||{value:0}).value)||0,
     data_prevista:(document.getElementById('pf-data')||{value:null}).value||null,
     status:(document.getElementById('pf-status')||{value:'orcamento'}).value,
-    observacao:(document.getElementById('pf-obs')||{value:''}).value.trim()
+    observacao:(document.getElementById('pf-obs')||{value:''}).value.trim(),
+    urgente:!!(document.getElementById('pf-urgente')&&document.getElementById('pf-urgente').checked)
   };
   try {
     if(selectedPedidoId){
@@ -2411,7 +2459,7 @@ function switchToCadastro() {
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'none';
   document.getElementById('cadastro-view').style.display   = 'block';
-  hidePedidosView(); hideOrcamentoView(); hideCobrancaView();
+  hideHomeView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView();
   var cg=document.getElementById('clientes-grid');if(cg)cg.classList.remove('mob-detail');
   var tg=document.getElementById('tarefas-grid');if(tg)tg.classList.remove('mob-detail');
   renderMonthTabs();
@@ -2833,7 +2881,7 @@ function switchToTarefas() {
   document.getElementById('tarefas-view').style.display    = 'block';
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('dashboard-view').style.display  = 'none';
-  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
+  hideHomeView(); hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
   var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
   renderMonthTabs();
   loadTarefas();
@@ -2886,6 +2934,7 @@ async function saveOutrosDescontos() {
 
 async function init() {
   applyTheme(currentTheme);
+  runMigrations();
   dbState = await loadMonthData(currentMonth, currentYear);
   // Se o mês atual está vazio, recua automaticamente para o mês anterior
   if (!mesTemDados(dbState)) {
@@ -2899,14 +2948,235 @@ async function init() {
     }
   }
   document.getElementById('loading-overlay').style.display = 'none';
-  renderMonthTabs(); updateCounts(); doFilter();
   loadFretesMes();
   loadTarefasAbertas();
   reloadGastosFooter(viewMonth, viewYear);
   loadCadastroClientes();
+  // Abre na Home por padrão
+  switchToHome();
 }
 
 init();
+
+// ── Home Panel ───────────────────────────────────────────────
+
+var homeActiveTab = 'pedidos';
+var homeAllItems  = { pedidos: [], urgencia: [], lembretes: [] };
+var homeIdx       = 0;
+var homeTimer     = null;
+var homeIsPaused  = false;
+
+function switchToHome() {
+  closeMonthDD();
+  viewMode = 'home';
+  hideAllViews();
+  var hv = document.getElementById('home-view');
+  if (hv) hv.style.display = 'block';
+  renderMonthTabs();
+  updateSidebarActive();
+  loadHomeData();
+}
+
+function switchToContasReceber() {
+  switchMonth(viewMonth, viewYear);
+}
+
+async function runMigrations() {
+  var sqls = [
+    'ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS urgente boolean DEFAULT false',
+    'ALTER TABLE tarefas ADD COLUMN IF NOT EXISTS data_prazo date'
+  ];
+  try {
+    var r = await fetch(SUPABASE_URL + '/rest/v1/sql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      },
+      body: JSON.stringify({query: sqls.join('; ')})
+    });
+    if (!r.ok) {
+      console.warn('[migration] Endpoint retornou', r.status, '— execute manualmente no SQL Editor do Supabase:');
+      sqls.forEach(function(s){ console.warn(s); });
+    } else {
+      console.log('[migration] Colunas verificadas/criadas com sucesso.');
+    }
+  } catch(e) {
+    console.warn('[migration] Endpoint não disponível — execute manualmente:', sqls.join('\n'));
+  }
+}
+
+async function loadHomeData() {
+  var sub = document.getElementById('home-subtitle');
+  if (sub) sub.textContent = 'Carregando...';
+  var content = document.getElementById('home-carousel-content');
+  if (content) content.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:40px 0"><div class="spinner"></div></div>';
+  try {
+    var resPedidos = await sb.from('pedidos').select('*').neq('status','finalizado').neq('status','entregue').neq('status','cancelado');
+    var resTarefas = await sb.from('tarefas').select('*').eq('concluida',false).eq('arquivada',false);
+    var pedidosAll = resPedidos.error ? [] : (resPedidos.data || []);
+    var tarefasAll = resTarefas.error ? [] : (resTarefas.data || []);
+    // sort pedidos by prazo
+    pedidosAll.sort(function(a,b){ return calcPrazoISO(a).localeCompare(calcPrazoISO(b)); });
+    homeAllItems.pedidos  = pedidosAll;
+    homeAllItems.urgencia = pedidosAll.filter(function(p){ return p.urgente; });
+    homeAllItems.lembretes = tarefasAll.filter(function(t){ return t.data_prazo; })
+      .sort(function(a,b){ return a.data_prazo.localeCompare(b.data_prazo); });
+  } catch(e) {
+    console.error('loadHomeData:', e);
+    homeAllItems = { pedidos:[], urgencia:[], lembretes:[] };
+  }
+  homeIdx = 0;
+  homeIsPaused = false;
+  renderHomePainel();
+  homeStartCarousel();
+  var n = (homeAllItems[homeActiveTab]||[]).length;
+  if (sub) sub.textContent = todayLabel() + ' · ' + n + ' item' + (n!==1?'s':'');
+}
+
+function calcPrazoISO(item) {
+  if (item.data_prevista) return item.data_prevista;
+  if (item.data_prazo) return item.data_prazo;
+  if (!item.created_at) return '9999-12-31';
+  var d = new Date(item.created_at);
+  var added = 0;
+  while (added < 7) { d.setDate(d.getDate()+1); if(d.getDay()!==0&&d.getDay()!==6) added++; }
+  return d.toISOString().split('T')[0];
+}
+
+function businessDaysUntil(isoDate) {
+  var today  = new Date(); today.setHours(0,0,0,0);
+  var target = new Date(isoDate); target.setHours(0,0,0,0);
+  var sign = target >= today ? 1 : -1;
+  var from = sign===1 ? today : target;
+  var to   = sign===1 ? target : today;
+  var d = new Date(from), count = 0;
+  while (d < to) { d.setDate(d.getDate()+1); if(d.getDay()!==0&&d.getDay()!==6) count++; }
+  return sign * count;
+}
+
+function deadlineBadge(dias) {
+  if (dias <= 0)  return '<span style="display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;background:#3d1d1d;color:#fca5a5;border:0.5px solid rgba(239,68,68,0.4)">🔴 ATRASADO</span>';
+  if (dias === 1) return '<span style="display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;background:#3d1d1d;color:#fca5a5;border:0.5px solid rgba(239,68,68,0.4)">⚠️ Falta 1 dia para vencer</span>';
+  if (dias <= 3)  return '<span style="display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:#2a2010;color:#fbbf24;border:0.5px solid rgba(251,191,36,0.4)">⏳ '+dias+' dias restantes</span>';
+  return '';
+}
+
+function deadlineCardStyle(dias) {
+  if (dias <= 0)  return 'border-color:rgba(239,68,68,0.55);background:#2a1515';
+  if (dias === 1) return 'border-color:rgba(239,68,68,0.4);background:#261414';
+  if (dias <= 3)  return 'border-color:rgba(251,191,36,0.4);background:#231e0f';
+  return '';
+}
+
+function pedidoCardHTML(p) {
+  var prazoISO = calcPrazoISO(p);
+  var dias     = businessDaysUntil(prazoISO);
+  var cStyle   = deadlineCardStyle(dias);
+  var badge    = deadlineBadge(dias);
+  var urgBadge = p.urgente ? ' <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;background:#3d1d1d;color:#fca5a5">🚨 URGENTE</span>' : '';
+  var clienteN = p.cliente_reg ? cliNomePed(p.cliente_reg) : '—';
+  var prazoLbl = prazoISO && prazoISO!=='9999-12-31' ? fmtDate(prazoISO) : '—';
+  return '<div class="home-item-card" style="'+cStyle+'">'+
+    '<div style="margin-bottom:10px">'+
+      '<p style="font-size:16px;font-weight:600;color:#f1f5f9">'+escHtml(clienteN)+urgBadge+'</p>'+
+      '<p style="font-size:13px;color:#94a3b8;margin-top:4px">'+escHtml(p.descricao||'—')+'</p>'+
+    '</div>'+
+    '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:12px">'+
+      '<span style="color:#64748b;display:flex;align-items:center;gap:4px"><i class="ti ti-calendar" style="font-size:12px"></i> '+prazoLbl+'</span>'+
+      (p.valor?'<span style="color:#4ade80">'+fmt(p.valor)+'</span>':'')+
+    '</div>'+
+    (badge?'<div style="margin-top:10px">'+badge+'</div>':'')+
+  '</div>';
+}
+
+function lembretesCardHTML(t) {
+  var clienteN = t.cliente_reg ? (function(){ var c=clients.find(function(x){return x.reg==t.cliente_reg;}); return c?c.nome:'—'; })() : '—';
+  var cStyle='', badge='';
+  if (t.data_prazo) {
+    var dias = businessDaysUntil(t.data_prazo);
+    cStyle = deadlineCardStyle(dias);
+    badge  = deadlineBadge(dias);
+  }
+  return '<div class="home-item-card" style="'+cStyle+'">'+
+    '<div style="margin-bottom:10px">'+
+      '<p style="font-size:15px;font-weight:600;color:#f1f5f9">'+escHtml(clienteN)+'</p>'+
+      '<p style="font-size:13px;color:#94a3b8;margin-top:4px">'+escHtml(t.texto||t.descricao||'Tarefa')+'</p>'+
+    '</div>'+
+    (t.data_prazo?'<div style="font-size:12px;color:#64748b;display:flex;align-items:center;gap:4px"><i class="ti ti-calendar" style="font-size:12px"></i> Prazo: <span style="color:#e2e8f0;margin-left:3px">'+fmtDate(t.data_prazo)+'</span></div>':'')+
+    (badge?'<div style="margin-top:10px">'+badge+'</div>':'')+
+  '</div>';
+}
+
+function renderHomePainel() {
+  ['pedidos','urgencia','lembretes'].forEach(function(t) {
+    var btn = document.getElementById('home-tab-'+t);
+    if (btn) btn.className = 'home-tab-btn' + (t===homeActiveTab?' active':'');
+  });
+  var items   = homeAllItems[homeActiveTab] || [];
+  var content = document.getElementById('home-carousel-content');
+  var footer  = document.getElementById('home-carousel-footer');
+  if (!content) return;
+  if (!items.length) {
+    var emptyMsg = homeActiveTab==='urgencia' ? 'Sem pedidos urgentes no momento' :
+                   homeActiveTab==='lembretes' ? 'Sem lembretes com prazo pendentes' : 'Sem pedidos em aberto';
+    content.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 0">'+
+      '<i class="ti ti-circle-check" style="font-size:36px;color:#22c55e;margin-bottom:10px"></i>'+
+      '<p style="font-size:14px;color:#64748b">'+emptyMsg+'</p></div>';
+    if (footer) footer.innerHTML = '';
+    return;
+  }
+  var idx  = Math.min(homeIdx, items.length-1);
+  var item = items[idx];
+  var html = homeActiveTab==='lembretes' ? lembretesCardHTML(item) : pedidoCardHTML(item);
+  content.innerHTML = '<div class="home-slide-in">'+html+'</div>';
+  if (footer) {
+    var dots = items.map(function(_,i) {
+      var w = i===idx ? '20px' : '8px';
+      var bg = i===idx ? '#3b82f6' : 'rgba(255,255,255,0.18)';
+      return '<div class="home-dot" style="width:'+w+';background:'+bg+'" onclick="homeGoTo('+i+')"></div>';
+    }).join('');
+    footer.innerHTML = dots + '<span style="font-size:11px;color:#4a5568;margin-left:8px">'+(idx+1)+'/'+items.length+'</span>';
+  }
+}
+
+function homeGoTo(idx) {
+  homeIdx = idx;
+  homeIsPaused = false;
+  renderHomePainel();
+  homeStartCarousel();
+}
+
+function homeStartCarousel() {
+  homeStopCarousel();
+  if ((homeAllItems[homeActiveTab]||[]).length <= 1) return;
+  homeTimer = setInterval(function() {
+    if (homeIsPaused) return;
+    var items = homeAllItems[homeActiveTab] || [];
+    if (!items.length) return;
+    homeIdx = (homeIdx+1) % items.length;
+    renderHomePainel();
+  }, 6000);
+}
+
+function homeStopCarousel() {
+  if (homeTimer) { clearInterval(homeTimer); homeTimer = null; }
+}
+
+function homePauseCarousel()  { homeIsPaused = true; }
+function homeResumeCarousel() { homeIsPaused = false; }
+
+function switchHomeTab(tab) {
+  homeActiveTab = tab;
+  homeIdx = 0;
+  homeIsPaused = false;
+  renderHomePainel();
+  homeStartCarousel();
+  var n = (homeAllItems[tab]||[]).length;
+  var sub = document.getElementById('home-subtitle');
+  if (sub) sub.textContent = todayLabel() + ' · ' + n + ' item' + (n!==1?'s':'');
+}
 
 (function tickRelogio() {
   var dias = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
@@ -2937,7 +3207,7 @@ function switchToInove() {
   document.getElementById('tarefas-view').style.display    = 'none';
   document.getElementById('inove-view').style.display      = 'block';
   document.getElementById('dashboard-view').style.display  = 'none';
-  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
+  hideHomeView(); hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
   var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
   var tg = document.getElementById('tarefas-grid');  if (tg) tg.classList.remove('mob-detail');
   renderMonthTabs();
@@ -2955,7 +3225,7 @@ function switchToResumo() {
   document.getElementById('inove-view').style.display      = 'none';
   document.getElementById('resumo-view').style.display     = 'block';
   document.getElementById('dashboard-view').style.display  = 'none';
-  hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
+  hideHomeView(); hideCadastroView(); hidePedidosView(); hideOrcamentoView(); hideCobrancaView(); hideReciboView(); hideGastosView(); hideRelatoriosView();
   var cg = document.getElementById('clientes-grid'); if (cg) cg.classList.remove('mob-detail');
   var tg = document.getElementById('tarefas-grid');  if (tg) tg.classList.remove('mob-detail');
   renderMonthTabs();
@@ -3486,11 +3756,17 @@ function gerarRelatorioPDF() {
 
 var orcItemCount = 0;
 
+function hideHomeView() {
+  var el = document.getElementById('home-view');
+  if (el) el.style.display = 'none';
+  homeStopCarousel();
+}
 function hideAllViews() {
-  ['clientes','tarefas','inove','resumo','dashboard','pedidos','cadastro','orcamento','cobranca','recibo','gastos','relatorios'].forEach(function(v) {
+  ['home','clientes','tarefas','inove','resumo','dashboard','pedidos','cadastro','orcamento','cobranca','recibo','gastos','relatorios'].forEach(function(v) {
     var el = document.getElementById(v+'-view');
     if (el) el.style.display = 'none';
   });
+  homeStopCarousel();
 }
 
 function switchToOrcamento() {
