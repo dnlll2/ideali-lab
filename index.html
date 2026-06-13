@@ -3021,8 +3021,12 @@ async function loadHomeData() {
     pedidosAll.sort(function(a,b){ return calcPrazoISO(a).localeCompare(calcPrazoISO(b)); });
     homeAllItems.pedidos  = pedidosAll;
     homeAllItems.urgencia = pedidosAll.filter(function(p){ return p.urgente; });
-    homeAllItems.lembretes = tarefasAll.filter(function(t){ return t.data_prazo; })
-      .sort(function(a,b){ return a.data_prazo.localeCompare(b.data_prazo); });
+    // com prazo primeiro (ordenados por data), depois sem prazo (ordenados por created_at)
+    var comPrazo    = tarefasAll.filter(function(t){ return !!t.data_prazo; })
+                       .sort(function(a,b){ return a.data_prazo.localeCompare(b.data_prazo); });
+    var semPrazo    = tarefasAll.filter(function(t){ return !t.data_prazo; })
+                       .sort(function(a,b){ return (a.created_at||'').localeCompare(b.created_at||''); });
+    homeAllItems.lembretes = comPrazo.concat(semPrazo);
   } catch(e) {
     console.error('loadHomeData:', e);
     homeAllItems = { pedidos:[], urgencia:[], lembretes:[] };
@@ -3120,7 +3124,7 @@ function renderHomePainel() {
   if (!content) return;
   if (!items.length) {
     var emptyMsg = homeActiveTab==='urgencia' ? 'Sem pedidos urgentes no momento' :
-                   homeActiveTab==='lembretes' ? 'Sem lembretes com prazo pendentes' : 'Sem pedidos em aberto';
+                   homeActiveTab==='lembretes' ? 'Sem tarefas abertas no momento' : 'Sem pedidos em aberto';
     content.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 0">'+
       '<i class="ti ti-circle-check" style="font-size:36px;color:#22c55e;margin-bottom:10px"></i>'+
       '<p style="font-size:14px;color:#64748b">'+emptyMsg+'</p></div>';
