@@ -176,14 +176,15 @@ button{font-family:inherit;cursor:pointer}
 .comp-menu-item:hover{background:#22263a;color:#e2e8f0}
 .comp-uploading{opacity:0.5;pointer-events:none}
 @media(max-width:767px){.comp-clip{width:34px;height:34px;font-size:14px}}
-/* ── Home Panel ───────────────────────────────── */
-.home-tab-btn{padding:10px 20px;border:none;background:transparent;color:#94a3b8;font-size:13px;font-family:inherit;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;white-space:nowrap;flex-shrink:0}
-.home-tab-btn:hover{background:rgba(255,255,255,0.04);color:#e2e8f0}
-.home-tab-btn.active{color:#60a5fa;border-bottom-color:#3b82f6;background:rgba(59,130,246,0.07)}
-.home-item-card{background:#22263a;border-radius:10px;padding:18px 20px;border:0.5px solid rgba(255,255,255,0.08);min-height:120px}
-.home-dot{height:8px;border-radius:4px;background:rgba(255,255,255,0.18);transition:all 0.3s;cursor:pointer;flex-shrink:0}
-@keyframes homeSlideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.home-slide-in{animation:homeSlideIn 0.3s ease}
+/* ── Home Panel – Ticker ─────────────────────── */
+.home-col{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;display:flex;flex-direction:column;overflow:hidden}
+.home-col-head{padding:10px 16px;border-bottom:0.5px solid rgba(255,255,255,0.08);background:#13151f;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.home-col-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em}
+.home-col-badge{font-size:11px;padding:2px 8px;border-radius:6px;background:#22263a;color:#64748b;font-weight:600}
+.home-ticker-vp{height:250px;overflow:hidden;position:relative}
+.home-ticker-list{display:flex;flex-direction:column;will-change:transform}
+.home-ticker-row{height:50px;display:flex;align-items:center;gap:0;padding:0;border-bottom:0.5px solid rgba(255,255,255,0.05);flex-shrink:0;overflow:hidden}
+@media(max-width:900px){#home-grid{grid-template-columns:1fr !important}}
 </style>
 </head>
 <body>
@@ -399,24 +400,42 @@ button{font-family:inherit;cursor:pointer}
   </div>
 
   <div id="home-view" style="display:none">
-    <div style="max-width:860px">
-      <div style="margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-        <div>
-          <p style="font-size:20px;font-weight:600;color:#f1f5f9">🏠 Home</p>
-          <p id="home-subtitle" style="font-size:12px;color:#64748b;margin-top:2px">Carregando...</p>
-        </div>
-        <button onclick="loadHomeData()" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit;transition:all 0.15s" onmouseover="this.style.background='#2d3250';this.style.color='#e2e8f0'" onmouseout="this.style.background='#22263a';this.style.color='#94a3b8'">&#8635; Atualizar</button>
+    <div style="margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div>
+        <p style="font-size:20px;font-weight:600;color:#f1f5f9">🏠 Home</p>
+        <p id="home-subtitle" style="font-size:12px;color:#64748b;margin-top:2px">Carregando...</p>
       </div>
-      <div class="card" style="padding:0;overflow:hidden">
-        <div style="display:flex;background:#13151f;border-bottom:0.5px solid rgba(255,255,255,0.1);overflow-x:auto;scrollbar-width:none">
-          <button id="home-tab-pedidos"   class="home-tab-btn active" onclick="switchHomeTab('pedidos')">📦 Pedidos</button>
-          <button id="home-tab-urgencia"  class="home-tab-btn"        onclick="switchHomeTab('urgencia')">🚨 Urgência</button>
-          <button id="home-tab-lembretes" class="home-tab-btn"        onclick="switchHomeTab('lembretes')">📝 Lembretes</button>
+      <button onclick="loadHomeData()" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit;transition:all 0.15s" onmouseover="this.style.background='#2d3250';this.style.color='#e2e8f0'" onmouseout="this.style.background='#22263a';this.style.color='#94a3b8'">&#8635; Atualizar</button>
+    </div>
+    <div id="home-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      <div class="home-col">
+        <div class="home-col-head">
+          <span class="home-col-title" style="color:#93c5fd">📦 Pedidos</span>
+          <span id="home-count-pedidos" class="home-col-badge">0</span>
         </div>
-        <div id="home-carousel-area" style="min-height:200px;padding:1.25rem;position:relative"
-             onmouseenter="homePauseCarousel()" onmouseleave="homeResumeCarousel()">
-          <div id="home-carousel-content"></div>
-          <div id="home-carousel-footer" style="display:flex;align-items:center;justify-content:center;gap:5px;margin-top:14px;flex-wrap:wrap"></div>
+        <div class="home-ticker-vp" id="home-vp-pedidos"
+             onmouseenter="homeTickerPause('pedidos')" onmouseleave="homeTickerResume('pedidos')">
+          <div class="home-ticker-list" id="home-list-pedidos"></div>
+        </div>
+      </div>
+      <div class="home-col">
+        <div class="home-col-head">
+          <span class="home-col-title" style="color:#fca5a5">🚨 Urgência</span>
+          <span id="home-count-urgencia" class="home-col-badge">0</span>
+        </div>
+        <div class="home-ticker-vp" id="home-vp-urgencia"
+             onmouseenter="homeTickerPause('urgencia')" onmouseleave="homeTickerResume('urgencia')">
+          <div class="home-ticker-list" id="home-list-urgencia"></div>
+        </div>
+      </div>
+      <div class="home-col">
+        <div class="home-col-head">
+          <span class="home-col-title" style="color:#c4b5fd">📋 Lembretes</span>
+          <span id="home-count-lembretes" class="home-col-badge">0</span>
+        </div>
+        <div class="home-ticker-vp" id="home-vp-lembretes"
+             onmouseenter="homeTickerPause('lembretes')" onmouseleave="homeTickerResume('lembretes')">
+          <div class="home-ticker-list" id="home-list-lembretes"></div>
         </div>
       </div>
     </div>
@@ -2958,13 +2977,16 @@ async function init() {
 
 init();
 
-// ── Home Panel ───────────────────────────────────────────────
+// ── Home Panel – Ticker ──────────────────────────────────────
 
-var homeActiveTab = 'pedidos';
+var TICKER_ROWS = 5;
+var TICKER_ROW_H = 50; // px — must match .home-ticker-row height in CSS
 var homeAllItems  = { pedidos: [], urgencia: [], lembretes: [] };
-var homeIdx       = 0;
-var homeTimer     = null;
-var homeIsPaused  = false;
+var homeTickerState = {
+  pedidos:   { offset:0, timer:null, paused:false, animating:false },
+  urgencia:  { offset:0, timer:null, paused:false, animating:false },
+  lembretes: { offset:0, timer:null, paused:false, animating:false }
+};
 
 function switchToHome() {
   closeMonthDD();
@@ -3010,176 +3032,147 @@ async function runMigrations() {
 async function loadHomeData() {
   var sub = document.getElementById('home-subtitle');
   if (sub) sub.textContent = 'Carregando...';
-  var content = document.getElementById('home-carousel-content');
-  if (content) content.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:40px 0"><div class="spinner"></div></div>';
+  ['pedidos','urgencia','lembretes'].forEach(function(col) {
+    var el = document.getElementById('home-list-'+col);
+    if (el) el.innerHTML = homeTickerEmptyRows('...');
+  });
   try {
     var resPedidos = await sb.from('pedidos').select('*').neq('status','finalizado').neq('status','entregue').neq('status','cancelado');
     var resTarefas = await sb.from('tarefas').select('*').eq('concluida',false).eq('arquivada',false);
     var pedidosAll = resPedidos.error ? [] : (resPedidos.data || []);
     var tarefasAll = resTarefas.error ? [] : (resTarefas.data || []);
-    // sort pedidos by prazo
-    pedidosAll.sort(function(a,b){ return calcPrazoISO(a).localeCompare(calcPrazoISO(b)); });
+    // mais antigo primeiro (maior idade = mais atenção)
+    pedidosAll.sort(function(a,b){ return (a.created_at||'').localeCompare(b.created_at||''); });
     homeAllItems.pedidos  = pedidosAll;
     homeAllItems.urgencia = pedidosAll.filter(function(p){ return p.urgente; });
-    // com prazo primeiro (ordenados por data), depois sem prazo (ordenados por created_at)
-    var comPrazo    = tarefasAll.filter(function(t){ return !!t.data_prazo; })
-                       .sort(function(a,b){ return a.data_prazo.localeCompare(b.data_prazo); });
-    var semPrazo    = tarefasAll.filter(function(t){ return !t.data_prazo; })
-                       .sort(function(a,b){ return (a.created_at||'').localeCompare(b.created_at||''); });
+    var comPrazo = tarefasAll.filter(function(t){ return !!t.data_prazo; })
+                   .sort(function(a,b){ return a.data_prazo.localeCompare(b.data_prazo); });
+    var semPrazo = tarefasAll.filter(function(t){ return !t.data_prazo; })
+                   .sort(function(a,b){ return (a.created_at||'').localeCompare(b.created_at||''); });
     homeAllItems.lembretes = comPrazo.concat(semPrazo);
   } catch(e) {
     console.error('loadHomeData:', e);
     homeAllItems = { pedidos:[], urgencia:[], lembretes:[] };
   }
-  homeIdx = 0;
-  homeIsPaused = false;
-  renderHomePainel();
-  homeStartCarousel();
-  var n = (homeAllItems[homeActiveTab]||[]).length;
-  if (sub) sub.textContent = todayLabel() + ' · ' + n + ' item' + (n!==1?'s':'');
-}
-
-function calcPrazoISO(item) {
-  if (item.data_prevista) return item.data_prevista;
-  if (item.data_prazo) return item.data_prazo;
-  if (!item.created_at) return '9999-12-31';
-  var d = new Date(item.created_at);
-  var added = 0;
-  while (added < 7) { d.setDate(d.getDate()+1); if(d.getDay()!==0&&d.getDay()!==6) added++; }
-  return d.toISOString().split('T')[0];
-}
-
-function businessDaysUntil(isoDate) {
-  var today  = new Date(); today.setHours(0,0,0,0);
-  var target = new Date(isoDate); target.setHours(0,0,0,0);
-  var sign = target >= today ? 1 : -1;
-  var from = sign===1 ? today : target;
-  var to   = sign===1 ? target : today;
-  var d = new Date(from), count = 0;
-  while (d < to) { d.setDate(d.getDate()+1); if(d.getDay()!==0&&d.getDay()!==6) count++; }
-  return sign * count;
-}
-
-function deadlineBadge(dias) {
-  if (dias <= 0)  return '<span style="display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;background:#3d1d1d;color:#fca5a5;border:0.5px solid rgba(239,68,68,0.4)">🔴 ATRASADO</span>';
-  if (dias === 1) return '<span style="display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;background:#3d1d1d;color:#fca5a5;border:0.5px solid rgba(239,68,68,0.4)">⚠️ Falta 1 dia para vencer</span>';
-  if (dias <= 3)  return '<span style="display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:#2a2010;color:#fbbf24;border:0.5px solid rgba(251,191,36,0.4)">⏳ '+dias+' dias restantes</span>';
-  return '';
-}
-
-function deadlineCardStyle(dias) {
-  if (dias <= 0)  return 'border-color:rgba(239,68,68,0.55);background:#2a1515';
-  if (dias === 1) return 'border-color:rgba(239,68,68,0.4);background:#261414';
-  if (dias <= 3)  return 'border-color:rgba(251,191,36,0.4);background:#231e0f';
-  return '';
-}
-
-function pedidoCardHTML(p) {
-  var prazoISO = calcPrazoISO(p);
-  var dias     = businessDaysUntil(prazoISO);
-  var cStyle   = deadlineCardStyle(dias);
-  var badge    = deadlineBadge(dias);
-  var urgBadge = p.urgente ? ' <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;background:#3d1d1d;color:#fca5a5">🚨 URGENTE</span>' : '';
-  var clienteN = p.cliente_reg ? cliNomePed(p.cliente_reg) : '—';
-  var prazoLbl = prazoISO && prazoISO!=='9999-12-31' ? fmtDate(prazoISO) : '—';
-  return '<div class="home-item-card" style="'+cStyle+'">'+
-    '<div style="margin-bottom:10px">'+
-      '<p style="font-size:16px;font-weight:600;color:#f1f5f9">'+escHtml(clienteN)+urgBadge+'</p>'+
-      '<p style="font-size:13px;color:#94a3b8;margin-top:4px">'+escHtml(p.descricao||'—')+'</p>'+
-    '</div>'+
-    '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:12px">'+
-      '<span style="color:#64748b;display:flex;align-items:center;gap:4px"><i class="ti ti-calendar" style="font-size:12px"></i> '+prazoLbl+'</span>'+
-      (p.valor?'<span style="color:#4ade80">'+fmt(p.valor)+'</span>':'')+
-    '</div>'+
-    (badge?'<div style="margin-top:10px">'+badge+'</div>':'')+
-  '</div>';
-}
-
-function lembretesCardHTML(t) {
-  var clienteN = t.cliente_reg ? (function(){ var c=clients.find(function(x){return x.reg==t.cliente_reg;}); return c?c.nome:'—'; })() : '—';
-  var cStyle='', badge='';
-  if (t.data_prazo) {
-    var dias = businessDaysUntil(t.data_prazo);
-    cStyle = deadlineCardStyle(dias);
-    badge  = deadlineBadge(dias);
-  }
-  return '<div class="home-item-card" style="'+cStyle+'">'+
-    '<div style="margin-bottom:10px">'+
-      '<p style="font-size:15px;font-weight:600;color:#f1f5f9">'+escHtml(clienteN)+'</p>'+
-      '<p style="font-size:13px;color:#94a3b8;margin-top:4px">'+escHtml(t.texto||t.descricao||'Tarefa')+'</p>'+
-    '</div>'+
-    (t.data_prazo?'<div style="font-size:12px;color:#64748b;display:flex;align-items:center;gap:4px"><i class="ti ti-calendar" style="font-size:12px"></i> Prazo: <span style="color:#e2e8f0;margin-left:3px">'+fmtDate(t.data_prazo)+'</span></div>':'')+
-    (badge?'<div style="margin-top:10px">'+badge+'</div>':'')+
-  '</div>';
-}
-
-function renderHomePainel() {
-  ['pedidos','urgencia','lembretes'].forEach(function(t) {
-    var btn = document.getElementById('home-tab-'+t);
-    if (btn) btn.className = 'home-tab-btn' + (t===homeActiveTab?' active':'');
+  ['pedidos','urgencia','lembretes'].forEach(function(col) {
+    homeTickerState[col].offset = 0;
+    homeTickerState[col].animating = false;
+    homeTickerStop(col);
   });
-  var items   = homeAllItems[homeActiveTab] || [];
-  var content = document.getElementById('home-carousel-content');
-  var footer  = document.getElementById('home-carousel-footer');
-  if (!content) return;
+  renderAllTickers();
+  startAllTickers();
+  if (sub) sub.textContent = todayLabel();
+}
+
+// Retorna cor de fundo baseada em dias desde created_at (calendário)
+function ageRowStyle(createdAt) {
+  if (!createdAt) return '';
+  var today   = new Date(); today.setHours(0,0,0,0);
+  var created = new Date(createdAt); created.setHours(0,0,0,0);
+  var days    = Math.round((today - created) / 86400000);
+  if (days >= 7) return 'background:rgba(239,68,68,0.12);border-left:3px solid #ef4444';
+  if (days >= 5) return 'background:rgba(249,115,22,0.10);border-left:3px solid #f97316';
+  if (days >= 3) return 'background:rgba(251,191,36,0.08);border-left:3px solid #fbbf24';
+  return ''; // 0-2 dias: neutro
+}
+
+function homeTickerRowHTML(item, tipo) {
+  var style  = ageRowStyle(item.created_at);
+  var paddingLeft = style ? '11px' : '14px'; // compensate 3px border
+  var clienteN, desc;
+  if (tipo === 'lembrete') {
+    var _c = clients.find(function(x){ return x.reg == item.cliente_reg; });
+    clienteN = _c ? _c.nome : (item.cliente_reg ? '—' : '—');
+    desc = item.texto || item.descricao || 'Tarefa';
+  } else {
+    clienteN = item.cliente_reg ? cliNomePed(item.cliente_reg) : '—';
+    desc = item.descricao || '—';
+  }
+  var urgIcon = (item.urgente) ? '🚨 ' : '';
+  return '<div class="home-ticker-row" style="'+style+';padding-left:'+paddingLeft+';padding-right:14px">'+
+    '<span style="font-size:12px;font-weight:600;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;max-width:44%">'+urgIcon+escHtml(clienteN)+'</span>'+
+    '<span style="font-size:11px;color:#64748b;margin:0 6px;flex-shrink:0">·</span>'+
+    '<span style="font-size:11px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">'+escHtml(desc)+'</span>'+
+  '</div>';
+}
+
+function homeTickerEmptyRows(msg) {
+  var html = '';
+  for (var i = 0; i < TICKER_ROWS; i++) {
+    html += '<div class="home-ticker-row" style="justify-content:center">'+
+      '<span style="font-size:11px;color:#4a5568">'+(i===0?msg:'')+'</span></div>';
+  }
+  return html;
+}
+
+function renderTicker(col) {
+  var listEl  = document.getElementById('home-list-'+col);
+  var countEl = document.getElementById('home-count-'+col);
+  if (!listEl) return;
+  var items = homeAllItems[col] || [];
+  if (countEl) countEl.textContent = items.length;
   if (!items.length) {
-    var emptyMsg = homeActiveTab==='urgencia' ? 'Sem pedidos urgentes no momento' :
-                   homeActiveTab==='lembretes' ? 'Sem tarefas abertas no momento' : 'Sem pedidos em aberto';
-    content.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 0">'+
-      '<i class="ti ti-circle-check" style="font-size:36px;color:#22c55e;margin-bottom:10px"></i>'+
-      '<p style="font-size:14px;color:#64748b">'+emptyMsg+'</p></div>';
-    if (footer) footer.innerHTML = '';
+    var msgs = { pedidos:'Sem pedidos em aberto', urgencia:'Sem urgências', lembretes:'Sem tarefas abertas' };
+    listEl.innerHTML = homeTickerEmptyRows(msgs[col]||'—');
+    listEl.style.transform = 'translateY(0)';
+    listEl.style.transition = 'none';
     return;
   }
-  var idx  = Math.min(homeIdx, items.length-1);
-  var item = items[idx];
-  var html = homeActiveTab==='lembretes' ? lembretesCardHTML(item) : pedidoCardHTML(item);
-  content.innerHTML = '<div class="home-slide-in">'+html+'</div>';
-  if (footer) {
-    var dots = items.map(function(_,i) {
-      var w = i===idx ? '20px' : '8px';
-      var bg = i===idx ? '#3b82f6' : 'rgba(255,255,255,0.18)';
-      return '<div class="home-dot" style="width:'+w+';background:'+bg+'" onclick="homeGoTo('+i+')"></div>';
-    }).join('');
-    footer.innerHTML = dots + '<span style="font-size:11px;color:#4a5568;margin-left:8px">'+(idx+1)+'/'+items.length+'</span>';
+  var offset = homeTickerState[col].offset;
+  var tipo   = col === 'lembretes' ? 'lembrete' : 'pedido';
+  // render TICKER_ROWS + 1 rows (the +1 enters from below during animation)
+  var html = '';
+  for (var i = 0; i <= TICKER_ROWS; i++) {
+    html += homeTickerRowHTML(items[(offset + i) % items.length], tipo);
+  }
+  listEl.innerHTML = html;
+  listEl.style.transition = 'none';
+  listEl.style.transform  = 'translateY(0)';
+}
+
+function renderAllTickers() {
+  ['pedidos','urgencia','lembretes'].forEach(renderTicker);
+}
+
+function homeTickerAdvance(col) {
+  var state = homeTickerState[col];
+  var items = homeAllItems[col] || [];
+  if (items.length <= 1 || state.animating) return;
+  var listEl = document.getElementById('home-list-'+col);
+  if (!listEl) return;
+  state.animating = true;
+  listEl.style.transition = 'transform 0.38s cubic-bezier(0.4,0,0.2,1)';
+  listEl.style.transform  = 'translateY(-'+TICKER_ROW_H+'px)';
+  setTimeout(function() {
+    state.offset    = (state.offset + 1) % items.length;
+    state.animating = false;
+    renderTicker(col);
+  }, 400);
+}
+
+function startAllTickers() {
+  ['pedidos','urgencia','lembretes'].forEach(function(col) {
+    homeTickerStop(col);
+    if ((homeAllItems[col]||[]).length <= 1) return;
+    homeTickerState[col].timer = setInterval(function() {
+      if (!homeTickerState[col].paused) homeTickerAdvance(col);
+    }, 5000);
+  });
+}
+
+function homeTickerStop(col) {
+  if (homeTickerState[col] && homeTickerState[col].timer) {
+    clearInterval(homeTickerState[col].timer);
+    homeTickerState[col].timer = null;
   }
 }
 
-function homeGoTo(idx) {
-  homeIdx = idx;
-  homeIsPaused = false;
-  renderHomePainel();
-  homeStartCarousel();
-}
+function homeTickerPause(col)  { if (homeTickerState[col]) homeTickerState[col].paused = true; }
+function homeTickerResume(col) { if (homeTickerState[col]) homeTickerState[col].paused = false; }
 
-function homeStartCarousel() {
-  homeStopCarousel();
-  if ((homeAllItems[homeActiveTab]||[]).length <= 1) return;
-  homeTimer = setInterval(function() {
-    if (homeIsPaused) return;
-    var items = homeAllItems[homeActiveTab] || [];
-    if (!items.length) return;
-    homeIdx = (homeIdx+1) % items.length;
-    renderHomePainel();
-  }, 6000);
-}
-
+// Chamado por hideHomeView() e hideAllViews()
 function homeStopCarousel() {
-  if (homeTimer) { clearInterval(homeTimer); homeTimer = null; }
-}
-
-function homePauseCarousel()  { homeIsPaused = true; }
-function homeResumeCarousel() { homeIsPaused = false; }
-
-function switchHomeTab(tab) {
-  homeActiveTab = tab;
-  homeIdx = 0;
-  homeIsPaused = false;
-  renderHomePainel();
-  homeStartCarousel();
-  var n = (homeAllItems[tab]||[]).length;
-  var sub = document.getElementById('home-subtitle');
-  if (sub) sub.textContent = todayLabel() + ' · ' + n + ' item' + (n!==1?'s':'');
+  ['pedidos','urgencia','lembretes'].forEach(homeTickerStop);
 }
 
 (function tickRelogio() {
