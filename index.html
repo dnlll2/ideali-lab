@@ -3132,7 +3132,9 @@ function switchToContasReceber() {
 async function runMigrations() {
   var sqls = [
     'ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS urgente boolean DEFAULT false',
-    'ALTER TABLE tarefas ADD COLUMN IF NOT EXISTS data_prazo date'
+    'ALTER TABLE tarefas ADD COLUMN IF NOT EXISTS data_prazo date',
+    'ALTER TABLE ordens_exocad ADD COLUMN IF NOT EXISTS conferir_scanbody boolean DEFAULT false',
+    'ALTER TABLE ordens_exocad ADD COLUMN IF NOT EXISTS enviado_inove boolean DEFAULT false'
   ];
   try {
     var r = await fetch(SUPABASE_URL + '/rest/v1/sql', {
@@ -5720,13 +5722,20 @@ function camCardHtml(o) {
   var desc     = (o.descricao||'').length > 90 ? o.descricao.substring(0,90)+'…' : (o.descricao||'—');
   var nextSt   = {a_fazer:'fazendo', fazendo:'finalizado'}[o.status];
   var advBtn   = nextSt ? '<button onclick="event.stopPropagation();camAdvanceStatus(\''+o.id+'\',\''+nextSt+'\')" title="Avançar status" style="height:24px;padding:0 8px;border-radius:4px;border:0.5px solid rgba(255,255,255,0.15);background:#22263a;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">&gt;&gt;</button>' : '';
+  var scanbody = o.conferir_scanbody ? true : false;
+  var inove    = o.enviado_inove    ? true : false;
+  var btnScan = '<button onclick="event.stopPropagation();camToggle(\''+o.id+'\',\'conferir_scanbody\','+scanbody+')" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;' + (scanbody ? 'background:#c2410c;border-color:#f97316;color:#fff' : 'background:transparent;border-color:rgba(249,115,22,0.4);color:#94a3b8') + '">' + (scanbody ? '✔ ' : '') + '🔍 Scanbody</button>';
+  var btnInove = '<button onclick="event.stopPropagation();camToggle(\''+o.id+'\',\'enviado_inove\','+inove+')" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;' + (inove ? 'background:#1d4ed8;border-color:#3b82f6;color:#fff' : 'background:transparent;border-color:rgba(59,130,246,0.4);color:#94a3b8') + '">' + (inove ? '✔ ' : '') + '📤 Inove</button>';
   return '<div class="cam-card" draggable="true" ondragstart="camDragStart(event,\''+o.id+'\')" onclick="openCamDetail(\''+o.id+'\')" style="'+ageStyle+';cursor:pointer">' +
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:5px">' +
       '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(cli)+'</p>' +
       advBtn +
     '</div>' +
     '<p style="font-size:12px;color:#94a3b8;margin:0 0 7px;line-height:1.4">'+escHtml(desc)+'</p>' +
-    '<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;'+badgeSt+'">'+badgeLbl+'</span>' +
+    '<div style="display:flex;align-items:center;justify-content:space-between">' +
+      '<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;'+badgeSt+'">'+badgeLbl+'</span>' +
+      '<div style="display:flex;gap:4px">' + btnScan + btnInove + '</div>' +
+    '</div>' +
   '</div>';
 }
 
@@ -5761,6 +5770,19 @@ async function camAdvanceStatus(id, newStatus) {
     if (idx>=0) { ordensCam[idx].status=newStatus; if(payload.finalizado_at) ordensCam[idx].finalizado_at=payload.finalizado_at; }
     renderOrdensCam();
   } catch(e) { console.error('[camAdvance]', e.message||e); }
+}
+
+async function camToggle(id, field, currentValue) {
+  var newVal = !currentValue;
+  var payload = {};
+  payload[field] = newVal;
+  try {
+    var res = await sb.from('ordens_exocad').update(payload).eq('id', id);
+    if (res.error) throw res.error;
+    var idx = ordensCam.findIndex(function(o){return o.id===id;});
+    if (idx>=0) ordensCam[idx][field] = newVal;
+    renderOrdensCam();
+  } catch(e) { console.error('[camToggle]', e.message||e); }
 }
 
 function openNovaCamOrdem() {
