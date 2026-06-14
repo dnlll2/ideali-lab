@@ -5824,9 +5824,14 @@ function openCamDetail(id) {
   var cli    = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '—');
   var orig   = o.origem === 'email' ? '✉️ Email' : '📱 WhatsApp';
   var data   = o.created_at ? new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+  var paciente = '—';
+  var descricao = o.descricao || '—';
+  var mPac = (o.descricao || '').match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
+  if (mPac) { paciente = mPac[1]; descricao = mPac[2] || '—'; }
   var fields = [
     { label: 'Cliente',         value: cli },
-    { label: 'Descrição',       value: o.descricao || '—' },
+    { label: 'Paciente',        value: paciente },
+    { label: 'Descrição',       value: descricao },
     { label: 'Origem',          value: orig },
     { label: 'Data de criação', value: data }
   ];
@@ -5871,7 +5876,11 @@ function camCopyAll() {
   var cli  = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '—');
   var orig = o.origem === 'email' ? 'Email' : 'WhatsApp';
   var data = o.created_at ? new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
-  var txt  = 'Cliente: ' + cli + '\nDescrição: ' + (o.descricao||'—') + '\nOrigem: ' + orig + '\nData: ' + data;
+  var pacCopy = '';
+  var descCopy = o.descricao || '—';
+  var mCopy = (o.descricao || '').match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
+  if (mCopy) { pacCopy = mCopy[1]; descCopy = mCopy[2] || '—'; }
+  var txt  = 'Cliente: ' + cli + (pacCopy ? '\nPaciente: ' + pacCopy : '') + '\nDescrição: ' + descCopy + '\nOrigem: ' + orig + '\nData: ' + data;
   navigator.clipboard.writeText(txt).then(function() {
     var btn = event.currentTarget;
     btn.textContent = '✓ Copiado!';
