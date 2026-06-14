@@ -186,6 +186,13 @@ button{font-family:inherit;cursor:pointer}
 .home-ticker-row{height:64px;display:flex;flex-direction:column;justify-content:center;gap:3px;padding:0;border-bottom:0.5px solid rgba(255,255,255,0.05);flex-shrink:0;overflow:hidden;cursor:pointer;transition:background 0.12s}
 .home-ticker-row:hover{background:rgba(255,255,255,0.04) !important}
 @media(max-width:900px){#home-grid{grid-template-columns:1fr !important}}
+.cam-col{background:#13161f;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:200px}
+.cam-col-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px}
+.cam-col-body{padding:8px;display:flex;flex-direction:column;gap:8px;min-height:120px}
+.cam-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.09);border-radius:9px;padding:10px 12px;cursor:grab;transition:box-shadow 0.15s}
+.cam-card:active{cursor:grabbing;box-shadow:0 4px 16px rgba(0,0,0,0.4)}
+.cam-orig-btn{height:32px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:12px;cursor:pointer;font-family:inherit;transition:all 0.15s}
+.cam-orig-btn.active{background:#1d3a6e;border-color:#60a5fa;color:#93c5fd}
 </style>
 </head>
 <body>
@@ -256,6 +263,14 @@ button{font-family:inherit;cursor:pointer}
       <span>Gastos Motoboy/Uber</span>
     </div>
     <div class="sb-divider"></div>
+    <div class="sb-item" id="sb-ordens-cam" onclick="sbNav('ordens-cam')">
+      <div class="sb-icon">🦷</div>
+      <span>Ordens CAM</span>
+    </div>
+    <div class="sb-item" id="sb-tabela-precos" onclick="sbNav('tabela-precos')">
+      <div class="sb-icon">💲</div>
+      <span>Tabela de Preços</span>
+    </div>
     <div class="sb-item" onclick="openIAPanel();closeSidebar()">
       <div class="sb-icon">🤖</div>
       <span>Comando Rápido IA</span>
@@ -396,6 +411,7 @@ button{font-family:inherit;cursor:pointer}
     <button id="btn-tarefas" class="tab-tarefa" onclick="switchToTarefas()">Tarefas</button>
     <button id="btn-inove" class="tab-tarefa" onclick="switchToInove()">&#127981; Inove 3D</button>
     <button id="btn-resumo" class="tab-tarefa" onclick="switchToResumo()">&#128203; Resumo</button>
+    <button id="btn-ordens-cam" class="tab-tarefa" onclick="switchToOrdensCam()">🦷 Ordens CAM</button>
     <button onclick="gerarRelatorioPDF()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:0.5px solid rgba(251,191,36,0.35);background:#2a2010;font-size:12px;color:#fbbf24;transition:all 0.15s;white-space:nowrap" onmouseover="this.style.background='#3d2e0e';this.style.borderColor='rgba(251,191,36,0.6)'" onmouseout="this.style.background='#2a2010';this.style.borderColor='rgba(251,191,36,0.35)'">&#128196; Relatório PDF</button>
     <button onclick="gerarRelatorioClientes()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:0.5px solid rgba(99,179,237,0.35);background:#0c1e2e;font-size:12px;color:#63b3ed;transition:all 0.15s;white-space:nowrap" onmouseover="this.style.background='#112233';this.style.borderColor='rgba(99,179,237,0.65)'" onmouseout="this.style.background='#0c1e2e';this.style.borderColor='rgba(99,179,237,0.35)'">&#128203; Relatório Clientes</button>
   </div>
@@ -1055,6 +1071,45 @@ button{font-family:inherit;cursor:pointer}
   </div>
 
 
+  <div id="cam-overlay" onclick="closeCamPanel()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:80"></div>
+  <div id="cam-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:81;width:min(480px,95vw);background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;overflow:hidden">
+    <div class="cp-header">
+      <div style="flex:1;min-width:0">
+        <p style="font-size:15px;font-weight:600;color:#f1f5f9">Nova Ordem CAM</p>
+        <p style="font-size:11px;color:#64748b;margin-top:2px">Design / arquivo de fresagem</p>
+      </div>
+      <button class="sb-close" onclick="closeCamPanel()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="cp-body" style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <p class="label" style="margin-bottom:4px">Cliente cadastrado</p>
+        <select id="cam-form-cliente" style="width:100%;height:36px" onchange="this.value?(document.getElementById('cam-form-nome-livre').style.display='none'):(document.getElementById('cam-form-nome-livre').style.display='')">
+          <option value="">— Nome livre abaixo —</option>
+        </select>
+      </div>
+      <div id="cam-form-nome-livre">
+        <p class="label" style="margin-bottom:4px">Ou nome livre (sem cadastro)</p>
+        <input type="text" id="cam-form-nome-livre-inp" placeholder="Nome do cliente..." style="width:100%;height:36px">
+      </div>
+      <div>
+        <p class="label" style="margin-bottom:4px">Descrição</p>
+        <textarea id="cam-form-desc" rows="3" placeholder="Descreva o trabalho..." style="width:100%;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:13px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit;resize:vertical"></textarea>
+      </div>
+      <div>
+        <p class="label" style="margin-bottom:6px">Origem</p>
+        <div style="display:flex;gap:8px">
+          <button id="cam-orig-whatsapp" class="cam-orig-btn active" onclick="camSetOrigem('whatsapp')">📱 WhatsApp</button>
+          <button id="cam-orig-email" class="cam-orig-btn" onclick="camSetOrigem('email')">✉️ Email</button>
+        </div>
+        <input type="hidden" id="cam-form-origem" value="whatsapp">
+      </div>
+    </div>
+    <div class="cp-footer">
+      <button class="cad-btn-ghost" onclick="closeCamPanel()">Cancelar</button>
+      <button class="cad-btn-primary" onclick="saveNovaCamOrdem()"><i class="ti ti-device-floppy" style="font-size:14px"></i> Salvar</button>
+    </div>
+  </div>
+
   <div id="cadastro-view" style="display:none">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
       <div>
@@ -1087,6 +1142,62 @@ button{font-family:inherit;cursor:pointer}
             <th>Status</th>
           </tr></thead>
           <tbody id="cad-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="ordens-cam-view" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
+      <div>
+        <p style="font-size:20px;font-weight:600;color:#f1f5f9">🦷 Ordens CAM</p>
+        <p style="font-size:13px;color:#64748b;margin-top:2px">Designs e arquivos de fresagem</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="loadOrdensCam()" style="height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">&#8635; Atualizar</button>
+        <button onclick="openNovaCamOrdem()" class="cad-btn-primary"><i class="ti ti-plus" style="font-size:15px"></i> Nova Ordem</button>
+      </div>
+    </div>
+    <div id="cam-kanban" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start">
+      <div class="cam-col" ondragover="camDragOver(event)" ondrop="camDrop(event,'a_fazer')">
+        <div class="cam-col-head" style="background:rgba(99,179,237,0.08);border-bottom:2px solid #63b3ed">
+          <span style="color:#93c5fd;font-weight:600;font-size:13px">A Fazer</span>
+          <span class="badge" id="cam-count-a_fazer" style="background:#1d3a6e;color:#93c5fd">0</span>
+        </div>
+        <div class="cam-col-body" id="cam-body-a_fazer"></div>
+      </div>
+      <div class="cam-col" ondragover="camDragOver(event)" ondrop="camDrop(event,'fazendo')">
+        <div class="cam-col-head" style="background:rgba(251,191,36,0.07);border-bottom:2px solid #fbbf24">
+          <span style="color:#fbbf24;font-weight:600;font-size:13px">Fazendo</span>
+          <span class="badge" id="cam-count-fazendo" style="background:#3d2e0e;color:#fbbf24">0</span>
+        </div>
+        <div class="cam-col-body" id="cam-body-fazendo"></div>
+      </div>
+      <div class="cam-col" ondragover="camDragOver(event)" ondrop="camDrop(event,'finalizado')">
+        <div class="cam-col-head" style="background:rgba(34,197,94,0.07);border-bottom:2px solid #22c55e">
+          <span style="color:#4ade80;font-weight:600;font-size:13px">Finalizado</span>
+          <span class="badge" id="cam-count-finalizado" style="background:#0d3d2b;color:#4ade80">0</span>
+        </div>
+        <div class="cam-col-body" id="cam-body-finalizado"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tabela-precos-view" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
+      <div>
+        <p style="font-size:20px;font-weight:600;color:#f1f5f9">💲 Tabela de Preços</p>
+        <p style="font-size:13px;color:#64748b;margin-top:2px">Valores base usados pelo assistente IA para calcular o valor dos pedidos</p>
+      </div>
+      <button onclick="openNovaTabelaPreco()" class="cad-btn-primary"><i class="ti ti-plus" style="font-size:15px"></i> Novo Item</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="overflow-x:auto">
+        <table class="cad-table">
+          <thead><tr>
+            <th>Material</th><th>Tipo</th><th style="width:160px">Valor Unitário</th><th>Observação</th><th style="width:80px"></th>
+          </tr></thead>
+          <tbody id="tabela-precos-tbody"></tbody>
         </table>
       </div>
     </div>
@@ -1817,7 +1928,7 @@ function closeSidebar() {
   document.getElementById('sidebar-overlay').classList.remove('open');
 }
 function updateSidebarActive() {
-  ['home','clientes','tarefas','inove','resumo','dashboard','cadastro','pedidos','orcamento','cobranca','recibo','gastos','relatorios'].forEach(function(v) {
+  ['home','clientes','tarefas','inove','resumo','dashboard','cadastro','pedidos','orcamento','cobranca','recibo','gastos','relatorios','ordens-cam','tabela-precos'].forEach(function(v) {
     var el = document.getElementById('sb-'+v);
     if (el) el.classList.toggle('active', viewMode===v);
   });
@@ -1836,8 +1947,10 @@ function sbNav(target) {
   else if (target==='orcamento') { switchToOrcamento(); }
   else if (target==='cobranca') { switchToCobranca(); }
   else if (target==='recibo') { switchToRecibo(); }
-  else if (target==='gastos')     { switchToGastos(); }
-  else if (target==='relatorios') { switchToRelatorios(); }
+  else if (target==='gastos')        { switchToGastos(); }
+  else if (target==='relatorios')    { switchToRelatorios(); }
+  else if (target==='ordens-cam')    { switchToOrdensCam(); }
+  else if (target==='tabela-precos') { switchToTabelaPrecos(); }
 }
 
 function hideCadastroView() {
@@ -3783,7 +3896,7 @@ function hideHomeView() {
   homeStopCarousel();
 }
 function hideAllViews() {
-  ['home','clientes','tarefas','inove','resumo','dashboard','pedidos','cadastro','orcamento','cobranca','recibo','gastos','relatorios'].forEach(function(v) {
+  ['home','clientes','tarefas','inove','resumo','dashboard','pedidos','cadastro','orcamento','cobranca','recibo','gastos','relatorios','ordens-cam','tabela-precos'].forEach(function(v) {
     var el = document.getElementById(v+'-view');
     if (el) el.style.display = 'none';
   });
@@ -5303,9 +5416,16 @@ var IA_SYSTEM_PROMPT = 'Você é um assistente de gestão de laboratório odonto
 '- controle_mensal: {cliente_reg, mes, ano, valor_mes, valor_pago, valor_componente, obs_pagamento, recebido, enviado, quitado}\n' +
 '- tarefas: {texto, concluida, status, arquivada, cliente_reg, data} — status: pendente|em_execucao|concluida\n' +
 '- inove_pedidos: {descricao, cliente_reg, status, data_pedido} — status: pendente|em_execucao|finalizado — para serviços Inove 3D\n' +
-'- pedidos: {descricao, cliente_reg, valor, data_prevista, status, observacao} — status: orcamento|producao|enviado|entregue|cancelado — para pedidos de laboratório\n' +
+'- pedidos: {descricao, cliente_reg, valor, data_prevista, status, observacao, urgente} — status: orcamento|producao|enviado|entregue|cancelado — para pedidos de laboratório\n' +
 '- gastos_entrega: {valor, tipo, descricao, data, cliente_reg, mes, ano} — tipo: correio|motoboy|uber|outro\n' +
 '- cadastro_clientes: {reg, nome, cpf, cro, end, bairro, cidade, uf, cep, tel, obs}\n\n' +
+'Tabela de preços atual (use para calcular o campo "valor" ao inserir pedidos):\n{{TABELA_PRECOS}}\n\n' +
+'Regras de cálculo de valor para pedidos:\n' +
+'- Identifique o material (zircônia, emax) e conte a quantidade de elementos na descrição\n' +
+'- Se for prova/experimentação, use o valor_unitario do tipo "prova"\n' +
+'- Multiplique valor_unitario × quantidade de elementos\n' +
+'- Some adicionais (componente_neodent, componente_sin) se mencionados e o cliente não enviar o próprio componente\n' +
+'- Se não conseguir calcular o valor, use 0\n\n' +
 'Operações suportadas: insert | update | upsert.\n' +
 'Para update e upsert inclua "where": {campo: valor} indicando o filtro.\n' +
 'Para controle_mensal sempre use upsert com where: {cliente_reg, mes, ano}.\n' +
@@ -5331,7 +5451,16 @@ async function executeIA() {
   iaStopMic();
 
   var clientList = clients.map(function(c) { return c.reg + ': ' + c.nome; }).join('\n');
-  var systemPrompt = IA_SYSTEM_PROMPT.replace('{{CLIENTES}}', clientList);
+  var precosStr = '';
+  try {
+    var precosRes = await sb.from('tabela_precos').select('material,tipo,valor_unitario,observacao').order('material').order('tipo');
+    if (!precosRes.error && precosRes.data) {
+      precosStr = precosRes.data.map(function(r){
+        return '- ' + r.material + ' (' + r.tipo + '): R$ ' + r.valor_unitario + (r.observacao ? ' — ' + r.observacao : '');
+      }).join('\n');
+    }
+  } catch(e) { /* tabela pode não existir ainda */ }
+  var systemPrompt = IA_SYSTEM_PROMPT.replace('{{CLIENTES}}', clientList).replace('{{TABELA_PRECOS}}', precosStr || '(não disponível)');
 
   try {
     var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -5485,6 +5614,205 @@ function renderIAHistory() {
 
 // Populate GROQ key field after DOM is ready
 (function() {
+// ── Tabela de Preços ─────────────────────────────────────────
+var tabelaPrecos = [];
+
+async function loadTabelaPrecos() {
+  try {
+    var res = await sb.from('tabela_precos').select('*').order('material').order('tipo');
+    if (res.error) throw res.error;
+    tabelaPrecos = res.data || [];
+    renderTabelaPrecos();
+  } catch(e) { console.error('[TabelaPrecos]', e.message||e); }
+}
+
+function renderTabelaPrecos() {
+  var tb = document.getElementById('tabela-precos-tbody');
+  if (!tb) return;
+  if (!tabelaPrecos.length) { tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#4a5568;padding:20px">Nenhum item. Crie a tabela no Dashboard e adicione itens.</td></tr>'; return; }
+  tb.innerHTML = tabelaPrecos.map(function(r) {
+    return '<tr>' +
+      '<td style="font-weight:500;color:#f1f5f9">' + escHtml(r.material) + '</td>' +
+      '<td><span style="font-size:11px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.08);color:#94a3b8">' + escHtml(r.tipo) + '</span></td>' +
+      '<td><div style="display:flex;align-items:center;gap:6px"><span style="color:#64748b;font-size:12px">R$</span><input type="number" id="tp-val-'+r.id+'" value="'+Number(r.valor_unitario).toFixed(2)+'" step="0.01" min="0" style="width:80px;height:30px;font-size:13px;text-align:right"></div></td>' +
+      '<td><input type="text" id="tp-obs-'+r.id+'" value="'+escHtml(r.observacao||'')+'" placeholder="—" style="width:100%;height:30px;font-size:12px"></td>' +
+      '<td><button onclick="saveTabelaPrecoItem(\''+r.id+'\')" id="tp-btn-'+r.id+'" style="height:28px;padding:0 10px;border-radius:6px;border:none;background:#1d4ed8;color:#fff;font-size:12px;cursor:pointer;font-family:inherit">Salvar</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+async function saveTabelaPrecoItem(id) {
+  var valEl = document.getElementById('tp-val-'+id);
+  var obsEl = document.getElementById('tp-obs-'+id);
+  var btn   = document.getElementById('tp-btn-'+id);
+  if (!valEl) return;
+  var payload = { valor_unitario: parseFloat(valEl.value)||0, observacao: obsEl ? (obsEl.value.trim()||null) : null };
+  try {
+    var res = await sb.from('tabela_precos').update(payload).eq('id', id);
+    if (res.error) throw res.error;
+    var idx = tabelaPrecos.findIndex(function(r){ return r.id===id; });
+    if (idx>=0) { tabelaPrecos[idx].valor_unitario=payload.valor_unitario; tabelaPrecos[idx].observacao=payload.observacao; }
+    if (btn) { btn.textContent='✓ Salvo'; btn.style.background='#15803d'; setTimeout(function(){ btn.textContent='Salvar'; btn.style.background='#1d4ed8'; },1500); }
+  } catch(e) { alert('Erro ao salvar: '+(e.message||e)); }
+}
+
+function openNovaTabelaPreco() {
+  var mat  = (prompt('Material (ex: zircônia, emax, componente_neodent):')||'').trim();
+  if (!mat) return;
+  var tipo = (prompt('Tipo (normal, prova, adicional):','normal')||'').trim();
+  if (!tipo) return;
+  var val  = parseFloat(prompt('Valor unitário (R$):','0'));
+  if (isNaN(val)) return;
+  sb.from('tabela_precos').insert([{material:mat,tipo:tipo,valor_unitario:val}]).then(function(res){
+    if (res.error) { alert('Erro: '+res.error.message); return; }
+    loadTabelaPrecos();
+  });
+}
+
+function switchToTabelaPrecos() {
+  hideAllViews();
+  viewMode = 'tabela-precos';
+  document.getElementById('tabela-precos-view').style.display = '';
+  updateSidebarActive();
+  loadTabelaPrecos();
+}
+
+// ── Ordens CAM ───────────────────────────────────────────────
+var ordensCam  = [];
+var camDragId  = null;
+
+async function loadOrdensCam() {
+  try {
+    var res = await sb.from('ordens_exocad').select('*').order('created_at',{ascending:false});
+    if (res.error) throw res.error;
+    ordensCam = res.data || [];
+    renderOrdensCam();
+  } catch(e) { console.error('[OrdensCam]', e.message||e); }
+}
+
+function camAgeStyle(createdAt, status) {
+  if (status === 'finalizado' || !createdAt) return '';
+  var today   = new Date(); today.setHours(0,0,0,0);
+  var created = new Date(createdAt); created.setHours(0,0,0,0);
+  var days    = Math.round((today - created) / 86400000);
+  if (days >= 7) return 'border-left:3px solid #ef4444;background:rgba(239,68,68,0.10)';
+  if (days >= 5) return 'border-left:3px solid #f97316;background:rgba(249,115,22,0.08)';
+  if (days >= 3) return 'border-left:3px solid #fbbf24;background:rgba(251,191,36,0.07)';
+  return 'border-left:3px solid #22c55e;background:rgba(34,197,94,0.07)';
+}
+
+function camCardHtml(o) {
+  var cli = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '—');
+  var isEmail  = o.origem === 'email';
+  var badgeLbl = isEmail ? '✉️ Email' : '📱 WhatsApp';
+  var badgeSt  = isEmail ? 'background:#2e1d6e;color:#c4b5fd' : 'background:#0d3d2b;color:#4ade80';
+  var ageStyle = camAgeStyle(o.created_at, o.status);
+  var desc     = (o.descricao||'').length > 90 ? o.descricao.substring(0,90)+'…' : (o.descricao||'—');
+  var nextSt   = {a_fazer:'fazendo', fazendo:'finalizado'}[o.status];
+  var advBtn   = nextSt ? '<button onclick="camAdvanceStatus(\''+o.id+'\',\''+nextSt+'\')" title="Avançar status" style="height:24px;padding:0 8px;border-radius:4px;border:0.5px solid rgba(255,255,255,0.15);background:#22263a;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">&gt;&gt;</button>' : '';
+  return '<div class="cam-card" draggable="true" ondragstart="camDragStart(event,\''+o.id+'\')" style="'+ageStyle+'">' +
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:5px">' +
+      '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(cli)+'</p>' +
+      advBtn +
+    '</div>' +
+    '<p style="font-size:12px;color:#94a3b8;margin:0 0 7px;line-height:1.4">'+escHtml(desc)+'</p>' +
+    '<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;'+badgeSt+'">'+badgeLbl+'</span>' +
+  '</div>';
+}
+
+function renderOrdensCam() {
+  ['a_fazer','fazendo','finalizado'].forEach(function(st) {
+    var list = ordensCam.filter(function(o){ return o.status===st; });
+    var el   = document.getElementById('cam-body-'+st);
+    var ct   = document.getElementById('cam-count-'+st);
+    if (el) el.innerHTML = list.length ? list.map(camCardHtml).join('') : '<p style="font-size:12px;color:#4a5568;padding:16px;text-align:center">Nenhuma ordem</p>';
+    if (ct) ct.textContent = list.length;
+  });
+}
+
+function camDragStart(event, id) { camDragId=id; event.dataTransfer.effectAllowed='move'; }
+function camDragOver(event)      { event.preventDefault(); event.dataTransfer.dropEffect='move'; }
+async function camDrop(event, newStatus) {
+  event.preventDefault();
+  if (!camDragId) return;
+  var id=camDragId; camDragId=null;
+  var o=ordensCam.find(function(x){return x.id===id;});
+  if (!o || o.status===newStatus) return;
+  await camAdvanceStatus(id, newStatus);
+}
+
+async function camAdvanceStatus(id, newStatus) {
+  var payload = { status: newStatus };
+  if (newStatus === 'finalizado') payload.finalizado_at = new Date().toISOString();
+  try {
+    var res = await sb.from('ordens_exocad').update(payload).eq('id', id);
+    if (res.error) throw res.error;
+    var idx = ordensCam.findIndex(function(o){return o.id===id;});
+    if (idx>=0) { ordensCam[idx].status=newStatus; if(payload.finalizado_at) ordensCam[idx].finalizado_at=payload.finalizado_at; }
+    renderOrdensCam();
+  } catch(e) { console.error('[camAdvance]', e.message||e); }
+}
+
+function openNovaCamOrdem() {
+  var sel = document.getElementById('cam-form-cliente');
+  if (sel) {
+    sel.innerHTML = '<option value="">— Nome livre abaixo —</option>' +
+      clients.slice().sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR');}).map(function(c){
+        return '<option value="'+c.reg+'">'+escHtml(c.nome)+'</option>';
+      }).join('');
+  }
+  var nomeEl=document.getElementById('cam-form-nome-livre'); if(nomeEl){nomeEl.style.display='';}
+  var nomeInp=document.getElementById('cam-form-nome-livre-inp'); if(nomeInp)nomeInp.value='';
+  var descEl=document.getElementById('cam-form-desc'); if(descEl)descEl.value='';
+  if(sel)sel.value='';
+  document.querySelectorAll('.cam-orig-btn').forEach(function(b){b.classList.remove('active');});
+  var wb=document.getElementById('cam-orig-whatsapp'); if(wb)wb.classList.add('active');
+  var origEl=document.getElementById('cam-form-origem'); if(origEl)origEl.value='whatsapp';
+  document.getElementById('cam-overlay').style.display='';
+  document.getElementById('cam-panel').style.display='';
+}
+
+function closeCamPanel() {
+  document.getElementById('cam-overlay').style.display='none';
+  document.getElementById('cam-panel').style.display='none';
+}
+
+function camSetOrigem(origem) {
+  var origEl=document.getElementById('cam-form-origem'); if(origEl)origEl.value=origem;
+  document.querySelectorAll('.cam-orig-btn').forEach(function(b){b.classList.remove('active');});
+  var el=document.getElementById('cam-orig-'+origem); if(el)el.classList.add('active');
+}
+
+async function saveNovaCamOrdem() {
+  var sel       = document.getElementById('cam-form-cliente');
+  var clienteReg= sel&&sel.value ? parseInt(sel.value) : null;
+  var nomeEl    = document.getElementById('cam-form-nome-livre-inp');
+  var clienteNome=clienteReg ? null : ((nomeEl&&nomeEl.value)||'').trim();
+  var descEl    = document.getElementById('cam-form-desc');
+  var desc      = ((descEl&&descEl.value)||'').trim();
+  var origEl    = document.getElementById('cam-form-origem');
+  var origem    = (origEl&&origEl.value)||'whatsapp';
+  if (!desc) { alert('Preencha a descrição.'); return; }
+  if (!clienteReg && !clienteNome) { alert('Selecione um cliente ou informe um nome livre.'); return; }
+  var payload   = { descricao:desc, origem:origem, status:'a_fazer' };
+  if (clienteReg) payload.cliente_reg=clienteReg; else payload.cliente_nome=clienteNome;
+  try {
+    var res = await sb.from('ordens_exocad').insert([payload]).select();
+    if (res.error) throw res.error;
+    ordensCam.unshift(res.data[0]);
+    renderOrdensCam();
+    closeCamPanel();
+  } catch(e) { alert('Erro: '+(e.message||e)); }
+}
+
+function switchToOrdensCam() {
+  hideAllViews();
+  viewMode = 'ordens-cam';
+  document.getElementById('ordens-cam-view').style.display = '';
+  updateSidebarActive();
+  loadOrdensCam();
+}
+
   function tryInitKey() {
     var el = document.getElementById('sb-groq-key');
     if (el) { if (GROQ_API_KEY) el.value = GROQ_API_KEY; return; }
