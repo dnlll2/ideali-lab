@@ -5722,8 +5722,10 @@ function camCardHtml(o) {
   var advBtn   = nextSt ? '<button onclick="event.stopPropagation();camAdvanceStatus(\''+o.id+'\',\''+nextSt+'\')" title="Avançar status" style="height:24px;padding:0 8px;border-radius:4px;border:0.5px solid rgba(255,255,255,0.15);background:#22263a;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">&gt;&gt;</button>' : '';
   var scanbody = camGetFlag(o.id, 'scanbody');
   var inove    = camGetFlag(o.id, 'inove');
-  var btnScan = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camToggleFlag(\''+o.id+'\',\'scanbody\')" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;' + (scanbody ? 'background:#c2410c;border-color:#f97316;color:#fff' : 'background:transparent;border-color:rgba(249,115,22,0.4);color:#94a3b8') + '">' + (scanbody ? '✔ ' : '') + '🔍 Scanbody</button>';
+  var aguard   = camGetFlag(o.id, 'aguard');
+  var btnScan  = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camToggleFlag(\''+o.id+'\',\'scanbody\')" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;' + (scanbody ? 'background:#c2410c;border-color:#f97316;color:#fff' : 'background:transparent;border-color:rgba(249,115,22,0.4);color:#94a3b8') + '">' + (scanbody ? '✔ ' : '') + '🔍 Scanbody</button>';
   var btnInove = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camToggleFlag(\''+o.id+'\',\'inove\')" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;' + (inove ? 'background:#1d4ed8;border-color:#3b82f6;color:#fff' : 'background:transparent;border-color:rgba(59,130,246,0.4);color:#94a3b8') + '">' + (inove ? '✔ ' : '') + '📤 Inove</button>';
+  var btnAguard= '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camToggleFlag(\''+o.id+'\',\'aguard\')" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;' + (aguard ? 'background:#7c3aed;border-color:#a78bfa;color:#fff' : 'background:transparent;border-color:rgba(167,139,250,0.4);color:#94a3b8') + '">' + (aguard ? '✔ ' : '') + '⏳ Aprovação</button>';
   return '<div class="cam-card" draggable="true" ondragstart="camDragStart(event,\''+o.id+'\')" onclick="openCamDetail(\''+o.id+'\')" style="'+ageStyle+';cursor:pointer">' +
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:5px">' +
       '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(cli)+'</p>' +
@@ -5732,7 +5734,7 @@ function camCardHtml(o) {
     '<p style="font-size:12px;color:#94a3b8;margin:0 0 7px;line-height:1.4">'+escHtml(desc)+'</p>' +
     '<div style="display:flex;align-items:center;justify-content:space-between">' +
       '<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;'+badgeSt+'">'+badgeLbl+'</span>' +
-      '<div draggable="false" style="display:flex;gap:4px">' + btnScan + btnInove + '</div>' +
+      '<div draggable="false" style="display:flex;gap:4px">' + btnScan + btnInove + btnAguard + '</div>' +
     '</div>' +
   '</div>';
 }
