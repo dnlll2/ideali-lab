@@ -5878,16 +5878,27 @@ function closeCamDetail() {
   camDetailId = null;
 }
 
+function camCopy(text, btn, origLabel) {
+  function onOk() {
+    btn.textContent = '✓ Copiado'; btn.style.color = '#4ade80'; btn.style.borderColor = '#22c55e';
+    setTimeout(function(){ btn.textContent = origLabel; btn.style.color = ''; btn.style.borderColor = ''; }, 1500);
+  }
+  function fallback() {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand('copy'); onOk(); } catch(e) { alert('Não foi possível copiar.'); }
+    document.body.removeChild(ta);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(onOk).catch(fallback);
+  } else { fallback(); }
+}
+
 function camCopyField(idx, btn) {
   var el = document.getElementById('cam-det-val-'+idx);
   if (!el) return;
-  navigator.clipboard.writeText(el.textContent).then(function() {
-    var orig = btn.textContent;
-    btn.textContent = '✓ Copiado';
-    btn.style.color = '#4ade80';
-    btn.style.borderColor = '#22c55e';
-    setTimeout(function(){ btn.textContent = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 1500);
-  }).catch(function(){ alert('Não foi possível copiar.'); });
+  camCopy(el.textContent, btn, btn.textContent);
 }
 
 function camCopyAll() {
@@ -5900,13 +5911,8 @@ function camCopyAll() {
   var descCopy = o.descricao || '—';
   var mCopy = (o.descricao || '').match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
   if (mCopy) { pacCopy = mCopy[1]; descCopy = mCopy[2] || '—'; }
-  var txt  = 'Cliente: ' + cli + (pacCopy ? '\nPaciente: ' + pacCopy : '') + '\nDescrição: ' + descCopy + '\nOrigem: ' + orig + '\nData: ' + data;
-  navigator.clipboard.writeText(txt).then(function() {
-    var btn = event.currentTarget;
-    btn.textContent = '✓ Copiado!';
-    btn.style.color = '#4ade80';
-    setTimeout(function(){ btn.textContent = '📋 Copiar tudo'; btn.style.color = ''; }, 1500);
-  }).catch(function(){ alert('Não foi possível copiar.'); });
+  var txt = 'Cliente: ' + cli + (pacCopy ? '\nPaciente: ' + pacCopy : '') + '\nDescrição: ' + descCopy + '\nOrigem: ' + orig + '\nData: ' + data;
+  camCopy(txt, event.currentTarget, '📋 Copiar tudo');
 }
 
 function switchToOrdensCam() {
