@@ -5612,8 +5612,6 @@ function renderIAHistory() {
   }).join('');
 }
 
-// Populate GROQ key field after DOM is ready
-(function() {
 // ── Tabela de Preços ─────────────────────────────────────────
 var tabelaPrecos = [];
 
@@ -5813,6 +5811,8 @@ function switchToOrdensCam() {
   loadOrdensCam();
 }
 
+// Populate GROQ key field after DOM is ready
+(function() {
   function tryInitKey() {
     var el = document.getElementById('sb-groq-key');
     if (el) { if (GROQ_API_KEY) el.value = GROQ_API_KEY; return; }
