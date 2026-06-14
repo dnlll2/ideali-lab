@@ -1071,6 +1071,16 @@ button{font-family:inherit;cursor:pointer}
   </div>
 
 
+  <!-- Painel arquivados CAM -->
+  <div id="cam-arq-overlay" onclick="closeCamArquivados()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:90"></div>
+  <div id="cam-arq-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:91;width:min(600px,96vw);max-height:85vh;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;display:none;flex-direction:column">
+    <div class="cp-header">
+      <div style="flex:1"><p style="font-size:15px;font-weight:600;color:#f1f5f9">📦 Ordens Arquivadas</p></div>
+      <button class="sb-close" onclick="closeCamArquivados()"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="cam-arq-body" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+
   <div id="cam-overlay" onclick="closeCamPanel()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:80"></div>
   <div id="cam-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:81;width:min(480px,95vw);background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;overflow:hidden">
     <div class="cp-header">
@@ -1166,6 +1176,7 @@ button{font-family:inherit;cursor:pointer}
         <p style="font-size:13px;color:#64748b;margin-top:2px">Designs e arquivos de fresagem</p>
       </div>
       <div style="display:flex;gap:8px">
+        <button onclick="openCamArquivados()" style="height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(113,113,122,0.35);background:#1c1c24;color:#71717a;font-size:13px;cursor:pointer;font-family:inherit">📦 Ver arquivados</button>
         <button onclick="loadOrdensCam()" style="height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">&#8635; Atualizar</button>
         <button onclick="openNovaCamOrdem()" class="cad-btn-primary"><i class="ti ti-plus" style="font-size:15px"></i> Nova Ordem</button>
       </div>
@@ -3133,6 +3144,7 @@ async function runMigrations() {
   var sqls = [
     'ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS urgente boolean DEFAULT false',
     'ALTER TABLE tarefas ADD COLUMN IF NOT EXISTS data_prazo date',
+    'ALTER TABLE ordens_exocad ADD COLUMN IF NOT EXISTS arquivado boolean DEFAULT false',
   ];
   try {
     var r = await fetch(SUPABASE_URL + '/rest/v1/sql', {
@@ -5693,11 +5705,21 @@ var camDragId  = null;
 
 async function loadOrdensCam() {
   try {
-    var res = await sb.from('ordens_exocad').select('*').order('created_at',{ascending:false});
+    var res = await sb.from('ordens_exocad').select('*')
+      .or('arquivado.is.null,arquivado.eq.false')
+      .order('created_at',{ascending:false});
     if (res.error) throw res.error;
     ordensCam = res.data || [];
     renderOrdensCam();
-  } catch(e) { console.error('[OrdensCam]', e.message||e); }
+  } catch(e) {
+    // Fallback se coluna ainda não existe
+    try {
+      var res2 = await sb.from('ordens_exocad').select('*').order('created_at',{ascending:false});
+      if (res2.error) throw res2.error;
+      ordensCam = (res2.data||[]).filter(function(o){return !o.arquivado;});
+      renderOrdensCam();
+    } catch(e2) { console.error('[OrdensCam]', e2.message||e2); }
+  }
 }
 
 function camAgeStyle(createdAt, status) {
@@ -5720,6 +5742,7 @@ function camCardHtml(o) {
   var desc     = (o.descricao||'').length > 90 ? o.descricao.substring(0,90)+'…' : (o.descricao||'—');
   var nextSt   = {a_fazer:'fazendo', fazendo:'finalizado'}[o.status];
   var advBtn   = nextSt ? '<button onclick="event.stopPropagation();camAdvanceStatus(\''+o.id+'\',\''+nextSt+'\')" title="Avançar status" style="height:24px;padding:0 8px;border-radius:4px;border:0.5px solid rgba(255,255,255,0.15);background:#22263a;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">&gt;&gt;</button>' : '';
+  var arqBtn   = o.status==='finalizado' ? '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camArchivar(\''+o.id+'\')" style="height:24px;padding:0 8px;border-radius:4px;border:0.5px solid rgba(113,113,122,0.4);background:#1c1c24;color:#71717a;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">📦 Arquivar</button>' : '';
   var scanbody = camGetFlag(o.id, 'scanbody');
   var inove    = camGetFlag(o.id, 'inove');
   var aguard   = camGetFlag(o.id, 'aguard');
@@ -5729,7 +5752,7 @@ function camCardHtml(o) {
   return '<div class="cam-card" draggable="true" ondragstart="camDragStart(event,\''+o.id+'\')" onclick="openCamDetail(\''+o.id+'\')" style="'+ageStyle+';cursor:pointer">' +
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:5px">' +
       '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(cli)+'</p>' +
-      advBtn +
+      '<div draggable="false" style="display:flex;gap:4px">' + advBtn + arqBtn + '</div>' +
     '</div>' +
     '<p style="font-size:12px;color:#94a3b8;margin:0 0 7px;line-height:1.4">'+escHtml(desc)+'</p>' +
     '<div style="display:flex;align-items:center;justify-content:space-between">' +
@@ -5781,6 +5804,53 @@ function camToggleFlag(id, flag) {
     localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1');
     renderOrdensCam();
   } catch(e) { console.error('[camToggleFlag]', e); }
+}
+
+async function camArchivar(id) {
+  if (!confirm('Arquivar esta ordem? Ela sairá do board.')) return;
+  try {
+    var res = await sb.from('ordens_exocad').update({arquivado:true}).eq('id',id);
+    if (res.error) throw res.error;
+    ordensCam = ordensCam.filter(function(o){return o.id!==id;});
+    renderOrdensCam();
+  } catch(e) { alert('Erro ao arquivar: '+(e.message||e)); }
+}
+
+async function openCamArquivados() {
+  var overlay = document.getElementById('cam-arq-overlay');
+  var panel   = document.getElementById('cam-arq-panel');
+  var body    = document.getElementById('cam-arq-body');
+  overlay.style.display = '';
+  panel.style.display   = 'flex';
+  body.innerHTML = '<p style="font-size:12px;color:#64748b;text-align:center;padding:16px">Carregando…</p>';
+  try {
+    var res = await sb.from('ordens_exocad').select('*').eq('arquivado',true).order('created_at',{ascending:false});
+    if (res.error) throw res.error;
+    var rows = res.data || [];
+    if (!rows.length) {
+      body.innerHTML = '<p style="font-size:13px;color:#4a5568;text-align:center;padding:24px">Nenhuma ordem arquivada.</p>';
+      return;
+    }
+    body.innerHTML = rows.map(function(o) {
+      var cli  = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '—');
+      var data = o.created_at ? new Date(o.created_at).toLocaleDateString('pt-BR') : '—';
+      var desc = o.descricao || '—';
+      return '<div style="background:#22263a;border:0.5px solid rgba(255,255,255,0.07);border-radius:8px;padding:10px 12px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px">' +
+          '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0">'+escHtml(cli)+'</p>' +
+          '<span style="font-size:11px;color:#4a5568;flex-shrink:0">'+data+'</span>' +
+        '</div>' +
+        '<p style="font-size:12px;color:#94a3b8;margin:0;line-height:1.4">'+escHtml(desc)+'</p>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    body.innerHTML = '<p style="font-size:12px;color:#ef4444;text-align:center;padding:16px">Erro: '+(e.message||e)+'</p>';
+  }
+}
+
+function closeCamArquivados() {
+  document.getElementById('cam-arq-overlay').style.display = 'none';
+  document.getElementById('cam-arq-panel').style.display   = 'none';
 }
 
 function openNovaCamOrdem() {
