@@ -602,6 +602,9 @@ button{font-family:inherit;cursor:pointer}
         <option value="entregue">Entregue</option>
         <option value="cancelado">Cancelado</option>
       </select>
+      <select id="ped-cliente-filter" style="width:180px" onchange="renderPedidosTable()">
+        <option value="">Todos os clientes</option>
+      </select>
     </div>
     <div class="card" style="padding:0;overflow:hidden">
       <div style="overflow-x:auto;max-height:65vh">
@@ -1264,7 +1267,8 @@ var clients = [
   {reg:25,nome:"Tiago Muller Pereira",         cpf:"025.981.860-79",  cro:"",             end:"Av. Salgado Filho, 2839",                         bairro:"",                   cidade:"Caxias do Sul",       uf:"RS", cep:"",          tel:"",                  obs:""},
   {reg:26,nome:"Raquel Ghesso Brentzel",        cpf:"435.301.458-74",  cro:"119391",       end:"Rua Ibitirama, 166 - Cj 902 Torre Office", bairro:"Vila Prudente",      cidade:"Sao Paulo",           uf:"SP", cep:"03134-000", tel:"",                  obs:""},
   {reg:27,nome:"Kleber Luander",              cpf:"144.031.517-52",  cro:"CRO-RJ 43164", end:"Av. Rotary, 947",                                bairro:"Centro",             cidade:"Sao Joao da Barra",   uf:"RJ", cep:"28200-000", tel:"",                  obs:"Lente Novo"},
-  {reg:28,nome:"Luiz Carlos Figueiredo Seixas",cpf:"107.126.347-11",cro:"CRO-RJ 35796", end:"Rua Conde de Bonfim, 255 - Sala 810",            bairro:"Tijuca",             cidade:"Rio de Janeiro",      uf:"RJ", cep:"20520-051", tel:"",                  obs:""}
+  {reg:28,nome:"Luiz Carlos Figueiredo Seixas",cpf:"107.126.347-11",cro:"CRO-RJ 35796", end:"Rua Conde de Bonfim, 255 - Sala 810",            bairro:"Tijuca",             cidade:"Rio de Janeiro",      uf:"RJ", cep:"20520-051", tel:"",                  obs:""},
+  {reg:29,nome:"Paulo Pagano",               cpf:"",                cro:"",             end:"Rua Salvador Bicudo, 109",                        bairro:"Tucuruvi",           cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"",                  email:"paulopagano0@gmail.com", obs:""}
 ];
 
 var now = new Date();
@@ -2444,14 +2448,31 @@ async function loadPedidos() {
     if (res.error) throw res.error;
     pedidos = res.data || [];
   } catch(e) { console.error('loadPedidos:',e); pedidos=[]; }
+  populatePedidoClientFilter();
   renderPedidosTable();
+}
+
+function populatePedidoClientFilter() {
+  var sel = document.getElementById('ped-cliente-filter');
+  if (!sel) return;
+  var cur = sel.value;
+  var regs = [];
+  pedidos.forEach(function(p){ if(p.cliente_reg && regs.indexOf(p.cliente_reg)<0) regs.push(p.cliente_reg); });
+  var opts = regs
+    .map(function(r){ return {reg:r, nome:cliNomePed(r)}; })
+    .filter(function(x){ return x.nome && x.nome!=='—'; })
+    .sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); });
+  sel.innerHTML = '<option value="">Todos os clientes</option>' +
+    opts.map(function(x){ return '<option value="'+x.reg+'"'+(cur==x.reg?' selected':'')+'>'+escHtml(x.nome)+'</option>'; }).join('');
 }
 
 function renderPedidosTable() {
   var q=(document.getElementById('ped-search')||{value:''}).value.toLowerCase().trim();
   var sf=(document.getElementById('ped-status-filter')||{value:''}).value;
+  var cf=parseInt((document.getElementById('ped-cliente-filter')||{value:''}).value)||0;
   var filtered=pedidos.filter(function(p){
     if(sf&&p.status!==sf)return false;
+    if(cf&&p.cliente_reg!==cf)return false;
     var cn=p.cliente_reg?cliNomePed(p.cliente_reg):'';
     return !q||[p.descricao||'',cn,p.observacao||''].join(' ').toLowerCase().includes(q);
   });
