@@ -605,18 +605,19 @@ button{font-family:inherit;cursor:pointer}
       <select id="ped-cliente-filter" style="width:180px" onchange="renderPedidosTable()">
         <option value="">Todos os clientes</option>
       </select>
+      <button id="ped-clear-filters" onclick="pedClearFilters()" style="display:none;height:36px;padding:0 12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap">✕ Limpar</button>
     </div>
     <div class="card" style="padding:0;overflow:hidden">
       <div style="overflow-x:auto;max-height:65vh">
         <table class="cad-table">
           <thead><tr>
             <th style="width:40px">#</th>
-            <th>Cliente</th>
-            <th>Descrição</th>
-            <th>Data Cadastro</th>
-            <th>Data Prevista</th>
-            <th>Valor</th>
-            <th>Status</th>
+            <th style="cursor:pointer;user-select:none" onclick="pedSortBy('cliente')">Cliente <span id="ped-arrow-cliente" style="display:inline-block;width:12px"></span></th>
+            <th style="cursor:pointer;user-select:none" onclick="pedSortBy('descricao')">Descrição <span id="ped-arrow-descricao" style="display:inline-block;width:12px"></span></th>
+            <th style="cursor:pointer;user-select:none" onclick="pedSortBy('criado')">Data Cadastro <span id="ped-arrow-criado" style="display:inline-block;width:12px"></span></th>
+            <th style="cursor:pointer;user-select:none" onclick="pedSortBy('previsto')">Data Prevista <span id="ped-arrow-previsto" style="display:inline-block;width:12px"></span></th>
+            <th style="cursor:pointer;user-select:none" onclick="pedSortBy('valor')">Valor <span id="ped-arrow-valor" style="display:inline-block;width:12px"></span></th>
+            <th style="cursor:pointer;user-select:none" onclick="pedSortBy('status')">Status <span id="ped-arrow-status" style="display:inline-block;width:12px"></span></th>
           </tr></thead>
           <tbody id="ped-tbody"></tbody>
         </table>
@@ -2466,6 +2467,52 @@ function populatePedidoClientFilter() {
     opts.map(function(x){ return '<option value="'+x.reg+'"'+(cur==x.reg?' selected':'')+'>'+escHtml(x.nome)+'</option>'; }).join('');
 }
 
+var pedSortCol = null, pedSortDir = null;
+var PED_SORT_COLS = ['cliente','descricao','criado','previsto','valor','status'];
+var PED_STATUS_ORDER = ['orcamento','producao','finalizado','entregue','cancelado'];
+
+function pedSortBy(col) {
+  if (pedSortCol !== col) { pedSortCol = col; pedSortDir = 'asc'; }
+  else if (pedSortDir === 'asc') { pedSortDir = 'desc'; }
+  else { pedSortCol = null; pedSortDir = null; }
+  renderPedidosTable();
+}
+
+function pedSortValue(p, col) {
+  switch (col) {
+    case 'cliente':   return (p.cliente_reg ? cliNomePed(p.cliente_reg) : '').toLowerCase();
+    case 'descricao': return (p.descricao || '').toLowerCase();
+    case 'criado':    return p.created_at ? new Date(p.created_at).getTime() : 0;
+    case 'previsto':  return p.data_prevista ? new Date(p.data_prevista).getTime() : Infinity;
+    case 'valor':     return Number(p.valor || 0);
+    case 'status':    return PED_STATUS_ORDER.indexOf(p.status);
+    default: return '';
+  }
+}
+
+function updatePedSortArrows() {
+  PED_SORT_COLS.forEach(function(c) {
+    var el = document.getElementById('ped-arrow-'+c);
+    if (!el) return;
+    el.textContent = pedSortCol === c ? (pedSortDir === 'asc' ? '↑' : '↓') : '';
+  });
+}
+
+function pedClearFilters() {
+  var s = document.getElementById('ped-search');         if (s) s.value = '';
+  var sf = document.getElementById('ped-status-filter');  if (sf) sf.value = '';
+  var cf = document.getElementById('ped-cliente-filter'); if (cf) cf.value = '';
+  pedSortCol = null; pedSortDir = null;
+  renderPedidosTable();
+}
+
+function updatePedClearBtn(q, sf, cf) {
+  var btn = document.getElementById('ped-clear-filters');
+  if (!btn) return;
+  var active = !!q || !!sf || !!cf || !!pedSortCol;
+  btn.style.display = active ? '' : 'none';
+}
+
 function renderPedidosTable() {
   var q=(document.getElementById('ped-search')||{value:''}).value.toLowerCase().trim();
   var sf=(document.getElementById('ped-status-filter')||{value:''}).value;
@@ -2476,6 +2523,15 @@ function renderPedidosTable() {
     var cn=p.cliente_reg?cliNomePed(p.cliente_reg):'';
     return !q||[p.descricao||'',cn,p.observacao||''].join(' ').toLowerCase().includes(q);
   });
+  if (pedSortCol) {
+    filtered = filtered.slice().sort(function(a,b){
+      var va=pedSortValue(a,pedSortCol), vb=pedSortValue(b,pedSortCol);
+      var cmp = typeof va==='string' ? va.localeCompare(vb,'pt-BR') : (va-vb);
+      return pedSortDir==='desc' ? -cmp : cmp;
+    });
+  }
+  updatePedSortArrows();
+  updatePedClearBtn(q, sf, cf);
   var tot=filtered.length, totVal=filtered.reduce(function(s,p){return s+Number(p.valor||0);},0);
   var se=document.getElementById('ped-summary');
   if(se)se.textContent=tot+' pedido'+(tot!==1?'s':'')+' · '+fmt(totVal);
