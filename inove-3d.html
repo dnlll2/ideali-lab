@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inove 3D — Ideali Laboratório</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared.js"></script>
+</head>
+<body>
+
+<div id="shared-shell"></div>
+
+<div style="max-width:100%">
+  <div id="app-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="hamburger" onclick="openSidebar()" title="Menu">&#9776;</button>
+      <div>
+        <p style="font-size:22px;font-weight:500;color:#f1f5f9">🏭 Inove 3D</p>
+        <p style="font-size:14px;color:#64748b">Tarefas de impressão e fresagem</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span id="relogio" style="font-size:11px;color:#4a5568"></span>
+      <span id="sync-status" style="font-size:12px;color:#64748b">
+        <span class="sync-dot" id="sync-dot"></span>Conectado
+      </span>
+    </div>
+  </div>
+
+  <main id="page-content">
+    <div id="inove-grid" style="display:grid;grid-template-columns:1.6fr 1fr;gap:12px;align-items:start">
+      <div class="card" style="padding:0.5rem;display:flex;flex-direction:column;max-height:calc(100vh - 240px)">
+        <div style="position:relative;margin-bottom:6px;flex-shrink:0">
+          <i class="ti ti-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:14px;color:#4a5568"></i>
+          <input type="text" id="inove-search" placeholder="Buscar tarefa ou cliente..." style="width:100%;padding-left:30px;height:32px;font-size:12px" oninput="renderInoveLista()">
+        </div>
+        <div style="overflow-y:auto;flex:1" id="inove-lista"></div>
+      </div>
+      <div class="card" id="inove-form-panel"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+function initShell() {
+  return fetch('sidebar.html')
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+      document.getElementById('shared-shell').innerHTML = html;
+      updateSidebarActive();
+      var keyEl = document.getElementById('sb-groq-key');
+      if (keyEl && GROQ_API_KEY) keyEl.value = GROQ_API_KEY;
+    })
+    .catch(function(e) { console.error('Erro ao carregar sidebar.html:', e); });
+}
+
+function hideLoading() {
+  var el = document.getElementById('loading-overlay');
+  if (el) el.style.display = 'none';
+}
+
+function showConnError(msg) {
+  var el   = document.getElementById('conn-error');
+  var msg2 = document.getElementById('conn-error-msg');
+  if (el)   el.style.display  = 'flex';
+  if (msg2) msg2.textContent  = msg;
+}
+
+// ── Inove 3D ──────────────────────────────────────────────────
+var inovePedidos         = [];
+var inoveFinalizadosOpen = false;
+var _inoveMap            = {};
+
+function renderInoveForm() {
+  var sorted = clients.slice().sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); });
+  var opts = '<option value="">Nenhum</option>' +
+    sorted.map(function(c){ return '<option value="'+c.reg+'">'+c.nome+'</option>'; }).join('');
+  document.getElementById('inove-form-panel').innerHTML =
+    '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin-bottom:14px;display:flex;align-items:center;gap:8px"><i class="ti ti-box" style="font-size:16px;color:#818cf8"></i>Nova Tarefa Inove 3D</p>' +
+    '<div style="margin-bottom:10px"><p class="label" style="margin-bottom:5px">Descrição da tarefa <span style="color:#ef4444">*</span></p>' +
+      '<input type="text" id="inove-desc" placeholder="Ex: Impressão zircônia superior..." style="width:100%" onkeydown="if(event.key===\'Enter\')addInovePedido()"></div>' +
+    '<div style="margin-bottom:10px"><p class="label" style="margin-bottom:5px">Cliente (opcional)</p>' +
+      '<select id="inove-cliente" style="width:100%">'+opts+'</select></div>' +
+    '<div style="margin-bottom:16px"><p class="label" style="margin-bottom:5px">Status inicial</p>' +
+      '<select id="inove-status-inicial" style="width:100%">' +
+        '<option value="pendente">⬤ Pendente</option>' +
+        '<option value="em_execucao">⬤ Em execução</option>' +
+      '</select></div>' +
+    '<button id="inove-add-btn" class="task-add-btn" style="width:100%;justify-content:center" onclick="addInovePedido()"><i class="ti ti-plus" style="font-size:15px"></i> Adicionar Tarefa</button>' +
+    '<div id="inove-add-error" style="display:none;font-size:12px;color:#fca5a5;background:#3d1d1d;border:0.5px solid rgba(239,68,68,0.3);border-radius:8px;padding:8px 12px;margin-top:10px"></div>';
+  setTimeout(function(){ var i = document.getElementById('inove-desc'); if (i) i.focus(); }, 30);
+}
+
+async function loadInovePedidos() {
+  try {
+    var res = await sb.from('inove_pedidos').select('*').order('created_at', {ascending:true});
+    if (res.error) throw res.error;
+    inovePedidos = res.data || [];
+  } catch(e) {
+    console.error('loadInovePedidos:', e);
+    inovePedidos = [];
+  }
+  renderInoveLista();
+}
+
+function renderInoveLista() {
+  var panel    = document.getElementById('inove-lista');
+  if (!panel) return;
+  var searchEl = document.getElementById('inove-search');
+  var q        = (searchEl ? searchEl.value : '').toLowerCase().trim();
+
+  function clienteNome(reg) {
+    if (!reg) return '';
+    var c = clients.find(function(x){ return x.reg == reg; });
+    return c ? c.nome : '';
+  }
+
+  function matchesQ(p) {
+    if (!q) return true;
+    return (p.descricao||'').toLowerCase().includes(q) || clienteNome(p.cliente_reg).toLowerCase().includes(q);
+  }
+
+  var ativos  = inovePedidos.filter(function(p){ return p.status !== 'finalizado' && matchesQ(p); });
+  var finais  = inovePedidos.filter(function(p){ return p.status === 'finalizado'  && matchesQ(p); });
+  var pendCt  = inovePedidos.filter(function(p){ return p.status === 'pendente' || p.status === 'ativo'; }).length;
+  var execCt  = inovePedidos.filter(function(p){ return p.status === 'em_execucao'; }).length;
+  var totAtiv = inovePedidos.filter(function(p){ return p.status !== 'finalizado'; }).length;
+
+  var B = 'width:28px;height:28px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s';
+
+  function statusDot(st) {
+    var clr = st==='finalizado'?'#22c55e':st==='em_execucao'?'#fb923c':'#4a5568';
+    return '<span style="width:8px;height:8px;border-radius:50%;background:'+clr+';flex-shrink:0"></span>';
+  }
+
+  function ativoRow(p, idx) {
+    _inoveMap[idx] = p.id;
+    var isExec    = p.status === 'em_execucao';
+    var itemStyle = isExec ? ';background:#2a1a04;border-color:rgba(251,146,60,0.3)' : '';
+    var textClr   = isExec ? '#fde68a' : '#e2e8f0';
+    var cli       = clienteNome(p.cliente_reg);
+    var subLine   = (cli || p.data_pedido)
+      ? '<p style="font-size:10px;color:#4a5568;margin-top:2px">' +
+          (cli ? '<span style="color:#64748b">'+cli+'</span>' : '') +
+          (cli && p.data_pedido ? ' · ' : '') +
+          (p.data_pedido ? fmtDate(p.data_pedido) : '') +
+        '</p>'
+      : '';
+    return '<div class="task-item" style="'+itemStyle+'">' +
+      statusDot(p.status) +
+      '<div style="flex:1;min-width:0">' +
+        '<span style="font-size:13px;color:'+textClr+'">'+(p.descricao||'-')+'</span>' + subLine +
+      '</div>' +
+      '<button onclick="setInoveEmExecucao(_inoveMap['+idx+'])" title="'+(isExec?'Remover execução':'Em execução')+'" style="'+B+';border:0.5px solid rgba(251,146,60,'+(isExec?'0.7':'0.25')+');background:'+(isExec?'#3d1f00':'#1a1d27')+';color:'+(isExec?'#fb923c':'#64748b')+'"><i class="ti ti-clock" style="font-size:13px"></i></button>' +
+      '<button onclick="finalizarInovePedido(_inoveMap['+idx+'])" title="Finalizado" style="'+B+';border:0.5px solid rgba(34,197,94,0.4);background:#0d3d2b;color:#22c55e"><i class="ti ti-check" style="font-size:13px"></i></button>' +
+      '<button onclick="deleteInovePedido(_inoveMap['+idx+'])" title="Excluir" style="'+B+';border:0.5px solid rgba(239,68,68,0.3);background:#3d1d1d;color:#ef4444"><i class="ti ti-trash" style="font-size:13px"></i></button>' +
+    '</div>';
+  }
+
+  function finalRow(p, idx) {
+    _inoveMap[idx] = p.id;
+    var cli     = clienteNome(p.cliente_reg);
+    var subLine = (cli || p.data_pedido)
+      ? '<p style="font-size:10px;color:#4a5568;margin-top:2px">' +
+          (cli ? '<span>'+cli+'</span>' : '') +
+          (cli && p.data_pedido ? ' · ' : '') +
+          (p.data_pedido ? fmtDate(p.data_pedido) : '') +
+        '</p>'
+      : '';
+    return '<div class="task-item" style="opacity:0.55">' +
+      statusDot('finalizado') +
+      '<div style="flex:1;min-width:0">' +
+        '<span style="font-size:13px;color:#4a5568;text-decoration:line-through">'+(p.descricao||'-')+'</span>' + subLine +
+      '</div>' +
+      '<button onclick="desfinalizarInovePedido(_inoveMap['+idx+'])" title="Reabrir" style="'+B+';border:0.5px solid rgba(147,197,253,0.3);background:#1a2a40;color:#93c5fd"><i class="ti ti-rotate-clockwise" style="font-size:13px"></i></button>' +
+      '<button onclick="deleteInovePedido(_inoveMap['+idx+'])" title="Excluir" style="'+B+';border:0.5px solid rgba(239,68,68,0.3);background:#3d1d1d;color:#ef4444"><i class="ti ti-trash" style="font-size:13px"></i></button>' +
+    '</div>';
+  }
+
+  var ativosHTML = ativos.length
+    ? ativos.map(function(p,i){ return ativoRow(p,i); }).join('')
+    : '<div style="text-align:center;padding:1.5rem 1rem;color:#4a5568"><i class="ti ti-package" style="font-size:28px;margin-bottom:6px;display:block"></i><p style="font-size:13px">'+(q?'Nenhum resultado':'Nenhuma tarefa ativa')+'</p></div>';
+
+  var finaisHTML = finais.length
+    ? '<div style="margin-top:12px;border-top:0.5px solid rgba(255,255,255,0.06);padding-top:8px">' +
+        '<button onclick="toggleInoveFinalizados()" style="display:flex;align-items:center;gap:6px;width:100%;background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;padding:4px 2px;font-family:inherit">' +
+          '<i class="ti ti-circle-check" style="font-size:13px;color:#22c55e"></i>' +
+          '<span>Finalizados ('+finais.length+')</span>' +
+          '<i class="ti ti-chevron-down" id="inove-fin-arrow" style="font-size:11px;margin-left:auto;transition:transform 0.2s;transform:'+(inoveFinalizadosOpen?'rotate(180deg)':'rotate(0deg)')+'"></i>' +
+        '</button>' +
+        '<div id="inove-fin-section" style="display:'+(inoveFinalizadosOpen?'block':'none')+';margin-top:6px">' +
+          finais.map(function(p,i){ return finalRow(p,i+10000); }).join('') +
+        '</div>' +
+      '</div>'
+    : '';
+
+  var header =
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:2px 2px 8px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' +
+      '<p style="font-size:12px;color:#64748b;flex:1">'+totAtiv+' tarefa'+(totAtiv!==1?'s':'')+' ativa'+(totAtiv!==1?'s':'')+'</p>' +
+      (pendCt ? '<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:#22263a;color:#64748b">'+pendCt+' pendente'+(pendCt!==1?'s':'')+'</span>' : '') +
+      (execCt ? '<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:#3d1f00;color:#fb923c">'+execCt+' em execução</span>' : '') +
+    '</div>';
+
+  panel.innerHTML = header + ativosHTML + finaisHTML;
+}
+
+async function addInovePedido() {
+  var descEl   = document.getElementById('inove-desc');
+  var cliEl    = document.getElementById('inove-cliente');
+  var statusEl = document.getElementById('inove-status-inicial');
+  var btn      = document.getElementById('inove-add-btn');
+  var errEl    = document.getElementById('inove-add-error');
+  if (!descEl) return;
+  var texto = descEl.value.trim();
+  if (!texto) { descEl.focus(); return; }
+  var cliReg = (cliEl && cliEl.value) ? parseInt(cliEl.value) : null;
+  var status = statusEl ? statusEl.value : 'pendente';
+  descEl.disabled = true;
+  if (btn) { btn.disabled=true; btn.style.opacity='0.55'; }
+  if (errEl) errEl.style.display='none';
+  try {
+    var res = await sb.from('inove_pedidos')
+      .insert({descricao:texto, cliente_reg:cliReg, status:status, data_pedido:todayISO()})
+      .select().single();
+    if (res.error) throw res.error;
+    inovePedidos.push(res.data);
+    renderInoveLista();
+    descEl.value = '';
+    descEl.disabled = false;
+    if (btn) { btn.disabled=false; btn.style.opacity=''; }
+    descEl.focus();
+  } catch(e) {
+    console.error('addInovePedido:', e);
+    descEl.disabled = false;
+    if (btn) { btn.disabled=false; btn.style.opacity=''; }
+    if (errEl) { errEl.textContent=e.message||'Erro ao salvar.'; errEl.style.display='block'; }
+  }
+}
+
+async function setInoveEmExecucao(id) {
+  var p = inovePedidos.find(function(x){ return x.id===id; });
+  if (!p) return;
+  var next = (p.status==='em_execucao') ? 'pendente' : 'em_execucao';
+  var res = await sb.from('inove_pedidos').update({status:next}).eq('id',id);
+  if (res.error) { console.error('setInoveEmExecucao:', res.error.message); return; }
+  p.status = next;
+  renderInoveLista();
+}
+
+async function finalizarInovePedido(id) {
+  var p = inovePedidos.find(function(x){ return x.id===id; });
+  if (!p) return;
+  var res = await sb.from('inove_pedidos').update({status:'finalizado'}).eq('id',id);
+  if (res.error) { console.error('finalizarInovePedido:', res.error.message); return; }
+  p.status = 'finalizado';
+  renderInoveLista();
+}
+
+async function desfinalizarInovePedido(id) {
+  var p = inovePedidos.find(function(x){ return x.id===id; });
+  if (!p) return;
+  var res = await sb.from('inove_pedidos').update({status:'pendente'}).eq('id',id);
+  if (res.error) { console.error('desfinalizarInovePedido:', res.error.message); return; }
+  p.status = 'pendente';
+  renderInoveLista();
+}
+
+async function deleteInovePedido(id) {
+  var res = await sb.from('inove_pedidos').delete().eq('id',id);
+  if (res.error) { console.error('deleteInovePedido:', res.error.message); return; }
+  inovePedidos = inovePedidos.filter(function(p){ return p.id!==id; });
+  renderInoveLista();
+}
+
+function toggleInoveFinalizados() {
+  inoveFinalizadosOpen = !inoveFinalizadosOpen;
+  var sec   = document.getElementById('inove-fin-section');
+  var arrow = document.getElementById('inove-fin-arrow');
+  if (sec)   sec.style.display = inoveFinalizadosOpen ? 'block' : 'none';
+  if (arrow) arrow.style.transform = inoveFinalizadosOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+async function init() {
+  try {
+    renderInoveForm();
+    await loadInovePedidos();
+  } catch(e) {
+    showConnError(e.message || String(e));
+  } finally {
+    hideLoading();
+  }
+}
+
+initShell().then(function() { if (typeof init === 'function') init(); });
+</script>
+
+</body>
+</html>
