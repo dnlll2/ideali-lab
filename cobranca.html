@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador de Cobrança — Ideali Laboratório</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="shared.js"></script>
+</head>
+<body>
+
+<div id="shared-shell"></div>
+
+<div style="max-width:100%">
+  <div id="app-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="hamburger" onclick="openSidebar()" title="Menu">&#9776;</button>
+      <div>
+        <p style="font-size:22px;font-weight:500;color:#f1f5f9">📄 Gerador de Cobrança</p>
+        <p style="font-size:14px;color:#64748b">Emita documentos de cobrança em PDF</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span id="relogio" style="font-size:11px;color:#4a5568"></span>
+      <span id="sync-status" style="font-size:12px;color:#64748b">
+        <span class="sync-dot" id="sync-dot"></span>Conectado
+      </span>
+    </div>
+  </div>
+
+  <main id="page-content">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
+      <div>
+        <p style="font-size:20px;font-weight:600;color:#f1f5f9">📄 Gerador de Cobrança</p>
+        <p style="font-size:13px;color:#64748b;margin-top:2px">Emita documentos de cobrança em PDF</p>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="cob-grid">
+      <div class="card" style="padding:1.25rem">
+        <div class="cf-group">
+          <label class="cf-label">Cliente</label>
+          <select id="cob-cliente" style="width:100%"><option value="">Selecione um cliente...</option></select>
+        </div>
+        <div class="cf-group">
+          <label class="cf-label">Descrição do Serviço</label>
+          <textarea id="cob-descricao" rows="3" style="width:100%;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:14px;background:#22263a;color:#e2e8f0;outline:none;font-family:inherit;resize:vertical" placeholder="Descreva o serviço cobrado..."></textarea>
+        </div>
+        <div class="cf-row2" style="margin-bottom:14px">
+          <div>
+            <label class="cf-label">Valor Total (R$)</label>
+            <input type="number" id="cob-total" placeholder="0,00" min="0" step="0.01" style="width:100%" oninput="cobCalcSaldo()">
+          </div>
+          <div>
+            <label class="cf-label">Valor Já Pago (R$)</label>
+            <input type="number" id="cob-pago" placeholder="0,00" min="0" step="0.01" style="width:100%" oninput="cobCalcSaldo()">
+          </div>
+        </div>
+        <div class="cf-row2" style="margin-bottom:14px">
+          <div>
+            <label class="cf-label">Data de Vencimento</label>
+            <input type="date" id="cob-vencimento" style="width:100%">
+          </div>
+          <div>
+            <label class="cf-label">Número da Cobrança</label>
+            <input type="text" id="cob-numero" placeholder="COB-001" style="width:100%">
+          </div>
+        </div>
+        <div class="cf-group">
+          <label class="cf-label">Observação / Instruções de Pagamento</label>
+          <textarea id="cob-obs" rows="3" style="width:100%;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:14px;background:#22263a;color:#e2e8f0;outline:none;font-family:inherit;resize:vertical" placeholder="PIX: 12.345.678/0001-00 | Banco: Nubank..."></textarea>
+        </div>
+        <button onclick="gerarCobrancaPDF()" style="width:100%;height:42px;border-radius:8px;border:none;background:#0d6e4e;color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:background 0.15s" onmouseover="this.style.background='#0f8f65'" onmouseout="this.style.background='#0d6e4e'">
+          <i class="ti ti-file-type-pdf" style="font-size:18px"></i> Gerar PDF de Cobrança
+        </button>
+      </div>
+      <div class="card" style="padding:1.25rem">
+        <p class="cf-label" style="margin-bottom:12px">Resumo da Cobrança</p>
+        <div style="background:#0f1117;border-radius:10px;padding:16px;min-height:200px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:0.5px solid rgba(255,255,255,0.08)">
+            <span style="font-size:13px;color:#64748b">Cliente</span>
+            <span style="font-size:13px;color:#e2e8f0" id="cob-preview-cliente">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:0.5px solid rgba(255,255,255,0.08)">
+            <span style="font-size:13px;color:#64748b">Vencimento</span>
+            <span style="font-size:13px;color:#fbbf24" id="cob-preview-venc">—</span>
+          </div>
+          <div style="border-top:0.5px solid rgba(255,255,255,0.08);padding-top:8px;margin-top:4px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:13px;color:#64748b">Valor Total</span>
+              <span style="font-size:13px;color:#e2e8f0" id="cob-preview-total">R$ 0,00</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:13px;color:#64748b">Já Pago</span>
+              <span style="font-size:13px;color:#22c55e" id="cob-preview-pago">R$ 0,00</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.12)">
+              <span style="font-size:16px;font-weight:600;color:#f1f5f9">Saldo a Pagar</span>
+              <span style="font-size:16px;font-weight:600;color:#ef4444" id="cob-preview-saldo">R$ 0,00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+function initShell() {
+  return fetch('sidebar.html')
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+      document.getElementById('shared-shell').innerHTML = html;
+      updateSidebarActive();
+      var keyEl = document.getElementById('sb-groq-key');
+      if (keyEl && GROQ_API_KEY) keyEl.value = GROQ_API_KEY;
+    })
+    .catch(function(e) { console.error('Erro ao carregar sidebar.html:', e); });
+}
+
+function hideLoading() {
+  var el = document.getElementById('loading-overlay');
+  if (el) el.style.display = 'none';
+}
+
+function showConnError(msg) {
+  var el   = document.getElementById('conn-error');
+  var msg2 = document.getElementById('conn-error-msg');
+  if (el)   el.style.display  = 'flex';
+  if (msg2) msg2.textContent  = msg;
+}
+
+// ── Cobrança ──────────────────────────────────────────────────
+function cobPopulateClientes() {
+  var sel = document.getElementById('cob-cliente');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Selecione um cliente...</option>';
+  clients.slice().sort(function(a,b){ return a.nome.localeCompare(b.nome); }).forEach(function(c) {
+    var o = document.createElement('option');
+    o.value = c.reg;
+    o.textContent = c.nome;
+    sel.appendChild(o);
+  });
+  sel.onchange = async function() {
+    var c = clients.find(function(x){ return x.reg == sel.value; });
+    document.getElementById('cob-preview-cliente').textContent = c ? c.nome : '—';
+    if (c) {
+      try {
+        var res = await sb.from('controle_mensal').select('valor_mes,valor_pago,valor_componente')
+          .eq('cliente_reg', c.reg).eq('mes', viewMonth).eq('ano', viewYear).single();
+        if (res.data) {
+          document.getElementById('cob-total').value = res.data.valor_mes  || 0;
+          document.getElementById('cob-pago').value  = res.data.valor_pago || 0;
+          cobCalcSaldo();
+        }
+      } catch(e) { console.error('[Cobrança]', e); }
+    }
+  };
+  document.getElementById('cob-vencimento').onchange = function() {
+    var v = this.value;
+    document.getElementById('cob-preview-venc').textContent = v
+      ? new Date(v+'T00:00:00').toLocaleDateString('pt-BR') : '—';
+  };
+}
+
+function cobCalcSaldo() {
+  var total = parseFloat(document.getElementById('cob-total').value) || 0;
+  var pago  = parseFloat(document.getElementById('cob-pago').value)  || 0;
+  var saldo = Math.max(0, total - pago);
+  document.getElementById('cob-preview-total').textContent = fmt(total);
+  document.getElementById('cob-preview-pago').textContent  = fmt(pago);
+  document.getElementById('cob-preview-saldo').textContent = fmt(saldo);
+}
+
+function gerarCobrancaPDF() {
+  var clienteReg = document.getElementById('cob-cliente').value;
+  var cliente = clients.find(function(c){ return c.reg == clienteReg; });
+  if (!cliente) { alert('Selecione um cliente.'); return; }
+
+  var total    = parseFloat(document.getElementById('cob-total').value)    || 0;
+  var pago     = parseFloat(document.getElementById('cob-pago').value)     || 0;
+  var saldo    = Math.max(0, total - pago);
+  var vencimento = document.getElementById('cob-vencimento').value;
+  var numero   = document.getElementById('cob-numero').value.trim() || ('COB-'+Date.now().toString().slice(-5));
+  var descricao = document.getElementById('cob-descricao').value.trim();
+  var obs      = document.getElementById('cob-obs').value.trim();
+
+  var doc = new jspdf.jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  var W = 210, margin = 18;
+
+  doc.setFillColor(13,61,43);
+  doc.rect(0,0,W,40,'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(18);
+  doc.setTextColor(241,245,249);
+  doc.text('IDEALI LABORATORIO', margin, 18);
+  doc.setFontSize(9);
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(74,222,128);
+  doc.text('Laboratorio de Protese Dental', margin, 25);
+  doc.setFontSize(14);
+  doc.setFont('helvetica','bold');
+  doc.setTextColor(251,191,36);
+  doc.text('COBRANCA', W-margin, 16, {align:'right'});
+  doc.setFontSize(9);
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(148,163,184);
+  doc.text('N: ' + numero, W-margin, 23, {align:'right'});
+  doc.text('Emissao: ' + new Date().toLocaleDateString('pt-BR'), W-margin, 29, {align:'right'});
+
+  var y = 50;
+  var vencStr = '—';
+  if (vencimento) {
+    var vd = new Date(vencimento+'T00:00:00');
+    vencStr = vd.toLocaleDateString('pt-BR');
+    var hoje = new Date(); hoje.setHours(0,0,0,0);
+    var vencDate = new Date(vencimento+'T00:00:00');
+    var vencColor = vencDate < hoje ? [239,68,68] : vencDate.getTime()===hoje.getTime() ? [251,191,36] : [34,197,94];
+    doc.setFillColor(vencColor[0],vencColor[1],vencColor[2]);
+  } else {
+    doc.setFillColor(100,116,139);
+  }
+  doc.roundedRect(margin, y-4, W-margin*2, 14, 3, 3, 'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(10);
+  doc.setTextColor(255,255,255);
+  doc.text('Vencimento: ' + vencStr, W/2, y+5, {align:'center'});
+  y += 18;
+
+  doc.setFillColor(26,29,39);
+  doc.roundedRect(margin, y-4, W-margin*2, 30, 3, 3, 'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(8);
+  doc.setTextColor(100,116,139);
+  doc.text('DEVEDOR', margin+4, y+2);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(12);
+  doc.setTextColor(241,245,249);
+  doc.text(cliente.nome, margin+4, y+10);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(148,163,184);
+  var info2 = [cliente.cro, cliente.cidade && cliente.uf ? cliente.cidade+' - '+cliente.uf : '', cliente.tel].filter(Boolean).join('  |  ');
+  if (info2) doc.text(info2, margin+4, y+17);
+  if (cliente.end) doc.text(cliente.end + (cliente.bairro ? ', '+cliente.bairro : ''), margin+4, y+23);
+  y += 38;
+
+  if (descricao) {
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(9);
+    doc.setTextColor(100,116,139);
+    doc.text('REFERENTE A', margin, y);
+    y += 5;
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(10);
+    doc.setTextColor(226,232,240);
+    var dLines2 = doc.splitTextToSize(descricao, W-margin*2);
+    doc.text(dLines2, margin, y);
+    y += dLines2.length * 5 + 8;
+  }
+
+  doc.setFillColor(15,17,23);
+  doc.roundedRect(margin, y-4, W-margin*2, 42, 3, 3, 'F');
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100,116,139);
+  doc.text('Valor Total dos Servicos:', margin+4, y+6);
+  doc.setTextColor(226,232,240);
+  doc.text(fmt(total), W-margin-4, y+6, {align:'right'});
+  doc.setTextColor(100,116,139);
+  doc.text('Valor Ja Pago:', margin+4, y+15);
+  doc.setTextColor(34,197,94);
+  doc.text('- '+fmt(pago), W-margin-4, y+15, {align:'right'});
+  doc.setDrawColor(51,65,85);
+  doc.line(margin+4, y+20, W-margin-4, y+20);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(14);
+  doc.setTextColor(239,68,68);
+  doc.text('SALDO A PAGAR: '+fmt(saldo), W/2, y+33, {align:'center'});
+  y += 52;
+
+  if (obs) {
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(9);
+    doc.setTextColor(100,116,139);
+    doc.text('INSTRUCOES DE PAGAMENTO', margin, y);
+    y += 5;
+    doc.setFillColor(26,29,39);
+    var obsLines = doc.splitTextToSize(obs, W-margin*2-8);
+    doc.roundedRect(margin, y-2, W-margin*2, obsLines.length*5+10, 3, 3, 'F');
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+    doc.setTextColor(226,232,240);
+    doc.text(obsLines, margin+4, y+5);
+  }
+
+  doc.setFillColor(13,61,43);
+  doc.rect(0,285,W,12,'F');
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.setTextColor(74,222,128);
+  doc.text('Ideali Laboratorio - Documento gerado em ' + new Date().toLocaleString('pt-BR'), W/2, 292, {align:'center'});
+
+  doc.save('cobranca-' + cliente.nome.split(' ')[0].toLowerCase() + '-' + numero + '.pdf');
+}
+
+function init() {
+  cobPopulateClientes();
+  hideLoading();
+}
+
+initShell().then(function() { if (typeof init === 'function') init(); });
+</script>
+
+</body>
+</html>
