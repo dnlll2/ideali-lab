@@ -1,0 +1,163 @@
+<!-- ================================================================
+  sidebar.html — Fragmento HTML compartilhado entre todas as páginas
+  Carregado via fetch() e injetado em #shared-shell por _base.html
+  ================================================================ -->
+
+<!-- Overlay que fecha o sidebar ao clicar fora -->
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- ── Sidebar ──────────────────────────────────────────────── -->
+<div id="sidebar">
+  <div class="sb-logo">
+    <div>
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9">Ideali Laboratório</p>
+      <p style="font-size:11px;color:#4a5568;margin-top:2px">Controle de clientes</p>
+    </div>
+    <button class="sb-close" onclick="closeSidebar()"><i class="ti ti-x"></i></button>
+  </div>
+
+  <nav style="padding:8px 0;flex:1">
+    <div class="sb-item" id="sb-home" onclick="sbNav('home')">
+      <div class="sb-icon">🏠</div>
+      <span>Home</span>
+    </div>
+    <div class="sb-item" id="sb-clientes" onclick="sbNav('contas-receber')">
+      <div class="sb-icon">💰</div>
+      <span>Contas a Receber</span>
+    </div>
+    <div class="sb-item" id="sb-tarefas" onclick="sbNav('tarefas')">
+      <div class="sb-icon">📋</div>
+      <span>Tarefas</span>
+    </div>
+    <div class="sb-item" id="sb-resumo" onclick="sbNav('resumo')">
+      <div class="sb-icon">📊</div>
+      <span>Resumo</span>
+    </div>
+    <div class="sb-item" id="sb-inove" onclick="sbNav('inove')">
+      <div class="sb-icon">🏭</div>
+      <span>Inove 3D</span>
+    </div>
+    <div class="sb-item" id="sb-dashboard" onclick="sbNav('dashboard')">
+      <div class="sb-icon">📈</div>
+      <span>Dashboard</span>
+    </div>
+    <div class="sb-item" id="sb-cadastro" onclick="sbNav('cadastro')">
+      <div class="sb-icon">👥</div>
+      <span>Cadastro de Clientes</span>
+    </div>
+    <div class="sb-item" id="sb-pedidos" onclick="sbNav('pedidos')">
+      <div class="sb-icon">📦</div>
+      <span>Pedidos</span>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-item" id="sb-orcamento" onclick="sbNav('orcamento')">
+      <div class="sb-icon">💰</div>
+      <span>Gerador de Orçamento</span>
+    </div>
+    <div class="sb-item" id="sb-cobranca" onclick="sbNav('cobranca')">
+      <div class="sb-icon">📄</div>
+      <span>Gerador de Cobrança</span>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-item" id="sb-relatorios" onclick="sbNav('relatorios')">
+      <div class="sb-icon">📊</div>
+      <span>Relatórios</span>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-item" id="sb-recibo" onclick="sbNav('recibo')">
+      <div class="sb-icon">🧾</div>
+      <span>Recibo de Pagamento</span>
+    </div>
+    <div class="sb-item" id="sb-gastos" onclick="sbNav('gastos')">
+      <div class="sb-icon">🛵</div>
+      <span>Gastos Motoboy/Uber</span>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-item" id="sb-ordens-cam" onclick="sbNav('ordens-cam')">
+      <div class="sb-icon">🦷</div>
+      <span>Ordens CAM</span>
+    </div>
+    <div class="sb-item" id="sb-tabela-precos" onclick="sbNav('tabela-precos')">
+      <div class="sb-icon">💲</div>
+      <span>Tabela de Preços</span>
+    </div>
+    <div class="sb-item" onclick="openIAPanel();closeSidebar()">
+      <div class="sb-icon">🤖</div>
+      <span>Comando Rápido IA</span>
+    </div>
+  </nav>
+
+  <!-- Rodapé do sidebar: seletor de tema + chave Groq -->
+  <div style="padding:14px 20px 20px;border-top:0.5px solid rgba(255,255,255,0.08)">
+    <p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Tema</p>
+    <div id="sb-theme-picker" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+    <p id="sb-theme-name" style="font-size:11px;color:#4a5568;margin-top:8px"></p>
+    <div style="margin-top:14px;padding-top:12px;border-top:0.5px solid rgba(255,255,255,0.07)">
+      <p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:7px">Chave Groq (IA)</p>
+      <input type="password" id="sb-groq-key" placeholder="gsk_..." autocomplete="off"
+        style="width:100%;height:32px;font-size:12px"
+        oninput="saveGroqKey()">
+      <p id="sb-groq-status" style="font-size:11px;color:#4a5568;margin-top:4px"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ── Loading overlay (exibido durante init()) ──────────────── -->
+<div id="loading-overlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <p style="font-size:14px;color:#64748b">Carregando...</p>
+</div>
+
+<!-- ── Banner de erro de conexão ────────────────────────────── -->
+<div id="conn-error" style="display:none;position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:200;background:#3d1d1d;border:0.5px solid #ef4444;border-radius:10px;padding:12px 18px;align-items:center;gap:10px;max-width:520px;width:90%">
+  <i class="ti ti-alert-triangle" style="font-size:20px;color:#ef4444;flex-shrink:0"></i>
+  <div>
+    <p style="font-size:13px;font-weight:500;color:#fca5a5">Erro de conexão com o Supabase</p>
+    <span id="conn-error-msg" style="font-size:12px;color:#ef4444"></span>
+  </div>
+  <button onclick="document.getElementById('conn-error').style.display='none'"
+    style="margin-left:auto;background:none;border:none;color:#64748b;font-size:18px;line-height:1;padding:0 4px">✕</button>
+</div>
+
+<!-- ── FAB de IA ─────────────────────────────────────────────── -->
+<button class="ia-fab" onclick="openIAPanel()" title="Comando Rápido IA">⚡</button>
+
+<!-- ── Painel IA ─────────────────────────────────────────────── -->
+<div id="ia-overlay" onclick="closeIAPanel()"></div>
+<div id="ia-panel">
+  <div class="cp-header">
+    <div style="width:36px;height:36px;border-radius:10px;background:#2e1d6e;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">⚡</div>
+    <div style="flex:1;min-width:0;margin-left:10px">
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9">Comando Rápido IA</p>
+      <p style="font-size:11px;color:#64748b;margin-top:2px">Groq · llama-3.3-70b-versatile</p>
+    </div>
+    <button class="sb-close" onclick="closeIAPanel()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="cp-body" style="display:flex;flex-direction:column;gap:12px">
+    <div>
+      <p class="label" style="margin-bottom:6px">Comando</p>
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <textarea id="ia-input"
+          placeholder="Ex: Cria tarefa urgente para o Ricardo Cader&#10;Ex: Marca o Bruno Rocco como recebido em junho&#10;Ex: Registra gasto de R$ 15 de motoboy"
+          style="flex:1;min-height:90px;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:10px;font-size:14px;background:#22263a;color:#e2e8f0;outline:none;font-family:inherit;resize:vertical;line-height:1.5"
+          onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey))executeIA()"></textarea>
+        <button class="ia-mic-btn" id="ia-mic-btn" onclick="iaToggleMic()" title="Gravar áudio (pt-BR)">
+          <i class="ti ti-microphone"></i>
+        </button>
+      </div>
+      <p id="ia-mic-label" style="font-size:11px;color:#4a5568;margin-top:4px;min-height:16px"></p>
+    </div>
+    <button onclick="executeIA()" id="ia-exec-btn"
+      style="width:100%;height:40px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;transition:filter 0.15s">
+      <i class="ti ti-bolt"></i> Executar <span style="font-size:11px;opacity:0.65">(Ctrl+Enter)</span>
+    </button>
+    <div id="ia-status" class="ia-status"></div>
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <p class="label" style="margin-bottom:0">Histórico</p>
+        <button onclick="iaClearHistory()" style="font-size:11px;color:#4a5568;background:none;border:none;cursor:pointer;padding:0">Limpar</button>
+      </div>
+      <div id="ia-history" style="max-height:320px;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>

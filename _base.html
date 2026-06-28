@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{PAGE_TITLE}} — Ideali Laboratório</title>
+
+<!-- Ícones e fontes -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+
+<!-- Estilos globais -->
+<link rel="stylesheet" href="shared.css">
+
+<!-- SDKs externos (carregados antes do shared.js) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- PDF (inclua apenas nas páginas que precisam: orcamento, cobranca, recibo, relatorios) -->
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script> -->
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script> -->
+
+<!-- Código compartilhado (Supabase, clients, utilitárias, temas, IA, navegação MPA) -->
+<script src="shared.js"></script>
+</head>
+<body>
+
+<!-- ── Shell compartilhado (sidebar + IA + loading + erros) ── -->
+<!-- Injetado via fetch('sidebar.html') pelo initShell() abaixo -->
+<div id="shared-shell"></div>
+
+<!-- ── Header fixo de todas as páginas ───────────────────────── -->
+<div style="max-width:100%">
+  <div id="app-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="hamburger" onclick="openSidebar()" title="Menu">&#9776;</button>
+      <div>
+        <p style="font-size:22px;font-weight:500;color:#f1f5f9">{{PAGE_HEADING}}</p>
+        <p style="font-size:14px;color:#64748b">{{PAGE_SUBHEADING}}</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span id="relogio" style="font-size:11px;color:#4a5568"></span>
+      <span id="sync-status" style="font-size:12px;color:#64748b">
+        <span class="sync-dot" id="sync-dot"></span>Conectado
+      </span>
+    </div>
+  </div>
+
+  <!-- ── Conteúdo específico da página ─────────────────────── -->
+  <main id="page-content">
+    {{PAGE_CONTENT}}
+  </main>
+
+</div><!-- /max-width wrapper -->
+
+<!-- ── Script de inicialização da página ─────────────────────── -->
+<script>
+// Carrega o sidebar.html e injeta no #shared-shell
+function initShell() {
+  return fetch('sidebar.html')
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+      document.getElementById('shared-shell').innerHTML = html;
+      updateSidebarActive();
+      // Preenche a chave Groq se já estiver salva
+      var keyEl = document.getElementById('sb-groq-key');
+      if (keyEl && GROQ_API_KEY) keyEl.value = GROQ_API_KEY;
+    })
+    .catch(function(e) {
+      console.error('Erro ao carregar sidebar.html:', e);
+    });
+}
+
+// Oculta o loading overlay
+function hideLoading() {
+  var el = document.getElementById('loading-overlay');
+  if (el) el.style.display = 'none';
+}
+
+// Exibe erro de conexão
+function showConnError(msg) {
+  var el  = document.getElementById('conn-error');
+  var msg2 = document.getElementById('conn-error-msg');
+  if (el)   el.style.display  = 'flex';
+  if (msg2) msg2.textContent  = msg;
+}
+
+// Ponto de entrada: carrega o shell e então executa init() da página
+initShell().then(function() {
+  if (typeof init === 'function') init();
+});
+
+{{PAGE_SCRIPTS}}
+</script>
+
+</body>
+</html>
+
+<!--
+=================================================================
+INSTRUÇÕES PARA USAR ESTE TEMPLATE
+=================================================================
+
+1. Copie este arquivo e renomeie para a página desejada
+   (ex: pedidos.html, tarefas.html, etc.)
+
+2. Substitua os placeholders:
+   {{PAGE_TITLE}}      → Título da aba do navegador (ex: "Pedidos")
+   {{PAGE_HEADING}}    → Título principal do header (ex: "📦 Pedidos")
+   {{PAGE_SUBHEADING}} → Subtítulo do header (ex: "Gestão de pedidos do laboratório")
+   {{PAGE_CONTENT}}    → HTML específico da página (tabelas, grids, forms, etc.)
+   {{PAGE_SCRIPTS}}    → JS específico da página (funções, init(), etc.)
+
+3. Para páginas com PDF, descomente os scripts do jsPDF no <head>.
+
+4. A função init() da página é chamada automaticamente após
+   o sidebar.html ser carregado. Defina-a em {{PAGE_SCRIPTS}}.
+
+5. Para exibir/ocultar o loading overlay, use:
+   - hideLoading()   → após o init() terminar de carregar dados
+   - showConnError() → se a conexão com o Supabase falhar
+
+6. Exemplos de estrutura de init():
+   async function init() {
+     try {
+       await loadDados();
+       renderTabela();
+     } catch(e) {
+       showConnError(e.message);
+     } finally {
+       hideLoading();
+     }
+   }
+=================================================================
+-->
