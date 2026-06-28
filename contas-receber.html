@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contas a Receber — Ideali Lab</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+  <link rel="stylesheet" href="shared.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="shared.js"></script>
+</head>
+<body>
+<div id="shared-shell"></div>
+
+<input type="file" id="comp-file-input" accept="image/*,application/pdf" style="display:none" onchange="handleCompFile(event)">
+
+<div class="app-header">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button onclick="openSidebar()" style="width:36px;height:36px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">&#9776;</button>
+    <div>
+      <p style="font-size:17px;font-weight:500;color:#f1f5f9">Contas a Receber</p>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span id="relogio" style="font-size:11px;color:#4a5568"></span>
+    <span id="sync-status" style="font-size:12px;color:#64748b"><span class="sync-dot" id="sync-dot"></span>Conectado</span>
+    <span id="total-badge" class="badge" style="background:#1d3a6e;color:#93c5fd">clientes</span>
+  </div>
+</div>
+
+<!-- Month picker row -->
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0.75rem;align-items:center;padding:0 1rem">
+  <span style="font-size:12px;color:#64748b;margin-right:4px">Mês:</span>
+  <div style="position:relative">
+    <button id="month-dd-btn" class="month-dd-btn" onclick="toggleMonthDD()">
+      <span id="month-dd-label">Carregando...</span>
+      <i class="ti ti-chevron-down" id="month-dd-arrow" style="font-size:11px;transition:transform 0.2s"></i>
+    </button>
+    <div id="month-dd-list" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:50;min-width:200px;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.12);border-radius:10px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,0.5)"></div>
+  </div>
+  <button onclick="addNextMonth()" title="Adicionar próximo mês" style="width:32px;height:32px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.15s">+</button>
+</div>
+
+<main id="page-content">
+  <div id="sealed-banner" style="display:none" class="sealed-banner">
+    <i class="ti ti-rosette-discount-check" style="font-size:22px;color:#22c55e"></i>
+    <div>
+      <p style="font-size:14px;font-weight:500;color:#4ade80">Mês fechado - 100% quitado!</p>
+      <p style="font-size:12px;color:#22c55e">Todos os clientes foram quitados neste mês.</p>
+    </div>
+  </div>
+
+  <div style="margin-bottom:1rem;display:flex;gap:8px">
+    <div style="flex:1;position:relative">
+      <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:16px;color:#4a5568"></i>
+      <input type="text" id="search" placeholder="Buscar por nome, CPF, CRO, cidade..." style="width:100%;padding-left:34px" oninput="doFilter()">
+    </div>
+    <select id="estado-filter" style="width:90px" onchange="doFilter()">
+      <option value="">Todos</option>
+      <option>SP</option><option>RJ</option><option>BA</option>
+    </select>
+    <select id="status-filter" style="width:130px" onchange="doFilter()">
+      <option value="">Todos status</option>
+      <option value="recebido">Recebido</option>
+      <option value="enviado">Enviado</option>
+      <option value="quitado">Quitado</option>
+      <option value="pendente">Pendente</option>
+    </select>
+  </div>
+
+  <div id="clientes-grid" style="display:grid;grid-template-columns:1fr 1.6fr;gap:12px">
+    <div class="card" style="padding:0.5rem;max-height:calc(100vh - 380px);overflow-y:auto" id="list-panel"></div>
+    <div class="card" id="detail-panel">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px">
+        <i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i>
+        <p style="font-size:13px;color:#4a5568">Selecione um cliente</p>
+      </div>
+    </div>
+  </div>
+
+  <p id="no-results" style="display:none;text-align:center;color:#64748b;font-size:13px;padding:1rem">Nenhum cliente encontrado.</p>
+
+  <!-- Status counters -->
+  <div id="counters-row" style="margin-top:1rem;display:flex;flex-wrap:wrap;gap:8px">
+    <div class="counter-card" style="flex:1;min-width:110px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Recebido</p><p style="font-size:26px;font-weight:500;color:#22c55e" id="count-recebido">0</p></div>
+    <div class="counter-card" style="flex:1;min-width:110px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Enviado</p><p style="font-size:26px;font-weight:500;color:#22c55e" id="count-enviado">0</p></div>
+    <div class="counter-card" style="flex:1;min-width:110px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Quitado</p><p style="font-size:26px;font-weight:500;color:#22c55e" id="count-quitado">0</p></div>
+    <div class="counter-card" style="flex:1;min-width:110px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Pendente</p><p style="font-size:26px;font-weight:500;color:#ef4444" id="count-pendente">0</p></div>
+  </div>
+  <!-- Totais -->
+  <div style="margin-top:8px;overflow-x:auto;padding-bottom:2px">
+    <div id="totals-row" style="display:flex;gap:8px;min-width:max-content">
+      <div class="counter-card" style="min-width:130px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total a Receber</p><p style="font-size:20px;font-weight:500;color:#f1f5f9" id="total-valor">R$ 0,00</p></div>
+      <div class="counter-card" style="min-width:120px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total Pago</p><p style="font-size:20px;font-weight:500;color:#22c55e" id="total-pago">R$ 0,00</p></div>
+      <div class="counter-card" id="card-total-comp" style="min-width:130px;transition:background 0.2s,border 0.2s"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total Componentes</p><p style="font-size:20px;font-weight:500;color:#94a3b8" id="total-comp">R$ 0,00</p></div>
+      <div class="counter-card" style="min-width:110px;transition:background 0.2s,border 0.2s" id="card-correio"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">📦 Correio</p><p style="font-size:20px;font-weight:500;color:#64748b" id="total-correio">R$ 0,00</p></div>
+      <div class="counter-card" style="min-width:110px;transition:background 0.2s,border 0.2s" id="card-motoboy"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">🛵 Motoboy</p><p style="font-size:20px;font-weight:500;color:#64748b" id="total-motoboy">R$ 0,00</p></div>
+      <div class="counter-card" style="min-width:110px;transition:background 0.2s,border 0.2s" id="card-uber"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">🚗 Uber</p><p style="font-size:20px;font-weight:500;color:#64748b" id="total-uber">R$ 0,00</p></div>
+      <div class="counter-card" style="min-width:110px;transition:background 0.2s,border 0.2s" id="card-outros-g"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">📌 Outros</p><p style="font-size:20px;font-weight:500;color:#64748b" id="total-outros-g">R$ 0,00</p></div>
+      <div class="counter-card" style="min-width:130px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissão Bruta (17%)</p><p style="font-size:20px;font-weight:500;color:#fbbf24" id="total-com-bruta">R$ 0,00</p></div>
+      <div class="counter-card" style="min-width:120px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total Descontos</p><p style="font-size:20px;font-weight:500;color:#fca5a5" id="total-descontos">R$ 0,00</p></div>
+      <div class="counter-card" style="min-width:120px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissão Líquida</p><p style="font-size:20px;font-weight:500;color:#fbbf24" id="total-com-liq">R$ 0,00</p></div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── State ─────────────────────────────────────────────────────
+var dbState = {};
+var selected = null;
+var historicoEditMode = false;
+var extraMonths = [];
+var monthDDOpen = false;
+var tarefasAbertas = {};
+var fretesMes = 0;
+var outrosDescontos = 0;
+var gastosCorreio = 0;
+var gastosMotoboy = 0;
+var gastosUber = 0;
+var gastosOutro = 0;
+var _compMenuReg = null;
+var _compUploadReg = null;
+
+// ── Data Loading ──────────────────────────────────────────────
+async function loadMonthData(m, y) {
+  console.log('[loadMonthData] mes=' + m + ' ano=' + y);
+  try {
+    var folder = y + '_' + m;
+    var dbRes = await sb.from('controle_mensal').select('*').eq('mes',m).eq('ano',y);
+    var storRes = await sb.storage.from('comprovantes').list(folder);
+    if (dbRes.error) throw dbRes.error;
+    var rows = dbRes.data || [];
+    var compMap = {};
+    if (!storRes.error && storRes.data) {
+      storRes.data.forEach(function(f) {
+        var match = f.name.match(/^reg(\d+)_/);
+        if (match) {
+          var reg = parseInt(match[1]);
+          if (!compMap[reg]) compMap[reg] = [];
+          compMap[reg].push({name:f.name, url:sb.storage.from('comprovantes').getPublicUrl(folder+'/'+f.name).data.publicUrl});
+        }
+      });
+      Object.keys(compMap).forEach(function(k){compMap[k].sort(function(a,b){return a.name<b.name?-1:1;});});
+    }
+    var state = {};
+    clients.forEach(function(c) {
+      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0,obs_pagamento:'',comprovantes:compMap[c.reg]||[]};
+    });
+    rows.forEach(function(r) {
+      state[r.cliente_reg] = {
+        recebido:!!r.recebido, enviado:!!r.enviado, quitado:!!r.quitado,
+        valor_mes:Number(r.valor_mes)||0, valor_pago:Number(r.valor_pago)||0,
+        valor_componente:Number(r.valor_componente)||0, obs_pagamento:r.obs_pagamento||'',
+        comprovantes:compMap[r.cliente_reg]||[]
+      };
+    });
+    return state;
+  } catch(e) {
+    console.error('loadMonthData:', e);
+    setSyncStatus('error');
+    showConnError(e.message || 'Erro de conexão');
+    return {};
+  }
+}
+
+function mesTemDados(state) {
+  var keys = Object.keys(state);
+  for (var i = 0; i < keys.length; i++) {
+    var s = state[keys[i]];
+    if (s.valor_mes > 0 || s.recebido || s.enviado || s.quitado) return true;
+  }
+  return false;
+}
+
+async function upsertRow(reg, data) {
+  setSyncStatus('syncing');
+  var payload = Object.assign({cliente_reg:reg, mes:viewMonth, ano:viewYear, updated_at:new Date().toISOString()}, data);
+  var res = await sb.from('controle_mensal').upsert(payload, {onConflict:'cliente_reg,mes,ano'});
+  if (res.error) {
+    var msg = res.error.message || '';
+    if (msg.includes('valor_componente') || msg.includes('obs_pagamento')) {
+      var payloadSem = Object.assign({}, payload);
+      if (msg.includes('valor_componente')) delete payloadSem.valor_componente;
+      if (msg.includes('obs_pagamento')) delete payloadSem.obs_pagamento;
+      var res2 = await sb.from('controle_mensal').upsert(payloadSem, {onConflict:'cliente_reg,mes,ano'});
+      if (res2.error) { setSyncStatus('error'); return false; }
+      setSyncStatus('ok'); return true;
+    }
+    console.error('upsertRow:', res.error);
+    setSyncStatus('error');
+    return false;
+  }
+  setSyncStatus('ok');
+  return true;
+}
+
+async function reloadGastosFooter(m, y) {
+  try {
+    var res = await sb.from('gastos_entrega').select('tipo,valor').eq('mes',m).eq('ano',y);
+    if (!res.error) {
+      var gc=0,gm=0,gu=0,go=0;
+      (res.data||[]).forEach(function(g){
+        var v=Number(g.valor)||0;
+        if(g.tipo==='correio') gc+=v; else if(g.tipo==='motoboy') gm+=v; else if(g.tipo==='uber') gu+=v; else go+=v;
+      });
+      gastosCorreio=gc; gastosMotoboy=gm; gastosUber=gu; gastosOutro=go;
+      fretesMes=gc+gm+gu+go;
+      updateCounts();
+    }
+  } catch(e) { console.warn('[reloadGastosFooter]', e); }
+}
+
+async function loadTarefasAbertas() {
+  try {
+    var res = await sb.from('tarefas').select('cliente_reg').eq('arquivada',false).eq('concluida',false);
+    if (res.error) throw res.error;
+    tarefasAbertas = {};
+    (res.data||[]).forEach(function(t) {
+      if (t.cliente_reg) tarefasAbertas[t.cliente_reg] = (tarefasAbertas[t.cliente_reg]||0) + 1;
+    });
+  } catch(e) { console.error('loadTarefasAbertas:', e); }
+  doFilter();
+}
+
+async function loadCadastroClientes() {
+  try {
+    var res = await sb.from('cadastro_clientes').select('*');
+    if (res.error) return;
+    (res.data||[]).forEach(function(row) {
+      var idx = -1;
+      for (var i=0;i<clients.length;i++){if(clients[i].reg===row.reg){idx=i;break;}}
+      var obj={reg:row.reg,nome:row.nome||'',cpf:row.cpf||'',cro:row.cro||'',
+        end:row.end_str||'',bairro:row.bairro||'',cidade:row.cidade||'',
+        uf:row.uf||'',cep:row.cep||'',tel:row.tel||'',email:row.email||'',
+        obs:row.obs||'',status:row.status||'ativo'};
+      if(idx>=0)clients[idx]=obj; else clients.push(obj);
+    });
+    clients.sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR');});
+    doFilter();
+  } catch(e) { console.warn('[loadCadastroClientes]', e); }
+}
+
+// ── Month helpers ─────────────────────────────────────────────
+function isCurrentMonth() { return viewMonth===currentMonth && viewYear===currentYear; }
+
+function isFechadoLocal() {
+  return clients.every(function(c){ return dbState[c.reg] && dbState[c.reg].quitado; });
+}
+
+function buildMonthList() {
+  var base = [];
+  for (var i=3; i>=0; i--) {
+    var m = currentMonth - i, y = currentYear;
+    if (m < 0) { m += 12; y--; }
+    base.push({m:m, y:y});
+  }
+  var all = base.slice();
+  extraMonths.forEach(function(e) {
+    if (!all.some(function(t){return t.m===e.m&&t.y===e.y;})) all.push(e);
+  });
+  all.sort(function(a,b){ return b.y!==a.y ? b.y-a.y : b.m-a.m; });
+  return all;
+}
+
+function renderMonthTabs() {
+  var all = buildMonthList();
+  var isCurMo = viewMonth===currentMonth && viewYear===currentYear;
+  var labelEl = document.getElementById('month-dd-label');
+  var ddBtn   = document.getElementById('month-dd-btn');
+  if (labelEl) labelEl.textContent = MESES[viewMonth] + (viewYear!==currentYear ? ' '+viewYear : '') + (isCurMo ? ' (atual)' : '');
+  if (ddBtn)   ddBtn.className = 'month-dd-btn' + (isCurMo ? ' cur' : '');
+  var listEl = document.getElementById('month-dd-list');
+  if (listEl) {
+    listEl.innerHTML = all.map(function(t) {
+      var isView  = t.m===viewMonth && t.y===viewYear;
+      var isCur   = t.m===currentMonth && t.y===currentYear;
+      var fechado = isView ? isFechadoLocal() : false;
+      var name    = MESES[t.m] + (t.y!==currentYear ? ' '+t.y : '') + (isCur ? ' (atual)' : '');
+      var check   = isView ? '<i class="ti ti-check" style="font-size:11px;flex-shrink:0"></i>' : '<span style="width:11px;flex-shrink:0"></span>';
+      var star    = fechado ? '<i class="ti ti-rosette-discount-check" style="font-size:11px;color:#4ade80"></i>' : '';
+      return '<div class="month-dd-item' + (isView?' sel':'') + (fechado?' fech':'') + '" onclick="switchMonth(' + t.m + ',' + t.y + ');closeMonthDD()">' + check + '<span style="flex:1">' + name + '</span>' + star + '</div>';
+    }).join('');
+  }
+}
+
+function toggleMonthDD() {
+  monthDDOpen = !monthDDOpen;
+  var list  = document.getElementById('month-dd-list');
+  var arrow = document.getElementById('month-dd-arrow');
+  if (list)  list.style.display = monthDDOpen ? 'block' : 'none';
+  if (arrow) arrow.style.transform = monthDDOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+function closeMonthDD() {
+  monthDDOpen = false;
+  var list  = document.getElementById('month-dd-list');
+  var arrow = document.getElementById('month-dd-arrow');
+  if (list)  list.style.display = 'none';
+  if (arrow) arrow.style.transform = 'rotate(0deg)';
+}
+
+function addNextMonth() {
+  var all = buildMonthList();
+  var newest = all.reduce(function(best,cur){return (cur.y>best.y||(cur.y===best.y&&cur.m>best.m))?cur:best;},all[0]);
+  var nextM = newest.m + 1, nextY = newest.y;
+  if (nextM > 11) { nextM = 0; nextY++; }
+  if (!extraMonths.some(function(e){return e.m===nextM&&e.y===nextY;})) extraMonths.push({m:nextM,y:nextY});
+  switchMonth(nextM, nextY);
+}
+
+async function switchMonth(m, y) {
+  closeMonthDD();
+  viewMonth = m; viewYear = y;
+  localStorage.setItem('ideali-viewMonth', m);
+  localStorage.setItem('ideali-viewYear', y);
+  selected = null; historicoEditMode = false;
+  document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Carregando...</p></div>';
+  var loadedData = await loadMonthData(m, y);
+  if (viewMonth !== m || viewYear !== y) return;
+  dbState = loadedData;
+  renderMonthTabs();
+  updateCounts();
+  doFilter();
+  reloadGastosFooter(viewMonth, viewYear);
+  loadTarefasAbertas();
+  document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Selecione um cliente</p></div>';
+}
+
+document.addEventListener('click', function(e) {
+  var btn  = document.getElementById('month-dd-btn');
+  var list = document.getElementById('month-dd-list');
+  if (monthDDOpen && btn && list && !btn.contains(e.target) && !list.contains(e.target)) closeMonthDD();
+  var cm = document.getElementById('comp-menu-popup');
+  if (cm && !cm.contains(e.target)) closeCompMenu();
+});
+
+// ── Counts ────────────────────────────────────────────────────
+function updateCounts() {
+  var rec=0,env=0,qui=0,pen=0,totVal=0,totPago=0,totComp=0;
+  clients.forEach(function(c) {
+    var v = dbState[c.reg] || {};
+    if (v.recebido) rec++;
+    if (v.enviado)  env++;
+    if (v.quitado)  qui++;
+    if (!v.recebido && !v.enviado && !v.quitado) pen++;
+    totVal  += Number(v.valor_mes  || 0);
+    totPago += Number(v.valor_pago || 0);
+    totComp += Number(v.valor_componente || 0);
+  });
+  document.getElementById('count-recebido').textContent = rec;
+  document.getElementById('count-enviado').textContent  = env;
+  document.getElementById('count-quitado').textContent  = qui;
+  document.getElementById('count-pendente').textContent = pen;
+  var comBruta       = (totPago - totComp) * COMISSAO;
+  var totalDescontos = gastosCorreio + gastosMotoboy + gastosUber + gastosOutro;
+  document.getElementById('total-valor').textContent     = fmt(totVal);
+  document.getElementById('total-pago').textContent      = fmt(totPago);
+  document.getElementById('total-comp').textContent      = fmt(totComp);
+  document.getElementById('total-com-bruta').textContent = fmt(comBruta);
+  var elDesc = document.getElementById('total-descontos');
+  if (elDesc) elDesc.textContent = fmt(totalDescontos);
+  document.getElementById('total-com-liq').textContent   = fmt(comBruta - totalDescontos);
+  function setGastoCard(cardId, valId, val, bg, border, color) {
+    var card = document.getElementById(cardId), vEl = document.getElementById(valId);
+    if (!card || !vEl) return;
+    vEl.textContent = fmt(val);
+    if (val > 0) { card.style.background=bg; card.style.border=border; vEl.style.color=color; }
+    else         { card.style.background=''; card.style.border=''; vEl.style.color='#64748b'; }
+  }
+  setGastoCard('card-correio',  'total-correio',  gastosCorreio, 'rgba(96,165,250,0.12)',  '0.5px solid rgba(96,165,250,0.4)',  '#60a5fa');
+  setGastoCard('card-motoboy',  'total-motoboy',  gastosMotoboy, 'rgba(251,191,36,0.12)',  '0.5px solid rgba(251,191,36,0.4)', '#fbbf24');
+  setGastoCard('card-uber',     'total-uber',     gastosUber,    'rgba(167,139,250,0.12)', '0.5px solid rgba(167,139,250,0.4)','#a78bfa');
+  setGastoCard('card-outros-g', 'total-outros-g', gastosOutro,   'rgba(148,163,184,0.12)', '0.5px solid rgba(148,163,184,0.4)','#94a3b8');
+  document.getElementById('sealed-banner').style.display = isFechadoLocal() ? 'flex' : 'none';
+  var compCard = document.getElementById('card-total-comp');
+  var compVal  = document.getElementById('total-comp');
+  if (compCard && compVal) {
+    if (totComp > 0) {
+      compCard.style.background = 'rgba(251,146,60,0.15)';
+      compCard.style.border     = '0.5px solid rgba(251,146,60,0.4)';
+      compVal.style.color       = '#fb923c';
+    } else {
+      compCard.style.background = '';
+      compCard.style.border     = '';
+      compVal.style.color       = '#94a3b8';
+    }
+  }
+}
+
+function statusOf(reg) {
+  var s = dbState[reg] || {};
+  if (s.quitado) return 'quitado';
+  if (s.enviado)  return 'enviado';
+  if (s.recebido) return 'recebido';
+  return 'pendente';
+}
+
+// ── List rendering ────────────────────────────────────────────
+function tickBtn(reg, tipo, icon, label) {
+  var s  = dbState[reg] || {};
+  var on = s[tipo];
+  var dis = (!isCurrentMonth() && !historicoEditMode) ? 'disabled' : '';
+  return '<div class="tick-col"><button class="tick-btn' + (on?' on':'') + '" onclick="toggle(' + reg + ',\'' + tipo + '\',event)" title="' + label + '" ' + dis + '><i class="ti ' + (on?'ti-check':icon) + '"></i></button><span class="tick-label' + (on?' on':'') + '">' + label + '</span></div>';
+}
+
+function compClipBtn(reg) {
+  var s = dbState[reg] || {};
+  var list = s.comprovantes || [];
+  var n = list.length;
+  var badge = n > 1 ? '<span style="position:absolute;top:-4px;right:-4px;background:#3b82f6;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;line-height:1">' + n + '</span>' : '';
+  return '<div class="comp-clip-col" style="position:relative"><button class="comp-clip' + (n?' has-comp':'') + '" style="position:relative" onclick="toggleCompMenu(' + reg + ',event)" title="' + (n?n+' comprovante'+(n>1?'s':'')+'  - clique para ver/adicionar':'Anexar comprovante') + '"><i class="ti ti-paperclip"></i>' + badge + '</button><span class="comp-lbl' + (n?' has-comp':'') + '">' + (n?n+'comp.':'clipe') + '</span></div>';
+}
+
+function renderList(data) {
+  var panel = document.getElementById('list-panel');
+  var noRes = document.getElementById('no-results');
+  var tb = document.getElementById('total-badge');
+  if (tb) tb.textContent = data.length + ' cliente' + (data.length!==1 ? 's' : '');
+  if (!data.length) { panel.innerHTML = ''; noRes.style.display = 'block'; return; }
+  noRes.style.display = 'none';
+  panel.innerHTML = data.map(function(c) {
+    var col = avatarColors[c.reg % avatarColors.length];
+    var bg = col[0], fg = col[1];
+    var isActive = selected && selected.reg===c.reg;
+    var fin = dbState[c.reg] || {};
+    var temValor = fin.valor_mes > 0;
+    var cidadeUF = (c.cidade||'-') + (c.uf?' / '+c.uf:'');
+    var valorLine = temValor
+      ? '<p style="font-size:10px;margin-top:1px"><span style="color:#94a3b8">Pedido: </span><span style="color:#fbbf24">' + fmt(fin.valor_mes) + '</span><span style="color:#4a5568"> | </span><span style="color:#94a3b8">Pago: </span><span style="color:#22c55e">' + fmt(Number(fin.valor_pago||0)) + '</span></p>'
+      : '';
+    return '<div class="row-item' + (isActive?' active':'') + '" onclick="selectClient(' + c.reg + ')">' +
+      '<div style="width:32px;height:32px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:' + fg + ';flex-shrink:0">' + initials(c.nome) + '</div>' +
+      '<div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:4px"><p style="font-size:12px;font-weight:500;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">' + c.nome + '</p>' +
+      (tarefasAbertas[c.reg] ? '<i class="ti ti-alert-triangle" style="font-size:12px;color:#fb923c;flex-shrink:0" title="' + tarefasAbertas[c.reg] + ' tarefa(s) em aberto"></i>' : '') + '</div>' +
+      '<p style="font-size:11px;color:#64748b">' + cidadeUF + '</p>' + valorLine + '</div>' +
+      '<div style="display:flex;gap:5px;align-items:center">' + tickBtn(c.reg,'recebido','ti-download','receb.') + tickBtn(c.reg,'enviado','ti-upload','enviado') + tickBtn(c.reg,'quitado','ti-circle-check','quitado') + compClipBtn(c.reg) + '</div></div>';
+  }).join('');
+}
+
+function renderDetail() {
+  if (!selected) return;
+  var c  = selected;
+  var col = avatarColors[c.reg % avatarColors.length];
+  var bg = col[0], fg = col[1];
+  var cv = dbState[c.reg] || {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0};
+  var hasEnd  = c.end || c.bairro || c.cidade;
+  var ro      = !isCurrentMonth() && !historicoEditMode;
+  var valorMes = Number(cv.valor_mes||0), valorPago = Number(cv.valor_pago||0), valorComp = Number(cv.valor_componente||0);
+  var restante = valorMes - valorPago, comissao = (valorPago - valorComp) * COMISSAO;
+
+  var badge = cv.quitado
+    ? '<span class="badge" style="background:#0d3d2b;color:#4ade80;border:0.5px solid #22c55e"><i class="ti ti-check" style="font-size:11px"></i> Quitado</span>'
+    : cv.enviado
+    ? '<span class="badge" style="background:#0d3d2b;color:#4ade80;border:0.5px solid #22c55e"><i class="ti ti-check" style="font-size:11px"></i> Enviado</span>'
+    : cv.recebido
+    ? '<span class="badge" style="background:#0d3d2b;color:#4ade80;border:0.5px solid #22c55e"><i class="ti ti-check" style="font-size:11px"></i> Recebido</span>'
+    : '<span class="badge" style="background:#22263a;color:#64748b">Pendente</span>';
+
+  function dt(tipo, icon, label) {
+    var on = cv[tipo];
+    return '<button class="tick-btn detail-tick' + (on?' on':'') + '" onclick="toggle(' + c.reg + ',\'' + tipo + '\',event)" ' + (ro?'disabled':'') + ' style="color:' + (on?'#22c55e':'#64748b') + '"><i class="ti ' + (on?'ti-check':icon) + '" style="font-size:14px"></i> ' + label + '</button>';
+  }
+
+  var roNote = isCurrentMonth() ? '' :
+    historicoEditMode
+      ? '<button onclick="toggleEditHistorico()" style="display:flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;border:0.5px solid rgba(251,191,36,0.5);background:rgba(251,191,36,0.08);color:#fbbf24;font-size:12px;cursor:pointer;margin-bottom:10px"><i class="ti ti-lock" style="font-size:13px"></i> Travar edição</button>'
+      : '<button onclick="toggleEditHistorico()" style="display:flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;border:0.5px solid rgba(99,102,241,0.5);background:rgba(99,102,241,0.08);color:#818cf8;font-size:12px;cursor:pointer;margin-bottom:10px"><i class="ti ti-pencil" style="font-size:13px"></i> Editar mês</button>' +
+        '<p style="font-size:11px;color:#4a5568;margin-bottom:10px"><i class="ti ti-lock" style="font-size:12px"></i> Histórico - não editável</p>';
+
+  var finSection = ro
+    ? '<div class="fin-card" style="margin-bottom:14px">'+
+        '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px"><i class="ti ti-currency-dollar" style="font-size:13px;vertical-align:-1px"></i> Valores</p>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'+
+          '<div><p class="label">Valor do mês</p><p style="font-size:15px;font-weight:500;color:#f1f5f9">'+fmt(valorMes)+'</p></div>'+
+          '<div><p class="label">Valor pago</p><p style="font-size:15px;font-weight:500;color:#22c55e">'+fmt(valorPago)+'</p></div>'+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
+          '<div><p class="label">Restante</p><p style="font-size:15px;font-weight:500;color:'+(restante>0?'#ef4444':'#22c55e')+'">'+fmt(restante)+'</p></div>'+
+          '<div><p class="label">Comissão (17%)</p><p style="font-size:15px;font-weight:600;color:#fbbf24">'+fmt(comissao)+'</p></div>'+
+        '</div>'+
+        '<div style="border-top:0.5px solid rgba(255,255,255,0.08);margin:12px 0"></div>'+
+        '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px"><i class="ti ti-scissors" style="font-size:13px;vertical-align:-1px"></i> Descontos</p>'+
+        '<div><p class="label">Componente</p><p style="font-size:15px;font-weight:500;color:#94a3b8">'+fmt(valorComp)+'</p></div>'+
+        (cv.obs_pagamento ? '<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.08)"><p class="label" style="margin-bottom:3px"><i class="ti ti-message" style="font-size:12px;vertical-align:-1px"></i> Observação</p><p style="font-size:13px;color:#e2e8f0">'+escHtml(cv.obs_pagamento)+'</p></div>' : '')+
+      '</div>'
+    : '<div class="fin-card" style="margin-bottom:14px">'+
+        '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px"><i class="ti ti-currency-dollar" style="font-size:13px;vertical-align:-1px"></i> Valores</p>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'+
+          '<div><p class="label" style="margin-bottom:5px">Valor do mês (R$)</p><input class="fin-input" type="number" id="fin-valor-'+c.reg+'" value="'+(Number(cv.valor_mes)||0)+'" placeholder="0,00" min="0" step="0.01" oninput="calcPreview('+c.reg+')"></div>'+
+          '<div><p class="label" style="margin-bottom:5px">Valor pago (R$)</p><input class="fin-input" type="number" id="fin-pago-'+c.reg+'" value="'+(Number(cv.valor_pago)||0)+'" placeholder="0,00" min="0" step="0.01" oninput="calcPreview('+c.reg+')"></div>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;align-items:center">'+
+          '<div style="flex:1;background:#0f1117;border-radius:8px;padding:8px"><p class="label">Restante</p><p style="font-size:14px;font-weight:500;color:#ef4444" id="prev-restante-'+c.reg+'">'+fmt(restante)+'</p></div>'+
+          '<div style="flex:1;background:#0f1117;border-radius:8px;padding:8px"><p class="label">Comissão (17%)</p><p style="font-size:14px;font-weight:500;color:#fbbf24" id="prev-comissao-'+c.reg+'">'+fmt(comissao)+'</p></div>'+
+          '<button class="save-btn" data-reg="'+c.reg+'" onclick="saveFinanceiro('+c.reg+')"><i class="ti ti-device-floppy" style="font-size:13px"></i> Salvar</button>'+
+          '<button onclick="clearFinanceiro('+c.reg+')" title="Zerar valores" style="height:32px;width:36px;border-radius:8px;border:0.5px solid rgba(239,68,68,0.4);background:#3d1d1d;color:#ef4444;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0"><i class="ti ti-trash" style="font-size:14px"></i></button>'+
+        '</div>'+
+        '<div id="fin-obs-wrap-'+c.reg+'" style="margin-top:10px;">'+
+          '<p class="label" style="margin-bottom:5px"><i class="ti ti-message" style="font-size:12px;vertical-align:-1px"></i> Motivo / Observação</p>'+
+          '<textarea id="fin-obs-'+c.reg+'" style="width:100%;height:54px;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 10px;font-size:13px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit;resize:none" placeholder="Ex: Aguardando, vai pagar dia X">'+escHtml(cv.obs_pagamento||'')+'</textarea>'+
+        '</div>'+
+        '<div style="border-top:0.5px solid rgba(255,255,255,0.08);margin:14px 0"></div>'+
+        '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px"><i class="ti ti-scissors" style="font-size:13px;vertical-align:-1px"></i> Descontos</p>'+
+        '<div><p class="label" style="margin-bottom:5px">Componente (R$)</p>'+
+          '<input class="fin-input" type="number" id="fin-comp-'+c.reg+'" value="'+(Number(cv.valor_componente)||0)+'" placeholder="0,00" min="0" step="0.01" oninput="calcPreview('+c.reg+')" style="width:140px">'+
+          '<p style="font-size:11px;color:#4a5568;margin-top:5px">Salvo pelo botão Salvar acima</p>'+
+        '</div>'+
+      '</div>';
+
+  var rows = '';
+  if (c.cpf)    rows += '<div class="detail-row"><i class="ti ti-id-badge" style="font-size:16px;color:#4a5568;margin-top:1px;flex-shrink:0"></i><div><p class="label">CPF / CNPJ</p><p class="val">' + c.cpf + '</p></div></div>';
+  if (c.cro)    rows += '<div class="detail-row"><i class="ti ti-certificate" style="font-size:16px;color:#4a5568;margin-top:1px;flex-shrink:0"></i><div><p class="label">CRO</p><p class="val">' + c.cro + '</p></div></div>';
+  if (c.tel)    rows += '<div class="detail-row"><i class="ti ti-phone" style="font-size:16px;color:#4a5568;margin-top:1px;flex-shrink:0"></i><div><p class="label">Telefone</p><p class="val">' + c.tel + '</p></div></div>';
+  if (hasEnd)   rows += '<div class="detail-row"><i class="ti ti-map-pin" style="font-size:16px;color:#4a5568;margin-top:1px;flex-shrink:0"></i><div><p class="label">Endereço</p><p class="val">' + [c.end,c.bairro,c.cidade+(c.uf?' / '+c.uf:''),c.cep].filter(Boolean).join(', ') + '</p></div></div>';
+  if (c.obs)    rows += '<div class="detail-row"><i class="ti ti-note" style="font-size:16px;color:#4a5568;margin-top:1px;flex-shrink:0"></i><div><p class="label">Observação</p><p class="val">' + c.obs + '</p></div></div>';
+
+  var qtdAbertas = tarefasAbertas[c.reg] || 0;
+  var tarefasBanner = qtdAbertas
+    ? '<div onclick="irParaTarefasCliente('+c.reg+')" style="display:flex;align-items:center;gap:10px;background:#3d1d1d;border:0.5px solid rgba(239,68,68,0.5);border-radius:10px;padding:10px 14px;margin-bottom:12px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background=\'#4d2020\'" onmouseout="this.style.background=\'#3d1d1d\'">'+
+        '<i class="ti ti-alert-triangle" style="font-size:18px;color:#fb923c;flex-shrink:0"></i>'+
+        '<div style="flex:1"><p style="font-size:13px;font-weight:500;color:#fca5a5">'+qtdAbertas+' tarefa'+(qtdAbertas!==1?'s':'')+' em aberto</p>'+
+        '<p style="font-size:11px;color:#ef4444">Clique para ir para Tarefas</p></div>'+
+        '<i class="ti ti-arrow-right" style="font-size:14px;color:#ef4444;flex-shrink:0"></i>'+
+      '</div>'
+    : '';
+
+  document.getElementById('detail-panel').innerHTML =
+    '<button class="mob-back" onclick="mobBack()" style="align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:13px;margin-bottom:14px"><i class="ti ti-arrow-left" style="font-size:14px"></i> Voltar</button>' +
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:44px;height:44px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:500;color:' + fg + ';flex-shrink:0">' + initials(c.nome) + '</div><div style="flex:1"><p style="font-size:15px;font-weight:500;color:#f1f5f9">' + c.nome + '</p><p style="font-size:12px;color:#64748b">Registro ' + c.reg + ' · ' + MESES[viewMonth] + ' ' + viewYear + '</p></div>' + badge + '</div>' +
+    tarefasBanner +
+    roNote +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' + dt('recebido','ti-download','Extrato recebido') + dt('enviado','ti-upload','Extrato enviado') + dt('quitado','ti-circle-check','Quitado') +
+    (function(){var cl=cv.comprovantes||[];var n=cl.length;return '<button class="comp-clip'+(n?' has-comp':'')+'" style="width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:13px;height:30px" onclick="toggleCompMenu('+c.reg+',event)"><i class="ti ti-paperclip" style="font-size:14px"></i> '+(n?'<span style="color:#22c55e">'+n+' comprovante'+(n>1?'s':'')+'</span>':'Comprovante')+'</button>';})() + '</div>' +
+    finSection +
+    '<div>' + rows + '</div>';
+}
+
+function calcPreview(reg) {
+  var vM = parseFloat(document.getElementById('fin-valor-'+reg).value) || 0;
+  var vC = parseFloat(document.getElementById('fin-comp-'+reg).value)  || 0;
+  var vP = parseFloat(document.getElementById('fin-pago-'+reg).value)  || 0;
+  var elR = document.getElementById('prev-restante-'+reg);
+  var elC = document.getElementById('prev-comissao-'+reg);
+  if (elR) { elR.textContent = fmt(vM-vP); elR.style.color = vM-vP>0 ? '#ef4444' : '#22c55e'; }
+  if (elC) elC.textContent = fmt((vP - vC) * COMISSAO);
+}
+
+function doFilter() {
+  var q  = document.getElementById('search').value.toLowerCase();
+  var uf = document.getElementById('estado-filter').value;
+  var sf = document.getElementById('status-filter').value;
+  var data = clients.filter(function(c) {
+    var text = [c.nome,c.cpf,c.cro,c.cidade,c.bairro,c.end,c.obs,c.tel].join(' ').toLowerCase();
+    return (!q || text.includes(q)) && (!uf || c.uf===uf) && (!sf || statusOf(c.reg)===sf);
+  }).sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); });
+  renderList(data);
+}
+
+function selectClient(reg) {
+  selected = clients.find(function(c){return c.reg===reg;});
+  historicoEditMode = false;
+  if (isMobile()) { var g = document.getElementById('clientes-grid'); if (g) g.classList.add('mob-detail'); }
+  renderDetail(); doFilter();
+}
+
+function mobBack() {
+  var g = document.getElementById('clientes-grid');
+  if (g) g.classList.remove('mob-detail');
+  selected = null; doFilter();
+}
+
+function irParaTarefasCliente(reg) {
+  localStorage.setItem('ideali-tarefas-autoselect', reg);
+  window.location.href = 'tarefas.html';
+}
+
+function toggleEditHistorico() {
+  historicoEditMode = !historicoEditMode;
+  renderDetail();
+}
+
+async function toggle(reg, tipo, e) {
+  e.stopPropagation();
+  if (!isCurrentMonth() && !historicoEditMode) return;
+  var s = dbState[reg] || {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0};
+  s[tipo] = !s[tipo];
+  dbState[reg] = s;
+  updateCounts(); renderMonthTabs(); doFilter();
+  if (selected && selected.reg===reg) renderDetail();
+  upsertRow(reg, {recebido:s.recebido,enviado:s.enviado,quitado:s.quitado,valor_mes:s.valor_mes,valor_pago:s.valor_pago,valor_componente:s.valor_componente||0});
+}
+
+async function saveFinanceiro(reg) {
+  if (!isCurrentMonth() && !historicoEditMode) return;
+  var s = dbState[reg] || {};
+  var elValor = document.getElementById('fin-valor-'+reg);
+  var elComp  = document.getElementById('fin-comp-'+reg);
+  var elPago  = document.getElementById('fin-pago-'+reg);
+  var elObs   = document.getElementById('fin-obs-'+reg);
+  var vM   = parseFloat(elValor ? elValor.value : '') || 0;
+  var vC   = parseFloat(elComp  ? elComp.value  : '') || 0;
+  var vP   = parseFloat(elPago  ? elPago.value  : '') || 0;
+  var vObs = elObs ? elObs.value.trim() : '';
+  var btns = Array.from(document.querySelectorAll('.save-btn[data-reg="'+reg+'"]'));
+  btns.forEach(function(btn) { btn.disabled = true; });
+  var ok = await upsertRow(reg, {recebido:s.recebido||false,enviado:s.enviado||false,quitado:s.quitado||false,valor_mes:vM,valor_pago:vP,valor_componente:vC,obs_pagamento:vObs});
+  if (ok === false) {
+    btns.forEach(function(btn) { btn.disabled = false; });
+    showConnError('Erro ao salvar financeiro. Verifique o console (F12).');
+    return;
+  }
+  s.valor_mes = vM; s.valor_componente = vC; s.valor_pago = vP; s.obs_pagamento = vObs;
+  dbState[reg] = s;
+  updateCounts();
+  doFilter();
+  btns.forEach(function(btn) {
+    var orig = btn.innerHTML;
+    btn.disabled = false;
+    btn.innerHTML = '✓ Salvo!';
+    btn.style.background = '#16a34a';
+    btn.style.color = '#fff';
+    setTimeout(function() { btn.innerHTML = orig; btn.style.background = ''; btn.style.color = ''; }, 2000);
+  });
+}
+
+async function clearFinanceiro(reg) {
+  if (!isCurrentMonth() && !historicoEditMode) return;
+  var s = dbState[reg] || {};
+  s.valor_mes = 0; s.valor_componente = 0; s.valor_pago = 0;
+  dbState[reg] = s;
+  updateCounts(); renderDetail();
+  await upsertRow(reg, {recebido:s.recebido||false,enviado:s.enviado||false,quitado:s.quitado||false,valor_mes:0,valor_pago:0,valor_componente:0});
+}
+
+// ── Comprovantes ──────────────────────────────────────────────
+function toggleCompMenu(reg, e) {
+  e.stopPropagation();
+  var existing = document.getElementById('comp-menu-popup');
+  if (existing) { existing.remove(); if (_compMenuReg === reg) { _compMenuReg = null; return; } }
+  _compMenuReg = reg;
+  var s = dbState[reg] || {};
+  var list = s.comprovantes || [];
+  var menu = document.createElement('div');
+  menu.id = 'comp-menu-popup';
+  menu.className = 'comp-menu-popup';
+  var html = '';
+  if (list.length) {
+    list.forEach(function(item, idx) {
+      var label = 'Comprovante ' + (idx + 1);
+      var safeName = item.name.replace(/'/g,'%27');
+      html += '<div style="display:flex;align-items:center;gap:2px;padding:2px 4px">' +
+        '<button class="comp-menu-item" style="flex:1" onclick="viewComprovante(\'' + item.url.replace(/'/g,'%27') + '\',event)"><i class="ti ti-eye" style="font-size:13px;color:#60a5fa"></i> ' + label + '</button>' +
+        '<button class="comp-menu-item" style="padding:8px 8px;color:#ef4444" onclick="deleteComprovante(' + reg + ',\'' + safeName + '\',event)" title="Apagar"><i class="ti ti-trash" style="font-size:13px;color:#ef4444"></i></button>' +
+        '</div>';
+    });
+    html += '<div style="height:0.5px;background:rgba(255,255,255,0.08);margin:3px 0"></div>';
+  }
+  html += '<button class="comp-menu-item" onclick="triggerCompUpload(' + reg + ',event)"><i class="ti ti-upload" style="font-size:13px;color:#22c55e"></i> ' + (list.length ? 'Adicionar comprovante' : 'Anexar comprovante') + '</button>';
+  menu.innerHTML = html;
+  document.body.appendChild(menu);
+  var rect = e.target.closest('button').getBoundingClientRect();
+  var top = rect.bottom + 4;
+  var left = rect.right - menu.offsetWidth;
+  if (left < 8) left = 8;
+  if (top + 120 > window.innerHeight) top = rect.top - menu.offsetHeight - 4;
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+}
+
+function closeCompMenu() {
+  var m = document.getElementById('comp-menu-popup');
+  if (m) m.remove();
+  _compMenuReg = null;
+}
+
+function viewComprovante(url, e) {
+  if (e) e.stopPropagation();
+  closeCompMenu();
+  window.open(url, '_blank');
+}
+
+function triggerCompUpload(reg, e) {
+  if (e) e.stopPropagation();
+  closeCompMenu();
+  _compUploadReg = reg;
+  var inp = document.getElementById('comp-file-input');
+  inp.value = '';
+  inp.click();
+}
+
+async function deleteComprovante(reg, filename, e) {
+  if (e) e.stopPropagation();
+  closeCompMenu();
+  if (!confirm('Apagar este comprovante?')) return;
+  setSyncStatus('syncing');
+  var folder = viewYear + '_' + viewMonth;
+  var path = folder + '/' + decodeURIComponent(filename);
+  var res = await sb.storage.from('comprovantes').remove([path]);
+  if (res.error) { setSyncStatus('error'); alert('Erro ao apagar: ' + (res.error.message || 'desconhecido')); return; }
+  if (!dbState[reg]) dbState[reg] = {};
+  if (!dbState[reg].comprovantes) dbState[reg].comprovantes = [];
+  dbState[reg].comprovantes = dbState[reg].comprovantes.filter(function(item) { return item.name !== decodeURIComponent(filename); });
+  setSyncStatus('ok');
+  doFilter();
+  if (selected && selected.reg === reg) renderDetail();
+}
+
+async function handleCompFile(e) {
+  var file = e.target.files[0];
+  if (!file || !_compUploadReg) return;
+  var reg = _compUploadReg;
+  setSyncStatus('syncing');
+  var ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  var folder = viewYear + '_' + viewMonth;
+  var path = folder + '/reg' + reg + '_' + Date.now() + '.' + ext;
+  var upRes = await sb.storage.from('comprovantes').upload(path, file, {cacheControl:'3600', upsert:true});
+  if (upRes.error) { setSyncStatus('error'); alert('Erro ao enviar arquivo: ' + (upRes.error.message || 'desconhecido')); return; }
+  var publicUrl = sb.storage.from('comprovantes').getPublicUrl(path).data.publicUrl;
+  if (!dbState[reg]) dbState[reg] = {};
+  if (!dbState[reg].comprovantes) dbState[reg].comprovantes = [];
+  dbState[reg].comprovantes.push({name: path.split('/').pop(), url: publicUrl});
+  setSyncStatus('ok');
+  doFilter();
+  if (selected && selected.reg === reg) renderDetail();
+}
+
+// ── Shell ─────────────────────────────────────────────────────
+function initShell() {
+  return fetch('sidebar.html')
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+      document.getElementById('shared-shell').innerHTML = html;
+      updateSidebarActive();
+      var keyEl = document.getElementById('sb-groq-key');
+      if (keyEl && GROQ_API_KEY) keyEl.value = GROQ_API_KEY;
+    })
+    .catch(function(e) { console.error('Erro ao carregar sidebar.html:', e); });
+}
+
+function hideLoading() {
+  var el = document.getElementById('loading-overlay');
+  if (el) el.style.display = 'none';
+}
+
+function showConnError(msg) {
+  var el   = document.getElementById('conn-error');
+  var msg2 = document.getElementById('conn-error-msg');
+  if (el)   el.style.display  = 'flex';
+  if (msg2) msg2.textContent  = msg;
+}
+
+async function init() {
+  dbState = await loadMonthData(currentMonth, currentYear);
+  if (!mesTemDados(dbState)) {
+    var prevM = currentMonth === 0 ? 11 : currentMonth - 1;
+    var prevY = currentMonth === 0 ? currentYear - 1 : currentYear;
+    var prevData = await loadMonthData(prevM, prevY);
+    if (mesTemDados(prevData)) {
+      viewMonth = prevM; viewYear = prevY;
+      localStorage.setItem('ideali-viewMonth', viewMonth);
+      localStorage.setItem('ideali-viewYear', viewYear);
+      dbState = prevData;
+    }
+  }
+  renderMonthTabs();
+  updateCounts();
+  doFilter();
+  hideLoading();
+  reloadGastosFooter(viewMonth, viewYear);
+  loadTarefasAbertas();
+  loadCadastroClientes();
+}
+
+initShell().then(function() { if (typeof init === 'function') init(); });
+</script>
+</body>
+</html>
