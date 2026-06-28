@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tabela de Preços — Ideali Laboratório</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared.js"></script>
+</head>
+<body>
+
+<div id="shared-shell"></div>
+
+<div style="max-width:100%">
+  <div id="app-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="hamburger" onclick="openSidebar()" title="Menu">&#9776;</button>
+      <div>
+        <p style="font-size:22px;font-weight:500;color:#f1f5f9">💲 Tabela de Preços</p>
+        <p style="font-size:14px;color:#64748b">Valores base para cálculo dos pedidos</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span id="relogio" style="font-size:11px;color:#4a5568"></span>
+      <span id="sync-status" style="font-size:12px;color:#64748b">
+        <span class="sync-dot" id="sync-dot"></span>Conectado
+      </span>
+    </div>
+  </div>
+
+  <main id="page-content">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
+      <div>
+        <p style="font-size:20px;font-weight:600;color:#f1f5f9">💲 Tabela de Preços</p>
+        <p style="font-size:13px;color:#64748b;margin-top:2px">Valores base usados pelo assistente IA para calcular o valor dos pedidos</p>
+      </div>
+      <button onclick="openNovaTabelaPreco()" class="cad-btn-primary"><i class="ti ti-plus" style="font-size:15px"></i> Novo Item</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="overflow-x:auto">
+        <table class="cad-table">
+          <thead><tr>
+            <th>Material</th><th>Tipo</th><th style="width:160px">Valor Unitário</th><th>Observação</th><th style="width:80px"></th>
+          </tr></thead>
+          <tbody id="tabela-precos-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+function initShell() {
+  return fetch('sidebar.html')
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+      document.getElementById('shared-shell').innerHTML = html;
+      updateSidebarActive();
+      var keyEl = document.getElementById('sb-groq-key');
+      if (keyEl && GROQ_API_KEY) keyEl.value = GROQ_API_KEY;
+    })
+    .catch(function(e) { console.error('Erro ao carregar sidebar.html:', e); });
+}
+
+function hideLoading() {
+  var el = document.getElementById('loading-overlay');
+  if (el) el.style.display = 'none';
+}
+
+function showConnError(msg) {
+  var el   = document.getElementById('conn-error');
+  var msg2 = document.getElementById('conn-error-msg');
+  if (el)   el.style.display  = 'flex';
+  if (msg2) msg2.textContent  = msg;
+}
+
+// ── Tabela de Preços ──────────────────────────────────────────
+var tabelaPrecos = [];
+
+async function loadTabelaPrecos() {
+  try {
+    var res = await sb.from('tabela_precos').select('*').order('material').order('tipo');
+    if (res.error) throw res.error;
+    tabelaPrecos = res.data || [];
+    renderTabelaPrecos();
+  } catch(e) { console.error('[TabelaPrecos]', e.message||e); }
+}
+
+function renderTabelaPrecos() {
+  var tb = document.getElementById('tabela-precos-tbody');
+  if (!tb) return;
+  if (!tabelaPrecos.length) {
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#4a5568;padding:20px">Nenhum item. Adicione itens com o botão "Novo Item".</td></tr>';
+    return;
+  }
+  tb.innerHTML = tabelaPrecos.map(function(r) {
+    return '<tr>' +
+      '<td style="font-weight:500;color:#f1f5f9">' + escHtml(r.material) + '</td>' +
+      '<td><span style="font-size:11px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.08);color:#94a3b8">' + escHtml(r.tipo) + '</span></td>' +
+      '<td><div style="display:flex;align-items:center;gap:6px"><span style="color:#64748b;font-size:12px">R$</span><input type="number" id="tp-val-'+r.id+'" value="'+Number(r.valor_unitario).toFixed(2)+'" step="0.01" min="0" style="width:80px;height:30px;font-size:13px;text-align:right"></div></td>' +
+      '<td><input type="text" id="tp-obs-'+r.id+'" value="'+escHtml(r.observacao||'')+'" placeholder="—" style="width:100%;height:30px;font-size:12px"></td>' +
+      '<td><button onclick="saveTabelaPrecoItem(\''+r.id+'\')" id="tp-btn-'+r.id+'" style="height:28px;padding:0 10px;border-radius:6px;border:none;background:#1d4ed8;color:#fff;font-size:12px;cursor:pointer;font-family:inherit">Salvar</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+async function saveTabelaPrecoItem(id) {
+  var valEl = document.getElementById('tp-val-'+id);
+  var obsEl = document.getElementById('tp-obs-'+id);
+  var btn   = document.getElementById('tp-btn-'+id);
+  if (!valEl) return;
+  var payload = { valor_unitario: parseFloat(valEl.value)||0, observacao: obsEl ? (obsEl.value.trim()||null) : null };
+  try {
+    var res = await sb.from('tabela_precos').update(payload).eq('id', id);
+    if (res.error) throw res.error;
+    var idx = tabelaPrecos.findIndex(function(r){ return r.id===id; });
+    if (idx>=0) { tabelaPrecos[idx].valor_unitario=payload.valor_unitario; tabelaPrecos[idx].observacao=payload.observacao; }
+    if (btn) { btn.textContent='✓ Salvo'; btn.style.background='#15803d'; setTimeout(function(){ btn.textContent='Salvar'; btn.style.background='#1d4ed8'; },1500); }
+  } catch(e) { alert('Erro ao salvar: '+(e.message||e)); }
+}
+
+function openNovaTabelaPreco() {
+  var mat  = (prompt('Material (ex: zircônia, emax, componente_neodent):')||'').trim();
+  if (!mat) return;
+  var tipo = (prompt('Tipo (normal, prova, adicional):','normal')||'').trim();
+  if (!tipo) return;
+  var val  = parseFloat(prompt('Valor unitário (R$):','0'));
+  if (isNaN(val)) return;
+  sb.from('tabela_precos').insert([{material:mat,tipo:tipo,valor_unitario:val}]).then(function(res){
+    if (res.error) { alert('Erro: '+res.error.message); return; }
+    loadTabelaPrecos();
+  });
+}
+
+async function init() {
+  try {
+    await loadTabelaPrecos();
+  } catch(e) {
+    showConnError(e.message || String(e));
+  } finally {
+    hideLoading();
+  }
+}
+
+initShell().then(function() { if (typeof init === 'function') init(); });
+</script>
+
+</body>
+</html>
