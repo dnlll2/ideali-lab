@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatórios — Ideali Laboratório</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="shared.js"></script>
+</head>
+<body>
+
+<div id="shared-shell"></div>
+
+<div style="max-width:100%">
+  <div id="app-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="hamburger" onclick="openSidebar()" title="Menu">&#9776;</button>
+      <div>
+        <p style="font-size:22px;font-weight:500;color:#f1f5f9">📊 Relatórios</p>
+        <p style="font-size:14px;color:#64748b">Gere e exporte relatórios mensais</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span id="relogio" style="font-size:11px;color:#4a5568"></span>
+      <span id="sync-status" style="font-size:12px;color:#64748b">
+        <span class="sync-dot" id="sync-dot"></span>Conectado
+      </span>
+    </div>
+  </div>
+
+  <main id="page-content">
+    <div style="margin-bottom:1.5rem">
+      <p style="font-size:20px;font-weight:600;color:#f1f5f9">📊 Relatórios</p>
+      <p style="font-size:13px;color:#64748b;margin-top:2px">Gere e exporte relatórios — mês: <span id="rel-mes-label"></span></p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px">
+      <div onclick="gerarRelatorioPDF()" class="card" style="cursor:pointer;padding:1.25rem;transition:background 0.15s" onmouseover="this.style.background='#22263a'" onmouseout="this.style.background=''">
+        <div style="font-size:28px;margin-bottom:10px">📄</div>
+        <p style="font-size:14px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Relatório Mensal</p>
+        <p style="font-size:12px;color:#64748b">Clientes, valores, status e comissão do mês</p>
+      </div>
+      <div onclick="gerarPagamentosPDF()" class="card" style="cursor:pointer;padding:1.25rem;transition:background 0.15s" onmouseover="this.style.background='#22263a'" onmouseout="this.style.background=''">
+        <div style="font-size:28px;margin-bottom:10px">💳</div>
+        <p style="font-size:14px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Relatório de Pagamentos</p>
+        <p style="font-size:12px;color:#64748b">Sem comissão — ideal para compartilhar externamente</p>
+      </div>
+      <div onclick="gerarRelatorioClientes()" class="card" style="cursor:pointer;padding:1.25rem;transition:background 0.15s" onmouseover="this.style.background='#22263a'" onmouseout="this.style.background=''">
+        <div style="font-size:28px;margin-bottom:10px">👥</div>
+        <p style="font-size:14px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Cadastro de Clientes</p>
+        <p style="font-size:12px;color:#64748b">Lista completa de clientes cadastrados</p>
+      </div>
+      <div onclick="sbNav('orcamento')" class="card" style="cursor:pointer;padding:1.25rem;transition:background 0.15s" onmouseover="this.style.background='#22263a'" onmouseout="this.style.background=''">
+        <div style="font-size:28px;margin-bottom:10px">💰</div>
+        <p style="font-size:14px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Gerador de Orçamento</p>
+        <p style="font-size:12px;color:#64748b">Crie orçamentos profissionais em PDF</p>
+      </div>
+      <div onclick="sbNav('cobranca')" class="card" style="cursor:pointer;padding:1.25rem;transition:background 0.15s" onmouseover="this.style.background='#22263a'" onmouseout="this.style.background=''">
+        <div style="font-size:28px;margin-bottom:10px">📋</div>
+        <p style="font-size:14px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Gerador de Cobrança</p>
+        <p style="font-size:12px;color:#64748b">Emita documentos de cobrança em PDF</p>
+      </div>
+      <div onclick="sbNav('recibo')" class="card" style="cursor:pointer;padding:1.25rem;transition:background 0.15s" onmouseover="this.style.background='#22263a'" onmouseout="this.style.background=''">
+        <div style="font-size:28px;margin-bottom:10px">🧾</div>
+        <p style="font-size:14px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Recibo de Pagamento</p>
+        <p style="font-size:12px;color:#64748b">Gere recibos de pagamento em PDF</p>
+      </div>
+      <div onclick="sbNav('gastos')" class="card" style="cursor:pointer;padding:1.25rem;transition:background 0.15s" onmouseover="this.style.background='#22263a'" onmouseout="this.style.background=''">
+        <div style="font-size:28px;margin-bottom:10px">📦</div>
+        <p style="font-size:14px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Relatório de Gastos</p>
+        <p style="font-size:12px;color:#64748b">Motoboy, Uber, Correio e outros por tipo</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+function initShell() {
+  return fetch('sidebar.html')
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+      document.getElementById('shared-shell').innerHTML = html;
+      updateSidebarActive();
+      var keyEl = document.getElementById('sb-groq-key');
+      if (keyEl && GROQ_API_KEY) keyEl.value = GROQ_API_KEY;
+    })
+    .catch(function(e) { console.error('Erro ao carregar sidebar.html:', e); });
+}
+
+function hideLoading() {
+  var el = document.getElementById('loading-overlay');
+  if (el) el.style.display = 'none';
+}
+
+function showConnError(msg) {
+  var el   = document.getElementById('conn-error');
+  var msg2 = document.getElementById('conn-error-msg');
+  if (el)   el.style.display  = 'flex';
+  if (msg2) msg2.textContent  = msg;
+}
+
+// ── Estado para relatórios ────────────────────────────────────
+var dbState   = {};
+var fretesMes = 0;
+
+function statusOf(reg) {
+  var s = dbState[reg] || {};
+  if (s.quitado)  return 'quitado';
+  if (s.enviado)  return 'enviado';
+  if (s.recebido) return 'recebido';
+  return 'pendente';
+}
+
+async function loadDbStateForMonth() {
+  try {
+    var res = await sb.from('controle_mensal').select('*')
+      .eq('mes', viewMonth).eq('ano', viewYear);
+    if (res.error) throw res.error;
+    dbState = {};
+    (res.data || []).forEach(function(r) { dbState[r.cliente_reg] = r; });
+  } catch(e) {
+    console.error('[Relatorios] Erro ao carregar controle_mensal:', e.message || e);
+  }
+}
+
+async function loadFretesMes() {
+  try {
+    var res = await sb.from('gastos_entrega').select('valor')
+      .eq('mes', viewMonth).eq('ano', viewYear);
+    if (!res.error) {
+      fretesMes = (res.data || []).reduce(function(s,g){ return s + (Number(g.valor)||0); }, 0);
+    }
+  } catch(e) {
+    console.warn('[Relatorios] Erro ao carregar fretes:', e.message || e);
+  }
+}
+
+// ── PDF: Relatório Mensal ─────────────────────────────────────
+function gerarRelatorioPDF() {
+  var { jsPDF } = window.jspdf;
+  var doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  var mesNome = MESES[viewMonth];
+  var titulo  = 'Ideali Laboratorio - Relatorio ' + mesNome + ' ' + viewYear;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.setTextColor(30, 41, 59);
+  doc.text(titulo, 14, 18);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  var agora = new Date().toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  doc.text('Gerado em: ' + agora, 14, 24);
+
+  var rawRest   = [], rawStatus = [], rawObs = [];
+  var rows = [];
+  var totVal = 0, totComp = 0, totPago = 0, totRest = 0;
+
+  clients.forEach(function(c) {
+    var s    = dbState[c.reg] || {};
+    var vm   = Number(s.valor_mes        || 0);
+    var vc   = Number(s.valor_componente || 0);
+    var vp   = Number(s.valor_pago       || 0);
+    var rest = vm - vp;
+    totVal  += vm;
+    totComp += vc;
+    totPago += vp;
+    totRest += rest;
+
+    var st  = statusOf(c.reg);
+    var obs = (s.obs_pagamento || '').trim();
+    rawRest.push(rest);
+    rawStatus.push(st);
+    rawObs.push(obs);
+
+    var stLabel = st.charAt(0).toUpperCase() + st.slice(1);
+    rows.push([c.nome, fmt(vm), fmt(vc), fmt(vp), fmt(rest), stLabel, obs]);
+  });
+
+  rows.push(['TOTAL', fmt(totVal), fmt(totComp), fmt(totPago), fmt(totRest), '', '']);
+
+  doc.autoTable({
+    startY: 29,
+    head: [['Nome', 'Valor do Mes', 'Componente', 'Valor Pago', 'Restante', 'Status', 'Observacao']],
+    body: rows,
+    theme: 'grid',
+    headStyles: { fillColor:[29,78,216], textColor:[255,255,255], fontStyle:'bold', fontSize:8.5, cellPadding:3 },
+    bodyStyles: { fontSize:8, cellPadding:2.5 },
+    columnStyles: {
+      0: { cellWidth:60 },
+      1: { halign:'right', cellWidth:27 },
+      2: { halign:'right', cellWidth:27 },
+      3: { halign:'right', cellWidth:27 },
+      4: { halign:'right', cellWidth:27 },
+      5: { halign:'center', cellWidth:22 },
+      6: { cellWidth:'auto', fontStyle:'italic', textColor:[100,116,139] }
+    },
+    alternateRowStyles: { fillColor:[245,247,250] },
+    didParseCell: function(data) {
+      var ri = data.row.index, ci = data.column.index;
+      var isTotalRow = (ri === rows.length - 1);
+      if (isTotalRow) {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fillColor = [30,41,59];
+        data.cell.styles.textColor = [241,245,249];
+      } else {
+        if (ci === 4) data.cell.styles.textColor = rawRest[ri] > 0 ? [220,38,38] : [22,163,74];
+        if (ci === 5) {
+          var stv = rawStatus[ri];
+          data.cell.styles.textColor = (stv==='quitado'||stv==='enviado'||stv==='recebido') ? [22,163,74] : [220,38,38];
+        }
+        if (ci === 6 && rawObs[ri]) {
+          data.cell.styles.fontStyle = 'italic';
+          data.cell.styles.textColor = [71,85,105];
+          data.cell.styles.fontSize  = 7.5;
+        }
+      }
+    }
+  });
+
+  var comBruta = (totPago - totComp) * COMISSAO;
+  var comLiq   = comBruta - fretesMes;
+
+  var resumoY = doc.lastAutoTable.finalY + 10;
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(10);
+  doc.setTextColor(30,41,59);
+  doc.text('Resumo Financeiro', 14, resumoY);
+
+  doc.autoTable({
+    startY: resumoY + 4,
+    head: [['Descricao', 'Valor']],
+    body: [
+      ['Comissao Bruta (17% sobre pago - componente)', fmt(comBruta)],
+      ['Correio / Motoboy do mes',                     fmt(fretesMes)],
+      ['Comissao Liquida (bruta - frete)',              fmt(comLiq)]
+    ],
+    theme: 'grid',
+    headStyles: { fillColor:[30,41,59], textColor:[255,255,255], fontStyle:'bold', fontSize:8.5, cellPadding:3 },
+    bodyStyles: { fontSize:9, cellPadding:3 },
+    columnStyles: { 0:{cellWidth:130}, 1:{halign:'right',cellWidth:40} },
+    tableWidth: 170,
+    didParseCell: function(data) {
+      if (data.row.index === 2) { data.cell.styles.fontStyle = 'bold'; data.cell.styles.textColor = [161,98,7]; }
+    }
+  });
+
+  doc.save('relatorio-' + mesNome.toLowerCase() + '-' + viewYear + '.pdf');
+}
+
+// ── PDF: Relatório de Pagamentos ──────────────────────────────
+function gerarPagamentosPDF() {
+  var { jsPDF } = window.jspdf;
+  var doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  var W = 297, margin = 14;
+  var mesNome = MESES[viewMonth];
+  var titulo  = 'Relatorio de Pagamentos — ' + mesNome + ' ' + viewYear;
+
+  doc.setFillColor(29,78,216);
+  doc.rect(0,0,W,30,'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(14);
+  doc.setTextColor(255,255,255);
+  doc.text('IDEALI LABORATORIO', margin, 13);
+  doc.setFontSize(9);
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(191,219,254);
+  doc.text(titulo, margin, 21);
+  doc.text('Emissao: ' + new Date().toLocaleDateString('pt-BR'), W - margin, 21, {align:'right'});
+
+  var rows = [], rawRest = [], rawStatus = [];
+  var totVal = 0, totPago = 0, totRest = 0;
+
+  clients.forEach(function(c) {
+    var s    = dbState[c.reg] || {};
+    var vm   = Number(s.valor_mes  || 0);
+    var vp   = Number(s.valor_pago || 0);
+    var rest = vm - vp;
+    if (vm === 0 && vp === 0) return;
+    totVal  += vm;
+    totPago += vp;
+    totRest += rest;
+    var st    = statusOf(c.reg);
+    rawRest.push(rest);
+    rawStatus.push(st);
+    var stLbl = rest <= 0 ? 'Quitado' : vp > 0 ? 'Parcial' : 'Pendente';
+    var obs   = (s.obs_pagamento || '').trim();
+    rows.push([c.nome, fmt(vm), fmt(vp), fmt(rest), stLbl, obs]);
+  });
+  rows.push(['TOTAL', fmt(totVal), fmt(totPago), fmt(totRest), '', '']);
+
+  doc.autoTable({
+    startY: 36,
+    head: [['Cliente', 'A Receber', 'Pago', 'Restante', 'Status', 'Observacao']],
+    body: rows,
+    theme: 'grid',
+    headStyles: { fillColor:[29,78,216], textColor:[255,255,255], fontStyle:'bold', fontSize:9, cellPadding:3 },
+    bodyStyles: { fontSize:8.5, cellPadding:2.5 },
+    columnStyles: {
+      0: { cellWidth:85 },
+      1: { halign:'right', cellWidth:30 },
+      2: { halign:'right', cellWidth:30 },
+      3: { halign:'right', cellWidth:30 },
+      4: { halign:'center', cellWidth:22 },
+      5: { cellWidth:'auto', textColor:[100,116,139], fontStyle:'italic' }
+    },
+    alternateRowStyles: { fillColor:[248,250,252] },
+    didParseCell: function(data) {
+      var ri = data.row.index, ci = data.column.index;
+      var isTotal = ri === rows.length - 1;
+      if (isTotal) {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fillColor = [241,245,249];
+      } else {
+        if (ci === 3) data.cell.styles.textColor = rawRest[ri] > 0 ? [220,38,38] : [22,163,74];
+        if (ci === 4) {
+          var st2 = rawStatus[ri];
+          data.cell.styles.textColor = st2==='quitado' ? [22,163,74] : st2==='enviado'||st2==='recebido' ? [37,99,235] : [220,38,38];
+        }
+      }
+    }
+  });
+
+  var fy = doc.lastAutoTable.finalY + 8;
+  doc.autoTable({
+    startY: fy,
+    head: [['Resumo', 'Valor']],
+    body: [
+      ['Total a Receber', fmt(totVal)],
+      ['Total Pago',      fmt(totPago)],
+      ['Total Pendente',  fmt(totRest)]
+    ],
+    theme: 'grid',
+    headStyles: { fillColor:[51,65,85], textColor:[255,255,255], fontStyle:'bold', fontSize:8.5, cellPadding:3 },
+    bodyStyles: { fontSize:9, cellPadding:3 },
+    columnStyles: { 0:{cellWidth:80}, 1:{halign:'right',cellWidth:30} },
+    tableWidth: 110,
+    margin: { left: margin },
+    didParseCell: function(data) {
+      if (data.row.index === 2) data.cell.styles.textColor = [220,38,38];
+    }
+  });
+
+  doc.setFontSize(7.5);
+  doc.setTextColor(148,163,184);
+  doc.text('Ideali Laboratorio · ' + titulo + ' · Gerado em ' + new Date().toLocaleString('pt-BR'), W/2, 289, {align:'center'});
+  doc.save('pagamentos-' + mesNome.toLowerCase() + '-' + viewYear + '.pdf');
+}
+
+// ── PDF: Cadastro de Clientes ─────────────────────────────────
+function gerarRelatorioClientes() {
+  var { jsPDF } = window.jspdf;
+  var doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(15);
+  doc.setTextColor(30,41,59);
+  doc.text('Ideali Laboratorio - Cadastro de Clientes', 14, 18);
+
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100,116,139);
+  var agora = new Date().toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  doc.text('Gerado em: ' + agora + '   •   Total: ' + clients.length + ' clientes', 14, 24);
+
+  var sortedClients = clients.slice().sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); });
+  var rows = sortedClients.map(function(c) {
+    var endParts = [c.end, c.bairro, c.cidade + (c.uf ? ' / ' + c.uf : ''), c.cep ? 'CEP ' + c.cep : ''].filter(Boolean);
+    return [c.nome||'-', c.cpf||'-', c.cro||'-', endParts.join(', ')||'-', c.tel||'-', c.obs||'-'];
+  });
+
+  doc.autoTable({
+    startY: 29,
+    head: [['Nome', 'CPF / CNPJ', 'CRO', 'Endereco Completo', 'Telefone', 'Observacao']],
+    body: rows,
+    theme: 'grid',
+    headStyles: { fillColor:[12,74,110], textColor:[255,255,255], fontStyle:'bold', fontSize:8, cellPadding:3 },
+    bodyStyles: { fontSize:7.5, cellPadding:2.5, overflow:'linebreak' },
+    columnStyles: { 0:{cellWidth:52}, 1:{cellWidth:35}, 2:{cellWidth:26}, 3:{cellWidth:80}, 4:{cellWidth:28}, 5:{cellWidth:41} },
+    alternateRowStyles: { fillColor:[240,247,255] },
+    didParseCell: function(data) {
+      if (data.row.index % 2 === 0 && data.section === 'body') data.cell.styles.fillColor = [255,255,255];
+    }
+  });
+
+  var pages = doc.internal.getNumberOfPages();
+  for (var i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(7);
+    doc.setTextColor(148,163,184);
+    doc.text('Pagina ' + i + ' de ' + pages, doc.internal.pageSize.width - 14, doc.internal.pageSize.height - 6, {align:'right'});
+    doc.text('Ideali Laboratorio', 14, doc.internal.pageSize.height - 6);
+  }
+
+  doc.save('cadastro-clientes.pdf');
+}
+
+async function init() {
+  var lbl = document.getElementById('rel-mes-label');
+  if (lbl) lbl.textContent = (MESES[viewMonth] || viewMonth) + ' ' + viewYear;
+  try {
+    await Promise.all([loadDbStateForMonth(), loadFretesMes()]);
+  } catch(e) {
+    showConnError(e.message || String(e));
+  } finally {
+    hideLoading();
+  }
+}
+
+initShell().then(function() { if (typeof init === 'function') init(); });
+</script>
+
+</body>
+</html>

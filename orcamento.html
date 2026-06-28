@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orçamento — Ideali Laboratório</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="shared.js"></script>
+</head>
+<body>
+
+<div id="shared-shell"></div>
+
+<div style="max-width:100%">
+  <div id="app-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="hamburger" onclick="openSidebar()" title="Menu">&#9776;</button>
+      <div>
+        <p style="font-size:22px;font-weight:500;color:#f1f5f9">💰 Gerador de Orçamento</p>
+        <p style="font-size:14px;color:#64748b">Crie orçamentos profissionais em PDF</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span id="relogio" style="font-size:11px;color:#4a5568"></span>
+      <span id="sync-status" style="font-size:12px;color:#64748b">
+        <span class="sync-dot" id="sync-dot"></span>Conectado
+      </span>
+    </div>
+  </div>
+
+  <main id="page-content">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
+      <div>
+        <p style="font-size:20px;font-weight:600;color:#f1f5f9">💰 Gerador de Orçamento</p>
+        <p style="font-size:13px;color:#64748b;margin-top:2px">Crie orçamentos profissionais em PDF</p>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="orc-grid">
+      <div class="card" style="padding:1.25rem">
+        <div class="cf-group">
+          <label class="cf-label">Cliente</label>
+          <select id="orc-cliente" style="width:100%"><option value="">Selecione um cliente...</option></select>
+        </div>
+        <div class="cf-group">
+          <label class="cf-label">Descrição dos Serviços</label>
+          <textarea id="orc-descricao" rows="3" style="width:100%;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:14px;background:#22263a;color:#e2e8f0;outline:none;font-family:inherit;resize:vertical" placeholder="Descreva os serviços oferecidos..."></textarea>
+        </div>
+        <div class="cf-group">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <label class="cf-label" style="margin-bottom:0">Itens do Orçamento</label>
+            <button onclick="orcAddItem()" style="height:28px;padding:0 10px;border-radius:6px;border:none;background:#1d4ed8;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px"><i class="ti ti-plus" style="font-size:12px"></i> Adicionar Item</button>
+          </div>
+          <div id="orc-itens" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+        <div class="cf-row2" style="margin-bottom:14px">
+          <div>
+            <label class="cf-label">Desconto (R$)</label>
+            <input type="number" id="orc-desconto" placeholder="0,00" min="0" step="0.01" style="width:100%" oninput="orcCalcTotal()">
+          </div>
+          <div>
+            <label class="cf-label">Validade do Orçamento</label>
+            <input type="date" id="orc-validade" style="width:100%">
+          </div>
+        </div>
+        <div class="cf-group">
+          <label class="cf-label">Observações</label>
+          <textarea id="orc-obs" rows="2" style="width:100%;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:14px;background:#22263a;color:#e2e8f0;outline:none;font-family:inherit;resize:vertical" placeholder="Observações adicionais..."></textarea>
+        </div>
+        <button onclick="gerarOrcamentoPDF()" style="width:100%;height:42px;border-radius:8px;border:none;background:#1d4ed8;color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:background 0.15s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#1d4ed8'">
+          <i class="ti ti-file-type-pdf" style="font-size:18px"></i> Gerar PDF
+        </button>
+      </div>
+      <div class="card" style="padding:1.25rem">
+        <p class="cf-label" style="margin-bottom:12px">Resumo do Orçamento</p>
+        <div style="background:#0f1117;border-radius:10px;padding:16px;min-height:200px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:0.5px solid rgba(255,255,255,0.08)">
+            <span style="font-size:13px;color:#64748b">Cliente</span>
+            <span style="font-size:13px;color:#e2e8f0" id="orc-preview-cliente">—</span>
+          </div>
+          <div id="orc-preview-itens" style="margin-bottom:8px"></div>
+          <div style="border-top:0.5px solid rgba(255,255,255,0.08);padding-top:8px;margin-top:8px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:13px;color:#64748b">Subtotal</span>
+              <span style="font-size:13px;color:#e2e8f0" id="orc-preview-subtotal">R$ 0,00</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:13px;color:#64748b">Desconto</span>
+              <span style="font-size:13px;color:#ef4444" id="orc-preview-desc">R$ 0,00</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:0.5px solid rgba(255,255,255,0.12)">
+              <span style="font-size:15px;font-weight:600;color:#f1f5f9">Total</span>
+              <span style="font-size:15px;font-weight:600;color:#22c55e" id="orc-preview-total">R$ 0,00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+function initShell() {
+  return fetch('sidebar.html')
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+      document.getElementById('shared-shell').innerHTML = html;
+      updateSidebarActive();
+      var keyEl = document.getElementById('sb-groq-key');
+      if (keyEl && GROQ_API_KEY) keyEl.value = GROQ_API_KEY;
+    })
+    .catch(function(e) { console.error('Erro ao carregar sidebar.html:', e); });
+}
+
+function hideLoading() {
+  var el = document.getElementById('loading-overlay');
+  if (el) el.style.display = 'none';
+}
+
+function showConnError(msg) {
+  var el   = document.getElementById('conn-error');
+  var msg2 = document.getElementById('conn-error-msg');
+  if (el)   el.style.display  = 'flex';
+  if (msg2) msg2.textContent  = msg;
+}
+
+// ── Orçamento ─────────────────────────────────────────────────
+var orcItemCount = 0;
+
+function orcPopulateClientes() {
+  var sel = document.getElementById('orc-cliente');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Selecione um cliente...</option>';
+  clients.slice().sort(function(a,b){ return a.nome.localeCompare(b.nome); }).forEach(function(c) {
+    var o = document.createElement('option');
+    o.value = c.reg;
+    o.textContent = c.nome;
+    sel.appendChild(o);
+  });
+  sel.onchange = function() {
+    var c = clients.find(function(x){ return x.reg == sel.value; });
+    document.getElementById('orc-preview-cliente').textContent = c ? c.nome : '—';
+  };
+}
+
+function orcAddItem() {
+  orcItemCount++;
+  var idx       = orcItemCount;
+  var container = document.getElementById('orc-itens');
+  var div       = document.createElement('div');
+  div.id        = 'orc-item-' + idx;
+  div.style.cssText = 'display:flex;gap:6px;align-items:center';
+  div.innerHTML =
+    '<input type="text" placeholder="Descrição do item" style="flex:1;height:34px;font-size:13px" oninput="orcCalcTotal()">' +
+    '<input type="number" placeholder="R$ 0,00" min="0" step="0.01" style="width:110px;height:34px;font-size:13px" oninput="orcCalcTotal()">' +
+    '<button onclick="orcRemoveItem('+idx+')" style="width:30px;height:30px;border-radius:6px;border:0.5px solid rgba(239,68,68,0.4);background:#3d1d1d;color:#ef4444;cursor:pointer;font-size:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center"><i class="ti ti-trash" style="font-size:13px"></i></button>';
+  container.appendChild(div);
+  orcCalcTotal();
+}
+
+function orcRemoveItem(idx) {
+  var el = document.getElementById('orc-item-' + idx);
+  if (el) el.remove();
+  orcCalcTotal();
+}
+
+function orcCalcTotal() {
+  var subtotal = 0;
+  document.querySelectorAll('#orc-itens > div').forEach(function(row) {
+    var inputs = row.querySelectorAll('input');
+    var val = parseFloat(inputs[1] ? inputs[1].value : 0) || 0;
+    subtotal += val;
+  });
+  var desc  = parseFloat(document.getElementById('orc-desconto').value) || 0;
+  var total = Math.max(0, subtotal - desc);
+  document.getElementById('orc-preview-subtotal').textContent = fmt(subtotal);
+  document.getElementById('orc-preview-desc').textContent     = fmt(desc);
+  document.getElementById('orc-preview-total').textContent    = fmt(total);
+  var itensHtml = '';
+  document.querySelectorAll('#orc-itens > div').forEach(function(row) {
+    var inputs = row.querySelectorAll('input');
+    var label  = inputs[0] ? inputs[0].value : '';
+    var val    = parseFloat(inputs[1] ? inputs[1].value : 0) || 0;
+    if (label || val > 0) {
+      itensHtml += '<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;color:#94a3b8">'+label+'</span><span style="font-size:12px;color:#e2e8f0">'+fmt(val)+'</span></div>';
+    }
+  });
+  document.getElementById('orc-preview-itens').innerHTML = itensHtml;
+}
+
+function gerarOrcamentoPDF() {
+  var clienteReg = document.getElementById('orc-cliente').value;
+  var cliente = clients.find(function(c){ return c.reg == clienteReg; });
+  if (!cliente) { alert('Selecione um cliente.'); return; }
+
+  var itens = [];
+  document.querySelectorAll('#orc-itens > div').forEach(function(row) {
+    var inputs = row.querySelectorAll('input');
+    var desc   = inputs[0] ? inputs[0].value.trim() : '';
+    var val    = parseFloat(inputs[1] ? inputs[1].value : 0) || 0;
+    if (desc || val > 0) itens.push({desc: desc, val: val});
+  });
+  var descricao = document.getElementById('orc-descricao').value.trim();
+  var desconto  = parseFloat(document.getElementById('orc-desconto').value) || 0;
+  var validade  = document.getElementById('orc-validade').value;
+  var obs       = document.getElementById('orc-obs').value.trim();
+  var subtotal  = itens.reduce(function(s,i){ return s + i.val; }, 0);
+  var total     = Math.max(0, subtotal - desconto);
+
+  var doc = new jspdf.jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  var W = 210, margin = 18;
+
+  doc.setFillColor(15,17,23);
+  doc.rect(0,0,W,40,'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(18);
+  doc.setTextColor(241,245,249);
+  doc.text('IDEALI LABORATORIO', margin, 18);
+  doc.setFontSize(9);
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(100,116,139);
+  doc.text('Laboratorio de Protese Dental', margin, 25);
+  doc.setFontSize(13);
+  doc.setFont('helvetica','bold');
+  doc.setTextColor(59,130,246);
+  doc.text('ORCAMENTO', W-margin, 16, {align:'right'});
+  doc.setFontSize(9);
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(148,163,184);
+  var numOrc = 'ORC-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-5);
+  doc.text('N: ' + numOrc, W-margin, 22, {align:'right'});
+  doc.text('Data: ' + new Date().toLocaleDateString('pt-BR'), W-margin, 27, {align:'right'});
+  if (validade) {
+    var vd = new Date(validade+'T00:00:00');
+    doc.text('Valido ate: ' + vd.toLocaleDateString('pt-BR'), W-margin, 32, {align:'right'});
+  }
+
+  var y = 50;
+  doc.setFillColor(26,29,39);
+  doc.roundedRect(margin, y-4, W-margin*2, 30, 3, 3, 'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(8);
+  doc.setTextColor(100,116,139);
+  doc.text('CLIENTE', margin+4, y+2);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(12);
+  doc.setTextColor(241,245,249);
+  doc.text(cliente.nome, margin+4, y+10);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(148,163,184);
+  var info = [cliente.cro, cliente.cidade && cliente.uf ? cliente.cidade+' - '+cliente.uf : '', cliente.tel].filter(Boolean).join('  |  ');
+  if (info) doc.text(info, margin+4, y+17);
+  if (cliente.end) doc.text(cliente.end + (cliente.bairro ? ', '+cliente.bairro : ''), margin+4, y+23);
+  y += 38;
+
+  if (descricao) {
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(9);
+    doc.setTextColor(100,116,139);
+    doc.text('DESCRICAO DOS SERVICOS', margin, y);
+    y += 5;
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(10);
+    doc.setTextColor(226,232,240);
+    var dLines = doc.splitTextToSize(descricao, W-margin*2);
+    doc.text(dLines, margin, y);
+    y += dLines.length * 5 + 8;
+  }
+
+  if (itens.length > 0) {
+    doc.autoTable({
+      startY: y,
+      head: [['#','Descricao','Valor (R$)']],
+      body: itens.map(function(it,i){ return [i+1, it.desc, fmt(it.val)]; }),
+      theme: 'grid',
+      headStyles: {fillColor:[26,46,102],textColor:[255,255,255],fontSize:9,fontStyle:'bold',cellPadding:3},
+      bodyStyles: {fontSize:10,cellPadding:3,textColor:[226,232,240],fillColor:[26,29,39]},
+      alternateRowStyles: {fillColor:[34,38,58]},
+      columnStyles: {0:{cellWidth:12,halign:'center'},2:{halign:'right',cellWidth:40}},
+      margin: {left:margin,right:margin}
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  doc.setFillColor(15,17,23);
+  doc.roundedRect(W/2, y-2, W/2-margin, 28, 3, 3, 'F');
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100,116,139);
+  doc.text('Subtotal:', W/2+4, y+5);
+  doc.setTextColor(226,232,240);
+  doc.text(fmt(subtotal), W-margin, y+5, {align:'right'});
+  if (desconto > 0) {
+    doc.setTextColor(100,116,139);
+    doc.text('Desconto:', W/2+4, y+12);
+    doc.setTextColor(239,68,68);
+    doc.text('- '+fmt(desconto), W-margin, y+12, {align:'right'});
+  }
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(13);
+  doc.setTextColor(34,197,94);
+  doc.text('TOTAL: '+fmt(total), W-margin, y+22, {align:'right'});
+  y += 36;
+
+  if (obs) {
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(9);
+    doc.setTextColor(100,116,139);
+    doc.text('OBSERVACOES', margin, y);
+    y += 5;
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+    doc.setTextColor(148,163,184);
+    var oLines = doc.splitTextToSize(obs, W-margin*2);
+    doc.text(oLines, margin, y);
+  }
+
+  doc.setFillColor(15,17,23);
+  doc.rect(0,285,W,12,'F');
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100,116,139);
+  doc.text('Ideali Laboratorio - Documento gerado em ' + new Date().toLocaleString('pt-BR'), W/2, 292, {align:'center'});
+
+  doc.save('orcamento-' + cliente.nome.split(' ')[0].toLowerCase() + '-' + numOrc + '.pdf');
+}
+
+function init() {
+  orcPopulateClientes();
+  orcAddItem();
+  hideLoading();
+}
+
+initShell().then(function() { if (typeof init === 'function') init(); });
+</script>
+
+</body>
+</html>

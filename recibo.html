@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recibo de Pagamento — Ideali Laboratório</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="shared.js"></script>
+</head>
+<body>
+
+<div id="shared-shell"></div>
+
+<div style="max-width:100%">
+  <div id="app-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="hamburger" onclick="openSidebar()" title="Menu">&#9776;</button>
+      <div>
+        <p style="font-size:22px;font-weight:500;color:#f1f5f9">🧾 Recibo de Pagamento</p>
+        <p style="font-size:14px;color:#64748b">Emita recibos de pagamento em PDF</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span id="relogio" style="font-size:11px;color:#4a5568"></span>
+      <span id="sync-status" style="font-size:12px;color:#64748b">
+        <span class="sync-dot" id="sync-dot"></span>Conectado
+      </span>
+    </div>
+  </div>
+
+  <main id="page-content">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
+      <div>
+        <p style="font-size:20px;font-weight:600;color:#f1f5f9">🧾 Recibo de Pagamento</p>
+        <p style="font-size:13px;color:#64748b;margin-top:2px">Emita recibos de pagamento em PDF</p>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="rec-grid">
+      <div class="card" style="padding:1.25rem">
+        <div class="cf-group">
+          <label class="cf-label">Cliente</label>
+          <select id="rec-cliente" style="width:100%" onchange="reciboOnClienteChange()"><option value="">Selecione um cliente...</option></select>
+        </div>
+        <div class="cf-group">
+          <label class="cf-label">Descrição do Serviço</label>
+          <textarea id="rec-descricao" rows="3" style="width:100%;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:14px;background:#22263a;color:#e2e8f0;outline:none;font-family:inherit;resize:vertical" placeholder="Descreva os serviços prestados..." oninput="reciboUpdatePreview()"></textarea>
+        </div>
+        <div class="cf-row2" style="margin-bottom:14px">
+          <div>
+            <label class="cf-label">Valor Total do Serviço (R$)</label>
+            <input type="number" id="rec-total" placeholder="0,00" min="0" step="0.01" style="width:100%" oninput="reciboUpdatePreview()">
+          </div>
+          <div>
+            <label class="cf-label">Valor Recebido (R$)</label>
+            <input type="number" id="rec-recebido" placeholder="0,00" min="0" step="0.01" style="width:100%" oninput="reciboUpdatePreview()">
+          </div>
+        </div>
+        <div class="cf-row2" style="margin-bottom:14px">
+          <div>
+            <label class="cf-label">Forma de Pagamento</label>
+            <select id="rec-forma" style="width:100%" onchange="reciboUpdatePreview()">
+              <option value="PIX">PIX</option>
+              <option value="Transferência">Transferência</option>
+              <option value="Dinheiro">Dinheiro</option>
+              <option value="Cheque">Cheque</option>
+            </select>
+          </div>
+          <div>
+            <label class="cf-label">Data do Pagamento</label>
+            <input type="date" id="rec-data" style="width:100%" oninput="reciboUpdatePreview()">
+          </div>
+        </div>
+        <div class="cf-group">
+          <label class="cf-label">Observação</label>
+          <textarea id="rec-obs" rows="2" style="width:100%;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:14px;background:#22263a;color:#e2e8f0;outline:none;font-family:inherit;resize:vertical" placeholder="Observações adicionais..."></textarea>
+        </div>
+        <button onclick="gerarReciboPDF()" style="width:100%;height:42px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:background 0.15s" onmouseover="this.style.background='#8b5cf6'" onmouseout="this.style.background='#7c3aed'">
+          <i class="ti ti-file-type-pdf" style="font-size:18px"></i> Gerar Recibo PDF
+        </button>
+      </div>
+      <div class="card" style="padding:1.25rem">
+        <p class="cf-label" style="margin-bottom:12px">Resumo do Recibo</p>
+        <div style="background:#0f1117;border-radius:10px;padding:16px;min-height:200px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:0.5px solid rgba(255,255,255,0.08)">
+            <span style="font-size:13px;color:#64748b">Cliente</span>
+            <span style="font-size:13px;color:#e2e8f0;text-align:right;max-width:60%" id="rec-preview-cliente">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:0.5px solid rgba(255,255,255,0.08)">
+            <span style="font-size:13px;color:#64748b">Data</span>
+            <span style="font-size:13px;color:#e2e8f0" id="rec-preview-data">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:0.5px solid rgba(255,255,255,0.08)">
+            <span style="font-size:13px;color:#64748b">Forma de Pagamento</span>
+            <span style="font-size:13px;color:#fbbf24" id="rec-preview-forma">PIX</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:0.5px solid rgba(255,255,255,0.08)">
+            <span style="font-size:13px;color:#64748b">Valor Total</span>
+            <span style="font-size:13px;color:#e2e8f0" id="rec-preview-total">R$ 0,00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding-top:8px">
+            <span style="font-size:15px;font-weight:600;color:#f1f5f9">Valor Recebido</span>
+            <span style="font-size:15px;font-weight:600;color:#22c55e" id="rec-preview-recebido">R$ 0,00</span>
+          </div>
+          <div style="margin-top:14px;padding-top:12px;border-top:0.5px solid rgba(255,255,255,0.06)">
+            <span style="font-size:11px;color:#4a5568;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px">Por extenso</span>
+            <span style="font-size:12px;color:#94a3b8;font-style:italic;line-height:1.5" id="rec-preview-extenso">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+function initShell() {
+  return fetch('sidebar.html')
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+      document.getElementById('shared-shell').innerHTML = html;
+      updateSidebarActive();
+      var keyEl = document.getElementById('sb-groq-key');
+      if (keyEl && GROQ_API_KEY) keyEl.value = GROQ_API_KEY;
+    })
+    .catch(function(e) { console.error('Erro ao carregar sidebar.html:', e); });
+}
+
+function hideLoading() {
+  var el = document.getElementById('loading-overlay');
+  if (el) el.style.display = 'none';
+}
+
+function showConnError(msg) {
+  var el   = document.getElementById('conn-error');
+  var msg2 = document.getElementById('conn-error-msg');
+  if (el)   el.style.display  = 'flex';
+  if (msg2) msg2.textContent  = msg;
+}
+
+// ── Recibo ────────────────────────────────────────────────────
+function valorPorExtenso(v) {
+  if (!v || v <= 0) return 'zero reais';
+  var cts   = Math.round(v * 100);
+  var reais = Math.floor(cts / 100);
+  var cent  = cts % 100;
+  var uns = ['','um','dois','tres','quatro','cinco','seis','sete','oito','nove',
+             'dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+  var dez = ['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+  var cen = ['','cem','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+  function g(n) {
+    if (n===0) return '';
+    if (n<20)  return uns[n];
+    if (n<100) { var d=Math.floor(n/10),u=n%10; return dez[d]+(u?' e '+uns[u]:''); }
+    var c=Math.floor(n/100),r=n%100;
+    return (c===1&&r>0?'cento':cen[c])+(r?' e '+g(r):'');
+  }
+  var partes = [];
+  var rr = reais;
+  if (rr>=1000000) { var m=Math.floor(rr/1000000); partes.push(g(m)+(m===1?' milhao':' milhoes')); rr%=1000000; }
+  if (rr>=1000)    { var k=Math.floor(rr/1000);    partes.push(k===1?'mil':g(k)+' mil');           rr%=1000;    }
+  if (rr>0)        { partes.push(g(rr)); }
+  var reaisStr = partes.length ? partes.join(' e ')+(reais===1?' real':' reais') : '';
+  var centStr  = cent>0 ? g(cent)+(cent===1?' centavo':' centavos') : '';
+  if (reaisStr && centStr) return reaisStr+' e '+centStr;
+  return reaisStr || centStr || 'zero reais';
+}
+
+function reciboPopulateClientes() {
+  var sel = document.getElementById('rec-cliente');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Selecione um cliente...</option>';
+  clients.slice().sort(function(a,b){ return a.nome.localeCompare(b.nome); }).forEach(function(c) {
+    var o = document.createElement('option');
+    o.value = c.reg;
+    o.textContent = c.nome;
+    sel.appendChild(o);
+  });
+}
+
+async function reciboOnClienteChange() {
+  var sel = document.getElementById('rec-cliente');
+  var reg = parseInt(sel.value);
+  var c   = clients.find(function(x){ return x.reg == reg; });
+  if (!c) {
+    document.getElementById('rec-preview-cliente').textContent = '—';
+    return;
+  }
+  document.getElementById('rec-preview-cliente').textContent = c.nome;
+  try {
+    var res = await sb.from('controle_mensal').select('valor_mes,valor_pago,valor_componente')
+      .eq('cliente_reg', reg).eq('mes', viewMonth).eq('ano', viewYear).single();
+    if (res.data) {
+      document.getElementById('rec-total').value    = res.data.valor_mes  || 0;
+      document.getElementById('rec-recebido').value = res.data.valor_pago || 0;
+    }
+  } catch(e) { console.error('[Recibo]', e); }
+  var mesNomeAtual = MESES[viewMonth] || (viewMonth+1);
+  var descEl = document.getElementById('rec-descricao');
+  if (descEl && !descEl.value) {
+    descEl.value = 'Servicos de Laboratorio de Protese Dental - ' + mesNomeAtual + '/' + viewYear;
+  }
+  reciboUpdatePreview();
+}
+
+function reciboUpdatePreview() {
+  var total    = parseFloat(document.getElementById('rec-total').value)    || 0;
+  var recebido = parseFloat(document.getElementById('rec-recebido').value) || 0;
+  var forma    = document.getElementById('rec-forma').value;
+  var dataVal  = document.getElementById('rec-data').value;
+  document.getElementById('rec-preview-total').textContent    = fmt(total);
+  document.getElementById('rec-preview-recebido').textContent = fmt(recebido);
+  document.getElementById('rec-preview-forma').textContent    = forma;
+  document.getElementById('rec-preview-data').textContent     = dataVal
+    ? new Date(dataVal+'T00:00:00').toLocaleDateString('pt-BR') : '—';
+  document.getElementById('rec-preview-extenso').textContent  = recebido > 0
+    ? valorPorExtenso(recebido) : '—';
+}
+
+function gerarReciboPDF() {
+  var clienteReg = document.getElementById('rec-cliente').value;
+  var cliente = clients.find(function(c){ return c.reg == clienteReg; });
+  if (!cliente) { alert('Selecione um cliente.'); return; }
+
+  var total    = parseFloat(document.getElementById('rec-total').value)    || 0;
+  var recebido = parseFloat(document.getElementById('rec-recebido').value) || 0;
+  var forma    = document.getElementById('rec-forma').value;
+  var dataVal  = document.getElementById('rec-data').value;
+  var descricao = document.getElementById('rec-descricao').value.trim() || 'Servicos de Laboratorio de Protese Dental';
+  var obs      = document.getElementById('rec-obs').value.trim();
+  var numero   = 'REC-' + Date.now().toString().slice(-6);
+  var dataStr  = dataVal ? new Date(dataVal+'T00:00:00').toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+  var extenso  = valorPorExtenso(recebido);
+
+  var doc = new jspdf.jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  var W = 210, margin = 18;
+
+  doc.setFillColor(75,0,130);
+  doc.rect(0,0,W,42,'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(20);
+  doc.setTextColor(255,255,255);
+  doc.text('IDEALI LABORATORIO', margin, 17);
+  doc.setFontSize(9);
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(196,181,253);
+  doc.text('Laboratorio de Protese Dental', margin, 24);
+  doc.setFontSize(14);
+  doc.setFont('helvetica','bold');
+  doc.setTextColor(253,224,71);
+  doc.text('RECIBO', W-margin, 15, {align:'right'});
+  doc.setFontSize(9);
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(196,181,253);
+  doc.text('N: '+numero, W-margin, 22, {align:'right'});
+  doc.text('Data: '+dataStr, W-margin, 28, {align:'right'});
+  doc.text('Emissao: '+new Date().toLocaleDateString('pt-BR'), W-margin, 34, {align:'right'});
+
+  var y = 52;
+
+  doc.setFillColor(49,7,107);
+  doc.roundedRect(margin, y-6, W-margin*2, 20, 3, 3, 'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(9);
+  doc.setTextColor(167,139,250);
+  doc.text('VALOR RECEBIDO', margin+4, y);
+  doc.setFontSize(18);
+  doc.setTextColor(253,224,71);
+  doc.text(fmt(recebido), W-margin-4, y+9, {align:'right'});
+  y += 24;
+
+  doc.setFillColor(26,29,39);
+  doc.roundedRect(margin, y-4, W-margin*2, 34, 3, 3, 'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(8);
+  doc.setTextColor(100,116,139);
+  doc.text('PAGADOR', margin+4, y+2);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(12);
+  doc.setTextColor(241,245,249);
+  doc.text(cliente.nome, margin+4, y+10);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(148,163,184);
+  var cpfCnpj = cliente.cpf ? (cliente.cpf.indexOf('CNPJ')>=0 ? cliente.cpf : 'CPF: '+cliente.cpf) : '';
+  var info1   = [cpfCnpj, cliente.cro].filter(Boolean).join('  |  ');
+  if (info1) doc.text(info1, margin+4, y+17);
+  var end1    = [cliente.end, cliente.bairro].filter(Boolean).join(', ');
+  var end2    = [cliente.cidade, cliente.uf].filter(Boolean).join(' - ');
+  var endFull = [end1, end2].filter(Boolean).join(' - ');
+  if (endFull) doc.text(endFull, margin+4, y+24);
+  y += 44;
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(9);
+  doc.setTextColor(100,116,139);
+  doc.text('REFERENTE A', margin, y);
+  y += 5;
+  doc.setFillColor(22,27,40);
+  var dLines = doc.splitTextToSize(descricao, W-margin*2-8);
+  doc.roundedRect(margin, y-3, W-margin*2, dLines.length*5+10, 3, 3, 'F');
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10);
+  doc.setTextColor(226,232,240);
+  doc.text(dLines, margin+4, y+4);
+  y += dLines.length*5+16;
+
+  doc.setFillColor(15,17,23);
+  doc.roundedRect(margin, y-4, W-margin*2, 36, 3, 3, 'F');
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100,116,139);
+  doc.text('Valor Total do Servico:', margin+4, y+5);
+  doc.setTextColor(226,232,240);
+  doc.text(fmt(total), W-margin-4, y+5, {align:'right'});
+  doc.setTextColor(100,116,139);
+  doc.text('Forma de Pagamento:', margin+4, y+14);
+  doc.setTextColor(253,224,71);
+  doc.text(forma, W-margin-4, y+14, {align:'right'});
+  doc.setDrawColor(51,65,85);
+  doc.line(margin+4, y+19, W-margin-4, y+19);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(11);
+  doc.setTextColor(167,139,250);
+  doc.text('Valor Recebido:', margin+4, y+28);
+  doc.setTextColor(74,222,128);
+  doc.text(fmt(recebido), W-margin-4, y+28, {align:'right'});
+  y += 44;
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(9);
+  doc.setTextColor(100,116,139);
+  doc.text('VALOR POR EXTENSO', margin, y);
+  y += 5;
+  doc.setFont('helvetica','italic');
+  doc.setFontSize(10);
+  doc.setTextColor(196,181,253);
+  var extLines = doc.splitTextToSize(extenso.toUpperCase(), W-margin*2);
+  doc.text(extLines, margin, y);
+  y += extLines.length*5+10;
+
+  if (obs) {
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(9);
+    doc.setTextColor(100,116,139);
+    doc.text('OBSERVACAO', margin, y);
+    y += 5;
+    var obsLines = doc.splitTextToSize(obs, W-margin*2);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+    doc.setTextColor(148,163,184);
+    doc.text(obsLines, margin, y);
+    y += obsLines.length*5+10;
+  }
+
+  var yAssin = Math.max(y+10, 230);
+  doc.setDrawColor(100,116,139);
+  doc.line(margin, yAssin, margin+70, yAssin);
+  doc.line(W-margin-70, yAssin, W-margin, yAssin);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100,116,139);
+  doc.text('Assinatura do Pagador', margin+35, yAssin+5, {align:'center'});
+  doc.text('Ideali Laboratorio', W-margin-35, yAssin+5, {align:'center'});
+
+  doc.setFillColor(49,7,107);
+  doc.rect(0,285,W,12,'F');
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.setTextColor(196,181,253);
+  doc.text('Ideali Laboratorio - Documento gerado em '+new Date().toLocaleString('pt-BR'), W/2, 292, {align:'center'});
+
+  doc.save('recibo-'+cliente.nome.split(' ')[0].toLowerCase()+'-'+numero+'.pdf');
+}
+
+function init() {
+  reciboPopulateClientes();
+  document.getElementById('rec-data').value = todayISO();
+  reciboUpdatePreview();
+  hideLoading();
+}
+
+initShell().then(function() { if (typeof init === 'function') init(); });
+</script>
+
+</body>
+</html>
