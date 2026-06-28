@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pedidos — Ideali Lab</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+  <link rel="stylesheet" href="shared.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="shared.js"></script>
+</head>
+<body>
+<div id="shared-shell"></div>
+
+<div class="app-header">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button onclick="openSidebar()" style="width:36px;height:36px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">&#9776;</button>
+    <div>
+      <p style="font-size:17px;font-weight:500;color:#f1f5f9">Pedidos</p>
+      <p id="ped-summary" style="font-size:12px;color:#64748b;margin-top:1px">0 pedidos</p>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span id="relogio" style="font-size:11px;color:#4a5568"></span>
+    <span id="sync-status" style="font-size:12px;color:#64748b"><span class="sync-dot" id="sync-dot"></span>Conectado</span>
+    <button class="cad-btn-primary" onclick="openPedidoPanel(null)"><i class="ti ti-plus" style="font-size:15px"></i> Novo Pedido</button>
+  </div>
+</div>
+
+<div id="pp-overlay" onclick="closePedidoPanel()"></div>
+<div id="pp-panel">
+  <div class="cp-header">
+    <div style="flex:1;min-width:0">
+      <p id="pp-title" style="font-size:15px;font-weight:600;color:#f1f5f9">Novo Pedido</p>
+      <p id="pp-subtitle" style="font-size:11px;color:#64748b;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Preencha os dados</p>
+    </div>
+    <button class="sb-close" onclick="closePedidoPanel()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="cp-body" id="pp-body"></div>
+  <div class="cp-footer">
+    <button class="cad-btn-ghost" onclick="closePedidoPanel()">Cancelar</button>
+    <button class="cad-btn-primary" id="pp-save-btn" onclick="savePedidoPanel()"><i class="ti ti-device-floppy" style="font-size:14px"></i> Salvar</button>
+  </div>
+</div>
+
+<main id="page-content">
+  <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+    <div style="flex:1;min-width:180px;position:relative">
+      <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;color:#4a5568"></i>
+      <input type="text" id="ped-search" placeholder="Buscar por cliente ou descrição..." style="width:100%;padding-left:34px" oninput="renderPedidosTable()">
+    </div>
+    <select id="ped-status-filter" style="width:140px" onchange="renderPedidosTable()">
+      <option value="">Todos status</option>
+      <option value="orcamento">Orçamento</option>
+      <option value="producao">Produção</option>
+      <option value="finalizado">Finalizado</option>
+      <option value="entregue">Entregue</option>
+      <option value="cancelado">Cancelado</option>
+    </select>
+    <select id="ped-cliente-filter" style="width:180px" onchange="renderPedidosTable()">
+      <option value="">Todos os clientes</option>
+    </select>
+    <button id="ped-clear-filters" onclick="pedClearFilters()" style="display:none;height:36px;padding:0 12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap">&#10005; Limpar</button>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="overflow-x:auto;max-height:65vh">
+      <table class="cad-table">
+        <thead><tr>
+          <th style="width:40px">#</th>
+          <th style="cursor:pointer;user-select:none" onclick="pedSortBy('cliente')">Cliente <span id="ped-arrow-cliente" style="display:inline-block;width:12px"></span></th>
+          <th style="cursor:pointer;user-select:none" onclick="pedSortBy('descricao')">Descrição <span id="ped-arrow-descricao" style="display:inline-block;width:12px"></span></th>
+          <th style="cursor:pointer;user-select:none" onclick="pedSortBy('criado')">Data Cadastro <span id="ped-arrow-criado" style="display:inline-block;width:12px"></span></th>
+          <th style="cursor:pointer;user-select:none" onclick="pedSortBy('previsto')">Data Prevista <span id="ped-arrow-previsto" style="display:inline-block;width:12px"></span></th>
+          <th style="cursor:pointer;user-select:none" onclick="pedSortBy('valor')">Valor <span id="ped-arrow-valor" style="display:inline-block;width:12px"></span></th>
+          <th style="cursor:pointer;user-select:none" onclick="pedSortBy('status')">Status <span id="ped-arrow-status" style="display:inline-block;width:12px"></span></th>
+        </tr></thead>
+        <tbody id="ped-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+var pedidos = [];
+var selectedPedidoId = null;
+var pedSortCol = null, pedSortDir = null;
+var PED_SORT_COLS = ['cliente','descricao','criado','previsto','valor','status'];
+var PED_STATUS_ORDER = ['orcamento','producao','finalizado','entregue','cancelado'];
+var PED_STATUS = {
+  orcamento: {l:'Orçamento', c:'#64748b', bg:'rgba(100,116,139,0.15)'},
+  producao:  {l:'Produção',  c:'#3b82f6', bg:'rgba(59,130,246,0.15)'},
+  finalizado:{l:'Finalizado',c:'#22c55e', bg:'rgba(34,197,94,0.15)'},
+  entregue:  {l:'Entregue',  c:'#8b5cf6', bg:'rgba(139,92,246,0.15)'},
+  cancelado: {l:'Cancelado', c:'#ef4444', bg:'rgba(239,68,68,0.15)'},
+};
+
+async function loadPedidos() {
+  try {
+    var res = await sb.from('pedidos').select('*').order('created_at',{ascending:false});
+    if (res.error) throw res.error;
+    pedidos = res.data || [];
+  } catch(e) { console.error('loadPedidos:',e); pedidos=[]; }
+  populatePedidoClientFilter();
+  renderPedidosTable();
+}
+
+function populatePedidoClientFilter() {
+  var sel = document.getElementById('ped-cliente-filter');
+  if (!sel) return;
+  var cur = sel.value;
+  var regs = [];
+  pedidos.forEach(function(p){ if(p.cliente_reg && regs.indexOf(p.cliente_reg)<0) regs.push(p.cliente_reg); });
+  var opts = regs
+    .map(function(r){ return {reg:r, nome:cliNomePed(r)}; })
+    .filter(function(x){ return x.nome && x.nome!=='—'; })
+    .sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); });
+  sel.innerHTML = '<option value="">Todos os clientes</option>' +
+    opts.map(function(x){ return '<option value="'+x.reg+'"'+(cur==x.reg?' selected':'')+'>'+escHtml(x.nome)+'</option>'; }).join('');
+}
+
+function pedSortBy(col) {
+  if (pedSortCol !== col) { pedSortCol = col; pedSortDir = 'asc'; }
+  else if (pedSortDir === 'asc') { pedSortDir = 'desc'; }
+  else { pedSortCol = null; pedSortDir = null; }
+  renderPedidosTable();
+}
+
+function pedSortValue(p, col) {
+  switch (col) {
+    case 'cliente':   return (p.cliente_reg ? cliNomePed(p.cliente_reg) : '').toLowerCase();
+    case 'descricao': return (p.descricao || '').toLowerCase();
+    case 'criado':    return p.created_at ? new Date(p.created_at).getTime() : 0;
+    case 'previsto':  return p.data_prevista ? new Date(p.data_prevista).getTime() : Infinity;
+    case 'valor':     return Number(p.valor || 0);
+    case 'status':    return PED_STATUS_ORDER.indexOf(p.status);
+    default: return '';
+  }
+}
+
+function updatePedSortArrows() {
+  PED_SORT_COLS.forEach(function(c) {
+    var el = document.getElementById('ped-arrow-'+c);
+    if (!el) return;
+    el.textContent = pedSortCol === c ? (pedSortDir === 'asc' ? '↑' : '↓') : '';
+  });
+}
+
+function pedClearFilters() {
+  var s = document.getElementById('ped-search');         if (s) s.value = '';
+  var sf = document.getElementById('ped-status-filter');  if (sf) sf.value = '';
+  var cf = document.getElementById('ped-cliente-filter'); if (cf) cf.value = '';
+  pedSortCol = null; pedSortDir = null;
+  renderPedidosTable();
+}
+
+function updatePedClearBtn(q, sf, cf) {
+  var btn = document.getElementById('ped-clear-filters');
+  if (!btn) return;
+  btn.style.display = (!!q || !!sf || !!cf || !!pedSortCol) ? '' : 'none';
+}
+
+function renderPedidosTable() {
+  var q=(document.getElementById('ped-search')||{value:''}).value.toLowerCase().trim();
+  var sf=(document.getElementById('ped-status-filter')||{value:''}).value;
+  var cf=parseInt((document.getElementById('ped-cliente-filter')||{value:''}).value)||0;
+  var filtered=pedidos.filter(function(p){
+    if(sf&&p.status!==sf)return false;
+    if(cf&&p.cliente_reg!==cf)return false;
+    var cn=p.cliente_reg?cliNomePed(p.cliente_reg):'';
+    return !q||[p.descricao||'',cn,p.observacao||''].join(' ').toLowerCase().includes(q);
+  });
+  if (pedSortCol) {
+    filtered = filtered.slice().sort(function(a,b){
+      var va=pedSortValue(a,pedSortCol), vb=pedSortValue(b,pedSortCol);
+      var cmp = typeof va==='string' ? va.localeCompare(vb,'pt-BR') : (va-vb);
+      return pedSortDir==='desc' ? -cmp : cmp;
+    });
+  }
+  updatePedSortArrows();
+  updatePedClearBtn(q, sf, cf);
+  var tot=filtered.length, totVal=filtered.reduce(function(s,p){return s+Number(p.valor||0);},0);
+  var se=document.getElementById('ped-summary');
+  if(se)se.textContent=tot+' pedido'+(tot!==1?'s':'')+' · '+fmt(totVal);
+  var tb=document.getElementById('ped-tbody');if(!tb)return;
+  tb.innerHTML=filtered.map(function(p,i){
+    var st=PED_STATUS[p.status]||PED_STATUS.orcamento;
+    return '<tr onclick="openPedidoPanel(\''+p.id+'\')">'+
+      '<td style="color:#4a5568;font-size:11px">'+(i+1)+'</td>'+
+      '<td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500">'+
+        (p.cliente_reg?escHtml(cliNomePed(p.cliente_reg)):'<span style="color:#4a5568">—</span>')+'</td>'+
+      '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#94a3b8">'+escHtml(p.descricao||'—')+'</td>'+
+      '<td style="color:#64748b;white-space:nowrap">'+fmtCreatedAt(p.created_at)+'</td>'+
+      '<td style="white-space:nowrap">'+(p.data_prevista
+        ? '<span style="color:#64748b">'+fmtDate(p.data_prevista)+'</span>'
+        : '<span style="color:#4a5568;font-style:italic">'+addWorkdays(p.created_at||new Date().toISOString(),7)+'*</span>')+'</td>'+
+      '<td style="color:#4ade80;font-weight:500;white-space:nowrap">'+fmt(p.valor||0)+'</td>'+
+      '<td style="white-space:nowrap"><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:'+st.bg+';color:'+st.c+'">'+st.l+'</span>'+(p.urgente?' <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;background:#3d1d1d;color:#fca5a5">🚨</span>':'')+' </td>'+
+    '</tr>';
+  }).join('');
+}
+
+function openPedidoPanel(id) {
+  selectedPedidoId = id;
+  var p = id ? pedidos.find(function(x){return x.id===id;}) : null;
+  var te=document.getElementById('pp-title'),se=document.getElementById('pp-subtitle');
+  if(te)te.textContent=p?'Editar Pedido':'Novo Pedido';
+  if(se)se.textContent=p?(p.descricao||'Pedido'):'Preencha os dados do pedido';
+  var sc=clients.slice().sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR');});
+  var cliOpts='<option value="">— Nenhum —</option>'+sc.map(function(c){
+    return '<option value="'+c.reg+'"'+(p&&p.cliente_reg==c.reg?' selected':'')+'>'+escHtml(c.nome)+'</option>';
+  }).join('');
+  var stOpts=Object.keys(PED_STATUS).map(function(k){
+    var sel=(p&&p.status===k)||(!p&&k==='orcamento');
+    return '<option value="'+k+'"'+(sel?' selected':'')+'>'+PED_STATUS[k].l+'</option>';
+  }).join('');
+  var clienteHeader='';
+  if(p&&p.cliente_reg){
+    var c=clients.find(function(x){return x.reg==p.cliente_reg;});
+    if(c){var col=avatarColors[c.reg%avatarColors.length];
+      clienteHeader='<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#22263a;border-radius:10px;margin-bottom:16px">'+
+        '<div style="width:38px;height:38px;border-radius:50%;background:'+col[0]+';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:'+col[1]+';flex-shrink:0">'+initials(c.nome)+'</div>'+
+        '<div><p style="font-size:14px;font-weight:500;color:#f1f5f9">'+escHtml(c.nome)+'</p>'+
+        '<p style="font-size:11px;color:#64748b">'+(c.cidade||'')+(c.cidade&&c.uf?' / '+c.uf:c.uf||'')+'</p></div></div>';
+    }
+  }
+  var statusBtns=p?'<div class="cf-group"><label class="cf-label">Mudar status</label>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+    Object.keys(PED_STATUS).map(function(k){
+      var st=PED_STATUS[k],active=p.status===k;
+      return '<button onclick="changePedidoStatus(\''+k+'\')" style="padding:5px 12px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:0.5px solid '+st.c+';background:'+(active?st.bg:'transparent')+';color:'+(active?st.c:'#64748b')+';transition:all 0.15s">'+st.l+'</button>';
+    }).join('')+'</div></div>':'';
+  var body=document.getElementById('pp-body');if(!body)return;
+  body.innerHTML=clienteHeader+
+    '<div class="cf-group"><label class="cf-label">Cliente</label><select id="pf-cliente" style="width:100%">'+cliOpts+'</select></div>'+
+    '<div class="cf-group"><label class="cf-label">Descrição do serviço <span style="color:#ef4444">*</span></label>'+
+      '<input type="text" id="pf-desc" style="width:100%" value="'+(p?escHtml(p.descricao||''):'')+'"></div>'+
+    '<div class="cf-row2">'+
+      '<div class="cf-group"><label class="cf-label">Valor (R$)</label><input type="number" id="pf-valor" style="width:100%" min="0" step="0.01" value="'+(p&&p.valor?p.valor:'')+'"></div>'+
+      '<div class="cf-group"><label class="cf-label">Data prevista</label><input type="date" id="pf-data" style="width:100%" value="'+(p&&p.data_prevista?p.data_prevista:'')+'"></div>'+
+    '</div>'+
+    '<div class="cf-group"><label class="cf-label">Status</label><select id="pf-status" style="width:100%">'+stOpts+'</select></div>'+
+    '<div class="cf-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:#22263a;border-radius:8px;border:0.5px solid rgba(255,255,255,0.08)">'+
+      '<input type="checkbox" id="pf-urgente"'+(p&&p.urgente?' checked':'')+' style="width:16px;height:16px;cursor:pointer;accent-color:#ef4444">'+
+      '<span style="font-size:13px;color:#fca5a5;font-weight:500">🚨 Marcar como Urgente</span></label></div>'+
+    '<div class="cf-group"><label class="cf-label">Observação</label>'+
+      '<textarea id="pf-obs" style="width:100%;height:70px;resize:vertical;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:13px;background:#22263a;color:#e2e8f0;outline:none;font-family:inherit">'+escHtml(p&&p.observacao||'')+'</textarea></div>'+
+    statusBtns+
+    '<div id="pp-error" style="display:none;font-size:12px;color:#fca5a5;background:#3d1d1d;border:0.5px solid rgba(239,68,68,0.3);border-radius:8px;padding:8px 12px"></div>';
+  document.getElementById('pp-overlay').classList.add('open');
+  document.getElementById('pp-panel').classList.add('open');
+  setTimeout(function(){var i=document.getElementById('pf-desc');if(i)i.focus();},80);
+}
+
+function closePedidoPanel() {
+  document.getElementById('pp-overlay').classList.remove('open');
+  document.getElementById('pp-panel').classList.remove('open');
+  selectedPedidoId = null;
+}
+
+async function savePedidoPanel() {
+  var desc=(document.getElementById('pf-desc')||{value:''}).value.trim();
+  var errEl=document.getElementById('pp-error');
+  if(!desc){if(errEl){errEl.textContent='Descrição é obrigatória.';errEl.style.display='block';}return;}
+  if(errEl)errEl.style.display='none';
+  var btn=document.getElementById('pp-save-btn');
+  if(btn){btn.disabled=true;btn.style.opacity='0.55';}
+  var cliReg=(document.getElementById('pf-cliente')||{value:''}).value;
+  var obj={
+    descricao:desc,
+    cliente_reg:cliReg?parseInt(cliReg):null,
+    valor:parseFloat((document.getElementById('pf-valor')||{value:0}).value)||0,
+    data_prevista:(document.getElementById('pf-data')||{value:null}).value||null,
+    status:(document.getElementById('pf-status')||{value:'orcamento'}).value,
+    observacao:(document.getElementById('pf-obs')||{value:''}).value.trim(),
+    urgente:!!(document.getElementById('pf-urgente')&&document.getElementById('pf-urgente').checked)
+  };
+  try {
+    if(selectedPedidoId){
+      var r=await sb.from('pedidos').update(obj).eq('id',selectedPedidoId);
+      if(r.error)throw r.error;
+    } else {
+      var r2=await sb.from('pedidos').insert(obj);
+      if(r2.error)throw r2.error;
+    }
+    closePedidoPanel();
+    await loadPedidos();
+  } catch(e){
+    console.error('savePedidoPanel:',e);
+    if(errEl){errEl.textContent=e.message||'Erro ao salvar.';errEl.style.display='block';}
+  } finally {
+    if(btn){btn.disabled=false;btn.style.opacity='';}
+  }
+}
+
+async function changePedidoStatus(status) {
+  if(!selectedPedidoId)return;
+  var id=selectedPedidoId;
+  var r=await sb.from('pedidos').update({status:status}).eq('id',id);
+  if(r.error){console.error('changePedidoStatus:',r.error);return;}
+  for(var i=0;i<pedidos.length;i++){if(pedidos[i].id===id){pedidos[i].status=status;break;}}
+  openPedidoPanel(id);
+  renderPedidosTable();
+}
+
+function initShell() {
+  return fetch('sidebar.html')
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+      document.getElementById('shared-shell').innerHTML = html;
+      updateSidebarActive();
+      var keyEl = document.getElementById('sb-groq-key');
+      if (keyEl && GROQ_API_KEY) keyEl.value = GROQ_API_KEY;
+    })
+    .catch(function(e) { console.error('Erro ao carregar sidebar.html:', e); });
+}
+
+function hideLoading() {
+  var el = document.getElementById('loading-overlay');
+  if (el) el.style.display = 'none';
+}
+
+function showConnError(msg) {
+  var el   = document.getElementById('conn-error');
+  var msg2 = document.getElementById('conn-error-msg');
+  if (el)   el.style.display  = 'flex';
+  if (msg2) msg2.textContent  = msg;
+}
+
+async function init() {
+  await loadPedidos();
+  hideLoading();
+}
+
+initShell().then(function() { if (typeof init === 'function') init(); });
+</script>
+</body>
+</html>

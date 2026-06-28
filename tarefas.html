@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tarefas — Ideali Lab</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+  <link rel="stylesheet" href="shared.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="shared.js"></script>
+</head>
+<body>
+<div id="shared-shell"></div>
+
+<div class="app-header">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button onclick="openSidebar()" style="width:36px;height:36px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">&#9776;</button>
+    <p style="font-size:17px;font-weight:500;color:#f1f5f9">Tarefas</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span id="relogio" style="font-size:11px;color:#4a5568"></span>
+    <span id="sync-status" style="font-size:12px;color:#64748b"><span class="sync-dot" id="sync-dot"></span>Conectado</span>
+  </div>
+</div>
+
+<main id="page-content">
+  <div id="tarefas-grid" style="display:grid;grid-template-columns:1fr 1.6fr;gap:12px">
+    <div id="tarefas-client-wrap" class="card" style="padding:0.5rem;display:flex;flex-direction:column;max-height:calc(100vh - 200px)">
+      <div style="position:relative;margin-bottom:6px;flex-shrink:0">
+        <i class="ti ti-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:14px;color:#4a5568"></i>
+        <input type="text" id="tarefas-search" placeholder="Buscar cliente..." style="width:100%;padding-left:30px;height:32px;font-size:12px" oninput="renderTarefasClientList()">
+      </div>
+      <div style="overflow-y:auto;flex:1" id="tarefas-client-list"></div>
+    </div>
+    <div class="card" id="tarefas-detail-panel">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px">
+        <i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i>
+        <p style="font-size:13px;color:#4a5568">Selecione um cliente para ver as tarefas</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+var tarefas = [];
+var selectedTarefaClient = null;
+var tarefasAbertas = {};
+var arquivadasOpen = false;
+var _tarefasMap = {};
+
+function buildTarefasAbertas() {
+  tarefasAbertas = {};
+  tarefas.forEach(function(t) {
+    if (!t.arquivada && !t.concluida && t.status !== 'concluida') {
+      if (t.cliente_reg) tarefasAbertas[t.cliente_reg] = (tarefasAbertas[t.cliente_reg]||0) + 1;
+    }
+  });
+}
+
+async function loadTarefas() {
+  try {
+    var res = await sb.from('tarefas').select('*').order('created_at');
+    if (res.error) throw res.error;
+    tarefas = res.data || [];
+  } catch(e) {
+    console.error('loadTarefas:', e);
+    tarefas = [];
+  }
+  buildTarefasAbertas();
+  renderTarefasClientList();
+  renderTarefasDetail();
+}
+
+function renderTarefasClientList() {
+  var panel = document.getElementById('tarefas-client-list');
+  if (!panel) return;
+  var searchEl = document.getElementById('tarefas-search');
+  var q = (searchEl ? searchEl.value : '').toLowerCase().trim();
+  var sorted = clients
+    .filter(function(c) { return !q || c.nome.toLowerCase().includes(q); })
+    .slice()
+    .sort(function(a,b) { return a.nome.localeCompare(b.nome); });
+  panel.innerHTML = sorted.map(function(c) {
+    var col = avatarColors[c.reg % avatarColors.length];
+    var bg = col[0], fg = col[1];
+    var isActive = selectedTarefaClient && selectedTarefaClient.reg===c.reg;
+    var ct   = tarefas.filter(function(t){return t.cliente_reg==c.reg && !t.arquivada;});
+    var done = ct.filter(function(t){return t.status==='concluida'||(!t.status&&t.concluida);}).length;
+    var allDone = ct.length > 0 && done===ct.length;
+    var badge = ct.length
+      ? '<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px;background:' + (allDone?'#0d3d2b':'#3d2e1d') + ';color:' + (allDone?'#4ade80':'#fcd34d') + ';flex-shrink:0">' + ct.length + '</span>'
+      : '';
+    return '<div class="row-item' + (isActive?' active':'') + '" onclick="selectTarefaClient(' + c.reg + ')">' +
+      '<div style="width:32px;height:32px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:' + fg + ';flex-shrink:0">' + initials(c.nome) + '</div>' +
+      '<div style="min-width:0;flex:1"><p style="font-size:12px;font-weight:500;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + c.nome + '</p>' +
+      '<p style="font-size:11px;color:' + (ct.length ? (allDone?'#22c55e':'#fbbf24') : '#4a5568') + '">' + (ct.length ? done+'/'+ct.length+' tarefa'+(ct.length!==1?'s':'') : 'Sem tarefas') + '</p></div>' +
+      badge + '</div>';
+  }).join('');
+}
+
+function renderTarefasDetail() {
+  var panel = document.getElementById('tarefas-detail-panel');
+  if (!panel) return;
+  if (!selectedTarefaClient) {
+    panel.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Selecione um cliente para ver as tarefas</p></div>';
+    return;
+  }
+  var c   = selectedTarefaClient;
+  var col = avatarColors[c.reg % avatarColors.length];
+  var bg = col[0], fg = col[1];
+  var all      = tarefas.filter(function(t){return t.cliente_reg==c.reg;});
+  var active   = all.filter(function(t){return !t.arquivada;});
+  var archived = all.filter(function(t){return t.arquivada;});
+  var done     = active.filter(function(t){return t.status==='concluida'||(!t.status&&t.concluida);}).length;
+  var B = 'width:28px;height:28px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s';
+
+  function activeRow(t, idx) {
+    _tarefasMap[idx] = t.id;
+    var st     = t.status || (t.concluida ? 'concluida' : 'pendente');
+    var isDone = st === 'concluida';
+    var isExec = st === 'em_execucao';
+    var itemExtra = isExec ? ';background:#2a1a04;border-color:rgba(251,146,60,0.3)' : '';
+    var textClr  = isDone ? '#4a5568' : (isExec ? '#fde68a' : '#e2e8f0');
+    var textDec  = isDone ? 'text-decoration:line-through' : '';
+    var circBrd  = isDone ? '#22c55e' : 'rgba(255,255,255,0.15)';
+    var circBg   = isDone ? '#0d3d2b' : '#1a1d27';
+    var circClr  = isDone ? '#22c55e' : '#4a5568';
+    var circIco  = isDone ? 'ti-check' : 'ti-circle';
+    var clkBrd   = isExec ? 'rgba(251,146,60,0.7)' : 'rgba(255,255,255,0.1)';
+    var clkBg    = isExec ? '#3d1f00' : '#1a1d27';
+    var clkClr   = isExec ? '#fb923c' : '#4a5568';
+    return '<div class="task-item" style="' + itemExtra + '">' +
+      '<button onclick="toggleTarefa(_tarefasMap[' + idx + '])" title="' + (isDone?'Desmarcar':'Concluir') + '" style="' + B + ';border-radius:50%;border:0.5px solid ' + circBrd + ';background:' + circBg + ';color:' + circClr + '"><i class="ti ' + circIco + '" style="font-size:14px"></i></button>' +
+      '<button onclick="setEmExecucao(_tarefasMap[' + idx + '])" title="' + (isExec?'Remover execução':'Em execução') + '" style="' + B + ';border:0.5px solid ' + clkBrd + ';background:' + clkBg + ';color:' + clkClr + '"><i class="ti ti-clock" style="font-size:14px"></i></button>' +
+      '<div style="flex:1;min-width:0"><span style="font-size:13px;color:' + textClr + ';' + textDec + '">' + t.texto + '</span>' +
+      '<p style="font-size:10px;color:#4a5568;margin-top:1px">' + fmtDate(t.data) + '</p></div>' +
+      '<button onclick="arquivarTarefa(_tarefasMap[' + idx + '])" title="Arquivar" style="' + B + ';border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#64748b"><i class="ti ti-archive" style="font-size:13px"></i></button>' +
+      '<button onclick="deleteTarefa(_tarefasMap[' + idx + '])" title="Excluir" style="' + B + ';border:0.5px solid rgba(239,68,68,0.3);background:#3d1d1d;color:#ef4444"><i class="ti ti-trash" style="font-size:13px"></i></button>' +
+      '</div>';
+  }
+
+  function archivedRow(t, idx) {
+    _tarefasMap[idx] = t.id;
+    return '<div class="task-item" style="opacity:0.65">' +
+      '<button onclick="desarquivarTarefa(_tarefasMap[' + idx + '])" title="Restaurar" style="' + B + ';border:0.5px solid rgba(147,197,253,0.3);background:#1a2a40;color:#93c5fd"><i class="ti ti-archive-off" style="font-size:13px"></i></button>' +
+      '<div style="flex:1;min-width:0"><span style="font-size:13px;color:#4a5568;text-decoration:line-through">' + t.texto + '</span>' +
+      '<p style="font-size:10px;color:#4a5568;margin-top:1px">' + fmtDate(t.data) + '</p></div>' +
+      '<button onclick="deleteTarefa(_tarefasMap[' + idx + '])" title="Excluir" style="' + B + ';border:0.5px solid rgba(239,68,68,0.3);background:#3d1d1d;color:#ef4444"><i class="ti ti-trash" style="font-size:13px"></i></button>' +
+      '</div>';
+  }
+
+  var activeHTML = active.length
+    ? active.map(function(t,i){return activeRow(t,i);}).join('')
+    : '<div style="text-align:center;padding:1.5rem 1rem;color:#4a5568"><i class="ti ti-clipboard-list" style="font-size:28px;margin-bottom:6px;display:block"></i><p style="font-size:13px">Nenhuma tarefa ativa</p></div>';
+
+  var archivedHTML = archived.length
+    ? '<div style="margin-top:12px;border-top:0.5px solid rgba(255,255,255,0.06);padding-top:8px">' +
+        '<button onclick="toggleArquivadas()" style="display:flex;align-items:center;gap:6px;width:100%;background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;padding:4px 2px;font-family:inherit">' +
+        '<i class="ti ti-archive" style="font-size:13px"></i><span>Arquivadas (' + archived.length + ')</span>' +
+        '<i class="ti ti-chevron-down" id="arquivadas-arrow" style="font-size:11px;margin-left:auto;transition:transform 0.2s;transform:' + (arquivadasOpen?'rotate(180deg)':'rotate(0deg)') + '"></i></button>' +
+        '<div id="arquivadas-section" style="display:' + (arquivadasOpen?'block':'none') + ';margin-top:6px">' + archived.map(function(t,i){return archivedRow(t,i+10000);}).join('') + '</div></div>'
+    : '';
+
+  var countBadge = active.length
+    ? '<span style="font-size:11px;color:#64748b;background:#22263a;border-radius:8px;padding:3px 10px;flex-shrink:0">' + done + '/' + active.length + ' concluida' + (done!==1?'s':'') + '</span>'
+    : '';
+
+  panel.innerHTML =
+    '<button class="mob-back" onclick="mobBackTarefas()" style="align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:13px;margin-bottom:14px"><i class="ti ti-arrow-left" style="font-size:14px"></i> Voltar</button>' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' +
+      '<div style="width:38px;height:38px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:' + fg + ';flex-shrink:0">' + initials(c.nome) + '</div>' +
+      '<div style="flex:1;min-width:0"><p style="font-size:14px;font-weight:500;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + c.nome + '</p>' +
+      '<p style="font-size:11px;color:#64748b">Todas as tarefas</p></div>' + countBadge + '</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:8px">' +
+      '<input type="text" id="tarefa-input" placeholder="Nova tarefa..." style="flex:1" onkeydown="if(event.key===\'Enter\')addTarefa()">' +
+      '<button id="tarefa-add-btn" class="task-add-btn" onclick="addTarefa()"><i class="ti ti-plus" style="font-size:15px"></i> Adicionar</button>' +
+    '</div>' +
+    '<div id="tarefa-error" style="display:none;font-size:12px;color:#fca5a5;background:#3d1d1d;border:0.5px solid rgba(239,68,68,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px"></div>' +
+    '<div style="max-height:380px;overflow-y:auto">' + activeHTML + archivedHTML + '</div>';
+
+  setTimeout(function(){var i=document.getElementById('tarefa-input');if(i)i.focus();}, 30);
+}
+
+function selectTarefaClient(reg) {
+  selectedTarefaClient = clients.find(function(c){return c.reg===reg;});
+  if (isMobile()) { var g = document.getElementById('tarefas-grid'); if (g) g.classList.add('mob-detail'); }
+  renderTarefasClientList();
+  renderTarefasDetail();
+}
+
+function mobBackTarefas() {
+  var g = document.getElementById('tarefas-grid');
+  if (g) g.classList.remove('mob-detail');
+  selectedTarefaClient = null;
+  renderTarefasClientList(); renderTarefasDetail();
+}
+
+async function addTarefa() {
+  if (!selectedTarefaClient) return;
+  var input  = document.getElementById('tarefa-input');
+  var btn    = document.getElementById('tarefa-add-btn');
+  var errEl  = document.getElementById('tarefa-error');
+  if (!input) return;
+  var texto = input.value.trim();
+  if (!texto) return;
+  input.disabled = true;
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.55'; }
+  if (errEl) errEl.style.display = 'none';
+  try {
+    var res = await sb.from('tarefas')
+      .insert({texto:texto, concluida:false, status:'pendente', data:todayISO(), cliente_reg:selectedTarefaClient.reg})
+      .select().single();
+    if (res.error) throw res.error;
+    tarefas.push(res.data);
+    renderTarefasClientList();
+    renderTarefasDetail();
+    var newInput = document.getElementById('tarefa-input');
+    if (newInput) newInput.focus();
+  } catch(e) {
+    console.error('addTarefa:', e);
+    input.disabled = false;
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+    if (errEl) { errEl.textContent = e.message || 'Erro ao salvar tarefa.'; errEl.style.display = 'block'; }
+  }
+}
+
+async function toggleTarefa(id) {
+  var t = tarefas.find(function(x){return x.id==id;});
+  if (!t) return;
+  var cur  = t.status || (t.concluida ? 'concluida' : 'pendente');
+  var next = (cur === 'concluida') ? 'pendente' : 'concluida';
+  var res  = await sb.from('tarefas').update({status:next, concluida:next==='concluida'}).eq('id', id);
+  if (res.error) { console.error('toggleTarefa:', res.error.message); return; }
+  await loadTarefas();
+}
+
+async function setEmExecucao(id) {
+  var t = tarefas.find(function(x){return x.id==id;});
+  if (!t) return;
+  var cur  = t.status || (t.concluida ? 'concluida' : 'pendente');
+  var next = (cur === 'em_execucao') ? 'pendente' : 'em_execucao';
+  var res  = await sb.from('tarefas').update({status:next, concluida:false}).eq('id', id);
+  if (res.error) { console.error('setEmExecucao:', res.error.message); return; }
+  await loadTarefas();
+}
+
+async function deleteTarefa(id) {
+  var res = await sb.from('tarefas').delete().eq('id', id);
+  if (res.error) { console.error('deleteTarefa:', res.error.message); return; }
+  await loadTarefas();
+}
+
+async function arquivarTarefa(id) {
+  var res = await sb.from('tarefas').update({arquivada:true}).eq('id', id);
+  if (res.error) { console.error('arquivarTarefa:', res.error.message); return; }
+  await loadTarefas();
+}
+
+async function desarquivarTarefa(id) {
+  var res = await sb.from('tarefas').update({arquivada:false}).eq('id', id);
+  if (res.error) { console.error('desarquivarTarefa:', res.error.message); return; }
+  await loadTarefas();
+}
+
+function toggleArquivadas() {
+  arquivadasOpen = !arquivadasOpen;
+  var sec   = document.getElementById('arquivadas-section');
+  var arrow = document.getElementById('arquivadas-arrow');
+  if (sec)   sec.style.display = arquivadasOpen ? 'block' : 'none';
+  if (arrow) arrow.style.transform = arquivadasOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+function initShell() {
+  return fetch('sidebar.html')
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+      document.getElementById('shared-shell').innerHTML = html;
+      updateSidebarActive();
+      var keyEl = document.getElementById('sb-groq-key');
+      if (keyEl && GROQ_API_KEY) keyEl.value = GROQ_API_KEY;
+    })
+    .catch(function(e) { console.error('Erro ao carregar sidebar.html:', e); });
+}
+
+function hideLoading() {
+  var el = document.getElementById('loading-overlay');
+  if (el) el.style.display = 'none';
+}
+
+function showConnError(msg) {
+  var el   = document.getElementById('conn-error');
+  var msg2 = document.getElementById('conn-error-msg');
+  if (el)   el.style.display  = 'flex';
+  if (msg2) msg2.textContent  = msg;
+}
+
+async function init() {
+  await loadTarefas();
+  hideLoading();
+  var autoReg = localStorage.getItem('ideali-tarefas-autoselect');
+  if (autoReg) {
+    localStorage.removeItem('ideali-tarefas-autoselect');
+    selectTarefaClient(parseInt(autoReg));
+  }
+}
+
+initShell().then(function() { if (typeof init === 'function') init(); });
+</script>
+</body>
+</html>
