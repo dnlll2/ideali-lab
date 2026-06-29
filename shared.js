@@ -41,7 +41,10 @@ var clients = [
   {reg:26,nome:"Raquel Ghesso Brentzel",        cpf:"435.301.458-74",  cro:"119391",       end:"Rua Ibitirama, 166 - Cj 902 Torre Office", bairro:"Vila Prudente",      cidade:"Sao Paulo",           uf:"SP", cep:"03134-000", tel:"",                  obs:""},
   {reg:27,nome:"Kleber Luander",              cpf:"144.031.517-52",  cro:"CRO-RJ 43164", end:"Av. Rotary, 947",                                bairro:"Centro",             cidade:"Sao Joao da Barra",   uf:"RJ", cep:"28200-000", tel:"",                  obs:"Lente Novo"},
   {reg:28,nome:"Luiz Carlos Figueiredo Seixas",cpf:"107.126.347-11",cro:"CRO-RJ 35796", end:"Rua Conde de Bonfim, 255 - Sala 810",            bairro:"Tijuca",             cidade:"Rio de Janeiro",      uf:"RJ", cep:"20520-051", tel:"",                  obs:""},
-  {reg:29,nome:"Paulo Pagano",               cpf:"",                cro:"",             end:"Rua Salvador Bicudo, 109",                        bairro:"Tucuruvi",           cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"",                  email:"paulopagano0@gmail.com", obs:""}
+  {reg:29,nome:"Paulo Pagano",               cpf:"",                cro:"",             end:"Rua Salvador Bicudo, 109",                        bairro:"Tucuruvi",           cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"",                  email:"paulopagano0@gmail.com", obs:""},
+  {reg:30,nome:"Juliana Barros",             cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
+  {reg:31,nome:"Pedro Silva",                cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
+  {reg:32,nome:"Carlos Vinicios Camelo",     cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""}
 ];
 
 // ── Estado global ─────────────────────────────────────────────
