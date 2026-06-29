@@ -105,7 +105,7 @@
       <div class="hm-grid3" id="cards-clientes"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="hm-section">
-          <div class="hm-section-title"><i class="ti ti-chart-line"></i> Quitados por mês</div>
+          <div class="hm-section-title"><i class="ti ti-chart-line"></i> Faturamento por mês</div>
           <div class="hm-chart-wrap"><canvas id="chart-cli-line"></canvas></div>
         </div>
         <div class="hm-section">
@@ -214,29 +214,45 @@ async function loadControle() {
 }
 
 async function loadHistory() {
+  // Busca pedidos dos últimos 6 meses e agrupa localmente por mês/ano
   homeHistory = [];
+  var months = [];
   for (var i = 5; i >= 0; i--) {
     var m = currentMonth - i, y = currentYear;
     if (m < 0) { m += 12; y--; }
-    // mes e ano são 0-indexed (mes=5 → Junho), igual ao padrão do sistema
-    try {
-      var res = await sb.from('controle_mensal')
-        .select('valor_mes,valor_pago,quitado')
-        .eq('mes', m)
-        .eq('ano', y);
-      if (res.error) throw res.error;
-      var pago=0, valor=0, quitados=0;
-      (res.data||[]).forEach(function(r) {
-        pago   += Number(r.valor_pago||0);
-        valor  += Number(r.valor_mes||0);
-        if (r.quitado === true) quitados++;
-      });
-      homeHistory.push({ m:m, y:y, nome:MESES[m].substring(0,3), pago:pago, valor:valor, quitados:quitados });
-    } catch(e) {
-      console.error('[loadHistory] mes='+m+' ano='+y, e);
-      homeHistory.push({ m:m, y:y, nome:MESES[m].substring(0,3), pago:0, valor:0, quitados:0 });
-    }
+    months.push({ m:m, y:y, nome:MESES[m].substring(0,3), faturamento:0, clientes:0 });
   }
+  try {
+    var first = months[0], last = months[months.length - 1];
+    var dtIni = first.y + '-' + String(first.m + 1).padStart(2,'0') + '-01';
+    var nextM  = last.m + 1, nextY = last.y;
+    if (nextM > 11) { nextM = 0; nextY++; }
+    var dtFim = nextY + '-' + String(nextM + 1).padStart(2,'0') + '-01';
+    var res = await sb.from('pedidos')
+      .select('created_at,valor,cliente_reg')
+      .gte('created_at', dtIni)
+      .lt('created_at', dtFim);
+    if (res.error) throw res.error;
+    (res.data||[]).forEach(function(p) {
+      var ds = (p.created_at||'').substring(0,7);
+      var py = parseInt(ds.substring(0,4)), pm = parseInt(ds.substring(5,7)) - 1;
+      for (var j = 0; j < months.length; j++) {
+        if (months[j].m === pm && months[j].y === py) {
+          months[j].faturamento += Number(p.valor||0);
+          if (!months[j]._regs) months[j]._regs = {};
+          if (p.cliente_reg) months[j]._regs[p.cliente_reg] = true;
+          break;
+        }
+      }
+    });
+    months.forEach(function(mo) {
+      mo.clientes = mo._regs ? Object.keys(mo._regs).length : 0;
+      delete mo._regs;
+    });
+  } catch(e) {
+    console.error('[loadHistory]', e);
+  }
+  homeHistory = months;
 }
 
 async function loadPedidosAll() {
@@ -329,7 +345,7 @@ function renderRisco() {
 }
 
 function drawCliCharts() {
-  // Gráfico de linha: quitados por mês
+  // Gráfico de linha dupla: faturamento (R$) + clientes ativos por mês
   var ctxLine = document.getElementById('chart-cli-line');
   if (ctxLine && homeHistory.length) {
     if (homeCharts['cli-line']) homeCharts['cli-line'].destroy();
@@ -337,19 +353,45 @@ function drawCliCharts() {
       type: 'line',
       data: {
         labels: homeHistory.map(function(d){ return d.nome; }),
-        datasets: [{
-          label: 'Quitados',
-          data: homeHistory.map(function(d){ return d.quitados; }),
-          borderColor: '#22c55e',
-          backgroundColor: 'rgba(34,197,94,0.1)',
-          borderWidth: 2.5,
-          pointBackgroundColor: '#22c55e',
-          pointRadius: 4,
-          tension: 0.3,
-          fill: true
-        }]
+        datasets: [
+          {
+            label: 'Faturamento (R$)',
+            data: homeHistory.map(function(d){ return d.faturamento; }),
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,0.1)',
+            borderWidth: 2.5,
+            pointBackgroundColor: '#3b82f6',
+            pointRadius: 4,
+            tension: 0.3,
+            fill: true,
+            yAxisID: 'yVal'
+          },
+          {
+            label: 'Clientes ativos',
+            data: homeHistory.map(function(d){ return d.clientes; }),
+            borderColor: '#22c55e',
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointBackgroundColor: '#22c55e',
+            pointRadius: 4,
+            tension: 0.3,
+            fill: false,
+            yAxisID: 'yCli'
+          }
+        ]
       },
-      options: chartOpts('Clientes quitados')
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color:'#94a3b8', font:{size:11}, padding:10, boxWidth:12 } },
+          tooltip: { backgroundColor:'#22263a', titleColor:'#f1f5f9', bodyColor:'#94a3b8', borderColor:'rgba(255,255,255,0.1)', borderWidth:1, padding:10 }
+        },
+        scales: {
+          x: { grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#4a5568',font:{size:11}} },
+          yVal: { position:'left',  grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#4a5568',font:{size:11}, callback:function(v){return 'R$'+(v>=1000?(v/1000).toFixed(0)+'k':v);}}, beginAtZero:true },
+          yCli: { position:'right', grid:{drawOnChartArea:false}, ticks:{color:'#4a5568',font:{size:11}}, beginAtZero:true }
+        }
+      }
     });
   }
 
