@@ -44,7 +44,10 @@ var clients = [
   {reg:29,nome:"[REMOVIDO]",               cpf:"",                cro:"",             end:"[REMOVIDO]",                        bairro:"Tucuruvi",           cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"",                  email:"[REMOVIDO]", obs:""},
   {reg:30,nome:"[REMOVIDO]",             cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
   {reg:31,nome:"[REMOVIDO]",                cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
-  {reg:32,nome:"[REMOVIDO]",     cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""}
+  {reg:32,nome:"[REMOVIDO]",     cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
+  {reg:33,nome:"[REMOVIDO]",          cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"Rio de Janeiro",      uf:"RJ", cep:"",          tel:"",                  obs:""},
+  {reg:34,nome:"[REMOVIDO]",               cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
+  {reg:35,nome:"[REMOVIDO]",        cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""}
 ];
 
 // ── Estado global ─────────────────────────────────────────────
