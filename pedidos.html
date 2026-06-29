@@ -221,7 +221,8 @@ function renderPedidosTable() {
   updatePedClearBtn(q, sf, cf);
   var tot=filtered.length, totVal=filtered.reduce(function(s,p){return s+Number(p.valor||0);},0);
   var se=document.getElementById('ped-summary');
-  if(se)se.textContent=tot+' pedido'+(tot!==1?'s':'')+' · '+fmt(totVal);
+  var mesLabel = MESES[viewMonth] + ' ' + viewYear;
+  if(se)se.textContent=mesLabel+' · '+tot+' pedido'+(tot!==1?'s':'')+' · '+fmt(totVal);
   var tb=document.getElementById('ped-tbody');if(!tb)return;
   tb.innerHTML=filtered.map(function(p,i){
     var st=PED_STATUS[p.status]||PED_STATUS.orcamento;
