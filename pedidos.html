@@ -43,6 +43,13 @@
   </div>
 </div>
 
+<!-- ── Navegação de mês ──────────────────────────────────────── -->
+<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:0.75rem">
+  <button onclick="pedPrevMonth()" style="width:32px;height:32px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.15s" title="Mês anterior"><i class="ti ti-chevron-left"></i></button>
+  <span id="ped-month-label" style="font-size:14px;font-weight:600;color:#f1f5f9;min-width:150px;text-align:center;user-select:none">Carregando...</span>
+  <button onclick="pedNextMonth()" style="width:32px;height:32px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.15s" title="Próximo mês"><i class="ti ti-chevron-right"></i></button>
+</div>
+
 <main id="page-content">
   <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
     <div style="flex:1;min-width:180px;position:relative">
@@ -104,15 +111,48 @@ async function loadPedidos() {
   renderPedidosTable();
 }
 
+function pedMonthMatch(p) {
+  var ds = (p.created_at || '').substring(0, 7);
+  var dy = parseInt(ds.substring(0, 4)), dm = parseInt(ds.substring(5, 7)) - 1;
+  return dm === viewMonth && dy === viewYear;
+}
+
+function updatePedMonthLabel() {
+  var el = document.getElementById('ped-month-label');
+  if (el) el.textContent = MESES[viewMonth] + ' ' + viewYear;
+}
+
+function pedPrevMonth() {
+  viewMonth--;
+  if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+  localStorage.setItem('ideali-viewMonth', viewMonth);
+  localStorage.setItem('ideali-viewYear', viewYear);
+  updatePedMonthLabel();
+  populatePedidoClientFilter();
+  renderPedidosTable();
+}
+
+function pedNextMonth() {
+  viewMonth++;
+  if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+  localStorage.setItem('ideali-viewMonth', viewMonth);
+  localStorage.setItem('ideali-viewYear', viewYear);
+  updatePedMonthLabel();
+  populatePedidoClientFilter();
+  renderPedidosTable();
+}
+
 function populatePedidoClientFilter() {
   var sel = document.getElementById('ped-cliente-filter');
   if (!sel) return;
   var cur = sel.value;
   var regs = [];
-  pedidos.forEach(function(p){ if(p.cliente_reg && regs.indexOf(p.cliente_reg)<0) regs.push(p.cliente_reg); });
+  pedidos.filter(pedMonthMatch).forEach(function(p){
+    if (p.cliente_reg && regs.indexOf(p.cliente_reg) < 0) regs.push(p.cliente_reg);
+  });
   var opts = regs
     .map(function(r){ return {reg:r, nome:cliNomePed(r)}; })
-    .filter(function(x){ return x.nome && x.nome!=='—'; })
+    .filter(function(x){ return x.nome && x.nome !== '—'; })
     .sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); });
   sel.innerHTML = '<option value="">Todos os clientes</option>' +
     opts.map(function(x){ return '<option value="'+x.reg+'"'+(cur==x.reg?' selected':'')+'>'+escHtml(x.nome)+'</option>'; }).join('');
@@ -164,6 +204,7 @@ function renderPedidosTable() {
   var sf=(document.getElementById('ped-status-filter')||{value:''}).value;
   var cf=parseInt((document.getElementById('ped-cliente-filter')||{value:''}).value)||0;
   var filtered=pedidos.filter(function(p){
+    if(!pedMonthMatch(p))return false;
     if(sf&&p.status!==sf)return false;
     if(cf&&p.cliente_reg!==cf)return false;
     var cn=p.cliente_reg?cliNomePed(p.cliente_reg):'';
@@ -327,6 +368,7 @@ function showConnError(msg) {
 }
 
 async function init() {
+  updatePedMonthLabel();
   await loadPedidos();
   hideLoading();
 }
