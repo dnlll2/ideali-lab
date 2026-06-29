@@ -41,7 +41,10 @@ var clients = [
   {reg:26,nome:"[REMOVIDO]",        cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",       end:"[REMOVIDO]", bairro:"Vila Prudente",      cidade:"Sao Paulo",           uf:"SP", cep:"03134-000", tel:"",                  obs:""},
   {reg:27,nome:"[REMOVIDO]",              cpf:"[REMOVIDO]",  cro:"[REMOVIDO]", end:"[REMOVIDO]",                                bairro:"Centro",             cidade:"Sao Joao da Barra",   uf:"RJ", cep:"28200-000", tel:"",                  obs:"Lente Novo"},
   {reg:28,nome:"[REMOVIDO]",cpf:"[REMOVIDO]",cro:"[REMOVIDO]", end:"[REMOVIDO]",            bairro:"Tijuca",             cidade:"Rio de Janeiro",      uf:"RJ", cep:"20520-051", tel:"",                  obs:""},
-  {reg:29,nome:"[REMOVIDO]",               cpf:"",                cro:"",             end:"[REMOVIDO]",                        bairro:"Tucuruvi",           cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"",                  email:"[REMOVIDO]", obs:""}
+  {reg:29,nome:"[REMOVIDO]",               cpf:"",                cro:"",             end:"[REMOVIDO]",                        bairro:"Tucuruvi",           cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"",                  email:"[REMOVIDO]", obs:""},
+  {reg:30,nome:"[REMOVIDO]",             cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
+  {reg:31,nome:"[REMOVIDO]",                cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
+  {reg:32,nome:"[REMOVIDO]",     cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""}
 ];
 
 // ── Estado global ─────────────────────────────────────────────
