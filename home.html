@@ -117,6 +117,39 @@
         <div class="hm-section-title"><i class="ti ti-alert-triangle" style="color:#fb923c"></i> Zona de risco — pagamentos em aberto</div>
         <div style="overflow-x:auto"><table class="hm-table"><thead><tr><th>Cliente</th><th>A receber</th><th>Pago</th><th>Restante</th><th>Status</th></tr></thead><tbody id="tbody-risco"></tbody></table></div>
       </div>
+
+      <!-- Ranking de Clientes -->
+      <div class="hm-section">
+        <div class="hm-section-title" style="flex-wrap:wrap;gap:8px">
+          <span>🏆 Ranking de Clientes</span>
+          <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+            <select id="rank-periodo" onchange="renderRanking()" style="height:26px;padding:0 8px;font-size:11px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-family:inherit;cursor:pointer">
+              <option value="mes">Mês Atual</option>
+              <option value="3m">Últimos 3 meses</option>
+              <option value="6m">Últimos 6 meses</option>
+              <option value="ano">Este ano</option>
+              <option value="tudo">Tudo</option>
+            </select>
+            <select id="rank-order" onchange="renderRanking()" style="height:26px;padding:0 8px;font-size:11px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-family:inherit;cursor:pointer">
+              <option value="valor">Valor total</option>
+              <option value="qtd">Qtd pedidos</option>
+            </select>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="hm-table">
+            <thead><tr>
+              <th style="width:44px;text-align:center">#</th>
+              <th>Cliente</th>
+              <th style="text-align:center">Pedidos</th>
+              <th>Total</th>
+              <th>Ticket médio</th>
+              <th style="min-width:130px">Participação</th>
+            </tr></thead>
+            <tbody id="tbody-ranking"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- ABA 2: Produção -->
@@ -316,6 +349,73 @@ function renderCardsClientes() {
   if (el) el.textContent = lbl;
 
   renderRisco();
+  renderRanking();
+}
+
+function rankCutoff(periodo) {
+  var now = new Date();
+  var m = now.getMonth(), y = now.getFullYear();
+  if (periodo === 'mes')  return new Date(y, m, 1);
+  if (periodo === '3m')   return new Date(y, m - 2, 1);
+  if (periodo === '6m')   return new Date(y, m - 5, 1);
+  if (periodo === 'ano')  return new Date(y, 0, 1);
+  return null;
+}
+
+function renderRanking() {
+  var periodo = (document.getElementById('rank-periodo')||{value:'mes'}).value;
+  var order   = (document.getElementById('rank-order')||{value:'valor'}).value;
+  var cutoff  = rankCutoff(periodo);
+
+  var filtered = homePedidos.filter(function(p) {
+    if (!cutoff) return true;
+    return new Date(p.created_at) >= cutoff;
+  });
+
+  var byClient = {};
+  filtered.forEach(function(p) {
+    var reg = p.cliente_reg; if (!reg) return;
+    if (!byClient[reg]) byClient[reg] = { reg:reg, qtd:0, valor:0 };
+    byClient[reg].qtd++;
+    byClient[reg].valor += Number(p.valor||0);
+  });
+
+  var lista = Object.values ? Object.values(byClient) : Object.keys(byClient).map(function(k){ return byClient[k]; });
+  lista.sort(function(a,b) { return order === 'qtd' ? b.qtd - a.qtd : b.valor - a.valor; });
+
+  var maxRef = lista.length ? (order === 'qtd' ? lista[0].qtd : lista[0].valor) : 1;
+  var medals = ['🥇','🥈','🥉'];
+  var barColors = ['#fbbf24','#94a3b8','#fb923c'];
+
+  var tb = document.getElementById('tbody-ranking');
+  if (!tb) return;
+  if (!lista.length) {
+    tb.innerHTML = '<tr><td colspan="6"><div class="hm-empty">Nenhum pedido no período selecionado.</div></td></tr>';
+    return;
+  }
+  tb.innerHTML = lista.map(function(item, idx) {
+    var nome   = cliNomePed(item.reg) || ('Cliente #'+item.reg);
+    var pos    = idx < 3 ? '<span style="font-size:16px">'+medals[idx]+'</span>' : '<span style="font-size:12px;color:#4a5568">'+(idx+1)+'º</span>';
+    var ticket = item.qtd ? fmt(item.valor / item.qtd) : fmt(0);
+    var ref    = order === 'qtd' ? item.qtd : item.valor;
+    var pct    = maxRef ? Math.round(ref / maxRef * 100) : 0;
+    var barClr = barColors[idx] || '#3b82f6';
+    return '<tr>'+
+      '<td style="text-align:center">'+pos+'</td>'+
+      '<td style="font-weight:500;color:#f1f5f9;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(nome)+'</td>'+
+      '<td style="text-align:center;color:#94a3b8;font-weight:600">'+item.qtd+'</td>'+
+      '<td style="color:#4ade80;font-weight:600;white-space:nowrap">'+fmt(item.valor)+'</td>'+
+      '<td style="color:#64748b;white-space:nowrap">'+ticket+'</td>'+
+      '<td>'+
+        '<div style="display:flex;align-items:center;gap:6px">'+
+          '<div style="flex:1;background:rgba(255,255,255,0.06);border-radius:4px;height:7px;overflow:hidden">'+
+            '<div style="height:100%;width:'+pct+'%;background:'+barClr+';border-radius:4px;transition:width 0.4s ease"></div>'+
+          '</div>'+
+          '<span style="font-size:10px;color:#4a5568;width:28px;text-align:right;flex-shrink:0">'+pct+'%</span>'+
+        '</div>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
 }
 
 function renderRisco() {
