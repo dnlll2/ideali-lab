@@ -3,254 +3,660 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Home — Ideali Laboratório</title>
+<title>Ideali Laboratório</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="shared.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="shared.js"></script>
 <style>
-  .home-col{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;display:flex;flex-direction:column;overflow:hidden}
-  .home-col-head{padding:10px 16px;border-bottom:0.5px solid rgba(255,255,255,0.08);background:#13151f;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-  .home-col-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em}
-  .home-col-badge{font-size:11px;padding:2px 8px;border-radius:6px;background:#22263a;color:#64748b;font-weight:600}
-  .home-ticker-vp{height:320px;overflow:hidden;position:relative}
-  .home-ticker-list{display:flex;flex-direction:column;will-change:transform}
-  .home-ticker-row{height:64px;display:flex;flex-direction:column;justify-content:center;gap:3px;padding:0;border-bottom:0.5px solid rgba(255,255,255,0.05);flex-shrink:0;overflow:hidden;cursor:pointer;transition:background 0.12s}
-  .home-ticker-row:hover{background:rgba(255,255,255,0.04) !important}
-  @media(max-width:767px){#home-grid{grid-template-columns:1fr !important}}
+/* ── Home layout ─────────────────────────────────────────────── */
+#home-topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 0 0;margin-bottom:0}
+#home-logo{font-size:16px;font-weight:700;color:#f1f5f9;letter-spacing:-0.01em}
+#home-logo span{color:#3b82f6}
+
+#home-tabnav{display:flex;gap:2px;border-bottom:1px solid rgba(255,255,255,0.08);margin:10px 0 0;padding:0}
+.home-tab{padding:9px 18px;font-size:13px;font-weight:500;color:#64748b;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s,border-color 0.15s;font-family:inherit;white-space:nowrap}
+.home-tab:hover{color:#94a3b8}
+.home-tab.active{color:#f1f5f9;border-bottom-color:#3b82f6}
+
+#home-content{padding-top:18px}
+
+/* ── Metric cards ────────────────────────────────────────────── */
+.hm-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.hm-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.hm-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.hm-card-val{font-size:28px;font-weight:700;line-height:1}
+.hm-card-lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em}
+.hm-card-sub{font-size:11px;color:#4a5568}
+
+/* ── Sections ────────────────────────────────────────────────── */
+.hm-section{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.hm-section-title{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:12px;display:flex;align-items:center;gap:6px;padding-bottom:8px;border-bottom:0.5px solid rgba(255,255,255,0.06)}
+
+/* ── Tables ──────────────────────────────────────────────────── */
+.hm-table{width:100%;border-collapse:collapse;font-size:13px}
+.hm-table th{font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.06em;padding:7px 10px;text-align:left;border-bottom:0.5px solid rgba(255,255,255,0.07);white-space:nowrap}
+.hm-table td{padding:8px 10px;border-bottom:0.5px solid rgba(255,255,255,0.04);color:#cbd5e1;vertical-align:middle}
+.hm-table tbody tr:last-child td{border-bottom:none}
+.hm-table tbody tr:hover td{background:rgba(255,255,255,0.025)}
+.hm-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:5px;white-space:nowrap}
+
+/* ── Ativos Recentes grid ────────────────────────────────────── */
+#grid-ativos{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.av-btn{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:all 0.15s;text-align:center}
+.av-btn:hover{background:#22263a;border-color:rgba(255,255,255,0.15);transform:translateY(-1px)}
+.av-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.av-nome{font-size:11px;color:#94a3b8;line-height:1.3;word-break:break-word}
+.av-data{font-size:10px;color:#4a5568}
+
+/* ── Chart containers ────────────────────────────────────────── */
+.hm-chart-wrap{position:relative;height:220px}
+
+/* ── Empty state ─────────────────────────────────────────────── */
+.hm-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 0;gap:8px;color:#4a5568;font-size:13px}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media(max-width:767px){
+  .hm-grid3,.hm-grid4{grid-template-columns:1fr 1fr}
+  #grid-ativos{grid-template-columns:repeat(3,1fr)}
+  #home-tabnav{overflow-x:auto;scrollbar-width:none}
+  #home-tabnav::-webkit-scrollbar{display:none}
+}
+@media(max-width:480px){
+  .hm-grid3,.hm-grid4{grid-template-columns:1fr}
+  #grid-ativos{grid-template-columns:1fr 1fr}
+}
 </style>
 </head>
 <body>
 <div id="shared-shell"></div>
 
 <div style="max-width:100%">
-  <div id="app-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
-    <div style="display:flex;align-items:center;gap:12px">
+
+  <!-- ── Top bar ──────────────────────────────────────────────── -->
+  <div id="home-topbar">
+    <div style="display:flex;align-items:center;gap:10px">
       <button class="hamburger" onclick="openSidebar()" title="Menu">&#9776;</button>
-      <div>
-        <p style="font-size:22px;font-weight:500;color:#f1f5f9">🏠 Home</p>
-        <p style="font-size:14px;color:#64748b">Visão geral do laboratório</p>
-      </div>
+      <div id="home-logo">Ideali <span>Laboratório</span></div>
     </div>
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <span id="relogio" style="font-size:11px;color:#4a5568"></span>
       <span id="sync-status" style="font-size:12px;color:#64748b">
         <span class="sync-dot" id="sync-dot"></span>Conectado
       </span>
+      <button onclick="reloadAll()" style="height:30px;padding:0 12px;border-radius:7px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:12px;cursor:pointer;font-family:inherit" title="Atualizar dados">&#8635;</button>
     </div>
   </div>
 
-  <main id="page-content">
-    <div style="margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <p id="home-subtitle" style="font-size:12px;color:#64748b">Carregando...</p>
-      <button onclick="loadHomeData()" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit;transition:all 0.15s" onmouseover="this.style.background='#2d3250';this.style.color='#e2e8f0'" onmouseout="this.style.background='#22263a';this.style.color='#94a3b8'">&#8635; Atualizar</button>
+  <!-- ── Tab navigation ───────────────────────────────────────── -->
+  <div id="home-tabnav">
+    <button class="home-tab active" id="htab-clientes"   onclick="setHomeTab('clientes')">🧑‍🤝‍🧑 Clientes</button>
+    <button class="home-tab"        id="htab-producao"   onclick="setHomeTab('producao')">⚙️ Produção</button>
+    <button class="home-tab"        id="htab-financeiro" onclick="setHomeTab('financeiro')">💰 Financeiro</button>
+    <button class="home-tab"        id="htab-ativos"     onclick="setHomeTab('ativos')">🕒 Ativos Recentes</button>
+  </div>
+
+  <!-- ── Content area ─────────────────────────────────────────── -->
+  <div id="home-content">
+
+    <!-- ABA 1: Clientes -->
+    <div id="panel-clientes">
+      <div class="hm-grid3" id="cards-clientes"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="hm-section">
+          <div class="hm-section-title"><i class="ti ti-chart-line"></i> Quitados por mês</div>
+          <div class="hm-chart-wrap"><canvas id="chart-cli-line"></canvas></div>
+        </div>
+        <div class="hm-section">
+          <div class="hm-section-title"><i class="ti ti-users"></i> Status — <span id="cli-mes-lbl"></span></div>
+          <div class="hm-chart-wrap"><canvas id="chart-cli-donut"></canvas></div>
+        </div>
+      </div>
+      <div class="hm-section">
+        <div class="hm-section-title"><i class="ti ti-alert-triangle" style="color:#fb923c"></i> Zona de risco — pagamentos em aberto</div>
+        <div style="overflow-x:auto"><table class="hm-table"><thead><tr><th>Cliente</th><th>A receber</th><th>Pago</th><th>Restante</th><th>Status</th></tr></thead><tbody id="tbody-risco"></tbody></table></div>
+      </div>
     </div>
 
-    <div id="home-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-      <div class="home-col">
-        <div class="home-col-head">
-          <span class="home-col-title" style="color:#93c5fd">📦 Pedidos</span>
-          <span id="home-count-pedidos" class="home-col-badge">0</span>
+    <!-- ABA 2: Produção -->
+    <div id="panel-producao" style="display:none">
+      <div class="hm-grid4" id="cards-producao"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="hm-section">
+          <div class="hm-section-title"><i class="ti ti-chart-bar"></i> Pedidos por mês</div>
+          <div class="hm-chart-wrap"><canvas id="chart-ped-bar"></canvas></div>
         </div>
-        <div class="home-ticker-vp" id="home-vp-pedidos"
-             onmouseenter="homeTickerPause('pedidos')" onmouseleave="homeTickerResume('pedidos')">
-          <div class="home-ticker-list" id="home-list-pedidos"></div>
-        </div>
-      </div>
-      <div class="home-col">
-        <div class="home-col-head">
-          <span class="home-col-title" style="color:#fca5a5">🚨 Urgência</span>
-          <span id="home-count-urgencia" class="home-col-badge">0</span>
-        </div>
-        <div class="home-ticker-vp" id="home-vp-urgencia"
-             onmouseenter="homeTickerPause('urgencia')" onmouseleave="homeTickerResume('urgencia')">
-          <div class="home-ticker-list" id="home-list-urgencia"></div>
+        <div class="hm-section">
+          <div class="hm-section-title"><i class="ti ti-clock-hour-4"></i> Pedidos de hoje</div>
+          <div id="lista-hoje" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto"></div>
         </div>
       </div>
-      <div class="home-col">
-        <div class="home-col-head">
-          <span class="home-col-title" style="color:#c4b5fd">📋 Lembretes</span>
-          <span id="home-count-lembretes" class="home-col-badge">0</span>
-        </div>
-        <div class="home-ticker-vp" id="home-vp-lembretes"
-             onmouseenter="homeTickerPause('lembretes')" onmouseleave="homeTickerResume('lembretes')">
-          <div class="home-ticker-list" id="home-list-lembretes"></div>
-        </div>
+      <div class="hm-section">
+        <div class="hm-section-title"><i class="ti ti-alert-circle" style="color:#ef4444"></i> Pedidos atrasados</div>
+        <div style="overflow-x:auto"><table class="hm-table"><thead><tr><th>Cliente</th><th>Descrição</th><th>Prazo</th><th>Dias atraso</th><th>Status</th></tr></thead><tbody id="tbody-atrasados"></tbody></table></div>
       </div>
     </div>
-  </main>
+
+    <!-- ABA 3: Financeiro -->
+    <div id="panel-financeiro" style="display:none">
+      <div class="hm-grid4" id="cards-financeiro"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="hm-section">
+          <div class="hm-section-title"><i class="ti ti-chart-bar"></i> Faturamento — últimos 6 meses</div>
+          <div class="hm-chart-wrap"><canvas id="chart-fin-bar"></canvas></div>
+        </div>
+        <div class="hm-section">
+          <div class="hm-section-title"><i class="ti ti-truck-delivery"></i> Gastos de entrega — <span id="fin-mes-lbl"></span></div>
+          <div id="gastos-lista" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+      </div>
+      <div class="hm-section">
+        <div class="hm-section-title"><i class="ti ti-percentage" style="color:#fbbf24"></i> Comissões por cliente — <span id="fin-com-mes-lbl"></span></div>
+        <div style="overflow-x:auto"><table class="hm-table"><thead><tr><th>Cliente</th><th>A receber</th><th>Pago</th><th>Componente</th><th>Comissão (17%)</th></tr></thead><tbody id="tbody-comissoes"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ABA 4: Ativos Recentes -->
+    <div id="panel-ativos" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <p style="font-size:13px;color:#64748b" id="ativos-subtitle">Clientes por data do último pedido</p>
+      </div>
+      <div id="grid-ativos"></div>
+    </div>
+
+  </div><!-- /home-content -->
 </div>
 
 <script>
-var TICKER_ROWS = 5;
-var TICKER_ROW_H = 64;
-var homeAllItems  = { pedidos: [], urgencia: [], lembretes: [] };
-var homeTickerState = {
-  pedidos:   { offset:0, timer:null, paused:false, animating:false },
-  urgencia:  { offset:0, timer:null, paused:false, animating:false },
-  lembretes: { offset:0, timer:null, paused:false, animating:false }
-};
+// ── Estado ────────────────────────────────────────────────────
+var homeTab       = 'clientes';
+var homeDbState   = {};       // cliente_reg → controle_mensal row (mês atual)
+var homePedidos   = [];       // todos os pedidos
+var homeGastos    = [];       // gastos_entrega mês atual
+var homeHistory   = [];       // [{m,y,nome,pago,valor,quitados}] últimos 6 meses
+var homeCharts    = {};       // Chart.js instances
+var homeChartInit = {};       // quais charts já foram desenhados
 
-async function loadHomeData() {
-  var sub = document.getElementById('home-subtitle');
-  if (sub) sub.textContent = 'Carregando...';
-  ['pedidos','urgencia','lembretes'].forEach(function(col) {
-    var el = document.getElementById('home-list-'+col);
-    if (el) el.innerHTML = homeTickerEmptyRows('...');
+// ── Navegação de abas ─────────────────────────────────────────
+function setHomeTab(tab) {
+  homeTab = tab;
+  ['clientes','producao','financeiro','ativos'].forEach(function(t) {
+    document.getElementById('panel-'+t).style.display   = t === tab ? '' : 'none';
+    document.getElementById('htab-'+t).classList[t === tab ? 'add' : 'remove']('active');
   });
+  if (!homeChartInit[tab]) {
+    homeChartInit[tab] = true;
+    if (tab === 'clientes')   drawCliCharts();
+    if (tab === 'producao')   drawProdChart();
+    if (tab === 'financeiro') drawFinChart();
+  }
+  if (tab === 'ativos') renderAtivos();
+}
+
+// ── Carregamento de dados ─────────────────────────────────────
+async function loadControle() {
   try {
-    var resPedidos = await sb.from('pedidos').select('*').neq('status','finalizado').neq('status','entregue').neq('status','cancelado');
-    var resTarefas = await sb.from('tarefas').select('*').eq('concluida',false).eq('arquivada',false);
-    var pedidosAll = resPedidos.error ? [] : (resPedidos.data || []);
-    var tarefasAll = resTarefas.error ? [] : (resTarefas.data || []);
-    pedidosAll.sort(function(a,b){ return (a.created_at||'').localeCompare(b.created_at||''); });
-    homeAllItems.pedidos = pedidosAll;
+    var res = await sb.from('controle_mensal').select('*').eq('mes', currentMonth).eq('ano', currentYear);
+    if (res.error) throw res.error;
+    homeDbState = {};
+    clients.forEach(function(c) {
+      homeDbState[c.reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, valor_componente:0 };
+    });
+    (res.data||[]).forEach(function(r) {
+      homeDbState[r.cliente_reg] = {
+        recebido: !!r.recebido, enviado: !!r.enviado, quitado: !!r.quitado,
+        valor_mes: Number(r.valor_mes)||0, valor_pago: Number(r.valor_pago)||0,
+        valor_componente: Number(r.valor_componente)||0
+      };
+    });
+  } catch(e) { console.error('[loadControle]', e); }
+}
 
-    var resUrg = await sb.from('pedidos').select('*').eq('urgente', true)
-      .neq('status','finalizado').neq('status','entregue').neq('status','cancelado');
-    if (resUrg.error) {
-      homeAllItems.urgencia = [];
-    } else {
-      var urgAll = resUrg.data || [];
-      urgAll.sort(function(a,b){ return (a.created_at||'').localeCompare(b.created_at||''); });
-      homeAllItems.urgencia = urgAll;
+async function loadHistory() {
+  homeHistory = [];
+  for (var i = 5; i >= 0; i--) {
+    var m = currentMonth - i, y = currentYear;
+    if (m < 0) { m += 12; y--; }
+    try {
+      var res = await sb.from('controle_mensal').select('valor_mes,valor_pago,quitado').eq('mes',m).eq('ano',y);
+      var pago=0, valor=0, quitados=0;
+      (res.data||[]).forEach(function(r) { pago+=Number(r.valor_pago||0); valor+=Number(r.valor_mes||0); if(r.quitado)quitados++; });
+      homeHistory.push({ m:m, y:y, nome:MESES[m].substring(0,3), pago:pago, valor:valor, quitados:quitados });
+    } catch(e) {
+      homeHistory.push({ m:m, y:y, nome:MESES[m].substring(0,3), pago:0, valor:0, quitados:0 });
     }
-    var comPrazo = tarefasAll.filter(function(t){ return !!t.data_prazo; })
-                   .sort(function(a,b){ return a.data_prazo.localeCompare(b.data_prazo); });
-    var semPrazo = tarefasAll.filter(function(t){ return !t.data_prazo; })
-                   .sort(function(a,b){ return (a.created_at||'').localeCompare(b.created_at||''); });
-    homeAllItems.lembretes = comPrazo.concat(semPrazo);
-  } catch(e) {
-    console.error('loadHomeData:', e);
-    homeAllItems = { pedidos:[], urgencia:[], lembretes:[] };
   }
-  ['pedidos','urgencia','lembretes'].forEach(function(col) {
-    homeTickerState[col].offset = 0;
-    homeTickerState[col].animating = false;
-    homeTickerStop(col);
+}
+
+async function loadPedidosAll() {
+  try {
+    var res = await sb.from('pedidos').select('*').order('created_at', { ascending:false });
+    if (res.error) throw res.error;
+    homePedidos = res.data || [];
+  } catch(e) { console.error('[loadPedidos]', e); homePedidos = []; }
+}
+
+async function loadGastos() {
+  try {
+    var res = await sb.from('gastos_entrega').select('*').eq('mes', currentMonth).eq('ano', currentYear);
+    if (res.error) throw res.error;
+    homeGastos = res.data || [];
+  } catch(e) { console.error('[loadGastos]', e); homeGastos = []; }
+}
+
+async function reloadAll() {
+  homeChartInit = {};
+  Object.keys(homeCharts).forEach(function(k) { try { homeCharts[k].destroy(); } catch(e){} });
+  homeCharts = {};
+  await Promise.all([ loadControle(), loadPedidosAll(), loadGastos(), loadHistory() ]);
+  renderCurrentTab();
+}
+
+function renderCurrentTab() {
+  homeChartInit[homeTab] = false;
+  setHomeTab(homeTab);
+  renderAllStatic();
+}
+
+// ── ABA 1: Clientes ───────────────────────────────────────────
+function renderCardsClientes() {
+  var comPed  = 0, comAtiv = 0;
+  clients.forEach(function(c) {
+    var v = homeDbState[c.reg] || {};
+    if (Number(v.valor_mes||0) > 0) comPed++;
+    if (v.recebido || v.enviado || v.quitado || Number(v.valor_mes||0) > 0) comAtiv++;
   });
-  renderAllTickers();
-  startAllTickers();
-  if (sub) sub.textContent = todayLabel();
+
+  var cards = [
+    { ico:'ti-users',       lbl:'Total de clientes',  val:clients.length, clr:'#93c5fd', bg:'rgba(29,58,110,0.4)' },
+    { ico:'ti-activity',    lbl:'Ativos no mês',       val:comAtiv,        clr:'#4ade80', bg:'rgba(13,61,43,0.4)' },
+    { ico:'ti-file-dollar', lbl:'Com pedido aberto',   val:comPed,         clr:'#fbbf24', bg:'rgba(42,32,16,0.4)' },
+  ];
+  document.getElementById('cards-clientes').innerHTML = cards.map(function(c) {
+    return '<div class="hm-card" style="background:'+c.bg+';border-color:rgba(255,255,255,0.08)">'+
+      '<div class="hm-card-lbl">'+c.lbl+'</div>'+
+      '<div class="hm-card-val" style="color:'+c.clr+'">'+c.val+'</div>'+
+      '<i class="ti '+c.ico+'" style="font-size:20px;color:'+c.clr+';opacity:0.5;margin-top:auto"></i>'+
+    '</div>';
+  }).join('');
+
+  var lbl = MESES[currentMonth] + ' ' + currentYear;
+  var el = document.getElementById('cli-mes-lbl');
+  if (el) el.textContent = lbl;
+
+  renderRisco();
 }
 
-function ageRowStyle(createdAt) {
-  if (!createdAt) return '';
-  var today   = new Date(); today.setHours(0,0,0,0);
-  var created = new Date(createdAt); created.setHours(0,0,0,0);
-  var days    = Math.round((today - created) / 86400000);
-  if (days >= 7) return 'background:rgba(239,68,68,0.12);border-left:3px solid #ef4444';
-  if (days >= 5) return 'background:rgba(249,115,22,0.10);border-left:3px solid #f97316';
-  if (days >= 3) return 'background:rgba(251,191,36,0.08);border-left:3px solid #fbbf24';
-  return '';
-}
+function renderRisco() {
+  var risco = clients.filter(function(c) {
+    var v = homeDbState[c.reg] || {};
+    return Number(v.valor_mes||0) > 0 && !v.quitado;
+  }).sort(function(a,b) {
+    var ra = homeDbState[a.reg]||{}, rb = homeDbState[b.reg]||{};
+    return (Number(rb.valor_mes||0)-Number(rb.valor_pago||0)) - (Number(ra.valor_mes||0)-Number(ra.valor_pago||0));
+  });
 
-function homeTickerRowHTML(item, tipo) {
-  var style  = ageRowStyle(item.created_at);
-  var paddingLeft = style ? '11px' : '14px';
-  var clienteN, desc, reg;
-  if (tipo === 'lembrete') {
-    var _c = clients.find(function(x){ return x.reg == item.cliente_reg; });
-    clienteN = _c ? _c.nome : (item.cliente_reg ? '—' : '—');
-    desc = item.texto || item.descricao || 'Tarefa';
-    reg  = item.cliente_reg || 0;
-  } else {
-    clienteN = item.cliente_reg ? cliNomePed(item.cliente_reg) : '—';
-    desc = item.descricao || '—';
-    reg  = item.cliente_reg || 0;
+  var tb = document.getElementById('tbody-risco');
+  if (!tb) return;
+  if (!risco.length) {
+    tb.innerHTML = '<tr><td colspan="5"><div class="hm-empty"><i class="ti ti-circle-check" style="font-size:22px;color:#22c55e"></i>Sem pagamentos em aberto</div></td></tr>';
+    return;
   }
-  var urgIcon = (item.urgente) ? '🚨 ' : '';
-  var clickAttr = reg ? ' onclick="homeClickItem('+reg+',\''+tipo+'\')"' : '';
-  return '<div class="home-ticker-row"'+clickAttr+' style="'+style+';padding-left:'+paddingLeft+';padding-right:14px">'+
-    '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;font-size:15px;font-weight:700;color:#f1f5f9;line-height:1.2">'+urgIcon+escHtml(clienteN)+'</div>'+
-    '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;font-size:12px;color:#94a3b8;line-height:1.2">'+escHtml(desc)+'</div>'+
+  tb.innerHTML = risco.map(function(c) {
+    var v = homeDbState[c.reg]||{}, vm=Number(v.valor_mes||0), vp=Number(v.valor_pago||0), rest=vm-vp;
+    var st = v.enviado ? ['Enviado','#3b82f6'] : v.recebido ? ['Recebido','#fbbf24'] : ['Pendente','#ef4444'];
+    return '<tr><td style="font-weight:500;color:#f1f5f9">'+escHtml(c.nome)+'</td>'+
+      '<td>'+fmt(vm)+'</td>'+
+      '<td style="color:#22c55e">'+fmt(vp)+'</td>'+
+      '<td style="color:'+(rest>0?'#ef4444':'#22c55e')+';font-weight:600">'+fmt(rest)+'</td>'+
+      '<td><span class="hm-badge" style="background:'+st[1]+'22;color:'+st[1]+'">'+st[0]+'</span></td></tr>';
+  }).join('');
+}
+
+function drawCliCharts() {
+  // Gráfico de linha: quitados por mês
+  var ctxLine = document.getElementById('chart-cli-line');
+  if (ctxLine && homeHistory.length) {
+    if (homeCharts['cli-line']) homeCharts['cli-line'].destroy();
+    homeCharts['cli-line'] = new Chart(ctxLine, {
+      type: 'line',
+      data: {
+        labels: homeHistory.map(function(d){ return d.nome; }),
+        datasets: [{
+          label: 'Quitados',
+          data: homeHistory.map(function(d){ return d.quitados; }),
+          borderColor: '#22c55e',
+          backgroundColor: 'rgba(34,197,94,0.1)',
+          borderWidth: 2.5,
+          pointBackgroundColor: '#22c55e',
+          pointRadius: 4,
+          tension: 0.3,
+          fill: true
+        }]
+      },
+      options: chartOpts('Clientes quitados')
+    });
+  }
+
+  // Gráfico de rosca: status do mês
+  var ctxDonut = document.getElementById('chart-cli-donut');
+  if (ctxDonut) {
+    var qui=0, env=0, rec=0, pen=0;
+    clients.forEach(function(c) {
+      var v = homeDbState[c.reg]||{};
+      if (v.quitado) qui++; else if (v.enviado) env++; else if (v.recebido) rec++; else pen++;
+    });
+    if (homeCharts['cli-donut']) homeCharts['cli-donut'].destroy();
+    homeCharts['cli-donut'] = new Chart(ctxDonut, {
+      type: 'doughnut',
+      data: {
+        labels: ['Quitado','Enviado','Recebido','Pendente'],
+        datasets: [{ data:[qui,env,rec,pen], backgroundColor:['#22c55e','#3b82f6','#fbbf24','#4a5568'], borderWidth:0, hoverOffset:6 }]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ position:'right', labels:{ color:'#94a3b8', font:{size:11}, padding:10, boxWidth:12 } },
+          tooltip:{ callbacks:{ label:function(ctx){ return ' '+ctx.label+': '+ctx.raw; } } } },
+        cutout: '65%'
+      }
+    });
+  }
+}
+
+// ── ABA 2: Produção ───────────────────────────────────────────
+function renderCardsProducao() {
+  var today = new Date(); today.setHours(0,0,0,0);
+  var abertos = ['orcamento','producao'];
+  var tot   = homePedidos.length;
+  var fin   = homePedidos.filter(function(p){ return p.status==='finalizado'||p.status==='entregue'; }).length;
+  var pend  = homePedidos.filter(function(p){ return abertos.indexOf(p.status)>=0; }).length;
+  var atras = homePedidos.filter(function(p) {
+    if (abertos.indexOf(p.status) < 0) return false;
+    if (!p.data_prevista) return false;
+    return new Date(p.data_prevista) < today;
+  }).length;
+
+  var cards = [
+    { lbl:'Cadastrados', val:tot,  clr:'#93c5fd', ico:'ti-clipboard-list' },
+    { lbl:'Finalizados', val:fin,  clr:'#4ade80', ico:'ti-circle-check' },
+    { lbl:'Pendentes',   val:pend, clr:'#94a3b8', ico:'ti-clock-pause' },
+    { lbl:'Atrasados',   val:atras,clr:'#fca5a5', ico:'ti-alert-circle' },
+  ];
+  document.getElementById('cards-producao').innerHTML = cards.map(function(c) {
+    return '<div class="hm-card">'+
+      '<div class="hm-card-lbl">'+c.lbl+'</div>'+
+      '<div class="hm-card-val" style="color:'+c.clr+'">'+c.val+'</div>'+
+      '<i class="ti '+c.ico+'" style="font-size:20px;color:'+c.clr+';opacity:0.4;margin-top:auto"></i>'+
+    '</div>';
+  }).join('');
+
+  renderListaHoje();
+  renderAtrasados();
+}
+
+function renderListaHoje() {
+  var el = document.getElementById('lista-hoje');
+  if (!el) return;
+  var todayStr = new Date().toISOString().split('T')[0];
+  var hoje = homePedidos.filter(function(p) {
+    return p.created_at && p.created_at.startsWith(todayStr);
+  });
+  var recentes = hoje.length ? hoje : homePedidos.slice(0, 5);
+  var titulo   = hoje.length ? 'Cadastrados hoje ('+hoje.length+')' : 'Últimos 5 pedidos';
+  if (!recentes.length) {
+    el.innerHTML = '<div class="hm-empty"><i class="ti ti-package" style="font-size:22px"></i>Nenhum pedido hoje</div>';
+    return;
+  }
+  el.innerHTML = '<p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">'+titulo+'</p>' +
+    recentes.map(function(p) {
+      var st = {orcamento:['#64748b','Orçamento'],producao:['#3b82f6','Produção'],finalizado:['#22c55e','Finalizado'],entregue:['#8b5cf6','Entregue'],cancelado:['#ef4444','Cancelado']}[p.status]||['#4a5568','—'];
+      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid rgba(255,255,255,0.05)">'+
+        '<div style="flex:1;min-width:0">'+
+          '<p style="font-size:12px;font-weight:500;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(cliNomePed(p.cliente_reg))+'</p>'+
+          '<p style="font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(p.descricao||'—')+'</p>'+
+        '</div>'+
+        '<span class="hm-badge" style="background:'+st[0]+'22;color:'+st[0]+'">'+st[1]+'</span>'+
+      '</div>';
+    }).join('');
+}
+
+function renderAtrasados() {
+  var today = new Date(); today.setHours(0,0,0,0);
+  var abertos = ['orcamento','producao'];
+  var lista = homePedidos.filter(function(p) {
+    return abertos.indexOf(p.status)>=0 && p.data_prevista && new Date(p.data_prevista) < today;
+  }).sort(function(a,b){ return new Date(a.data_prevista)-new Date(b.data_prevista); });
+
+  var tb = document.getElementById('tbody-atrasados');
+  if (!tb) return;
+  if (!lista.length) {
+    tb.innerHTML = '<tr><td colspan="5"><div class="hm-empty"><i class="ti ti-circle-check" style="font-size:22px;color:#22c55e"></i>Nenhum pedido atrasado</div></td></tr>';
+    return;
+  }
+  tb.innerHTML = lista.map(function(p) {
+    var dias = Math.round((today - new Date(p.data_prevista)) / 86400000);
+    var st = {orcamento:['#64748b','Orçamento'],producao:['#3b82f6','Produção']}[p.status]||['#4a5568','—'];
+    return '<tr>'+
+      '<td style="font-weight:500;color:#f1f5f9">'+escHtml(cliNomePed(p.cliente_reg))+'</td>'+
+      '<td style="color:#94a3b8;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(p.descricao||'—')+'</td>'+
+      '<td style="color:#ef4444;font-weight:500">'+fmtDate(p.data_prevista)+'</td>'+
+      '<td><span class="hm-badge" style="background:rgba(239,68,68,0.15);color:#ef4444">'+dias+'d</span></td>'+
+      '<td><span class="hm-badge" style="background:'+st[0]+'22;color:'+st[0]+'">'+st[1]+'</span></td>'+
+    '</tr>';
+  }).join('');
+}
+
+function drawProdChart() {
+  var ctx = document.getElementById('chart-ped-bar');
+  if (!ctx) return;
+
+  var months = [];
+  for (var i = 5; i >= 0; i--) {
+    var m = currentMonth - i, y = currentYear;
+    if (m < 0) { m += 12; y--; }
+    months.push({ m:m, y:y, nome:MESES[m].substring(0,3), total:0, fin:0 });
+  }
+  homePedidos.forEach(function(p) {
+    var dp = p.created_at; if (!dp) return;
+    var pm = new Date(dp).getMonth(), py = new Date(dp).getFullYear();
+    for (var j=0; j<months.length; j++) {
+      if (months[j].m===pm && months[j].y===py) {
+        months[j].total++;
+        if (p.status==='finalizado'||p.status==='entregue') months[j].fin++;
+        break;
+      }
+    }
+  });
+
+  if (homeCharts['ped-bar']) homeCharts['ped-bar'].destroy();
+  homeCharts['ped-bar'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: months.map(function(d){ return d.nome; }),
+      datasets: [
+        { label:'Total', data:months.map(function(d){ return d.total; }), backgroundColor:'rgba(59,130,246,0.5)', borderColor:'#3b82f6', borderWidth:1, borderRadius:4 },
+        { label:'Finalizados', data:months.map(function(d){ return d.fin; }), backgroundColor:'rgba(34,197,94,0.5)', borderColor:'#22c55e', borderWidth:1, borderRadius:4 }
+      ]
+    },
+    options: chartOpts('Pedidos')
+  });
+}
+
+// ── ABA 3: Financeiro ─────────────────────────────────────────
+function renderCardsFinanceiro() {
+  var totVal=0, totPago=0, totComp=0;
+  clients.forEach(function(c) {
+    var v = homeDbState[c.reg]||{};
+    totVal  += Number(v.valor_mes||0);
+    totPago += Number(v.valor_pago||0);
+    totComp += Number(v.valor_componente||0);
+  });
+  var totalGastos = homeGastos.reduce(function(s,g){ return s+Number(g.valor||0); }, 0);
+  var comBruta  = (totPago - totComp) * COMISSAO;
+  var comLiq    = comBruta - totalGastos;
+  var pendente  = totVal - totPago;
+
+  var cards = [
+    { lbl:'Total a receber', val:fmt(totVal),    clr:'#f1f5f9', ico:'ti-cash' },
+    { lbl:'Recebido',        val:fmt(totPago),   clr:'#4ade80', ico:'ti-circle-check' },
+    { lbl:'Pendente',        val:fmt(pendente),  clr:pendente>0?'#fca5a5':'#4ade80', ico:'ti-alert-circle' },
+    { lbl:'Comissão líquida',val:fmt(comLiq),    clr:'#fbbf24', ico:'ti-percentage' },
+  ];
+  document.getElementById('cards-financeiro').innerHTML = cards.map(function(c) {
+    return '<div class="hm-card">'+
+      '<div class="hm-card-lbl">'+c.lbl+'</div>'+
+      '<div class="hm-card-val" style="color:'+c.clr+';font-size:20px">'+c.val+'</div>'+
+      '<i class="ti '+c.ico+'" style="font-size:18px;color:'+c.clr+';opacity:0.4;margin-top:auto"></i>'+
+    '</div>';
+  }).join('');
+
+  var mesLabel = MESES[currentMonth] + ' ' + currentYear;
+  ['fin-mes-lbl','fin-com-mes-lbl'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=mesLabel; });
+
+  renderGastos();
+  renderComissoes();
+}
+
+function renderGastos() {
+  var el = document.getElementById('gastos-lista');
+  if (!el) return;
+  if (!homeGastos.length) {
+    el.innerHTML = '<div class="hm-empty"><i class="ti ti-truck-off" style="font-size:20px"></i>Sem gastos registrados</div>';
+    return;
+  }
+  var por = {};
+  homeGastos.forEach(function(g) {
+    var t = g.tipo||'outros';
+    por[t] = (por[t]||0) + Number(g.valor||0);
+  });
+  var total = homeGastos.reduce(function(s,g){ return s+Number(g.valor||0); }, 0);
+  var tipos = { correio:'📬 Correio', motoboy:'🛵 Motoboy', uber:'🚗 Uber', outros:'📦 Outros' };
+  el.innerHTML = Object.keys(por).map(function(t) {
+    var lbl = tipos[t] || ('📦 '+t);
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid rgba(255,255,255,0.05)">'+
+      '<span style="font-size:13px;color:#94a3b8">'+lbl+'</span>'+
+      '<span style="font-size:13px;font-weight:600;color:#f1f5f9">'+fmt(por[t])+'</span>'+
+    '</div>';
+  }).join('') +
+  '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0 0;margin-top:4px">'+
+    '<span style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em">Total</span>'+
+    '<span style="font-size:14px;font-weight:700;color:#fca5a5">'+fmt(total)+'</span>'+
   '</div>';
 }
 
-function homeClickItem(reg, tipo) {
-  if (!reg) return;
-  if (tipo === 'lembrete') {
-    localStorage.setItem('ideali-tarefas-autoselect', reg);
-    window.location.href = 'tarefas.html';
-  } else {
-    localStorage.setItem('ideali-cr-autoselect', reg);
-    window.location.href = 'contas-receber.html';
-  }
-}
-
-function homeTickerEmptyRows(msg) {
-  var html = '';
-  for (var i = 0; i < TICKER_ROWS; i++) {
-    html += '<div class="home-ticker-row" style="justify-content:center">'+
-      '<span style="font-size:11px;color:#4a5568">'+(i===0?msg:'')+'</span></div>';
-  }
-  return html;
-}
-
-function renderTicker(col) {
-  var listEl  = document.getElementById('home-list-'+col);
-  var countEl = document.getElementById('home-count-'+col);
-  if (!listEl) return;
-  var items = homeAllItems[col] || [];
-  if (countEl) countEl.textContent = items.length;
-  if (!items.length) {
-    var msgs = { pedidos:'Sem pedidos em aberto', urgencia:'Sem urgências', lembretes:'Sem tarefas abertas' };
-    listEl.innerHTML = homeTickerEmptyRows(msgs[col]||'—');
-    listEl.style.transform = 'translateY(0)';
-    listEl.style.transition = 'none';
+function renderComissoes() {
+  var tb = document.getElementById('tbody-comissoes');
+  if (!tb) return;
+  var rows = clients.filter(function(c){ return Number((homeDbState[c.reg]||{}).valor_pago||0)>0; })
+    .sort(function(a,b){ return Number((homeDbState[b.reg]||{}).valor_pago||0)-Number((homeDbState[a.reg]||{}).valor_pago||0); });
+  if (!rows.length) {
+    tb.innerHTML = '<tr><td colspan="5"><div class="hm-empty">Nenhum pagamento registrado neste mês.</div></td></tr>';
     return;
   }
-  var offset = homeTickerState[col].offset;
-  var tipo   = col === 'lembretes' ? 'lembrete' : 'pedido';
-  var html = '';
-  for (var i = 0; i <= TICKER_ROWS; i++) {
-    html += homeTickerRowHTML(items[(offset + i) % items.length], tipo);
-  }
-  listEl.innerHTML = html;
-  listEl.style.transition = 'none';
-  listEl.style.transform  = 'translateY(0)';
+  tb.innerHTML = rows.map(function(c) {
+    var v=homeDbState[c.reg]||{}, vm=Number(v.valor_mes||0), vp=Number(v.valor_pago||0), vc=Number(v.valor_componente||0), com=(vp-vc)*COMISSAO;
+    return '<tr><td style="font-weight:500;color:#f1f5f9">'+escHtml(c.nome)+'</td>'+
+      '<td>'+fmt(vm)+'</td>'+
+      '<td style="color:#22c55e">'+fmt(vp)+'</td>'+
+      '<td style="color:#94a3b8">'+fmt(vc)+'</td>'+
+      '<td style="color:#fbbf24;font-weight:600">'+fmt(com)+'</td></tr>';
+  }).join('');
 }
 
-function renderAllTickers() {
-  ['pedidos','urgencia','lembretes'].forEach(renderTicker);
-}
-
-function homeTickerAdvance(col) {
-  var state = homeTickerState[col];
-  var items = homeAllItems[col] || [];
-  if (items.length <= 1 || state.animating) return;
-  var listEl = document.getElementById('home-list-'+col);
-  if (!listEl) return;
-  state.animating = true;
-  listEl.style.transition = 'transform 0.38s cubic-bezier(0.4,0,0.2,1)';
-  listEl.style.transform  = 'translateY(-'+TICKER_ROW_H+'px)';
-  setTimeout(function() {
-    state.offset    = (state.offset + 1) % items.length;
-    state.animating = false;
-    renderTicker(col);
-  }, 400);
-}
-
-function startAllTickers() {
-  ['pedidos','urgencia','lembretes'].forEach(function(col) {
-    homeTickerStop(col);
-    if ((homeAllItems[col]||[]).length <= 1) return;
-    homeTickerState[col].timer = setInterval(function() {
-      if (!homeTickerState[col].paused) homeTickerAdvance(col);
-    }, 5000);
+function drawFinChart() {
+  var ctx = document.getElementById('chart-fin-bar');
+  if (!ctx || !homeHistory.length) return;
+  if (homeCharts['fin-bar']) homeCharts['fin-bar'].destroy();
+  homeCharts['fin-bar'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: homeHistory.map(function(d){ return d.nome; }),
+      datasets: [
+        { label:'A receber', data:homeHistory.map(function(d){ return d.valor; }), backgroundColor:'rgba(59,130,246,0.45)', borderColor:'#3b82f6', borderWidth:1, borderRadius:4 },
+        { label:'Pago',      data:homeHistory.map(function(d){ return d.pago;  }), backgroundColor:'rgba(34,197,94,0.5)',   borderColor:'#22c55e', borderWidth:1, borderRadius:4 }
+      ]
+    },
+    options: chartOpts('R$', true)
   });
 }
 
-function homeTickerStop(col) {
-  if (homeTickerState[col] && homeTickerState[col].timer) {
-    clearInterval(homeTickerState[col].timer);
-    homeTickerState[col].timer = null;
+// ── ABA 4: Ativos Recentes ────────────────────────────────────
+function renderAtivos() {
+  var el = document.getElementById('grid-ativos');
+  var sub = document.getElementById('ativos-subtitle');
+  if (!el) return;
+
+  // Último pedido por cliente
+  var porCli = {};
+  homePedidos.forEach(function(p) {
+    var reg = p.cliente_reg; if (!reg) return;
+    if (!porCli[reg] || p.created_at > porCli[reg].created_at) porCli[reg] = p;
+  });
+
+  var lista = Object.keys(porCli).map(function(reg) {
+    return { reg: parseInt(reg), lastPed: porCli[reg] };
+  }).sort(function(a,b) {
+    return (b.lastPed.created_at||'').localeCompare(a.lastPed.created_at||'');
+  });
+
+  if (sub) sub.textContent = lista.length + ' clientes com pedidos — ordenados pelo mais recente';
+
+  if (!lista.length) {
+    el.innerHTML = '<div class="hm-empty" style="grid-column:1/-1"><i class="ti ti-users" style="font-size:28px"></i>Nenhum pedido cadastrado.</div>';
+    return;
   }
+
+  el.innerHTML = lista.map(function(item, idx) {
+    var c = clients.find(function(x){ return x.reg === item.reg; });
+    var nome = c ? c.nome : 'Cliente #'+item.reg;
+    var avi  = idx % avatarColors.length;
+    var bg   = avatarColors[avi][0], fg = avatarColors[avi][1];
+    var ini  = initials(nome);
+    var dataStr = item.lastPed.created_at ? new Date(item.lastPed.created_at).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'}) : '';
+    return '<button class="av-btn" onclick="ativoClick('+item.reg+')" title="'+escHtml(nome)+'">'+
+      '<div class="av-avatar" style="background:'+bg+';color:'+fg+'">'+ini+'</div>'+
+      '<div class="av-nome">'+escHtml(nome)+'</div>'+
+      (dataStr ? '<div class="av-data">'+dataStr+'</div>' : '')+
+    '</button>';
+  }).join('');
 }
 
-function homeTickerPause(col)  { if (homeTickerState[col]) homeTickerState[col].paused = true; }
-function homeTickerResume(col) { if (homeTickerState[col]) homeTickerState[col].paused = false; }
+function ativoClick(reg) {
+  localStorage.setItem('ideali-cr-autoselect', reg);
+  window.location.href = 'contas-receber.html';
+}
 
+// ── Chart.js helpers ──────────────────────────────────────────
+var CHART_DEFAULTS = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { labels: { color:'#94a3b8', font:{ size:11 }, padding:10, boxWidth:12 } },
+    tooltip: { backgroundColor:'#22263a', titleColor:'#f1f5f9', bodyColor:'#94a3b8', borderColor:'rgba(255,255,255,0.1)', borderWidth:1, padding:10 }
+  },
+  scales: {
+    x: { grid:{ color:'rgba(255,255,255,0.04)' }, ticks:{ color:'#4a5568', font:{size:11} } },
+    y: { grid:{ color:'rgba(255,255,255,0.05)' }, ticks:{ color:'#4a5568', font:{size:11} }, beginAtZero:true }
+  }
+};
+
+function chartOpts(yLabel, isMoney) {
+  var opts = JSON.parse(JSON.stringify(CHART_DEFAULTS));
+  if (isMoney) {
+    opts.scales.y.ticks.callback = function(v){ return 'R$'+(v>=1000?(v/1000).toFixed(0)+'k':v); };
+  }
+  return opts;
+}
+
+// ── Render estático (sem charts) ──────────────────────────────
+function renderAllStatic() {
+  renderCardsClientes();
+  renderCardsProducao();
+  renderCardsFinanceiro();
+}
+
+// ── Shell & Init ──────────────────────────────────────────────
 function initShell() {
   return fetch('sidebar.html')
     .then(function(r) { return r.text(); })
@@ -268,9 +674,23 @@ function hideLoading() {
   if (el) el.style.display = 'none';
 }
 
+function showConnError(msg) {
+  var el = document.getElementById('conn-error');
+  var m2 = document.getElementById('conn-error-msg');
+  if (el) el.style.display = 'flex';
+  if (m2) m2.textContent  = msg;
+}
+
 async function init() {
-  hideLoading();
-  await loadHomeData();
+  try {
+    await Promise.all([ loadControle(), loadPedidosAll(), loadGastos(), loadHistory() ]);
+    renderAllStatic();
+    setHomeTab('clientes');
+  } catch(e) {
+    showConnError(e.message || String(e));
+  } finally {
+    hideLoading();
+  }
 }
 
 initShell().then(function() { if (typeof init === 'function') init(); });
