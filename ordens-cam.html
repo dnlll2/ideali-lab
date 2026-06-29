@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ordens CAM — Ideali Laboratório</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared.js"></script>
+</head>
+<body>
+<div id="shared-shell"></div>
+
+<div id="cam-overlay" onclick="closeCamPanel()"></div>
+<div id="cam-panel">
+  <div class="cp-header">
+    <div style="flex:1;min-width:0">
+      <p id="cam-panel-title" style="font-size:15px;font-weight:600;color:#f1f5f9">Nova Ordem CAM</p>
+      <p id="cam-panel-sub"   style="font-size:11px;color:#64748b;margin-top:2px">Preencha os dados da fresagem</p>
+    </div>
+    <button class="sb-close" onclick="closeCamPanel()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="cp-body" id="cam-panel-body"></div>
+  <div class="cp-footer">
+    <button class="cad-btn-ghost" onclick="closeCamPanel()">Cancelar</button>
+    <button class="cad-btn-primary" id="cam-save-btn" onclick="saveCamPanel()"><i class="ti ti-device-floppy" style="font-size:14px"></i> Salvar</button>
+  </div>
+</div>
+
+<div style="max-width:100%">
+  <div id="app-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="hamburger" onclick="openSidebar()" title="Menu">&#9776;</button>
+      <div>
+        <p style="font-size:22px;font-weight:500;color:#f1f5f9">🦷 Ordens CAM</p>
+        <p id="cam-summary" style="font-size:14px;color:#64748b">Carregando...</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span id="relogio" style="font-size:11px;color:#4a5568"></span>
+      <span id="sync-status" style="font-size:12px;color:#64748b">
+        <span class="sync-dot" id="sync-dot"></span>Conectado
+      </span>
+      <button class="cad-btn-primary" onclick="openCamPanel(null)">
+        <i class="ti ti-plus" style="font-size:15px"></i> Nova Ordem
+      </button>
+    </div>
+  </div>
+
+  <main id="page-content">
+    <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px;position:relative">
+        <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;color:#4a5568"></i>
+        <input type="text" id="cam-search" placeholder="Buscar por paciente ou cliente..." style="width:100%;padding-left:34px" oninput="renderCamTable()">
+      </div>
+      <select id="cam-status-filter" style="width:150px" onchange="renderCamTable()">
+        <option value="">Todos status</option>
+        <option value="pendente">Pendente</option>
+        <option value="fresagem">Em Fresagem</option>
+        <option value="finalizado">Finalizado</option>
+        <option value="entregue">Entregue</option>
+      </select>
+      <select id="cam-cliente-filter" style="width:190px" onchange="renderCamTable()">
+        <option value="">Todos clientes</option>
+      </select>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="overflow-x:auto">
+        <table class="cad-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Cliente</th>
+              <th>Paciente</th>
+              <th>Material</th>
+              <th>Cor</th>
+              <th>Tipo</th>
+              <th>Qtd</th>
+              <th>Prazo</th>
+              <th>Status</th>
+              <th style="width:60px"></th>
+            </tr>
+          </thead>
+          <tbody id="cam-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+var camOrdens = [];
+var camEditId = null;
+
+var CAM_STATUS_LABELS = {
+  pendente:   { label: 'Pendente',     bg: '#22263a', color: '#94a3b8' },
+  fresagem:   { label: 'Em Fresagem',  bg: '#1d3a6e', color: '#93c5fd' },
+  finalizado: { label: 'Finalizado',   bg: '#0d3d2b', color: '#4ade80' },
+  entregue:   { label: 'Entregue',     bg: '#2d1d6e', color: '#c4b5fd' }
+};
+
+var CAM_MATERIAIS = ['Zircônia Mono','Zircônia Multi','Zircônia Ultra','E.max','PMMA','Resina Bisacrílica','Cera','Outro'];
+var CAM_TIPOS     = ['Coroa','Faceta','Inlay','Onlay','Overlay','Pontic','Maryland','Provisório','Outro'];
+
+// ── Carregamento ──────────────────────────────────────────────
+async function loadCamOrdens() {
+  try {
+    var res = await sb.from('ordens_cam').select('*').order('created_at', { ascending: false });
+    if (res.error) throw res.error;
+    camOrdens = res.data || [];
+    populateCamClienteFilter();
+    renderCamTable();
+    updateCamSummary();
+  } catch(e) {
+    showConnError(e.message || String(e));
+  }
+}
+
+function updateCamSummary() {
+  var el = document.getElementById('cam-summary');
+  if (!el) return;
+  var total     = camOrdens.length;
+  var pendentes = camOrdens.filter(function(o){ return o.status === 'pendente'; }).length;
+  var fresagem  = camOrdens.filter(function(o){ return o.status === 'fresagem'; }).length;
+  el.textContent = total + ' ordens · ' + pendentes + ' pendentes · ' + fresagem + ' em fresagem';
+}
+
+function populateCamClienteFilter() {
+  var sel = document.getElementById('cam-cliente-filter');
+  if (!sel) return;
+  var cur = sel.value;
+  var regs = [];
+  camOrdens.forEach(function(o) {
+    if (o.cliente_reg && regs.indexOf(o.cliente_reg) === -1) regs.push(o.cliente_reg);
+  });
+  regs.sort(function(a,b){
+    var na = camCliNome(a), nb = camCliNome(b);
+    return na.localeCompare(nb);
+  });
+  sel.innerHTML = '<option value="">Todos clientes</option>' +
+    regs.map(function(r){ return '<option value="'+r+'">'+escHtml(camCliNome(r))+'</option>'; }).join('');
+  sel.value = cur;
+}
+
+function camCliNome(reg) {
+  var c = clients.find(function(x){ return x.reg == reg; });
+  return c ? c.nome : 'Cliente ' + reg;
+}
+
+// ── Renderização da tabela ────────────────────────────────────
+function renderCamTable() {
+  var tbody   = document.getElementById('cam-tbody');
+  if (!tbody) return;
+  var search  = (document.getElementById('cam-search')        || {}).value || '';
+  var stFilt  = (document.getElementById('cam-status-filter') || {}).value || '';
+  var cliFilt = (document.getElementById('cam-cliente-filter')|| {}).value || '';
+  var q = search.toLowerCase();
+
+  var filtered = camOrdens.filter(function(o) {
+    if (stFilt  && o.status !== stFilt) return false;
+    if (cliFilt && String(o.cliente_reg) !== String(cliFilt)) return false;
+    if (q) {
+      var nome = camCliNome(o.cliente_reg).toLowerCase();
+      var pac  = (o.paciente || '').toLowerCase();
+      if (nome.indexOf(q) === -1 && pac.indexOf(q) === -1) return false;
+    }
+    return true;
+  });
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#4a5568;padding:24px">Nenhuma ordem encontrada.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(function(o) {
+    var st    = CAM_STATUS_LABELS[o.status] || CAM_STATUS_LABELS.pendente;
+    var prazo = o.prazo ? formatDateBR(o.prazo) : '—';
+    var venc  = o.prazo && o.status !== 'entregue' && o.status !== 'finalizado' && new Date(o.prazo) < new Date() ? 'color:#ef4444;font-weight:600' : '';
+    return '<tr onclick="openCamPanel(\''+o.id+'\')">'+
+      '<td style="color:#64748b;font-size:12px">#'+o.id+'</td>'+
+      '<td style="font-weight:500;color:#f1f5f9;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(camCliNome(o.cliente_reg))+'</td>'+
+      '<td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(o.paciente||'—')+'</td>'+
+      '<td><span style="font-size:12px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.07);color:#cbd5e1">'+escHtml(o.material||'—')+'</span></td>'+
+      '<td style="color:#94a3b8">'+escHtml(o.cor||'—')+'</td>'+
+      '<td style="color:#94a3b8">'+escHtml(o.tipo||'—')+'</td>'+
+      '<td style="text-align:center;color:#e2e8f0">'+escHtml(String(o.qtd||1))+'</td>'+
+      '<td style="font-size:13px;'+venc+'">'+prazo+'</td>'+
+      '<td><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:'+st.bg+';color:'+st.color+'">'+st.label+'</span></td>'+
+      '<td onclick="event.stopPropagation()" style="text-align:center">'+
+        '<button onclick="deleteCamOrdem(\''+o.id+'\')" style="width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#ef4444;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;justify-content:center" title="Excluir"><i class="ti ti-trash"></i></button>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+}
+
+function formatDateBR(iso) {
+  var p = iso.split('-');
+  if (p.length < 3) return iso;
+  return p[2].substring(0,2)+'/'+p[1]+'/'+p[0];
+}
+
+// ── Painel lateral ────────────────────────────────────────────
+function openCamPanel(id) {
+  camEditId = id;
+  var ordem = id ? camOrdens.find(function(o){ return String(o.id)===String(id); }) : null;
+  var titulo = document.getElementById('cam-panel-title');
+  var sub    = document.getElementById('cam-panel-sub');
+  if (titulo) titulo.textContent = ordem ? 'Editar Ordem #' + id : 'Nova Ordem CAM';
+  if (sub)    sub.textContent    = ordem ? camCliNome(ordem.cliente_reg) : 'Preencha os dados da fresagem';
+
+  var cliOpts = clients.slice().sort(function(a,b){ return a.nome.localeCompare(b.nome); })
+    .map(function(c){ return '<option value="'+c.reg+'"'+(ordem && ordem.cliente_reg==c.reg?' selected':'')+'>'+escHtml(c.nome)+'</option>'; }).join('');
+
+  var matOpts = CAM_MATERIAIS.map(function(m){
+    return '<option value="'+m+'"'+(ordem && ordem.material===m?' selected':'')+'>'+m+'</option>';
+  }).join('');
+
+  var tipoOpts = CAM_TIPOS.map(function(t){
+    return '<option value="'+t+'"'+(ordem && ordem.tipo===t?' selected':'')+'>'+t+'</option>';
+  }).join('');
+
+  var stOpts = Object.keys(CAM_STATUS_LABELS).map(function(k){
+    var s = CAM_STATUS_LABELS[k];
+    return '<option value="'+k+'"'+(ordem && ordem.status===k?' selected':(!ordem && k==='pendente'?' selected':''))+'>'+s.label+'</option>';
+  }).join('');
+
+  document.getElementById('cam-panel-body').innerHTML =
+    '<div class="cf-group">'+
+      '<label class="cf-label">Cliente *</label>'+
+      '<select id="cp-cliente" style="width:100%"><option value="">Selecione...</option>'+cliOpts+'</select>'+
+    '</div>'+
+    '<div class="cf-group">'+
+      '<label class="cf-label">Paciente</label>'+
+      '<input type="text" id="cp-paciente" placeholder="Nome do paciente" style="width:100%" value="'+escHtml(ordem?ordem.paciente||'':'')+'">'+
+    '</div>'+
+    '<div class="cf-row2">'+
+      '<div class="cf-group">'+
+        '<label class="cf-label">Material *</label>'+
+        '<select id="cp-material" style="width:100%"><option value="">Selecione...</option>'+matOpts+'</select>'+
+      '</div>'+
+      '<div class="cf-group">'+
+        '<label class="cf-label">Cor / Tom</label>'+
+        '<input type="text" id="cp-cor" placeholder="Ex: A1, A2, BL1" style="width:100%" value="'+escHtml(ordem?ordem.cor||'':'')+'">'+
+      '</div>'+
+    '</div>'+
+    '<div class="cf-row2">'+
+      '<div class="cf-group">'+
+        '<label class="cf-label">Tipo *</label>'+
+        '<select id="cp-tipo" style="width:100%"><option value="">Selecione...</option>'+tipoOpts+'</select>'+
+      '</div>'+
+      '<div class="cf-group">'+
+        '<label class="cf-label">Quantidade</label>'+
+        '<input type="number" id="cp-qtd" min="1" style="width:100%" value="'+(ordem?ordem.qtd||1:1)+'">'+
+      '</div>'+
+    '</div>'+
+    '<div class="cf-row2">'+
+      '<div class="cf-group">'+
+        '<label class="cf-label">Status</label>'+
+        '<select id="cp-status" style="width:100%">'+stOpts+'</select>'+
+      '</div>'+
+      '<div class="cf-group">'+
+        '<label class="cf-label">Prazo</label>'+
+        '<input type="date" id="cp-prazo" style="width:100%" value="'+(ordem&&ordem.prazo?ordem.prazo.substring(0,10):'')+'">'+
+      '</div>'+
+    '</div>'+
+    '<div class="cf-group">'+
+      '<label class="cf-label">Observações</label>'+
+      '<textarea id="cp-obs" placeholder="Observações opcionais..." style="width:100%;min-height:72px;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:13px;background:#22263a;color:#e2e8f0;outline:none;font-family:inherit;resize:vertical;line-height:1.5">'+escHtml(ordem?ordem.obs||'':'')+'</textarea>'+
+    '</div>';
+
+  document.getElementById('cam-overlay').classList.add('open');
+  document.getElementById('cam-panel').classList.add('open');
+}
+
+function closeCamPanel() {
+  document.getElementById('cam-overlay').classList.remove('open');
+  document.getElementById('cam-panel').classList.remove('open');
+  camEditId = null;
+}
+
+async function saveCamPanel() {
+  var clienteReg = parseInt(document.getElementById('cp-cliente').value);
+  var paciente   = document.getElementById('cp-paciente').value.trim();
+  var material   = document.getElementById('cp-material').value;
+  var cor        = document.getElementById('cp-cor').value.trim();
+  var tipo       = document.getElementById('cp-tipo').value;
+  var qtd        = parseInt(document.getElementById('cp-qtd').value) || 1;
+  var status     = document.getElementById('cp-status').value || 'pendente';
+  var prazo      = document.getElementById('cp-prazo').value || null;
+  var obs        = document.getElementById('cp-obs').value.trim() || null;
+
+  if (!clienteReg) { alert('Selecione um cliente.'); return; }
+  if (!material)   { alert('Selecione o material.'); return; }
+  if (!tipo)       { alert('Selecione o tipo.'); return; }
+
+  var payload = { cliente_reg: clienteReg, paciente: paciente||null, material, cor: cor||null, tipo, qtd, status, prazo, obs };
+  var btn = document.getElementById('cam-save-btn');
+  if (btn) btn.disabled = true;
+
+  try {
+    var res;
+    if (camEditId) {
+      res = await sb.from('ordens_cam').update(payload).eq('id', camEditId);
+    } else {
+      res = await sb.from('ordens_cam').insert([payload]);
+    }
+    if (res.error) throw res.error;
+    closeCamPanel();
+    await loadCamOrdens();
+  } catch(e) {
+    alert('Erro ao salvar: ' + (e.message || String(e)));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function deleteCamOrdem(id) {
+  if (!confirm('Excluir esta ordem CAM?')) return;
+  try {
+    var res = await sb.from('ordens_cam').delete().eq('id', id);
+    if (res.error) throw res.error;
+    await loadCamOrdens();
+  } catch(e) {
+    alert('Erro ao excluir: ' + (e.message || String(e)));
+  }
+}
+
+// ── Shell ─────────────────────────────────────────────────────
+function initShell() {
+  return fetch('sidebar.html')
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+      document.getElementById('shared-shell').innerHTML = html;
+      updateSidebarActive();
+      var keyEl = document.getElementById('sb-groq-key');
+      if (keyEl && GROQ_API_KEY) keyEl.value = GROQ_API_KEY;
+    })
+    .catch(function(e) { console.error('Erro ao carregar sidebar.html:', e); });
+}
+
+function hideLoading() {
+  var el = document.getElementById('loading-overlay');
+  if (el) el.style.display = 'none';
+}
+
+function showConnError(msg) {
+  var el   = document.getElementById('conn-error');
+  var msg2 = document.getElementById('conn-error-msg');
+  if (el)   el.style.display  = 'flex';
+  if (msg2) msg2.textContent  = msg;
+}
+
+async function init() {
+  try {
+    await loadCamOrdens();
+  } catch(e) {
+    showConnError(e.message || String(e));
+  } finally {
+    hideLoading();
+  }
+}
+
+initShell().then(function() { if (typeof init === 'function') init(); });
+</script>
+
+<style>
+  #cam-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);opacity:0;pointer-events:none;transition:opacity 0.25s;z-index:400}
+  #cam-overlay.open{opacity:1;pointer-events:all}
+  #cam-panel{position:fixed;top:0;right:-500px;width:460px;max-width:96vw;height:100vh;background:#1a1d27;border-left:0.5px solid rgba(255,255,255,0.1);display:flex;flex-direction:column;transition:right 0.28s cubic-bezier(0.4,0,0.2,1);z-index:401}
+  #cam-panel.open{right:0}
+</style>
+</body>
+</html>
