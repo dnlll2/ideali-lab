@@ -218,12 +218,22 @@ async function loadHistory() {
   for (var i = 5; i >= 0; i--) {
     var m = currentMonth - i, y = currentYear;
     if (m < 0) { m += 12; y--; }
+    // mes e ano são 0-indexed (mes=5 → Junho), igual ao padrão do sistema
     try {
-      var res = await sb.from('controle_mensal').select('valor_mes,valor_pago,quitado').eq('mes',m).eq('ano',y);
+      var res = await sb.from('controle_mensal')
+        .select('valor_mes,valor_pago,quitado')
+        .eq('mes', m)
+        .eq('ano', y);
+      if (res.error) throw res.error;
       var pago=0, valor=0, quitados=0;
-      (res.data||[]).forEach(function(r) { pago+=Number(r.valor_pago||0); valor+=Number(r.valor_mes||0); if(r.quitado)quitados++; });
+      (res.data||[]).forEach(function(r) {
+        pago   += Number(r.valor_pago||0);
+        valor  += Number(r.valor_mes||0);
+        if (r.quitado === true) quitados++;
+      });
       homeHistory.push({ m:m, y:y, nome:MESES[m].substring(0,3), pago:pago, valor:valor, quitados:quitados });
     } catch(e) {
+      console.error('[loadHistory] mes='+m+' ano='+y, e);
       homeHistory.push({ m:m, y:y, nome:MESES[m].substring(0,3), pago:0, valor:0, quitados:0 });
     }
   }
@@ -261,12 +271,16 @@ function renderCurrentTab() {
 
 // ── ABA 1: Clientes ───────────────────────────────────────────
 function renderCardsClientes() {
-  var comPed  = 0, comAtiv = 0;
-  clients.forEach(function(c) {
-    var v = homeDbState[c.reg] || {};
-    if (Number(v.valor_mes||0) > 0) comPed++;
-    if (v.recebido || v.enviado || v.quitado || Number(v.valor_mes||0) > 0) comAtiv++;
+  // "Ativos no mês" e "Com pedido aberto" vêm da tabela pedidos
+  var mesStr = currentYear + '-' + String(currentMonth + 1).padStart(2, '0');
+  var pedMes = homePedidos.filter(function(p) {
+    return (p.created_at || '').substring(0, 7) === mesStr;
   });
+  var regsAtivos = {};
+  pedMes.forEach(function(p) { if (p.cliente_reg) regsAtivos[p.cliente_reg] = true; });
+  var comAtiv = Object.keys(regsAtivos).length;
+  var statusFechados = ['finalizado', 'cancelado', 'entregue'];
+  var comPed = pedMes.filter(function(p) { return statusFechados.indexOf(p.status) < 0; }).length;
 
   var cards = [
     { ico:'ti-users',       lbl:'Total de clientes',  val:clients.length, clr:'#93c5fd', bg:'rgba(29,58,110,0.4)' },
