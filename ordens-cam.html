@@ -8,33 +8,93 @@
 <link rel="stylesheet" href="shared.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared.js"></script>
+<style>
+  .cam-col{background:#13161f;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:200px}
+  .cam-col-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px}
+  .cam-col-body{padding:8px;display:flex;flex-direction:column;gap:8px;min-height:120px}
+  .cam-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.09);border-radius:9px;padding:10px 12px;cursor:grab;transition:box-shadow 0.15s}
+  .cam-card:active{cursor:grabbing;box-shadow:0 4px 16px rgba(0,0,0,0.4)}
+  .cam-orig-btn{height:32px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:12px;cursor:pointer;font-family:inherit;transition:all 0.15s}
+  .cam-orig-btn.active{background:#1d3a6e;border-color:#60a5fa;color:#93c5fd}
+  @media(max-width:767px){#cam-kanban{grid-template-columns:1fr !important}}
+</style>
 </head>
 <body>
 <div id="shared-shell"></div>
 
-<div id="cam-overlay" onclick="closeCamPanel()"></div>
-<div id="cam-panel">
+<!-- ── Modal: Nova Ordem ──────────────────────────────────────── -->
+<div id="cam-overlay" onclick="closeCamPanel()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:80"></div>
+<div id="cam-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:81;width:min(480px,95vw);background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;overflow:hidden">
   <div class="cp-header">
     <div style="flex:1;min-width:0">
-      <p id="cam-panel-title" style="font-size:15px;font-weight:600;color:#f1f5f9">Nova Ordem CAM</p>
-      <p id="cam-panel-sub"   style="font-size:11px;color:#64748b;margin-top:2px">Preencha os dados da fresagem</p>
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9">Nova Ordem CAM</p>
+      <p style="font-size:11px;color:#64748b;margin-top:2px">Design / arquivo de fresagem</p>
     </div>
     <button class="sb-close" onclick="closeCamPanel()"><i class="ti ti-x"></i></button>
   </div>
-  <div class="cp-body" id="cam-panel-body"></div>
+  <div class="cp-body" style="display:flex;flex-direction:column;gap:12px">
+    <div>
+      <p class="label" style="margin-bottom:4px">Cliente cadastrado</p>
+      <select id="cam-form-cliente" style="width:100%;height:36px"
+        onchange="this.value?(document.getElementById('cam-form-nome-livre').style.display='none'):(document.getElementById('cam-form-nome-livre').style.display='')">
+        <option value="">— Nome livre abaixo —</option>
+      </select>
+    </div>
+    <div id="cam-form-nome-livre">
+      <p class="label" style="margin-bottom:4px">Ou nome livre (sem cadastro)</p>
+      <input type="text" id="cam-form-nome-livre-inp" placeholder="Nome do cliente..." style="width:100%;height:36px">
+    </div>
+    <div>
+      <p class="label" style="margin-bottom:4px">Descrição</p>
+      <textarea id="cam-form-desc" rows="3" placeholder="Descreva o trabalho..."
+        style="width:100%;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:13px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit;resize:vertical"></textarea>
+    </div>
+    <div>
+      <p class="label" style="margin-bottom:6px">Origem</p>
+      <div style="display:flex;gap:8px">
+        <button id="cam-orig-whatsapp" class="cam-orig-btn active" onclick="camSetOrigem('whatsapp')">📱 WhatsApp</button>
+        <button id="cam-orig-email"    class="cam-orig-btn"        onclick="camSetOrigem('email')">✉️ Email</button>
+      </div>
+      <input type="hidden" id="cam-form-origem" value="whatsapp">
+    </div>
+  </div>
   <div class="cp-footer">
     <button class="cad-btn-ghost" onclick="closeCamPanel()">Cancelar</button>
-    <button class="cad-btn-primary" id="cam-save-btn" onclick="saveCamPanel()"><i class="ti ti-device-floppy" style="font-size:14px"></i> Salvar</button>
+    <button class="cad-btn-primary" onclick="saveNovaCamOrdem()"><i class="ti ti-device-floppy" style="font-size:14px"></i> Salvar</button>
   </div>
 </div>
 
+<!-- ── Modal: Arquivados ──────────────────────────────────────── -->
+<div id="cam-arq-overlay" onclick="closeCamArquivados()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:90"></div>
+<div id="cam-arq-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:91;width:min(600px,96vw);max-height:85vh;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;flex-direction:column">
+  <div class="cp-header">
+    <div style="flex:1"><p style="font-size:15px;font-weight:600;color:#f1f5f9">📦 Ordens Arquivadas</p></div>
+    <button class="sb-close" onclick="closeCamArquivados()"><i class="ti ti-x"></i></button>
+  </div>
+  <div id="cam-arq-body" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:8px"></div>
+</div>
+
+<!-- ── Modal: Detalhe ─────────────────────────────────────────── -->
+<div id="cam-detail-overlay" onclick="closeCamDetail()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:90"></div>
+<div id="cam-detail-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:91;width:min(540px,95vw);max-height:85vh;overflow-y:auto;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:0.5px solid rgba(255,255,255,0.08);position:sticky;top:0;background:#1a1d27;z-index:1">
+    <p style="font-size:15px;font-weight:600;color:#f1f5f9;margin:0">Detalhes da Ordem</p>
+    <button onclick="closeCamDetail()" style="width:28px;height:28px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+  </div>
+  <div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px" id="cam-detail-body"></div>
+  <div style="padding:12px 18px;border-top:0.5px solid rgba(255,255,255,0.08);display:flex;justify-content:flex-end">
+    <button onclick="camCopyAll()" style="height:34px;padding:0 16px;border-radius:8px;border:0.5px solid rgba(99,179,237,0.4);background:rgba(99,179,237,0.08);color:#63b3ed;font-size:13px;cursor:pointer;font-family:inherit">📋 Copiar tudo</button>
+  </div>
+</div>
+
+<!-- ── Página principal ───────────────────────────────────────── -->
 <div style="max-width:100%">
   <div id="app-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
     <div style="display:flex;align-items:center;gap:12px">
       <button class="hamburger" onclick="openSidebar()" title="Menu">&#9776;</button>
       <div>
         <p style="font-size:22px;font-weight:500;color:#f1f5f9">🦷 Ordens CAM</p>
-        <p id="cam-summary" style="font-size:14px;color:#64748b">Carregando...</p>
+        <p style="font-size:14px;color:#64748b">Designs e arquivos de fresagem</p>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -42,289 +102,361 @@
       <span id="sync-status" style="font-size:12px;color:#64748b">
         <span class="sync-dot" id="sync-dot"></span>Conectado
       </span>
-      <button class="cad-btn-primary" onclick="openCamPanel(null)">
-        <i class="ti ti-plus" style="font-size:15px"></i> Nova Ordem
-      </button>
     </div>
   </div>
 
   <main id="page-content">
-    <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
-      <div style="flex:1;min-width:180px;position:relative">
-        <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;color:#4a5568"></i>
-        <input type="text" id="cam-search" placeholder="Buscar por paciente ou cliente..." style="width:100%;padding-left:34px" oninput="renderCamTable()">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
+      <div>
+        <p style="font-size:20px;font-weight:600;color:#f1f5f9">🦷 Ordens CAM</p>
+        <p style="font-size:13px;color:#64748b;margin-top:2px">Designs e arquivos de fresagem</p>
       </div>
-      <select id="cam-status-filter" style="width:150px" onchange="renderCamTable()">
-        <option value="">Todos status</option>
-        <option value="pendente">Pendente</option>
-        <option value="fresagem">Em Fresagem</option>
-        <option value="finalizado">Finalizado</option>
-        <option value="entregue">Entregue</option>
-      </select>
-      <select id="cam-cliente-filter" style="width:190px" onchange="renderCamTable()">
-        <option value="">Todos clientes</option>
-      </select>
+      <div style="display:flex;gap:8px">
+        <button onclick="openCamArquivados()" style="height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(113,113,122,0.35);background:#1c1c24;color:#71717a;font-size:13px;cursor:pointer;font-family:inherit">📦 Ver arquivados</button>
+        <button onclick="loadOrdensCam()" style="height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">&#8635; Atualizar</button>
+        <button onclick="openNovaCamOrdem()" class="cad-btn-primary"><i class="ti ti-plus" style="font-size:15px"></i> Nova Ordem</button>
+      </div>
     </div>
 
-    <div class="card" style="padding:0;overflow:hidden">
-      <div style="overflow-x:auto">
-        <table class="cad-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Cliente</th>
-              <th>Paciente</th>
-              <th>Material</th>
-              <th>Cor</th>
-              <th>Tipo</th>
-              <th>Qtd</th>
-              <th>Prazo</th>
-              <th>Status</th>
-              <th style="width:60px"></th>
-            </tr>
-          </thead>
-          <tbody id="cam-tbody"></tbody>
-        </table>
+    <div id="cam-kanban" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start">
+      <div class="cam-col" ondragover="camDragOver(event)" ondrop="camDrop(event,'a_fazer')">
+        <div class="cam-col-head" style="background:rgba(99,179,237,0.08);border-bottom:2px solid #63b3ed">
+          <span style="color:#93c5fd;font-weight:600;font-size:13px">A Fazer</span>
+          <span class="badge" id="cam-count-a_fazer" style="background:#1d3a6e;color:#93c5fd">0</span>
+        </div>
+        <div class="cam-col-body" id="cam-body-a_fazer"></div>
+      </div>
+      <div class="cam-col" ondragover="camDragOver(event)" ondrop="camDrop(event,'fazendo')">
+        <div class="cam-col-head" style="background:rgba(251,191,36,0.07);border-bottom:2px solid #fbbf24">
+          <span style="color:#fbbf24;font-weight:600;font-size:13px">Fazendo</span>
+          <span class="badge" id="cam-count-fazendo" style="background:#3d2e0e;color:#fbbf24">0</span>
+        </div>
+        <div class="cam-col-body" id="cam-body-fazendo"></div>
+      </div>
+      <div class="cam-col" ondragover="camDragOver(event)" ondrop="camDrop(event,'finalizado')">
+        <div class="cam-col-head" style="background:rgba(34,197,94,0.07);border-bottom:2px solid #22c55e">
+          <span style="color:#4ade80;font-weight:600;font-size:13px">Finalizado</span>
+          <span class="badge" id="cam-count-finalizado" style="background:#0d3d2b;color:#4ade80">0</span>
+        </div>
+        <div class="cam-col-body" id="cam-body-finalizado"></div>
       </div>
     </div>
   </main>
 </div>
 
 <script>
-var camOrdens = [];
-var camEditId = null;
-
-var CAM_STATUS_LABELS = {
-  pendente:   { label: 'Pendente',     bg: '#22263a', color: '#94a3b8' },
-  fresagem:   { label: 'Em Fresagem',  bg: '#1d3a6e', color: '#93c5fd' },
-  finalizado: { label: 'Finalizado',   bg: '#0d3d2b', color: '#4ade80' },
-  entregue:   { label: 'Entregue',     bg: '#2d1d6e', color: '#c4b5fd' }
-};
-
-var CAM_MATERIAIS = ['Zircônia Mono','Zircônia Multi','Zircônia Ultra','E.max','PMMA','Resina Bisacrílica','Cera','Outro'];
-var CAM_TIPOS     = ['Coroa','Faceta','Inlay','Onlay','Overlay','Pontic','Maryland','Provisório','Outro'];
+var ordensCam  = [];
+var camDragId  = null;
+var camDetailId = null;
 
 // ── Carregamento ──────────────────────────────────────────────
-async function loadCamOrdens() {
+async function loadOrdensCam() {
   try {
-    var res = await sb.from('ordens_cam').select('*').order('created_at', { ascending: false });
+    var res = await sb.from('ordens_exocad').select('*')
+      .or('arquivado.is.null,arquivado.eq.false')
+      .order('created_at', { ascending: false });
     if (res.error) throw res.error;
-    camOrdens = res.data || [];
-    populateCamClienteFilter();
-    renderCamTable();
-    updateCamSummary();
+    ordensCam = res.data || [];
+    renderOrdensCam();
   } catch(e) {
-    showConnError(e.message || String(e));
-  }
-}
-
-function updateCamSummary() {
-  var el = document.getElementById('cam-summary');
-  if (!el) return;
-  var total     = camOrdens.length;
-  var pendentes = camOrdens.filter(function(o){ return o.status === 'pendente'; }).length;
-  var fresagem  = camOrdens.filter(function(o){ return o.status === 'fresagem'; }).length;
-  el.textContent = total + ' ordens · ' + pendentes + ' pendentes · ' + fresagem + ' em fresagem';
-}
-
-function populateCamClienteFilter() {
-  var sel = document.getElementById('cam-cliente-filter');
-  if (!sel) return;
-  var cur = sel.value;
-  var regs = [];
-  camOrdens.forEach(function(o) {
-    if (o.cliente_reg && regs.indexOf(o.cliente_reg) === -1) regs.push(o.cliente_reg);
-  });
-  regs.sort(function(a,b){
-    var na = camCliNome(a), nb = camCliNome(b);
-    return na.localeCompare(nb);
-  });
-  sel.innerHTML = '<option value="">Todos clientes</option>' +
-    regs.map(function(r){ return '<option value="'+r+'">'+escHtml(camCliNome(r))+'</option>'; }).join('');
-  sel.value = cur;
-}
-
-function camCliNome(reg) {
-  var c = clients.find(function(x){ return x.reg == reg; });
-  return c ? c.nome : 'Cliente ' + reg;
-}
-
-// ── Renderização da tabela ────────────────────────────────────
-function renderCamTable() {
-  var tbody   = document.getElementById('cam-tbody');
-  if (!tbody) return;
-  var search  = (document.getElementById('cam-search')        || {}).value || '';
-  var stFilt  = (document.getElementById('cam-status-filter') || {}).value || '';
-  var cliFilt = (document.getElementById('cam-cliente-filter')|| {}).value || '';
-  var q = search.toLowerCase();
-
-  var filtered = camOrdens.filter(function(o) {
-    if (stFilt  && o.status !== stFilt) return false;
-    if (cliFilt && String(o.cliente_reg) !== String(cliFilt)) return false;
-    if (q) {
-      var nome = camCliNome(o.cliente_reg).toLowerCase();
-      var pac  = (o.paciente || '').toLowerCase();
-      if (nome.indexOf(q) === -1 && pac.indexOf(q) === -1) return false;
+    try {
+      var res2 = await sb.from('ordens_exocad').select('*').order('created_at', { ascending: false });
+      if (res2.error) throw res2.error;
+      ordensCam = (res2.data || []).filter(function(o){ return !o.arquivado; });
+      renderOrdensCam();
+    } catch(e2) {
+      showConnError(e2.message || String(e2));
     }
-    return true;
-  });
-
-  if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#4a5568;padding:24px">Nenhuma ordem encontrada.</td></tr>';
-    return;
   }
-
-  tbody.innerHTML = filtered.map(function(o) {
-    var st    = CAM_STATUS_LABELS[o.status] || CAM_STATUS_LABELS.pendente;
-    var prazo = o.prazo ? formatDateBR(o.prazo) : '—';
-    var venc  = o.prazo && o.status !== 'entregue' && o.status !== 'finalizado' && new Date(o.prazo) < new Date() ? 'color:#ef4444;font-weight:600' : '';
-    return '<tr onclick="openCamPanel(\''+o.id+'\')">'+
-      '<td style="color:#64748b;font-size:12px">#'+o.id+'</td>'+
-      '<td style="font-weight:500;color:#f1f5f9;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(camCliNome(o.cliente_reg))+'</td>'+
-      '<td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(o.paciente||'—')+'</td>'+
-      '<td><span style="font-size:12px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.07);color:#cbd5e1">'+escHtml(o.material||'—')+'</span></td>'+
-      '<td style="color:#94a3b8">'+escHtml(o.cor||'—')+'</td>'+
-      '<td style="color:#94a3b8">'+escHtml(o.tipo||'—')+'</td>'+
-      '<td style="text-align:center;color:#e2e8f0">'+escHtml(String(o.qtd||1))+'</td>'+
-      '<td style="font-size:13px;'+venc+'">'+prazo+'</td>'+
-      '<td><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:'+st.bg+';color:'+st.color+'">'+st.label+'</span></td>'+
-      '<td onclick="event.stopPropagation()" style="text-align:center">'+
-        '<button onclick="deleteCamOrdem(\''+o.id+'\')" style="width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#ef4444;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;justify-content:center" title="Excluir"><i class="ti ti-trash"></i></button>'+
-      '</td>'+
-    '</tr>';
-  }).join('');
 }
 
-function formatDateBR(iso) {
-  var p = iso.split('-');
-  if (p.length < 3) return iso;
-  return p[2].substring(0,2)+'/'+p[1]+'/'+p[0];
+// ── Renderização do Kanban ────────────────────────────────────
+function camAgeStyle(createdAt, status) {
+  if (status === 'finalizado' || !createdAt) return '';
+  var today   = new Date(); today.setHours(0,0,0,0);
+  var created = new Date(createdAt); created.setHours(0,0,0,0);
+  var days    = Math.round((today - created) / 86400000);
+  if (days >= 7) return 'border-left:3px solid #ef4444;background:rgba(239,68,68,0.10)';
+  if (days >= 5) return 'border-left:3px solid #f97316;background:rgba(249,115,22,0.08)';
+  if (days >= 3) return 'border-left:3px solid #fbbf24;background:rgba(251,191,36,0.07)';
+  return 'border-left:3px solid #22c55e;background:rgba(34,197,94,0.07)';
 }
 
-// ── Painel lateral ────────────────────────────────────────────
-function openCamPanel(id) {
-  camEditId = id;
-  var ordem = id ? camOrdens.find(function(o){ return String(o.id)===String(id); }) : null;
-  var titulo = document.getElementById('cam-panel-title');
-  var sub    = document.getElementById('cam-panel-sub');
-  if (titulo) titulo.textContent = ordem ? 'Editar Ordem #' + id : 'Nova Ordem CAM';
-  if (sub)    sub.textContent    = ordem ? camCliNome(ordem.cliente_reg) : 'Preencha os dados da fresagem';
+function camToggleStyle(on, bgOn, borderOn) {
+  return on
+    ? 'background:'+bgOn+';border-color:'+borderOn+';color:#fff'
+    : 'background:transparent;border-color:'+borderOn.replace(')',',0.4)').replace('rgb','rgba')+';color:#94a3b8';
+}
 
-  var cliOpts = clients.slice().sort(function(a,b){ return a.nome.localeCompare(b.nome); })
-    .map(function(c){ return '<option value="'+c.reg+'"'+(ordem && ordem.cliente_reg==c.reg?' selected':'')+'>'+escHtml(c.nome)+'</option>'; }).join('');
+function camCardHtml(o) {
+  var cli      = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '—');
+  var isEmail  = o.origem === 'email';
+  var badgeLbl = isEmail ? '✉️ Email' : '📱 WhatsApp';
+  var badgeSt  = isEmail ? 'background:#2e1d6e;color:#c4b5fd' : 'background:#0d3d2b;color:#4ade80';
+  var ageStyle = camAgeStyle(o.created_at, o.status);
+  var desc     = (o.descricao||'').length > 90 ? o.descricao.substring(0,90)+'…' : (o.descricao||'—');
+  var nextSt   = {a_fazer:'fazendo', fazendo:'finalizado'}[o.status];
+  var advBtn   = nextSt
+    ? '<button onclick="event.stopPropagation();camAdvanceStatus(\''+o.id+'\',\''+nextSt+'\')" title="Avançar status" style="height:24px;padding:0 8px;border-radius:4px;border:0.5px solid rgba(255,255,255,0.15);background:#22263a;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">&gt;&gt;</button>'
+    : '';
+  var arqBtn   = o.status==='finalizado'
+    ? '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camArchivar(\''+o.id+'\')" style="height:24px;padding:0 8px;border-radius:4px;border:0.5px solid rgba(113,113,122,0.4);background:#1c1c24;color:#71717a;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">📦 Arquivar</button>'
+    : '';
 
-  var matOpts = CAM_MATERIAIS.map(function(m){
-    return '<option value="'+m+'"'+(ordem && ordem.material===m?' selected':'')+'>'+m+'</option>';
-  }).join('');
+  var scan  = !!o.conferir_scanbody;
+  var inove = !!o.enviado_inove;
+  var aprov = !!o.aprovacao;
+  var cadi  = !!o.com_cadista;
 
-  var tipoOpts = CAM_TIPOS.map(function(t){
-    return '<option value="'+t+'"'+(ordem && ordem.tipo===t?' selected':'')+'>'+t+'</option>';
-  }).join('');
+  var btnScan   = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camToggleCol(\''+o.id+'\',\'conferir_scanbody\','+scan+')" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;'+(scan?'background:#c2410c;border-color:#f97316;color:#fff':'background:transparent;border-color:rgba(249,115,22,0.4);color:#94a3b8')+'">'+(scan?'✔ ':'')+'🔍 Scanbody</button>';
+  var btnInove  = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camToggleCol(\''+o.id+'\',\'enviado_inove\','+inove+')" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;'+(inove?'background:#1d4ed8;border-color:#3b82f6;color:#fff':'background:transparent;border-color:rgba(59,130,246,0.4);color:#94a3b8')+'">'+(inove?'✔ ':'')+'📤 Inove</button>';
+  var btnAprov  = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camToggleCol(\''+o.id+'\',\'aprovacao\','+aprov+')" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;'+(aprov?'background:#7c3aed;border-color:#a78bfa;color:#fff':'background:transparent;border-color:rgba(167,139,250,0.4);color:#94a3b8')+'">'+(aprov?'✔ ':'')+'⏳ Aprovação</button>';
+  var btnCadist = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camToggleCol(\''+o.id+'\',\'com_cadista\','+cadi+')" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;'+(cadi?'background:#9d174d;border-color:#ec4899;color:#fff':'background:transparent;border-color:rgba(236,72,153,0.4);color:#94a3b8')+'">'+(cadi?'✔ ':'')+'🎨 Cadista</button>';
 
-  var stOpts = Object.keys(CAM_STATUS_LABELS).map(function(k){
-    var s = CAM_STATUS_LABELS[k];
-    return '<option value="'+k+'"'+(ordem && ordem.status===k?' selected':(!ordem && k==='pendente'?' selected':''))+'>'+s.label+'</option>';
-  }).join('');
-
-  document.getElementById('cam-panel-body').innerHTML =
-    '<div class="cf-group">'+
-      '<label class="cf-label">Cliente *</label>'+
-      '<select id="cp-cliente" style="width:100%"><option value="">Selecione...</option>'+cliOpts+'</select>'+
+  return '<div class="cam-card" draggable="true" ondragstart="camDragStart(event,\''+o.id+'\')" onclick="openCamDetail(\''+o.id+'\')" style="'+ageStyle+';cursor:pointer">'+
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:5px">'+
+      '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(cli)+'</p>'+
+      '<div draggable="false" style="display:flex;gap:4px">'+advBtn+arqBtn+'</div>'+
     '</div>'+
-    '<div class="cf-group">'+
-      '<label class="cf-label">Paciente</label>'+
-      '<input type="text" id="cp-paciente" placeholder="Nome do paciente" style="width:100%" value="'+escHtml(ordem?ordem.paciente||'':'')+'">'+
+    '<p style="font-size:12px;color:#94a3b8;margin:0 0 5px;line-height:1.4">'+escHtml(desc)+'</p>'+
+    '<p style="font-size:10px;color:#4a5568;margin:0 0 7px">'+(o.created_at?new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—')+'</p>'+
+    '<div style="display:flex;align-items:center;justify-content:space-between">'+
+      '<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;'+badgeSt+'">'+badgeLbl+'</span>'+
+      '<div draggable="false" style="display:flex;gap:4px;flex-wrap:wrap">'+btnScan+btnInove+btnAprov+btnCadist+'</div>'+
     '</div>'+
-    '<div class="cf-row2">'+
-      '<div class="cf-group">'+
-        '<label class="cf-label">Material *</label>'+
-        '<select id="cp-material" style="width:100%"><option value="">Selecione...</option>'+matOpts+'</select>'+
-      '</div>'+
-      '<div class="cf-group">'+
-        '<label class="cf-label">Cor / Tom</label>'+
-        '<input type="text" id="cp-cor" placeholder="Ex: A1, A2, BL1" style="width:100%" value="'+escHtml(ordem?ordem.cor||'':'')+'">'+
-      '</div>'+
-    '</div>'+
-    '<div class="cf-row2">'+
-      '<div class="cf-group">'+
-        '<label class="cf-label">Tipo *</label>'+
-        '<select id="cp-tipo" style="width:100%"><option value="">Selecione...</option>'+tipoOpts+'</select>'+
-      '</div>'+
-      '<div class="cf-group">'+
-        '<label class="cf-label">Quantidade</label>'+
-        '<input type="number" id="cp-qtd" min="1" style="width:100%" value="'+(ordem?ordem.qtd||1:1)+'">'+
-      '</div>'+
-    '</div>'+
-    '<div class="cf-row2">'+
-      '<div class="cf-group">'+
-        '<label class="cf-label">Status</label>'+
-        '<select id="cp-status" style="width:100%">'+stOpts+'</select>'+
-      '</div>'+
-      '<div class="cf-group">'+
-        '<label class="cf-label">Prazo</label>'+
-        '<input type="date" id="cp-prazo" style="width:100%" value="'+(ordem&&ordem.prazo?ordem.prazo.substring(0,10):'')+'">'+
-      '</div>'+
-    '</div>'+
-    '<div class="cf-group">'+
-      '<label class="cf-label">Observações</label>'+
-      '<textarea id="cp-obs" placeholder="Observações opcionais..." style="width:100%;min-height:72px;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:13px;background:#22263a;color:#e2e8f0;outline:none;font-family:inherit;resize:vertical;line-height:1.5">'+escHtml(ordem?ordem.obs||'':'')+'</textarea>'+
-    '</div>';
+  '</div>';
+}
 
-  document.getElementById('cam-overlay').classList.add('open');
-  document.getElementById('cam-panel').classList.add('open');
+function renderOrdensCam() {
+  ['a_fazer','fazendo','finalizado'].forEach(function(st) {
+    var list = ordensCam.filter(function(o){ return o.status === st; });
+    var el   = document.getElementById('cam-body-'+st);
+    var ct   = document.getElementById('cam-count-'+st);
+    if (el) el.innerHTML = list.length ? list.map(camCardHtml).join('') : '<p style="font-size:12px;color:#4a5568;padding:16px;text-align:center">Nenhuma ordem</p>';
+    if (ct) ct.textContent = list.length;
+  });
+}
+
+// ── Drag & Drop ───────────────────────────────────────────────
+function camDragStart(event, id) { camDragId = id; event.dataTransfer.effectAllowed = 'move'; }
+function camDragOver(event)      { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; }
+async function camDrop(event, newStatus) {
+  event.preventDefault();
+  if (!camDragId) return;
+  var id = camDragId; camDragId = null;
+  var o  = ordensCam.find(function(x){ return x.id === id; });
+  if (!o || o.status === newStatus) return;
+  await camAdvanceStatus(id, newStatus);
+}
+
+// ── Ações ─────────────────────────────────────────────────────
+async function camAdvanceStatus(id, newStatus) {
+  var payload = { status: newStatus };
+  if (newStatus === 'finalizado') payload.finalizado_at = new Date().toISOString();
+  try {
+    var res = await sb.from('ordens_exocad').update(payload).eq('id', id);
+    if (res.error) throw res.error;
+    var o = ordensCam.find(function(x){ return x.id === id; });
+    if (o) { o.status = newStatus; if (payload.finalizado_at) o.finalizado_at = payload.finalizado_at; }
+    renderOrdensCam();
+  } catch(e) { console.error('[camAdvance]', e.message||e); }
+}
+
+async function camToggleCol(id, col, currentVal) {
+  var newVal = !currentVal;
+  try {
+    var patch = {}; patch[col] = newVal;
+    var res = await sb.from('ordens_exocad').update(patch).eq('id', id);
+    if (res.error) throw res.error;
+    var o = ordensCam.find(function(x){ return x.id === id; });
+    if (o) o[col] = newVal;
+    renderOrdensCam();
+  } catch(e) { console.error('[camToggleCol]', col, e.message||e); }
+}
+
+async function camArchivar(id) {
+  if (!confirm('Arquivar esta ordem? Ela sairá do board.')) return;
+  try {
+    var res = await sb.from('ordens_exocad').update({ arquivado: true }).eq('id', id);
+    if (res.error) throw res.error;
+    ordensCam = ordensCam.filter(function(o){ return o.id !== id; });
+    renderOrdensCam();
+  } catch(e) { alert('Erro ao arquivar: '+(e.message||e)); }
+}
+
+// ── Modal: Nova Ordem ─────────────────────────────────────────
+function openNovaCamOrdem() {
+  var sel = document.getElementById('cam-form-cliente');
+  if (sel) {
+    sel.innerHTML = '<option value="">— Nome livre abaixo —</option>' +
+      clients.slice().sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); })
+        .map(function(c){ return '<option value="'+c.reg+'">'+escHtml(c.nome)+'</option>'; }).join('');
+  }
+  var nomeDiv = document.getElementById('cam-form-nome-livre');
+  if (nomeDiv) nomeDiv.style.display = '';
+  var nomeInp = document.getElementById('cam-form-nome-livre-inp');
+  if (nomeInp) nomeInp.value = '';
+  var descEl  = document.getElementById('cam-form-desc');
+  if (descEl) descEl.value = '';
+  if (sel) sel.value = '';
+  document.querySelectorAll('.cam-orig-btn').forEach(function(b){ b.classList.remove('active'); });
+  var wb = document.getElementById('cam-orig-whatsapp');
+  if (wb) wb.classList.add('active');
+  var origEl = document.getElementById('cam-form-origem');
+  if (origEl) origEl.value = 'whatsapp';
+  document.getElementById('cam-overlay').style.display = '';
+  document.getElementById('cam-panel').style.display   = '';
 }
 
 function closeCamPanel() {
-  document.getElementById('cam-overlay').classList.remove('open');
-  document.getElementById('cam-panel').classList.remove('open');
-  camEditId = null;
+  document.getElementById('cam-overlay').style.display = 'none';
+  document.getElementById('cam-panel').style.display   = 'none';
 }
 
-async function saveCamPanel() {
-  var clienteReg = parseInt(document.getElementById('cp-cliente').value);
-  var paciente   = document.getElementById('cp-paciente').value.trim();
-  var material   = document.getElementById('cp-material').value;
-  var cor        = document.getElementById('cp-cor').value.trim();
-  var tipo       = document.getElementById('cp-tipo').value;
-  var qtd        = parseInt(document.getElementById('cp-qtd').value) || 1;
-  var status     = document.getElementById('cp-status').value || 'pendente';
-  var prazo      = document.getElementById('cp-prazo').value || null;
-  var obs        = document.getElementById('cp-obs').value.trim() || null;
+function camSetOrigem(origem) {
+  var origEl = document.getElementById('cam-form-origem');
+  if (origEl) origEl.value = origem;
+  document.querySelectorAll('.cam-orig-btn').forEach(function(b){ b.classList.remove('active'); });
+  var el = document.getElementById('cam-orig-'+origem);
+  if (el) el.classList.add('active');
+}
 
-  if (!clienteReg) { alert('Selecione um cliente.'); return; }
-  if (!material)   { alert('Selecione o material.'); return; }
-  if (!tipo)       { alert('Selecione o tipo.'); return; }
-
-  var payload = { cliente_reg: clienteReg, paciente: paciente||null, material, cor: cor||null, tipo, qtd, status, prazo, obs };
-  var btn = document.getElementById('cam-save-btn');
-  if (btn) btn.disabled = true;
-
+async function saveNovaCamOrdem() {
+  var sel         = document.getElementById('cam-form-cliente');
+  var clienteReg  = sel && sel.value ? parseInt(sel.value) : null;
+  var nomeEl      = document.getElementById('cam-form-nome-livre-inp');
+  var clienteNome = clienteReg ? null : ((nomeEl && nomeEl.value) || '').trim();
+  var descEl      = document.getElementById('cam-form-desc');
+  var desc        = ((descEl && descEl.value) || '').trim();
+  var origEl      = document.getElementById('cam-form-origem');
+  var origem      = (origEl && origEl.value) || 'whatsapp';
+  if (!desc) { alert('Preencha a descrição.'); return; }
+  if (!clienteReg && !clienteNome) { alert('Selecione um cliente ou informe um nome livre.'); return; }
+  var payload = { descricao: desc, origem: origem, status: 'a_fazer' };
+  if (clienteReg) payload.cliente_reg = clienteReg; else payload.cliente_nome = clienteNome;
   try {
-    var res;
-    if (camEditId) {
-      res = await sb.from('ordens_cam').update(payload).eq('id', camEditId);
-    } else {
-      res = await sb.from('ordens_cam').insert([payload]);
-    }
+    var res = await sb.from('ordens_exocad').insert([payload]).select();
     if (res.error) throw res.error;
+    ordensCam.unshift(res.data[0]);
+    renderOrdensCam();
     closeCamPanel();
-    await loadCamOrdens();
+  } catch(e) { alert('Erro: '+(e.message||e)); }
+}
+
+// ── Modal: Arquivados ─────────────────────────────────────────
+async function openCamArquivados() {
+  var overlay = document.getElementById('cam-arq-overlay');
+  var panel   = document.getElementById('cam-arq-panel');
+  var body    = document.getElementById('cam-arq-body');
+  overlay.style.display = '';
+  panel.style.display   = 'flex';
+  body.innerHTML = '<p style="font-size:12px;color:#64748b;text-align:center;padding:16px">Carregando…</p>';
+  try {
+    var res = await sb.from('ordens_exocad').select('*').eq('arquivado', true).order('created_at', { ascending: false });
+    if (res.error) throw res.error;
+    var rows = res.data || [];
+    if (!rows.length) {
+      body.innerHTML = '<p style="font-size:13px;color:#4a5568;text-align:center;padding:24px">Nenhuma ordem arquivada.</p>';
+      return;
+    }
+    body.innerHTML = rows.map(function(o) {
+      var cli  = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '—');
+      var data = o.created_at ? new Date(o.created_at).toLocaleDateString('pt-BR') : '—';
+      return '<div style="background:#22263a;border:0.5px solid rgba(255,255,255,0.07);border-radius:8px;padding:10px 12px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px">'+
+          '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0">'+escHtml(cli)+'</p>'+
+          '<span style="font-size:11px;color:#4a5568;flex-shrink:0">'+data+'</span>'+
+        '</div>'+
+        '<p style="font-size:12px;color:#94a3b8;margin:0;line-height:1.4">'+escHtml(o.descricao||'—')+'</p>'+
+      '</div>';
+    }).join('');
   } catch(e) {
-    alert('Erro ao salvar: ' + (e.message || String(e)));
-  } finally {
-    if (btn) btn.disabled = false;
+    body.innerHTML = '<p style="font-size:12px;color:#ef4444;text-align:center;padding:16px">Erro: '+(e.message||e)+'</p>';
   }
 }
 
-async function deleteCamOrdem(id) {
-  if (!confirm('Excluir esta ordem CAM?')) return;
-  try {
-    var res = await sb.from('ordens_cam').delete().eq('id', id);
-    if (res.error) throw res.error;
-    await loadCamOrdens();
-  } catch(e) {
-    alert('Erro ao excluir: ' + (e.message || String(e)));
+function closeCamArquivados() {
+  document.getElementById('cam-arq-overlay').style.display = 'none';
+  document.getElementById('cam-arq-panel').style.display   = 'none';
+}
+
+// ── Modal: Detalhe ────────────────────────────────────────────
+function openCamDetail(id) {
+  var o = ordensCam.find(function(x){ return x.id === id; });
+  if (!o) return;
+  camDetailId = id;
+  var cli  = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '—');
+  var orig = o.origem === 'email' ? '✉️ Email' : '📱 WhatsApp';
+  var data = o.created_at ? new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+  var paciente  = '—';
+  var descricao = o.descricao || '—';
+  var mPac = (o.descricao || '').match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
+  if (mPac) { paciente = mPac[1]; descricao = mPac[2] || '—'; }
+  var fields = [
+    { label: 'Cliente',         value: cli },
+    { label: 'Paciente',        value: paciente },
+    { label: 'Descrição',       value: descricao },
+    { label: 'Origem',          value: orig },
+    { label: 'Data de criação', value: data }
+  ];
+  var body = document.getElementById('cam-detail-body');
+  if (!body) return;
+  body.innerHTML = fields.map(function(f, i) {
+    return '<div style="background:#13161f;border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px">'+
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
+        '<div style="flex:1;min-width:0">'+
+          '<p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 4px">'+f.label+'</p>'+
+          '<p style="font-size:13px;color:#e2e8f0;margin:0;line-height:1.5;word-break:break-word" id="cam-det-val-'+i+'">'+escHtml(f.value)+'</p>'+
+        '</div>'+
+        '<button onclick="camCopyField('+i+',this)" style="height:28px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap">📋 Copiar</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  document.getElementById('cam-detail-overlay').style.display = '';
+  document.getElementById('cam-detail-panel').style.display   = '';
+}
+
+function closeCamDetail() {
+  document.getElementById('cam-detail-overlay').style.display = 'none';
+  document.getElementById('cam-detail-panel').style.display   = 'none';
+  camDetailId = null;
+}
+
+function camCopy(text, btn, origLabel) {
+  function onOk() {
+    btn.textContent = '✓ Copiado'; btn.style.color = '#4ade80'; btn.style.borderColor = '#22c55e';
+    setTimeout(function(){ btn.textContent = origLabel; btn.style.color = ''; btn.style.borderColor = ''; }, 1500);
   }
+  function fallback() {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand('copy'); onOk(); } catch(e) { alert('Não foi possível copiar.'); }
+    document.body.removeChild(ta);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(onOk).catch(fallback);
+  } else { fallback(); }
+}
+
+function camCopyField(idx, btn) {
+  var el = document.getElementById('cam-det-val-'+idx);
+  if (!el) return;
+  camCopy(el.textContent, btn, btn.textContent);
+}
+
+function camCopyAll() {
+  var o = ordensCam.find(function(x){ return x.id === camDetailId; });
+  if (!o) return;
+  var cli  = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '—');
+  var orig = o.origem === 'email' ? 'Email' : 'WhatsApp';
+  var data = o.created_at ? new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+  var pacCopy  = '';
+  var descCopy = o.descricao || '—';
+  var mCopy = (o.descricao || '').match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
+  if (mCopy) { pacCopy = mCopy[1]; descCopy = mCopy[2] || '—'; }
+  var txt = 'Cliente: '+cli+(pacCopy?'\nPaciente: '+pacCopy:'')+'\nDescrição: '+descCopy+'\nOrigem: '+orig+'\nData: '+data;
+  camCopy(txt, event.currentTarget, '📋 Copiar tudo');
 }
 
 // ── Shell ─────────────────────────────────────────────────────
@@ -354,7 +486,7 @@ function showConnError(msg) {
 
 async function init() {
   try {
-    await loadCamOrdens();
+    await loadOrdensCam();
   } catch(e) {
     showConnError(e.message || String(e));
   } finally {
@@ -364,12 +496,5 @@ async function init() {
 
 initShell().then(function() { if (typeof init === 'function') init(); });
 </script>
-
-<style>
-  #cam-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);opacity:0;pointer-events:none;transition:opacity 0.25s;z-index:400}
-  #cam-overlay.open{opacity:1;pointer-events:all}
-  #cam-panel{position:fixed;top:0;right:-500px;width:460px;max-width:96vw;height:100vh;background:#1a1d27;border-left:0.5px solid rgba(255,255,255,0.1);display:flex;flex-direction:column;transition:right 0.28s cubic-bezier(0.4,0,0.2,1);z-index:401}
-  #cam-panel.open{right:0}
-</style>
 </body>
 </html>
