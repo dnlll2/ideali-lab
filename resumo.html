@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resumo — Ideali Laboratório</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared.js"></script>
+</head>
+<body>
+<div id="shared-shell"></div>
+
+<div style="max-width:100%">
+  <div id="app-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="hamburger" onclick="openSidebar()" title="Menu">&#9776;</button>
+      <div>
+        <p style="font-size:22px;font-weight:500;color:#f1f5f9">📋 Resumo</p>
+        <p id="resumo-subtitle" style="font-size:14px;color:#64748b">Carregando...</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span id="relogio" style="font-size:11px;color:#4a5568"></span>
+      <span id="sync-status" style="font-size:12px;color:#64748b">
+        <span class="sync-dot" id="sync-dot"></span>Conectado
+      </span>
+      <button onclick="loadResumo()" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit;transition:all 0.15s" onmouseover="this.style.background='#2d3250';this.style.color='#e2e8f0'" onmouseout="this.style.background='#22263a';this.style.color='#94a3b8'">&#8635; Atualizar</button>
+    </div>
+  </div>
+
+  <main id="page-content">
+    <div id="resumo-feed" style="display:flex;flex-direction:column;gap:6px;max-width:860px">
+      <div style="display:flex;align-items:center;justify-content:center;padding:40px 0">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+async function loadResumo() {
+  var feed = document.getElementById('resumo-feed');
+  var sub  = document.getElementById('resumo-subtitle');
+  if (!feed) return;
+  feed.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:40px 0"><div class="spinner"></div></div>';
+
+  try {
+    var [resTarefas, resInove] = await Promise.all([
+      sb.from('tarefas').select('*').eq('concluida', false).eq('arquivada', false).order('created_at'),
+      sb.from('inove_pedidos').select('*').in('status', ['pendente','em_execucao']).order('created_at')
+    ]);
+
+    var tarefasData = resTarefas.error ? [] : (resTarefas.data || []);
+    var inoveData   = resInove.error   ? [] : (resInove.data   || []);
+
+    var items = [];
+
+    tarefasData.forEach(function(t) {
+      var cli = clients.find(function(c){ return c.reg == t.cliente_reg; });
+      items.push({
+        tipo:   'tarefa',
+        status: t.status || 'pendente',
+        nome:   cli ? cli.nome : ('Cliente #' + t.cliente_reg),
+        texto:  t.texto || '',
+        prazo:  t.data_prazo || t.data || '',
+        data:   t.created_at || ''
+      });
+    });
+
+    inoveData.forEach(function(p) {
+      var cli = clients.find(function(c){ return c.reg == p.cliente_reg; });
+      items.push({
+        tipo:   'inove',
+        status: p.status || 'pendente',
+        nome:   cli ? cli.nome : ('Cliente #' + p.cliente_reg),
+        texto:  p.descricao || '',
+        prazo:  p.data_pedido || '',
+        data:   p.created_at || ''
+      });
+    });
+
+    // em_execucao primeiro, depois pendente; dentro de cada grupo por nome
+    items.sort(function(a, b) {
+      var orA = a.status === 'em_execucao' ? 0 : 1;
+      var orB = b.status === 'em_execucao' ? 0 : 1;
+      if (orA !== orB) return orA - orB;
+      return a.nome.localeCompare(b.nome, 'pt-BR');
+    });
+
+    var total = items.length;
+    var execCt = items.filter(function(i){ return i.status === 'em_execucao'; }).length;
+    var pendCt = total - execCt;
+
+    if (sub) sub.textContent =
+      total + ' tarefa' + (total !== 1 ? 's' : '') + ' em aberto' +
+      (execCt ? ' · ' + execCt + ' em execução' : '') +
+      (pendCt ? ' · ' + pendCt + ' pendente' + (pendCt !== 1 ? 's' : '') : '');
+
+    if (!total) {
+      feed.innerHTML =
+        '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 0;gap:10px">' +
+          '<i class="ti ti-circle-check" style="font-size:40px;color:#22c55e"></i>' +
+          '<p style="font-size:14px;color:#4a5568">Nenhuma tarefa em aberto!</p>' +
+        '</div>';
+      return;
+    }
+
+    var lastStatus = null;
+    feed.innerHTML = items.map(function(item) {
+      var isExec   = item.status === 'em_execucao';
+      var icon     = isExec ? '⚙️' : '📋';
+      var badgeBg  = isExec ? 'rgba(139,92,246,0.18)' : 'rgba(251,191,36,0.14)';
+      var badgeC   = isExec ? '#c4b5fd' : '#fbbf24';
+      var badgeTx  = isExec ? 'em execução' : 'pendente';
+      var isInove  = item.tipo === 'inove';
+      var tipoTag  = isInove
+        ? '<span style="font-size:10px;color:#60a5fa;background:rgba(96,165,250,0.13);border-radius:5px;padding:1px 7px;margin-left:6px;font-weight:500">Inove</span>'
+        : '';
+      var leftBorder = isInove
+        ? 'border-left:3px solid rgba(96,165,250,0.4)'
+        : 'border-left:3px solid rgba(139,92,246,0.3)';
+
+      var prazoTag = '';
+      if (item.prazo) {
+        var pDate = new Date(item.prazo);
+        var today = new Date(); today.setHours(0,0,0,0);
+        pDate.setHours(0,0,0,0);
+        var diff = Math.round((pDate - today) / 86400000);
+        var prazoClr = diff < 0 ? '#ef4444' : diff === 0 ? '#f97316' : diff <= 2 ? '#fbbf24' : '#4a5568';
+        var prazoTx  = diff < 0
+          ? 'venceu ' + Math.abs(diff) + 'd atrás'
+          : diff === 0 ? 'vence hoje'
+          : 'prazo ' + pDate.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+        prazoTag = '<span style="font-size:10px;color:'+prazoClr+';margin-left:8px;white-space:nowrap">📅 '+prazoTx+'</span>';
+      }
+
+      var header = '';
+      if (item.status !== lastStatus) {
+        lastStatus = item.status;
+        var sectionLabel = isExec ? '⚙️ Em Execução' : '📋 Pendentes';
+        var sectionColor = isExec ? '#c4b5fd' : '#fbbf24';
+        header = '<div style="font-size:11px;font-weight:700;color:'+sectionColor+';text-transform:uppercase;letter-spacing:0.08em;padding:14px 0 6px 4px;border-bottom:0.5px solid rgba(255,255,255,0.07);margin-bottom:6px">'+sectionLabel+'</div>';
+      }
+
+      return header +
+        '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;'+leftBorder+'">' +
+          '<span style="font-size:18px;line-height:1;flex-shrink:0">'+icon+'</span>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px">' +
+              '<span style="font-size:14px;font-weight:600;color:#f1f5f9">'+escHtml(item.nome)+'</span>' +
+              tipoTag +
+              prazoTag +
+            '</div>' +
+            '<span style="font-size:13px;color:#94a3b8">'+escHtml(item.texto ? '— ' + item.texto : '')+'</span>' +
+          '</div>' +
+          '<span style="font-size:11px;font-weight:600;padding:2px 9px;border-radius:6px;background:'+badgeBg+';color:'+badgeC+';white-space:nowrap;flex-shrink:0">'+badgeTx+'</span>' +
+        '</div>';
+    }).join('');
+
+  } catch(e) {
+    console.error('loadResumo:', e);
+    if (sub) sub.textContent = 'Erro ao carregar';
+    feed.innerHTML = '<div style="color:#ef4444;font-size:13px;padding:20px">Erro ao buscar tarefas: '+(e.message||e)+'</div>';
+  }
+}
+
+function initShell() {
+  return fetch('sidebar.html')
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+      document.getElementById('shared-shell').innerHTML = html;
+      updateSidebarActive();
+      var keyEl = document.getElementById('sb-groq-key');
+      if (keyEl && GROQ_API_KEY) keyEl.value = GROQ_API_KEY;
+    })
+    .catch(function(e) { console.error('Erro ao carregar sidebar.html:', e); });
+}
+
+function hideLoading() {
+  var el = document.getElementById('loading-overlay');
+  if (el) el.style.display = 'none';
+}
+
+function showConnError(msg) {
+  var el   = document.getElementById('conn-error');
+  var msg2 = document.getElementById('conn-error-msg');
+  if (el)   el.style.display  = 'flex';
+  if (msg2) msg2.textContent  = msg;
+}
+
+async function init() {
+  try {
+    await loadResumo();
+  } catch(e) {
+    showConnError(e.message || String(e));
+  } finally {
+    hideLoading();
+  }
+}
+
+initShell().then(function() { if (typeof init === 'function') init(); });
+</script>
+</body>
+</html>
