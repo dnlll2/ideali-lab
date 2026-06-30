@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel do Cadista — Ideali Laboratório</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0f1117;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
+
+  /* ── Header ──────────────────────────────────────────────── */
+  .header{background:#13151f;border-bottom:0.5px solid rgba(255,255,255,0.08);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .header-title{font-size:18px;font-weight:600;color:#f1f5f9}
+  .header-sub{font-size:12px;color:#64748b;margin-top:2px}
+  .sync-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-right:5px;vertical-align:middle}
+  .sync-dot.loading{background:#fbbf24}
+  .sync-dot.error{background:#ef4444}
+
+  /* ── Kanban ──────────────────────────────────────────────── */
+  .kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:20px;align-items:start}
+  .col{background:#13161f;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:200px;transition:background 0.1s}
+  .col.drag-over{background:#161a26}
+  .col-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px}
+  .col-body{padding:8px;display:flex;flex-direction:column;gap:8px;min-height:120px;flex:1}
+  .badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px}
+
+  /* ── Card ────────────────────────────────────────────────── */
+  .card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.09);border-radius:9px;padding:10px 12px;cursor:grab;transition:box-shadow 0.15s,transform 0.1s;user-select:none}
+  .card:hover{box-shadow:0 2px 12px rgba(0,0,0,0.35);transform:translateY(-1px)}
+  .card:active{cursor:grabbing;box-shadow:0 4px 16px rgba(0,0,0,0.4);transform:translateY(0)}
+
+  /* ── Modal ───────────────────────────────────────────────── */
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:90}
+  .modal{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:91;width:min(540px,95vw);max-height:85vh;overflow-y:auto;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:0.5px solid rgba(255,255,255,0.08);position:sticky;top:0;background:#1a1d27;z-index:1}
+  .modal-body{padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+  .modal-footer{padding:12px 18px;border-top:0.5px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+
+  /* ── Field ───────────────────────────────────────────────── */
+  .field{background:#13161f;border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px}
+  .field-label{font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px}
+  .field-value{font-size:13px;color:#e2e8f0;line-height:1.5;word-break:break-word}
+
+  /* ── Botões ──────────────────────────────────────────────── */
+  .btn{height:34px;padding:0 16px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;border:0.5px solid;transition:all 0.15s;white-space:nowrap}
+  .btn-ghost{background:#22263a;border-color:rgba(255,255,255,0.1);color:#94a3b8}
+  .btn-ghost:hover{background:#2d3250;color:#e2e8f0}
+  .btn-copy-sm{background:#22263a;border-color:rgba(255,255,255,0.12);color:#94a3b8;height:28px;padding:0 10px;font-size:11px}
+  .btn-primary{background:#1d4ed8;border-color:#3b82f6;color:#fff;font-weight:600;height:38px;padding:0 22px;font-size:14px}
+  .btn-primary:hover{filter:brightness(1.1)}
+  .btn-all{background:rgba(99,179,237,0.08);border-color:rgba(99,179,237,0.4);color:#63b3ed}
+  .btn-all:hover{background:rgba(99,179,237,0.15)}
+  .btn-close{width:28px;height:28px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+  /* ── Estados ─────────────────────────────────────────────── */
+  .empty{font-size:12px;color:#4a5568;padding:16px;text-align:center}
+  #loading{text-align:center;padding:60px 20px;color:#64748b;font-size:14px}
+
+  /* ── Responsive ──────────────────────────────────────────── */
+  @media(max-width:767px){.kanban{grid-template-columns:1fr;padding:12px}}
+</style>
+</head>
+<body>
+
+<!-- ── Header ────────────────────────────────────────────────── -->
+<div class="header">
+  <div>
+    <div class="header-title">🦷 Painel do Cadista — Ideali Laboratório</div>
+    <div class="header-sub">Ordens de design / fresagem</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span id="sync-wrap" style="font-size:12px;color:#64748b">
+      <span class="sync-dot loading" id="sync-dot"></span><span id="sync-txt">Conectando…</span>
+    </span>
+    <button class="btn btn-ghost" onclick="loadOrdens()">&#8635; Atualizar</button>
+  </div>
+</div>
+
+<!-- ── Modal Detalhe ─────────────────────────────────────────── -->
+<div class="overlay" id="det-overlay" onclick="closeDetail()"></div>
+<div class="modal" id="det-modal">
+  <div class="modal-header">
+    <p style="font-size:15px;font-weight:600;color:#f1f5f9;margin:0">Detalhes da Ordem</p>
+    <button class="btn-close" onclick="closeDetail()">✕</button>
+  </div>
+  <div class="modal-body" id="det-body"></div>
+  <div class="modal-footer">
+    <button class="btn btn-primary" onclick="copyDesc(event)">📋 Copiar Descrição</button>
+    <button class="btn btn-all" onclick="copyAll(event)">📋 Copiar tudo</button>
+  </div>
+</div>
+
+<!-- ── Kanban ─────────────────────────────────────────────────── -->
+<div id="loading">Carregando ordens…</div>
+
+<div id="kanban" class="kanban" style="display:none">
+  <div class="col" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="drop(event,'a_fazer')">
+    <div class="col-head" style="background:rgba(99,179,237,0.08);border-bottom:2px solid #63b3ed">
+      <span style="color:#93c5fd;font-weight:600;font-size:13px">A Fazer</span>
+      <span class="badge" id="count-a_fazer" style="background:#1d3a6e;color:#93c5fd">0</span>
+    </div>
+    <div class="col-body" id="body-a_fazer"></div>
+  </div>
+
+  <div class="col" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="drop(event,'fazendo')">
+    <div class="col-head" style="background:rgba(251,191,36,0.07);border-bottom:2px solid #fbbf24">
+      <span style="color:#fbbf24;font-weight:600;font-size:13px">Fazendo</span>
+      <span class="badge" id="count-fazendo" style="background:#3d2e0e;color:#fbbf24">0</span>
+    </div>
+    <div class="col-body" id="body-fazendo"></div>
+  </div>
+
+  <div class="col" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="drop(event,'finalizado')">
+    <div class="col-head" style="background:rgba(34,197,94,0.07);border-bottom:2px solid #22c55e">
+      <span style="color:#4ade80;font-weight:600;font-size:13px">Finalizado</span>
+      <span class="badge" id="count-finalizado" style="background:#0d3d2b;color:#4ade80">0</span>
+    </div>
+    <div class="col-body" id="body-finalizado"></div>
+  </div>
+</div>
+
+<script>
+var SUPABASE_URL = 'https://alqhhgysvehtgkwsxeok.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFscWhoZ3lzdmVodGdrd3N4ZW9rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDE0ODg2NSwiZXhwIjoyMDk1NzI0ODY1fQ.xogvgvFob-7Ir6hSLkz0pOj3GawRPRbwfz9oGuGQ90E';
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+var ordens    = [];
+var dragId    = null;
+var detailId  = null;
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Sync status ───────────────────────────────────────────────
+function setSync(state, txt) {
+  var dot = document.getElementById('sync-dot');
+  var lbl = document.getElementById('sync-txt');
+  if (dot) dot.className = 'sync-dot' + (state === 'ok' ? '' : state === 'loading' ? ' loading' : ' error');
+  if (lbl) lbl.textContent = txt;
+}
+
+// ── Carregamento ──────────────────────────────────────────────
+async function loadOrdens() {
+  setSync('loading', 'Carregando…');
+  try {
+    var res = await sb.from('ordens_exocad').select('*')
+      .or('arquivado.is.null,arquivado.eq.false')
+      .order('created_at', { ascending: false });
+    if (res.error) throw res.error;
+    ordens = res.data || [];
+    render();
+    setSync('ok', 'Conectado');
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('kanban').style.display  = '';
+  } catch(e) {
+    setSync('error', 'Erro de conexão');
+    document.getElementById('loading').textContent = 'Erro ao carregar: ' + (e.message || e);
+  }
+}
+
+// ── Renderização ──────────────────────────────────────────────
+function ageStyle(createdAt, status) {
+  if (status === 'finalizado' || !createdAt) return '';
+  var today   = new Date(); today.setHours(0,0,0,0);
+  var created = new Date(createdAt); created.setHours(0,0,0,0);
+  var days    = Math.round((today - created) / 86400000);
+  if (days >= 7) return 'border-left:3px solid #ef4444;background:rgba(239,68,68,0.10)';
+  if (days >= 5) return 'border-left:3px solid #f97316;background:rgba(249,115,22,0.08)';
+  if (days >= 3) return 'border-left:3px solid #fbbf24;background:rgba(251,191,36,0.07)';
+  return 'border-left:3px solid #22c55e;background:rgba(34,197,94,0.07)';
+}
+
+function cardHtml(o) {
+  var cli     = escHtml(o.cliente_nome || '—');
+  var isEmail = o.origem === 'email';
+  var badgeLbl = isEmail ? '✉️ Email' : '📱 WhatsApp';
+  var badgeSt  = isEmail
+    ? 'background:#2e1d6e;color:#c4b5fd'
+    : 'background:#0d3d2b;color:#4ade80';
+  var age  = ageStyle(o.created_at, o.status);
+  var desc = (o.descricao || '');
+  if (desc.length > 90) desc = desc.substring(0, 90) + '…';
+  var data = o.created_at
+    ? new Date(o.created_at).toLocaleDateString('pt-BR')
+    : '—';
+
+  return '<div class="card" draggable="true"'+
+    ' ondragstart="dragStart(event,\''+o.id+'\')"'+
+    ' onclick="openDetail(\''+o.id+'\')"'+
+    ' style="'+age+'">'+
+    '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0 0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+cli+'</p>'+
+    '<p style="font-size:12px;color:#94a3b8;margin:0 0 7px;line-height:1.4">'+escHtml(desc)+'</p>'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px">'+
+      '<span style="font-size:10px;color:#4a5568">'+data+'</span>'+
+      '<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;'+badgeSt+'">'+badgeLbl+'</span>'+
+    '</div>'+
+  '</div>';
+}
+
+function render() {
+  ['a_fazer','fazendo','finalizado'].forEach(function(st) {
+    var list = ordens.filter(function(o){ return o.status === st; });
+    var el   = document.getElementById('body-'+st);
+    var ct   = document.getElementById('count-'+st);
+    if (el) el.innerHTML = list.length
+      ? list.map(cardHtml).join('')
+      : '<p class="empty">Nenhuma ordem</p>';
+    if (ct) ct.textContent = list.length;
+  });
+}
+
+// ── Drag & Drop ───────────────────────────────────────────────
+function dragStart(event, id) {
+  dragId = id;
+  event.dataTransfer.effectAllowed = 'move';
+}
+function dragOver(event, col) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  col.classList.add('drag-over');
+}
+function dragLeave(col) {
+  col.classList.remove('drag-over');
+}
+async function drop(event, newStatus) {
+  event.preventDefault();
+  document.querySelectorAll('.col').forEach(function(c){ c.classList.remove('drag-over'); });
+  if (!dragId) return;
+  var id = dragId; dragId = null;
+  var o  = ordens.find(function(x){ return x.id === id; });
+  if (!o || o.status === newStatus) return;
+
+  var payload = { status: newStatus };
+  if (newStatus === 'finalizado') payload.finalizado_at = new Date().toISOString();
+
+  // Atualiza localmente para resposta imediata
+  o.status = newStatus;
+  if (payload.finalizado_at) o.finalizado_at = payload.finalizado_at;
+  render();
+
+  try {
+    var res = await sb.from('ordens_exocad').update(payload).eq('id', id);
+    if (res.error) throw res.error;
+  } catch(e) {
+    alert('Erro ao salvar: ' + (e.message || e));
+    await loadOrdens(); // reverte em caso de falha
+  }
+}
+
+// ── Modal Detalhe ─────────────────────────────────────────────
+function openDetail(id) {
+  var o = ordens.find(function(x){ return x.id === id; });
+  if (!o) return;
+  detailId = id;
+
+  var cli  = o.cliente_nome || '—';
+  var orig = o.origem === 'email' ? '✉️ Email' : '📱 WhatsApp';
+  var data = o.created_at
+    ? new Date(o.created_at).toLocaleString('pt-BR', {
+        day:'2-digit', month:'2-digit', year:'numeric',
+        hour:'2-digit', minute:'2-digit'
+      })
+    : '—';
+
+  var paciente  = '—';
+  var descricao = o.descricao || '—';
+  var m = (o.descricao || '').match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
+  if (m) { paciente = m[1]; descricao = m[2] || '—'; }
+
+  var fields = [
+    { label: 'Cliente',   value: cli },
+    { label: 'Paciente',  value: paciente },
+    { label: 'Descrição', value: descricao },
+    { label: 'Origem',    value: orig },
+    { label: 'Data',      value: data }
+  ];
+
+  document.getElementById('det-body').innerHTML = fields.map(function(f, i) {
+    return '<div class="field">'+
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
+        '<div style="flex:1;min-width:0">'+
+          '<p class="field-label">'+escHtml(f.label)+'</p>'+
+          '<p class="field-value" id="dv'+i+'">'+escHtml(f.value)+'</p>'+
+        '</div>'+
+        '<button class="btn btn-copy-sm" onclick="copyField('+i+',this)">📋 Copiar</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+
+  document.getElementById('det-overlay').style.display = '';
+  document.getElementById('det-modal').style.display   = '';
+}
+
+function closeDetail() {
+  document.getElementById('det-overlay').style.display = 'none';
+  document.getElementById('det-modal').style.display   = 'none';
+  detailId = null;
+}
+
+// ── Cópia ─────────────────────────────────────────────────────
+function doCopy(text, btn, origLabel) {
+  function ok() {
+    if (!btn) return;
+    var prev = btn.textContent;
+    btn.textContent = '✓ Copiado!';
+    btn.style.color = '#4ade80';
+    btn.style.borderColor = '#22c55e';
+    setTimeout(function(){
+      btn.textContent = origLabel || prev;
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 1500);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(ok).catch(function(){ fallback(text, ok); });
+  } else { fallback(text, ok); }
+}
+
+function fallback(text, cb) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try { document.execCommand('copy'); cb(); } catch(e) { alert('Não foi possível copiar.'); }
+  document.body.removeChild(ta);
+}
+
+function copyField(idx, btn) {
+  var el = document.getElementById('dv'+idx);
+  if (!el) return;
+  doCopy(el.textContent, btn, btn.textContent);
+}
+
+function copyDesc(event) {
+  var o = ordens.find(function(x){ return x.id === detailId; });
+  if (!o) return;
+  var descricao = o.descricao || '—';
+  var m = (o.descricao || '').match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
+  if (m) descricao = m[2] || '—';
+  doCopy(descricao, event.currentTarget, event.currentTarget.textContent);
+}
+
+function copyAll(event) {
+  var o = ordens.find(function(x){ return x.id === detailId; });
+  if (!o) return;
+  var cli  = o.cliente_nome || '—';
+  var orig = o.origem === 'email' ? 'Email' : 'WhatsApp';
+  var data = o.created_at
+    ? new Date(o.created_at).toLocaleString('pt-BR', {
+        day:'2-digit', month:'2-digit', year:'numeric',
+        hour:'2-digit', minute:'2-digit'
+      })
+    : '—';
+  var paciente  = '—';
+  var descricao = o.descricao || '—';
+  var m = (o.descricao || '').match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
+  if (m) { paciente = m[1]; descricao = m[2] || '—'; }
+  var txt = 'Cliente: '+cli+'\nPaciente: '+paciente+'\nDescrição: '+descricao+'\nOrigem: '+orig+'\nData: '+data;
+  doCopy(txt, event.currentTarget, event.currentTarget.textContent);
+}
+
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeDetail(); });
+
+loadOrdens();
+</script>
+</body>
+</html>
