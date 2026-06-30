@@ -65,6 +65,28 @@ button{font-family:inherit;cursor:pointer}
 </style>
 </head>
 <body>
+<script>
+(function(){
+  var PWD='ideali2026';
+  if(sessionStorage.getItem('ideali-auth')==='ok')return;
+  function injectLogin(){
+    var o=document.createElement('div');
+    o.id='auth-overlay';
+    o.style.cssText='position:fixed;inset:0;background:#0f1117;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
+    o.innerHTML='<div style="background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px 28px;width:min(340px,90vw);text-align:center"><p style="font-size:30px;margin-bottom:8px">🦷</p><p style="font-size:18px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Ideali Laboratório</p><p style="font-size:13px;color:#64748b;margin-bottom:24px">Digite a senha para continuar</p><input id="auth-inp" type="password" placeholder="Senha" autocomplete="current-password" style="width:100%;height:40px;background:#0f1117;border:0.5px solid rgba(255,255,255,0.15);border-radius:8px;padding:0 14px;font-size:14px;color:#e2e8f0;outline:none;font-family:inherit;margin-bottom:10px"/><p id="auth-err" style="font-size:12px;color:#ef4444;margin-bottom:10px;min-height:16px"></p><button id="auth-btn" style="width:100%;height:40px;background:#1d4ed8;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Entrar</button></div>';
+    document.body.appendChild(o);
+    document.getElementById('auth-inp').focus();
+    function tryLogin(){
+      var v=(document.getElementById('auth-inp').value||'').trim();
+      if(v===PWD){sessionStorage.setItem('ideali-auth','ok');document.getElementById('auth-overlay').remove();}
+      else{var e=document.getElementById('auth-err'),i=document.getElementById('auth-inp');if(e)e.textContent='Senha incorreta. Tente novamente.';if(i){i.value='';i.style.borderColor='#ef4444';i.focus();setTimeout(function(){i.style.borderColor='';},1500);}}
+    }
+    document.getElementById('auth-btn').addEventListener('click',tryLogin);
+    document.getElementById('auth-inp').addEventListener('keydown',function(e){if(e.key==='Enter')tryLogin();});
+  }
+  if(document.body){injectLogin();}else{document.addEventListener('DOMContentLoaded',injectLogin);}
+})();
+</script>
 
 <div id="app-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
   <div>
