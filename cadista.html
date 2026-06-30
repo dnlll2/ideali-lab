@@ -146,7 +146,6 @@ async function loadOrdens() {
   setSync('loading', 'Carregando…');
   try {
     var res = await sb.from('ordens_exocad').select('*')
-      .or('arquivado.is.null,arquivado.eq.false')
       .order('created_at', { ascending: false });
     if (res.error) throw res.error;
     ordens = res.data || [];
