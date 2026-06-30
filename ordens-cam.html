@@ -144,6 +144,12 @@
   </main>
 </div>
 
+<!-- ── Cadista Dropdown ─────────────────────────────────────── -->
+<div id="cadista-dropdown" onclick="event.stopPropagation()" style="display:none;position:fixed;z-index:300;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:6px;min-width:170px;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+  <p style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.07em;padding:4px 8px 6px;margin:0">Enviar p/ cadista</p>
+  <div id="cadista-dropdown-list"></div>
+</div>
+
 <script>
 var ordensCam  = [];
 var camDragId  = null;
@@ -203,15 +209,15 @@ function camCardHtml(o) {
     ? '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camArchivar(\''+o.id+'\')" style="height:24px;padding:0 8px;border-radius:4px;border:0.5px solid rgba(113,113,122,0.4);background:#1c1c24;color:#71717a;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">📦 Arquivar</button>'
     : '';
 
-  var scan  = !!o.conferir_scanbody;
-  var inove = !!o.enviado_inove;
-  var aprov = !!o.aprovacao;
-  var cadi  = !!o.com_cadista;
+  var scan     = !!o.conferir_scanbody;
+  var inove    = !!o.enviado_inove;
+  var aprov    = !!o.aprovacao;
+  var cadiNome = o.cadista_nome || '';
 
   var btnScan   = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camToggleCol(\''+o.id+'\',\'conferir_scanbody\','+scan+')" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;'+(scan?'background:#c2410c;border-color:#f97316;color:#fff':'background:transparent;border-color:rgba(249,115,22,0.4);color:#94a3b8')+'">'+(scan?'✔ ':'')+'🔍 Scanbody</button>';
   var btnInove  = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camToggleCol(\''+o.id+'\',\'enviado_inove\','+inove+')" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;'+(inove?'background:#1d4ed8;border-color:#3b82f6;color:#fff':'background:transparent;border-color:rgba(59,130,246,0.4);color:#94a3b8')+'">'+(inove?'✔ ':'')+'📤 Inove</button>';
   var btnAprov  = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camToggleCol(\''+o.id+'\',\'aprovacao\','+aprov+')" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;'+(aprov?'background:#7c3aed;border-color:#a78bfa;color:#fff':'background:transparent;border-color:rgba(167,139,250,0.4);color:#94a3b8')+'">'+(aprov?'✔ ':'')+'⏳ Aprovação</button>';
-  var btnCadist = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camToggleCol(\''+o.id+'\',\'com_cadista\','+cadi+')" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;'+(cadi?'background:#9d174d;border-color:#ec4899;color:#fff':'background:transparent;border-color:rgba(236,72,153,0.4);color:#94a3b8')+'">'+(cadi?'✔ ':'')+'🎨 Cadista</button>';
+  var btnCadist = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camOpenCadistaDropdown(\''+o.id+'\',event)" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'+(cadiNome?'background:#9d174d;border-color:#ec4899;color:#fff':'background:transparent;border-color:rgba(236,72,153,0.4);color:#94a3b8')+'">'+(cadiNome?'✓ '+escHtml(cadiNome):'📤 Enviar')+'</button>';
 
   return '<div class="cam-card" draggable="true" ondragstart="camDragStart(event,\''+o.id+'\')" onclick="openCamDetail(\''+o.id+'\')" style="'+ageStyle+';cursor:pointer">'+
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:5px">'+
@@ -457,6 +463,58 @@ function camCopyAll() {
   if (mCopy) { pacCopy = mCopy[1]; descCopy = mCopy[2] || '—'; }
   var txt = 'Cliente: '+cli+(pacCopy?'\nPaciente: '+pacCopy:'')+'\nDescrição: '+descCopy+'\nOrigem: '+orig+'\nData: '+data;
   camCopy(txt, event.currentTarget, '📋 Copiar tudo');
+}
+
+// ── Cadista Selector ──────────────────────────────────────────
+var CADISTAS = ['FH Hosda'];
+var _cadiDropId = null;
+
+function camOpenCadistaDropdown(id, event) {
+  _cadiDropId = id;
+  var o  = ordensCam.find(function(x){ return x.id === id; });
+  var dd = document.getElementById('cadista-dropdown');
+  var dl = document.getElementById('cadista-dropdown-list');
+  dl.innerHTML = CADISTAS.map(function(nome) {
+    var cur = o && o.cadista_nome === nome;
+    return '<button onclick="camSetCadista(\''+id+'\',\''+nome+'\')" '+
+      'style="display:block;width:100%;text-align:left;padding:6px 10px;border-radius:6px;'+
+      'border:none;background:'+(cur?'rgba(157,23,77,0.4)':'transparent')+';'+
+      'color:'+(cur?'#f9a8d4':'#e2e8f0')+';font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap">'+
+      (cur?'✓ ':'')+nome+'</button>';
+  }).join('') +
+  '<div style="border-top:0.5px solid rgba(255,255,255,0.08);margin:4px 0"></div>'+
+  '<button onclick="camSetCadista(\''+id+'\',\'\')" '+
+    'style="display:block;width:100%;text-align:left;padding:6px 10px;border-radius:6px;'+
+    'border:none;background:transparent;color:#ef4444;font-size:12px;cursor:pointer;font-family:inherit">'+
+    '✕ Remover envio</button>';
+  var rect = event.currentTarget.getBoundingClientRect();
+  dd.style.left = Math.min(rect.left, window.innerWidth - 190) + 'px';
+  dd.style.top  = (rect.bottom + 4) + 'px';
+  dd.style.display = '';
+  setTimeout(function() {
+    document.addEventListener('click', camCloseCadistaDropdown, { once: true });
+  }, 0);
+}
+
+function camCloseCadistaDropdown() {
+  var dd = document.getElementById('cadista-dropdown');
+  if (dd) dd.style.display = 'none';
+}
+
+async function camSetCadista(id, nome) {
+  camCloseCadistaDropdown();
+  var nomeVal = nome || null;
+  try {
+    var patch = { cadista_nome: nomeVal, com_cadista: !!nomeVal };
+    var res = await sb.from('ordens_exocad').update(patch).eq('id', id);
+    if (res.error) throw res.error;
+    var o = ordensCam.find(function(x){ return x.id === id; });
+    if (o) { o.cadista_nome = nomeVal; o.com_cadista = !!nomeVal; }
+    renderOrdensCam();
+  } catch(e) {
+    console.error('[camSetCadista]', e.message || e);
+    alert('Erro ao salvar cadista: ' + (e.message || e));
+  }
 }
 
 // ── Shell ─────────────────────────────────────────────────────
