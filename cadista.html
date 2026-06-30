@@ -66,7 +66,7 @@
 <!-- ── Header ────────────────────────────────────────────────── -->
 <div class="header">
   <div>
-    <div class="header-title">🦷 Painel do Cadista — Ideali Laboratório</div>
+    <div class="header-title">🦷 Painel — <span id="cadista-header-nome">Cadista</span></div>
     <div class="header-sub">Ordens de design / fresagem</div>
   </div>
   <div style="display:flex;align-items:center;gap:10px">
@@ -125,9 +125,16 @@ var SUPABASE_URL = 'https://alqhhgysvehtgkwsxeok.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFscWhoZ3lzdmVodGdrd3N4ZW9rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDE0ODg2NSwiZXhwIjoyMDk1NzI0ODY1fQ.xogvgvFob-7Ir6hSLkz0pOj3GawRPRbwfz9oGuGQ90E';
 var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+var CADISTA_FILTRO = new URLSearchParams(window.location.search).get('cadista') || 'FH Hosda';
+
 var ordens    = [];
 var dragId    = null;
 var detailId  = null;
+
+(function() {
+  var el = document.getElementById('cadista-header-nome');
+  if (el) el.textContent = CADISTA_FILTRO;
+})();
 
 function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -146,6 +153,7 @@ async function loadOrdens() {
   setSync('loading', 'Carregando…');
   try {
     var res = await sb.from('ordens_exocad').select('*')
+      .eq('cadista_nome', CADISTA_FILTRO)
       .order('created_at', { ascending: false });
     if (res.error) throw res.error;
     ordens = res.data || [];
