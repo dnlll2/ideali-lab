@@ -271,13 +271,20 @@ async function camAdvanceStatus(id, newStatus) {
 async function camToggleCol(id, col, currentVal) {
   var newVal = !currentVal;
   try {
+    setSyncStatus('syncing');
     var patch = {}; patch[col] = newVal;
     var res = await sb.from('ordens_exocad').update(patch).eq('id', id);
     if (res.error) throw res.error;
     var o = ordensCam.find(function(x){ return x.id === id; });
     if (o) o[col] = newVal;
     renderOrdensCam();
-  } catch(e) { console.error('[camToggleCol]', col, e.message||e); }
+    setSyncStatus('ok');
+  } catch(e) {
+    console.error('[camToggleCol]', col, e.message||e);
+    setSyncStatus('error');
+    setTimeout(function(){ setSyncStatus('ok'); }, 3000);
+    alert('Erro ao salvar toggle: ' + (e.message || e));
+  }
 }
 
 async function camArchivar(id) {
