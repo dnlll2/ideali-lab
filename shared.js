@@ -47,7 +47,8 @@ var clients = [
   {reg:32,nome:"Carlos Vinicios Camelo",     cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
   {reg:33,nome:"Clinica Dr Rosmar",          cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"Rio de Janeiro",      uf:"RJ", cep:"",          tel:"",                  obs:""},
   {reg:34,nome:"Roberto Isao",               cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
-  {reg:35,nome:"Rafael Heino Santos",        cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""}
+  {reg:35,nome:"Rafael Heino Santos",        cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
+  {reg:36,nome:"Oral 360 Copa",              cpf:"",                cro:"",             end:"R. Figueiredo de Magalhães, 226 - 201",           bairro:"Copacabana",         cidade:"Rio de Janeiro",      uf:"RJ", cep:"22031-012", tel:"",                  obs:""}
 ];
 
 // ── Estado global ─────────────────────────────────────────────
