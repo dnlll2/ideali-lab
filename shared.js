@@ -10,7 +10,7 @@ var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ── Constantes ────────────────────────────────────────────────
 var MESES = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-var COMISSAO = 0.17;
+var COMISSAO = 0.15;
 
 // ── Clientes (array hardcoded) ────────────────────────────────
 var clients = [

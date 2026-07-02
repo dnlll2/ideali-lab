@@ -97,7 +97,7 @@
       <div class="counter-card" style="min-width:110px;transition:background 0.2s,border 0.2s" id="card-motoboy"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">🛵 Motoboy</p><p style="font-size:20px;font-weight:500;color:#64748b" id="total-motoboy">R$ 0,00</p></div>
       <div class="counter-card" style="min-width:110px;transition:background 0.2s,border 0.2s" id="card-uber"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">🚗 Uber</p><p style="font-size:20px;font-weight:500;color:#64748b" id="total-uber">R$ 0,00</p></div>
       <div class="counter-card" style="min-width:110px;transition:background 0.2s,border 0.2s" id="card-outros-g"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">📌 Outros</p><p style="font-size:20px;font-weight:500;color:#64748b" id="total-outros-g">R$ 0,00</p></div>
-      <div class="counter-card" style="min-width:130px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissão Bruta (17%)</p><p style="font-size:20px;font-weight:500;color:#fbbf24" id="total-com-bruta">R$ 0,00</p></div>
+      <div class="counter-card" style="min-width:130px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissão Bruta (15%)</p><p style="font-size:20px;font-weight:500;color:#fbbf24" id="total-com-bruta">R$ 0,00</p></div>
       <div class="counter-card" style="min-width:120px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total Descontos</p><p style="font-size:20px;font-weight:500;color:#fca5a5" id="total-descontos">R$ 0,00</p></div>
       <div class="counter-card" style="min-width:120px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissão Líquida</p><p style="font-size:20px;font-weight:500;color:#fbbf24" id="total-com-liq">R$ 0,00</p></div>
     </div>
@@ -351,7 +351,7 @@ function updateCounts() {
   document.getElementById('count-enviado').textContent  = env;
   document.getElementById('count-quitado').textContent  = qui;
   document.getElementById('count-pendente').textContent = pen;
-  var comBruta       = (totPago - totComp) * COMISSAO;
+  var comBruta       = totVal * COMISSAO;
   var totalDescontos = gastosCorreio + gastosMotoboy + gastosUber + gastosOutro;
   document.getElementById('total-valor').textContent     = fmt(totVal);
   document.getElementById('total-pago').textContent      = fmt(totPago);
@@ -359,7 +359,7 @@ function updateCounts() {
   document.getElementById('total-com-bruta').textContent = fmt(comBruta);
   var elDesc = document.getElementById('total-descontos');
   if (elDesc) elDesc.textContent = fmt(totalDescontos);
-  document.getElementById('total-com-liq').textContent   = fmt(comBruta - totalDescontos);
+  document.getElementById('total-com-liq').textContent   = fmt(comBruta);
   function setGastoCard(cardId, valId, val, bg, border, color) {
     var card = document.getElementById(cardId), vEl = document.getElementById(valId);
     if (!card || !vEl) return;
@@ -446,7 +446,7 @@ function renderDetail() {
   var hasEnd  = c.end || c.bairro || c.cidade;
   var ro      = !isCurrentMonth() && !historicoEditMode;
   var valorMes = Number(cv.valor_mes||0), valorPago = Number(cv.valor_pago||0), valorComp = Number(cv.valor_componente||0);
-  var restante = valorMes - valorPago, comissao = (valorPago - valorComp) * COMISSAO;
+  var restante = valorMes - valorPago, comissao = valorMes * COMISSAO;
 
   var badge = cv.quitado
     ? '<span class="badge" style="background:#0d3d2b;color:#4ade80;border:0.5px solid #22c55e"><i class="ti ti-check" style="font-size:11px"></i> Quitado</span>'
@@ -476,7 +476,7 @@ function renderDetail() {
         '</div>'+
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
           '<div><p class="label">Restante</p><p style="font-size:15px;font-weight:500;color:'+(restante>0?'#ef4444':'#22c55e')+'">'+fmt(restante)+'</p></div>'+
-          '<div><p class="label">Comissão (17%)</p><p style="font-size:15px;font-weight:600;color:#fbbf24">'+fmt(comissao)+'</p></div>'+
+          '<div><p class="label">Comissão (15%)</p><p style="font-size:15px;font-weight:600;color:#fbbf24">'+fmt(comissao)+'</p></div>'+
         '</div>'+
         '<div style="border-top:0.5px solid rgba(255,255,255,0.08);margin:12px 0"></div>'+
         '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px"><i class="ti ti-scissors" style="font-size:13px;vertical-align:-1px"></i> Descontos</p>'+
@@ -491,7 +491,7 @@ function renderDetail() {
         '</div>'+
         '<div style="display:flex;gap:8px;align-items:center">'+
           '<div style="flex:1;background:#0f1117;border-radius:8px;padding:8px"><p class="label">Restante</p><p style="font-size:14px;font-weight:500;color:#ef4444" id="prev-restante-'+c.reg+'">'+fmt(restante)+'</p></div>'+
-          '<div style="flex:1;background:#0f1117;border-radius:8px;padding:8px"><p class="label">Comissão (17%)</p><p style="font-size:14px;font-weight:500;color:#fbbf24" id="prev-comissao-'+c.reg+'">'+fmt(comissao)+'</p></div>'+
+          '<div style="flex:1;background:#0f1117;border-radius:8px;padding:8px"><p class="label">Comissão (15%)</p><p style="font-size:14px;font-weight:500;color:#fbbf24" id="prev-comissao-'+c.reg+'">'+fmt(comissao)+'</p></div>'+
           '<button class="save-btn" data-reg="'+c.reg+'" onclick="saveFinanceiro('+c.reg+')"><i class="ti ti-device-floppy" style="font-size:13px"></i> Salvar</button>'+
           '<button onclick="clearFinanceiro('+c.reg+')" title="Zerar valores" style="height:32px;width:36px;border-radius:8px;border:0.5px solid rgba(239,68,68,0.4);background:#3d1d1d;color:#ef4444;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0"><i class="ti ti-trash" style="font-size:14px"></i></button>'+
         '</div>'+
@@ -537,12 +537,11 @@ function renderDetail() {
 
 function calcPreview(reg) {
   var vM = parseFloat(document.getElementById('fin-valor-'+reg).value) || 0;
-  var vC = parseFloat(document.getElementById('fin-comp-'+reg).value)  || 0;
   var vP = parseFloat(document.getElementById('fin-pago-'+reg).value)  || 0;
   var elR = document.getElementById('prev-restante-'+reg);
   var elC = document.getElementById('prev-comissao-'+reg);
   if (elR) { elR.textContent = fmt(vM-vP); elR.style.color = vM-vP>0 ? '#ef4444' : '#22c55e'; }
-  if (elC) elC.textContent = fmt((vP - vC) * COMISSAO);
+  if (elC) elC.textContent = fmt(vM * COMISSAO);
 }
 
 function doFilter() {

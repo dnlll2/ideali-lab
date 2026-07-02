@@ -223,8 +223,8 @@ function gerarRelatorioPDF() {
     }
   });
 
-  var comBruta = (totPago - totComp) * COMISSAO;
-  var comLiq   = comBruta - fretesMes;
+  var comBruta = totVal * COMISSAO;
+  var comLiq   = comBruta;
 
   var resumoY = doc.lastAutoTable.finalY + 10;
   doc.setFont('helvetica','bold');
@@ -236,9 +236,9 @@ function gerarRelatorioPDF() {
     startY: resumoY + 4,
     head: [['Descricao', 'Valor']],
     body: [
-      ['Comissao Bruta (17% sobre pago - componente)', fmt(comBruta)],
+      ['Comissao (15% sobre faturamento bruto)', fmt(comBruta)],
       ['Correio / Motoboy do mes',                     fmt(fretesMes)],
-      ['Comissao Liquida (bruta - frete)',              fmt(comLiq)]
+      ['Comissao Liquida',                              fmt(comLiq)]
     ],
     theme: 'grid',
     headStyles: { fillColor:[30,41,59], textColor:[255,255,255], fontStyle:'bold', fontSize:8.5, cellPadding:3 },

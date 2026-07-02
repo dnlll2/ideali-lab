@@ -186,7 +186,7 @@
       </div>
       <div class="hm-section">
         <div class="hm-section-title"><i class="ti ti-percentage" style="color:#fbbf24"></i> Comissões por cliente — <span id="fin-com-mes-lbl"></span></div>
-        <div style="overflow-x:auto"><table class="hm-table"><thead><tr><th>Cliente</th><th>A receber</th><th>Pago</th><th>Componente</th><th>Comissão (17%)</th></tr></thead><tbody id="tbody-comissoes"></tbody></table></div>
+        <div style="overflow-x:auto"><table class="hm-table"><thead><tr><th>Cliente</th><th>A receber</th><th>Pago</th><th>Componente</th><th>Comissão (15%)</th></tr></thead><tbody id="tbody-comissoes"></tbody></table></div>
       </div>
     </div>
 
@@ -649,8 +649,8 @@ function renderCardsFinanceiro() {
     totComp += Number(v.valor_componente||0);
   });
   var totalGastos = homeGastos.reduce(function(s,g){ return s+Number(g.valor||0); }, 0);
-  var comBruta  = (totPago - totComp) * COMISSAO;
-  var comLiq    = comBruta - totalGastos;
+  var comBruta  = totVal * COMISSAO;
+  var comLiq    = comBruta;
   var pendente  = totVal - totPago;
 
   var cards = [
@@ -711,7 +711,7 @@ function renderComissoes() {
     return;
   }
   tb.innerHTML = rows.map(function(c) {
-    var v=homeDbState[c.reg]||{}, vm=Number(v.valor_mes||0), vp=Number(v.valor_pago||0), vc=Number(v.valor_componente||0), com=(vp-vc)*COMISSAO;
+    var v=homeDbState[c.reg]||{}, vm=Number(v.valor_mes||0), vp=Number(v.valor_pago||0), vc=Number(v.valor_componente||0), com=vm*COMISSAO;
     return '<tr><td style="font-weight:500;color:#f1f5f9">'+escHtml(c.nome)+'</td>'+
       '<td>'+fmt(vm)+'</td>'+
       '<td style="color:#22c55e">'+fmt(vp)+'</td>'+
