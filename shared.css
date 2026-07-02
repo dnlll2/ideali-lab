@@ -97,6 +97,9 @@ button{font-family:inherit;cursor:pointer}
 .sb-item{display:flex;align-items:center;gap:12px;padding:13px 20px;font-size:15px;color:#94a3b8;cursor:pointer;transition:all 0.15s;border-radius:0;user-select:none}
 .sb-item:hover{background:#1a1d27;color:#e2e8f0}
 .sb-item.active{background:#1a2a40;color:#93c5fd}
+.sb-item.sb-main{font-weight:600;color:#e2e8f0}
+.sb-item.sb-main .sb-icon{background:rgba(59,130,246,0.15)}
+.sb-item.sb-main.active{background:#1a2a40;color:#93c5fd}
 .sb-icon{width:32px;height:32px;border-radius:8px;background:#22263a;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
 .sb-divider{height:0.5px;background:rgba(255,255,255,0.07);margin:8px 20px}
 .dash-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:10px;padding:1rem}
