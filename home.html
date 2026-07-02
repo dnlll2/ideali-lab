@@ -91,7 +91,7 @@
 
   <!-- ── Tab navigation ───────────────────────────────────────── -->
   <div id="home-tabnav">
-    <button class="home-tab active" id="htab-clientes"   onclick="setHomeTab('clientes')">🧑‍🤝‍🧑 Clientes</button>
+    <button class="home-tab active" id="htab-clientes"   onclick="setHomeTab('clientes')">🧑‍🤝‍🧑 Diagnóstico</button>
     <button class="home-tab"        id="htab-producao"   onclick="setHomeTab('producao')">⚙️ Produção</button>
     <button class="home-tab"        id="htab-financeiro" onclick="setHomeTab('financeiro')">💰 Financeiro</button>
     <button class="home-tab"        id="htab-ativos"     onclick="setHomeTab('ativos')">🕒 Ativos Recentes</button>
@@ -100,8 +100,9 @@
   <!-- ── Content area ─────────────────────────────────────────── -->
   <div id="home-content">
 
-    <!-- ABA 1: Clientes -->
+    <!-- ABA 1: Diagnóstico -->
     <div id="panel-clientes">
+      <div class="hm-grid3" id="cards-elementos"></div>
       <div class="hm-grid3" id="cards-clientes"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
         <div class="hm-section">
@@ -318,8 +319,38 @@ function renderCurrentTab() {
   renderAllStatic();
 }
 
-// ── ABA 1: Clientes ───────────────────────────────────────────
+// ── ABA 1: Diagnóstico ──────────────────────────────────────────
+function renderCardsElementos() {
+  var mesStr = currentYear + '-' + String(currentMonth + 1).padStart(2, '0');
+  function contarElementos(keywords, divisor) {
+    var total = 0;
+    homePedidos.forEach(function(p) {
+      if ((p.created_at || '').substring(0, 7) !== mesStr) return;
+      var desc = (p.descricao || '').toLowerCase();
+      if (keywords.some(function(k) { return desc.indexOf(k) >= 0; })) total += Number(p.valor || 0) / divisor;
+    });
+    return Math.round(total);
+  }
+  var qtdZirc = contarElementos(['zircônia', 'zirconia'], 260);
+  var qtdEmax = contarElementos(['emax', 'dissilicato'], 300);
+
+  var cards = [
+    { ico:'ti-diamond',  lbl:'Zircônia',         val:qtdZirc,          clr:'#93c5fd', bg:'rgba(29,58,110,0.4)' },
+    { ico:'ti-sparkles', lbl:'Emax/Dissilicato', val:qtdEmax,          clr:'#c4b5fd', bg:'rgba(46,29,110,0.4)' },
+    { ico:'ti-sum',      lbl:'Total Elementos',  val:qtdZirc+qtdEmax,  clr:'#4ade80', bg:'rgba(13,61,43,0.4)' },
+  ];
+  var el = document.getElementById('cards-elementos');
+  if (el) el.innerHTML = cards.map(function(c) {
+    return '<div class="hm-card" style="background:'+c.bg+';border-color:rgba(255,255,255,0.08)">'+
+      '<div class="hm-card-lbl">'+c.lbl+'</div>'+
+      '<div class="hm-card-val" style="color:'+c.clr+'">'+c.val+'</div>'+
+      '<i class="ti '+c.ico+'" style="font-size:20px;color:'+c.clr+';opacity:0.5;margin-top:auto"></i>'+
+    '</div>';
+  }).join('');
+}
+
 function renderCardsClientes() {
+  renderCardsElementos();
   // "Ativos no mês" e "Com pedido aberto" vêm da tabela pedidos
   var mesStr = currentYear + '-' + String(currentMonth + 1).padStart(2, '0');
   var pedMes = homePedidos.filter(function(p) {
