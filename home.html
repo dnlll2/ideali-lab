@@ -85,6 +85,16 @@
       <span id="sync-status" style="font-size:12px;color:#64748b">
         <span class="sync-dot" id="sync-dot"></span>Conectado
       </span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:12px;color:#64748b">Mês:</span>
+        <div style="position:relative">
+          <button id="month-dd-btn" class="month-dd-btn" onclick="toggleMonthDD()">
+            <span id="month-dd-label">Carregando...</span>
+            <i class="ti ti-chevron-down" id="month-dd-arrow" style="font-size:11px;transition:transform 0.2s"></i>
+          </button>
+          <div id="month-dd-list" style="display:none;position:absolute;top:calc(100% + 4px);right:0;z-index:50;min-width:200px;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.12);border-radius:10px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,0.5)"></div>
+        </div>
+      </div>
       <button onclick="reloadAll()" style="height:30px;padding:0 12px;border-radius:7px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:12px;cursor:pointer;font-family:inherit" title="Atualizar dados">&#8635;</button>
     </div>
   </div>
@@ -170,6 +180,19 @@
         <div class="hm-section-title"><i class="ti ti-alert-circle" style="color:#ef4444"></i> Pedidos atrasados</div>
         <div style="overflow-x:auto"><table class="hm-table"><thead><tr><th>Cliente</th><th>Descrição</th><th>Prazo</th><th>Dias atraso</th><th>Status</th></tr></thead><tbody id="tbody-atrasados"></tbody></table></div>
       </div>
+
+      <!-- Elementos vendidos (material/implante/componente) -->
+      <div class="hm-grid3" id="cards-elementos-prod"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="hm-section">
+          <div class="hm-section-title"><i class="ti ti-category"></i> Elementos por material — <span id="prod-mat-mes-lbl"></span></div>
+          <div id="prod-material-lista" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+        <div class="hm-section">
+          <div class="hm-section-title"><i class="ti ti-plug-connected"></i> Elementos por componente — <span id="prod-comp-mes-lbl"></span></div>
+          <div id="prod-componente-lista" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+      </div>
     </div>
 
     <!-- ABA 3: Financeiro -->
@@ -211,6 +234,80 @@ var homeGastos    = [];       // gastos_entrega mês atual
 var homeHistory   = [];       // [{m,y,nome,pago,valor,quitados}] últimos 6 meses
 var homeCharts    = {};       // Chart.js instances
 var homeChartInit = {};       // quais charts já foram desenhados
+var monthDDOpen   = false;
+var extraMonths   = [];       // meses fora da janela padrão de 4, adicionados manualmente
+
+// ── Seletor de mês (global — afeta Diagnóstico e Financeiro) ───
+function buildMonthList() {
+  var base = [];
+  for (var i=3; i>=0; i--) {
+    var m = currentMonth - i, y = currentYear;
+    if (m < 0) { m += 12; y--; }
+    base.push({m:m, y:y});
+  }
+  var all = base.slice();
+  extraMonths.forEach(function(e) {
+    if (!all.some(function(t){return t.m===e.m&&t.y===e.y;})) all.push(e);
+  });
+  all.sort(function(a,b){ return b.y!==a.y ? b.y-a.y : b.m-a.m; });
+  return all;
+}
+
+function renderMonthDD() {
+  var all = buildMonthList();
+  var isCurMo = viewMonth===currentMonth && viewYear===currentYear;
+  var labelEl = document.getElementById('month-dd-label');
+  var ddBtn   = document.getElementById('month-dd-btn');
+  if (labelEl) labelEl.textContent = MESES[viewMonth].substring(0,3) + (viewYear!==currentYear ? '/'+viewYear : '') + (isCurMo ? ' (atual)' : '');
+  if (ddBtn)   ddBtn.className = 'month-dd-btn' + (isCurMo ? ' cur' : '');
+  var listEl = document.getElementById('month-dd-list');
+  if (listEl) {
+    listEl.innerHTML = all.map(function(t) {
+      var isView = t.m===viewMonth && t.y===viewYear;
+      var isCur  = t.m===currentMonth && t.y===currentYear;
+      var name   = MESES[t.m] + (t.y!==currentYear ? ' '+t.y : '') + (isCur ? ' (atual)' : '');
+      var check  = isView ? '<i class="ti ti-check" style="font-size:11px;flex-shrink:0"></i>' : '<span style="width:11px;flex-shrink:0"></span>';
+      return '<div class="month-dd-item' + (isView?' sel':'') + '" onclick="switchMonth(' + t.m + ',' + t.y + ');closeMonthDD()">' + check + '<span style="flex:1">' + name + '</span></div>';
+    }).join('');
+  }
+}
+
+function toggleMonthDD() {
+  monthDDOpen = !monthDDOpen;
+  var list  = document.getElementById('month-dd-list');
+  var arrow = document.getElementById('month-dd-arrow');
+  if (list)  list.style.display = monthDDOpen ? 'block' : 'none';
+  if (arrow) arrow.style.transform = monthDDOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+function closeMonthDD() {
+  monthDDOpen = false;
+  var list  = document.getElementById('month-dd-list');
+  var arrow = document.getElementById('month-dd-arrow');
+  if (list)  list.style.display = 'none';
+  if (arrow) arrow.style.transform = 'rotate(0deg)';
+}
+
+document.addEventListener('click', function(e) {
+  var btn  = document.getElementById('month-dd-btn');
+  var list = document.getElementById('month-dd-list');
+  if (monthDDOpen && btn && list && !btn.contains(e.target) && !list.contains(e.target)) closeMonthDD();
+});
+
+async function switchMonth(m, y) {
+  closeMonthDD();
+  viewMonth = m; viewYear = y;
+  localStorage.setItem('ideali-viewMonth', m);
+  localStorage.setItem('ideali-viewYear', y);
+  renderMonthDD();
+  await Promise.all([ loadControle(), loadGastos(), loadHistory() ]);
+  homeChartInit['clientes']   = false;
+  homeChartInit['financeiro'] = false;
+  ['cli-line','cli-donut','fin-bar'].forEach(function(k) { if (homeCharts[k]) { try { homeCharts[k].destroy(); } catch(e){} delete homeCharts[k]; } });
+  renderAllStatic();
+  if (homeTab === 'clientes')   { homeChartInit['clientes']   = true; drawCliCharts(); }
+  if (homeTab === 'financeiro') { homeChartInit['financeiro'] = true; drawFinChart(); }
+}
 
 // ── Navegação de abas ─────────────────────────────────────────
 function setHomeTab(tab) {
@@ -231,7 +328,7 @@ function setHomeTab(tab) {
 // ── Carregamento de dados ─────────────────────────────────────
 async function loadControle() {
   try {
-    var res = await sb.from('controle_mensal').select('*').eq('mes', currentMonth).eq('ano', currentYear);
+    var res = await sb.from('controle_mensal').select('*').eq('mes', viewMonth).eq('ano', viewYear);
     if (res.error) throw res.error;
     homeDbState = {};
     clients.forEach(function(c) {
@@ -252,9 +349,9 @@ async function loadHistory() {
   homeHistory = [];
   var months = [];
   for (var i = 5; i >= 0; i--) {
-    var m = currentMonth - i, y = currentYear;
+    var m = viewMonth - i, y = viewYear;
     if (m < 0) { m += 12; y--; }
-    months.push({ m:m, y:y, nome:MESES[m].substring(0,3), faturamento:0, clientes:0 });
+    months.push({ m:m, y:y, nome:MESES[m].substring(0,3), faturamento:0, clientes:0, pago:0 });
   }
   try {
     var first = months[0], last = months[months.length - 1];
@@ -283,6 +380,20 @@ async function loadHistory() {
       mo.clientes = mo._regs ? Object.keys(mo._regs).length : 0;
       delete mo._regs;
     });
+
+    var years = Array.from(new Set(months.map(function(mo){ return mo.y; })));
+    var resPago = await sb.from('controle_mensal')
+      .select('mes,ano,valor_pago')
+      .in('ano', years);
+    if (resPago.error) throw resPago.error;
+    (resPago.data||[]).forEach(function(r) {
+      for (var k = 0; k < months.length; k++) {
+        if (months[k].m === r.mes && months[k].y === r.ano) {
+          months[k].pago += Number(r.valor_pago||0);
+          break;
+        }
+      }
+    });
   } catch(e) {
     console.error('[loadHistory]', e);
   }
@@ -299,7 +410,7 @@ async function loadPedidosAll() {
 
 async function loadGastos() {
   try {
-    var res = await sb.from('gastos_entrega').select('*').eq('mes', currentMonth).eq('ano', currentYear);
+    var res = await sb.from('gastos_entrega').select('*').eq('mes', viewMonth).eq('ano', viewYear);
     if (res.error) throw res.error;
     homeGastos = res.data || [];
   } catch(e) { console.error('[loadGastos]', e); homeGastos = []; }
@@ -321,7 +432,7 @@ function renderCurrentTab() {
 
 // ── ABA 1: Diagnóstico ──────────────────────────────────────────
 function renderCardsElementos() {
-  var mesStr = currentYear + '-' + String(currentMonth + 1).padStart(2, '0');
+  var mesStr = viewYear + '-' + String(viewMonth + 1).padStart(2, '0');
   function contarElementos(keywords, divisor) {
     var total = 0;
     homePedidos.forEach(function(p) {
@@ -335,13 +446,13 @@ function renderCardsElementos() {
   var qtdEmax = contarElementos(['emax', 'dissilicato'], 300);
 
   var cards = [
-    { ico:'ti-diamond',  lbl:'Zircônia',         val:qtdZirc,          clr:'#93c5fd', bg:'rgba(29,58,110,0.4)' },
-    { ico:'ti-sparkles', lbl:'Emax/Dissilicato', val:qtdEmax,          clr:'#c4b5fd', bg:'rgba(46,29,110,0.4)' },
-    { ico:'ti-sum',      lbl:'Total Elementos',  val:qtdZirc+qtdEmax,  clr:'#4ade80', bg:'rgba(13,61,43,0.4)' },
+    { ico:'ti-diamond',  lbl:'Zircônia',         val:qtdZirc,          clr:T().accent },
+    { ico:'ti-sparkles', lbl:'Emax/Dissilicato', val:qtdEmax,          clr:T().accent2 },
+    { ico:'ti-sum',      lbl:'Total Elementos',  val:qtdZirc+qtdEmax,  clr:T().success },
   ];
   var el = document.getElementById('cards-elementos');
   if (el) el.innerHTML = cards.map(function(c) {
-    return '<div class="hm-card" style="background:'+c.bg+';border-color:rgba(255,255,255,0.08)">'+
+    return '<div class="hm-card">'+
       '<div class="hm-card-lbl">'+c.lbl+'</div>'+
       '<div class="hm-card-val" style="color:'+c.clr+'">'+c.val+'</div>'+
       '<i class="ti '+c.ico+'" style="font-size:20px;color:'+c.clr+';opacity:0.5;margin-top:auto"></i>'+
@@ -352,7 +463,7 @@ function renderCardsElementos() {
 function renderCardsClientes() {
   renderCardsElementos();
   // "Ativos no mês" e "Com pedido aberto" vêm da tabela pedidos
-  var mesStr = currentYear + '-' + String(currentMonth + 1).padStart(2, '0');
+  var mesStr = viewYear + '-' + String(viewMonth + 1).padStart(2, '0');
   var pedMes = homePedidos.filter(function(p) {
     return (p.created_at || '').substring(0, 7) === mesStr;
   });
@@ -363,19 +474,19 @@ function renderCardsClientes() {
   var comPed = pedMes.filter(function(p) { return statusFechados.indexOf(p.status) < 0; }).length;
 
   var cards = [
-    { ico:'ti-users',       lbl:'Total de clientes',  val:clients.length, clr:'#93c5fd', bg:'rgba(29,58,110,0.4)' },
-    { ico:'ti-activity',    lbl:'Ativos no mês',       val:comAtiv,        clr:'#4ade80', bg:'rgba(13,61,43,0.4)' },
-    { ico:'ti-file-dollar', lbl:'Com pedido aberto',   val:comPed,         clr:'#fbbf24', bg:'rgba(42,32,16,0.4)' },
+    { ico:'ti-users',       lbl:'Total de clientes',  val:clients.length, clr:T().accent },
+    { ico:'ti-activity',    lbl:'Ativos no mês',       val:comAtiv,        clr:T().success },
+    { ico:'ti-file-dollar', lbl:'Com pedido aberto',   val:comPed,         clr:T().warn },
   ];
   document.getElementById('cards-clientes').innerHTML = cards.map(function(c) {
-    return '<div class="hm-card" style="background:'+c.bg+';border-color:rgba(255,255,255,0.08)">'+
+    return '<div class="hm-card">'+
       '<div class="hm-card-lbl">'+c.lbl+'</div>'+
       '<div class="hm-card-val" style="color:'+c.clr+'">'+c.val+'</div>'+
       '<i class="ti '+c.ico+'" style="font-size:20px;color:'+c.clr+';opacity:0.5;margin-top:auto"></i>'+
     '</div>';
   }).join('');
 
-  var lbl = MESES[currentMonth] + ' ' + currentYear;
+  var lbl = MESES[viewMonth] + ' ' + viewYear;
   var el = document.getElementById('cli-mes-lbl');
   if (el) el.textContent = lbl;
 
@@ -386,10 +497,11 @@ function renderCardsClientes() {
 function rankCutoff(periodo) {
   var now = new Date();
   var m = now.getMonth(), y = now.getFullYear();
-  if (periodo === 'mes')  return new Date(y, m, 1);
-  if (periodo === '3m')   return new Date(y, m - 2, 1);
-  if (periodo === '6m')   return new Date(y, m - 5, 1);
-  if (periodo === 'ano')  return new Date(y, 0, 1);
+  // "mes" segue o mês selecionado no filtro global (viewMonth/viewYear), com limite superior
+  if (periodo === 'mes')  return { start:new Date(viewYear, viewMonth, 1), end:new Date(viewYear, viewMonth + 1, 1) };
+  if (periodo === '3m')   return { start:new Date(y, m - 2, 1), end:null };
+  if (periodo === '6m')   return { start:new Date(y, m - 5, 1), end:null };
+  if (periodo === 'ano')  return { start:new Date(y, 0, 1), end:null };
   return null;
 }
 
@@ -400,7 +512,10 @@ function renderRanking() {
 
   var filtered = homePedidos.filter(function(p) {
     if (!cutoff) return true;
-    return new Date(p.created_at) >= cutoff;
+    var d = new Date(p.created_at);
+    if (d < cutoff.start) return false;
+    if (cutoff.end && d >= cutoff.end) return false;
+    return true;
   });
 
   var byClient = {};
@@ -416,7 +531,7 @@ function renderRanking() {
 
   var maxRef = lista.length ? (order === 'qtd' ? lista[0].qtd : lista[0].valor) : 1;
   var medals = ['🥇','🥈','🥉'];
-  var barColors = ['#fbbf24','#94a3b8','#fb923c'];
+  var barColors = [T().warn, T().muted, T().accent2];
 
   var tb = document.getElementById('tbody-ranking');
   if (!tb) return;
@@ -430,7 +545,7 @@ function renderRanking() {
     var ticket = item.qtd ? fmt(item.valor / item.qtd) : fmt(0);
     var ref    = order === 'qtd' ? item.qtd : item.valor;
     var pct    = maxRef ? Math.round(ref / maxRef * 100) : 0;
-    var barClr = barColors[idx] || '#3b82f6';
+    var barClr = barColors[idx] || T().accent;
     return '<tr>'+
       '<td style="text-align:center">'+pos+'</td>'+
       '<td style="font-weight:500;color:#f1f5f9;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(nome)+'</td>'+
@@ -461,16 +576,16 @@ function renderRisco() {
   var tb = document.getElementById('tbody-risco');
   if (!tb) return;
   if (!risco.length) {
-    tb.innerHTML = '<tr><td colspan="5"><div class="hm-empty"><i class="ti ti-circle-check" style="font-size:22px;color:#22c55e"></i>Sem pagamentos em aberto</div></td></tr>';
+    tb.innerHTML = '<tr><td colspan="5"><div class="hm-empty"><i class="ti ti-circle-check" style="font-size:22px;color:'+T().success+'"></i>Sem pagamentos em aberto</div></td></tr>';
     return;
   }
   tb.innerHTML = risco.map(function(c) {
     var v = homeDbState[c.reg]||{}, vm=Number(v.valor_mes||0), vp=Number(v.valor_pago||0), rest=vm-vp;
-    var st = v.enviado ? ['Enviado','#3b82f6'] : v.recebido ? ['Recebido','#fbbf24'] : ['Pendente','#ef4444'];
+    var st = v.enviado ? ['Enviado',T().accent] : v.recebido ? ['Recebido',T().warn] : ['Pendente',T().danger];
     return '<tr><td style="font-weight:500;color:#f1f5f9">'+escHtml(c.nome)+'</td>'+
       '<td>'+fmt(vm)+'</td>'+
-      '<td style="color:#22c55e">'+fmt(vp)+'</td>'+
-      '<td style="color:'+(rest>0?'#ef4444':'#22c55e')+';font-weight:600">'+fmt(rest)+'</td>'+
+      '<td style="color:'+T().success+'">'+fmt(vp)+'</td>'+
+      '<td style="color:'+(rest>0?T().danger:T().success)+';font-weight:600">'+fmt(rest)+'</td>'+
       '<td><span class="hm-badge" style="background:'+st[1]+'22;color:'+st[1]+'">'+st[0]+'</span></td></tr>';
   }).join('');
 }
@@ -478,6 +593,7 @@ function renderRisco() {
 function drawCliCharts() {
   // Gráfico de linha dupla: faturamento (R$) + clientes ativos por mês
   var ctxLine = document.getElementById('chart-cli-line');
+  var ct = chartTheme();
   if (ctxLine && homeHistory.length) {
     if (homeCharts['cli-line']) homeCharts['cli-line'].destroy();
     homeCharts['cli-line'] = new Chart(ctxLine, {
@@ -488,10 +604,10 @@ function drawCliCharts() {
           {
             label: 'Faturamento (R$)',
             data: homeHistory.map(function(d){ return d.faturamento; }),
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59,130,246,0.1)',
+            borderColor: T().accent,
+            backgroundColor: hexToRgba(T().accent, 0.1),
             borderWidth: 2.5,
-            pointBackgroundColor: '#3b82f6',
+            pointBackgroundColor: T().accent,
             pointRadius: 4,
             tension: 0.3,
             fill: true,
@@ -500,10 +616,10 @@ function drawCliCharts() {
           {
             label: 'Clientes ativos',
             data: homeHistory.map(function(d){ return d.clientes; }),
-            borderColor: '#22c55e',
+            borderColor: T().success,
             backgroundColor: 'transparent',
             borderWidth: 2,
-            pointBackgroundColor: '#22c55e',
+            pointBackgroundColor: T().success,
             pointRadius: 4,
             tension: 0.3,
             fill: false,
@@ -514,13 +630,13 @@ function drawCliCharts() {
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: {
-          legend: { labels: { color:'#94a3b8', font:{size:11}, padding:10, boxWidth:12 } },
-          tooltip: { backgroundColor:'#22263a', titleColor:'#f1f5f9', bodyColor:'#94a3b8', borderColor:'rgba(255,255,255,0.1)', borderWidth:1, padding:10 }
+          legend: { labels: { color:ct.legend, font:{size:11}, padding:10, boxWidth:12 } },
+          tooltip: { backgroundColor:ct.tooltipBg, titleColor:ct.tooltipTitle, bodyColor:ct.tooltipBody, borderColor:ct.tooltipBorder, borderWidth:1, padding:10 }
         },
         scales: {
-          x: { grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#4a5568',font:{size:11}} },
-          yVal: { position:'left',  grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#4a5568',font:{size:11}, callback:function(v){return 'R$'+(v>=1000?(v/1000).toFixed(0)+'k':v);}}, beginAtZero:true },
-          yCli: { position:'right', grid:{drawOnChartArea:false}, ticks:{color:'#4a5568',font:{size:11}}, beginAtZero:true }
+          x: { grid:{color:ct.grid}, ticks:{color:ct.tick,font:{size:11}} },
+          yVal: { position:'left',  grid:{color:ct.grid}, ticks:{color:ct.tick,font:{size:11}, callback:function(v){return 'R$'+(v>=1000?(v/1000).toFixed(0)+'k':v);}}, beginAtZero:true },
+          yCli: { position:'right', grid:{drawOnChartArea:false}, ticks:{color:ct.tick,font:{size:11}}, beginAtZero:true }
         }
       }
     });
@@ -539,11 +655,11 @@ function drawCliCharts() {
       type: 'doughnut',
       data: {
         labels: ['Quitado','Enviado','Recebido','Pendente'],
-        datasets: [{ data:[qui,env,rec,pen], backgroundColor:['#22c55e','#3b82f6','#fbbf24','#4a5568'], borderWidth:0, hoverOffset:6 }]
+        datasets: [{ data:[qui,env,rec,pen], backgroundColor:[T().success,T().accent,T().warn,T().dim], borderWidth:0, hoverOffset:6 }]
       },
       options: {
         responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{ position:'right', labels:{ color:'#94a3b8', font:{size:11}, padding:10, boxWidth:12 } },
+        plugins:{ legend:{ position:'right', labels:{ color:ct.legend, font:{size:11}, padding:10, boxWidth:12 } },
           tooltip:{ callbacks:{ label:function(ctx){ return ' '+ctx.label+': '+ctx.raw; } } } },
         cutout: '65%'
       }
@@ -565,10 +681,10 @@ function renderCardsProducao() {
   }).length;
 
   var cards = [
-    { lbl:'Cadastrados', val:tot,  clr:'#93c5fd', ico:'ti-clipboard-list' },
-    { lbl:'Finalizados', val:fin,  clr:'#4ade80', ico:'ti-circle-check' },
-    { lbl:'Pendentes',   val:pend, clr:'#94a3b8', ico:'ti-clock-pause' },
-    { lbl:'Atrasados',   val:atras,clr:'#fca5a5', ico:'ti-alert-circle' },
+    { lbl:'Cadastrados', val:tot,  clr:T().accent,  ico:'ti-clipboard-list' },
+    { lbl:'Finalizados', val:fin,  clr:T().success, ico:'ti-circle-check' },
+    { lbl:'Pendentes',   val:pend, clr:T().muted,   ico:'ti-clock-pause' },
+    { lbl:'Atrasados',   val:atras,clr:T().danger,  ico:'ti-alert-circle' },
   ];
   document.getElementById('cards-producao').innerHTML = cards.map(function(c) {
     return '<div class="hm-card">'+
@@ -580,6 +696,74 @@ function renderCardsProducao() {
 
   renderListaHoje();
   renderAtrasados();
+  renderElementosProducao();
+}
+
+// ── Elementos vendidos (material / implante / componente) ────
+function renderElementosProducao() {
+  var mesStr = viewYear + '-' + String(viewMonth + 1).padStart(2, '0');
+  var pedMes = homePedidos.filter(function(p) {
+    return (p.created_at || '').substring(0, 7) === mesStr && p.status !== 'cancelado';
+  });
+
+  var totalElementos = 0, sobreDente = 0, sobreImplante = 0;
+  var porMaterial = {}, porComponente = {};
+  pedMes.forEach(function(p) {
+    var qtd = Number(p.qtd_elementos) || 1;
+    totalElementos += qtd;
+    if (p.sobre_implante) sobreImplante += qtd; else sobreDente += qtd;
+    var mat = p.material || 'nao_identificado';
+    porMaterial[mat] = (porMaterial[mat] || 0) + qtd;
+    var comp = p.componente || 'nenhum';
+    porComponente[comp] = (porComponente[comp] || 0) + qtd;
+  });
+
+  var cards = [
+    { lbl:'Total de elementos', val:totalElementos, clr:T().accent,  ico:'ti-artboard' },
+    { lbl:'Sobre dente',        val:sobreDente,      clr:T().success, ico:'ti-tooth' },
+    { lbl:'Sobre implante',     val:sobreImplante,   clr:T().accent2, ico:'ti-vector-triangle' }
+  ];
+  var elCards = document.getElementById('cards-elementos-prod');
+  if (elCards) elCards.innerHTML = cards.map(function(c) {
+    return '<div class="hm-card">'+
+      '<div class="hm-card-lbl">'+c.lbl+'</div>'+
+      '<div class="hm-card-val" style="color:'+c.clr+'">'+c.val+'</div>'+
+      '<i class="ti '+c.ico+'" style="font-size:20px;color:'+c.clr+';opacity:0.4;margin-top:auto"></i>'+
+    '</div>';
+  }).join('');
+
+  var mesLabel = MESES[viewMonth] + ' ' + viewYear;
+  ['prod-mat-mes-lbl','prod-comp-mes-lbl'].forEach(function(id) { var e = document.getElementById(id); if (e) e.textContent = mesLabel; });
+
+  var MAT_LABELS  = { zirconia:'Zircônia', emax:'Emax', pmma:'PMMA', resina:'Resina', misto:'Misto', outro:'Outro', nao_identificado:'Não identificado' };
+  var MAT_ORDER   = ['zirconia','emax','pmma','resina','misto','outro','nao_identificado'];
+  var COMP_LABELS = { neodent:'Neodent', sin:'SIN', implacil:'Implacil', outro:'Outro', nenhum:'Nenhum / não informado' };
+  var COMP_ORDER  = ['neodent','sin','implacil','outro','nenhum'];
+
+  renderElementBreakdown('prod-material-lista', porMaterial, MAT_LABELS, MAT_ORDER, totalElementos);
+  renderElementBreakdown('prod-componente-lista', porComponente, COMP_LABELS, COMP_ORDER, totalElementos);
+}
+
+function renderElementBreakdown(elId, data, labels, order, total) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  var keys = order.filter(function(k) { return (data[k] || 0) > 0; });
+  if (!keys.length || !total) {
+    el.innerHTML = '<div class="hm-empty" style="padding:16px 0"><i class="ti ti-package-off" style="font-size:20px"></i>Sem elementos no período</div>';
+    return;
+  }
+  el.innerHTML = keys.map(function(k) {
+    var v = data[k] || 0;
+    var pct = total ? Math.round(v / total * 100) : 0;
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.05)">'+
+      '<span style="font-size:12px;color:#94a3b8;width:140px;flex-shrink:0">'+(labels[k] || k)+'</span>'+
+      '<div style="flex:1;background:rgba(255,255,255,0.06);border-radius:4px;height:7px;overflow:hidden">'+
+        '<div style="height:100%;width:'+pct+'%;background:'+T().accent+';border-radius:4px"></div>'+
+      '</div>'+
+      '<span style="font-size:12px;color:#f1f5f9;font-weight:600;width:34px;text-align:right">'+v+'</span>'+
+      '<span style="font-size:10px;color:#4a5568;width:32px;text-align:right">'+pct+'%</span>'+
+    '</div>';
+  }).join('');
 }
 
 function renderListaHoje() {
@@ -662,8 +846,8 @@ function drawProdChart() {
     data: {
       labels: months.map(function(d){ return d.nome; }),
       datasets: [
-        { label:'Total', data:months.map(function(d){ return d.total; }), backgroundColor:'rgba(59,130,246,0.5)', borderColor:'#3b82f6', borderWidth:1, borderRadius:4 },
-        { label:'Finalizados', data:months.map(function(d){ return d.fin; }), backgroundColor:'rgba(34,197,94,0.5)', borderColor:'#22c55e', borderWidth:1, borderRadius:4 }
+        { label:'Total', data:months.map(function(d){ return d.total; }), backgroundColor:hexToRgba(T().accent,0.5), borderColor:T().accent, borderWidth:1, borderRadius:4 },
+        { label:'Finalizados', data:months.map(function(d){ return d.fin; }), backgroundColor:hexToRgba(T().success,0.5), borderColor:T().success, borderWidth:1, borderRadius:4 }
       ]
     },
     options: chartOpts('Pedidos')
@@ -685,10 +869,10 @@ function renderCardsFinanceiro() {
   var pendente  = totVal - totPago;
 
   var cards = [
-    { lbl:'Total a receber', val:fmt(totVal),    clr:'#f1f5f9', ico:'ti-cash' },
-    { lbl:'Recebido',        val:fmt(totPago),   clr:'#4ade80', ico:'ti-circle-check' },
-    { lbl:'Pendente',        val:fmt(pendente),  clr:pendente>0?'#fca5a5':'#4ade80', ico:'ti-alert-circle' },
-    { lbl:'Comissão líquida',val:fmt(comLiq),    clr:'#fbbf24', ico:'ti-percentage' },
+    { lbl:'Total a receber', val:fmt(totVal),    clr:T().text,    ico:'ti-cash' },
+    { lbl:'Recebido',        val:fmt(totPago),   clr:T().success, ico:'ti-circle-check' },
+    { lbl:'Pendente',        val:fmt(pendente),  clr:pendente>0?T().danger:T().success, ico:'ti-alert-circle' },
+    { lbl:'Comissão líquida',val:fmt(comLiq),    clr:T().warn,    ico:'ti-percentage' },
   ];
   document.getElementById('cards-financeiro').innerHTML = cards.map(function(c) {
     return '<div class="hm-card">'+
@@ -698,7 +882,7 @@ function renderCardsFinanceiro() {
     '</div>';
   }).join('');
 
-  var mesLabel = MESES[currentMonth] + ' ' + currentYear;
+  var mesLabel = MESES[viewMonth] + ' ' + viewYear;
   ['fin-mes-lbl','fin-com-mes-lbl'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=mesLabel; });
 
   renderGastos();
@@ -728,7 +912,7 @@ function renderGastos() {
   }).join('') +
   '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0 0;margin-top:4px">'+
     '<span style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em">Total</span>'+
-    '<span style="font-size:14px;font-weight:700;color:#fca5a5">'+fmt(total)+'</span>'+
+    '<span style="font-size:14px;font-weight:700;color:'+T().danger+'">'+fmt(total)+'</span>'+
   '</div>';
 }
 
@@ -745,9 +929,9 @@ function renderComissoes() {
     var v=homeDbState[c.reg]||{}, vm=Number(v.valor_mes||0), vp=Number(v.valor_pago||0), vc=Number(v.valor_componente||0), com=vm*COMISSAO;
     return '<tr><td style="font-weight:500;color:#f1f5f9">'+escHtml(c.nome)+'</td>'+
       '<td>'+fmt(vm)+'</td>'+
-      '<td style="color:#22c55e">'+fmt(vp)+'</td>'+
-      '<td style="color:#94a3b8">'+fmt(vc)+'</td>'+
-      '<td style="color:#fbbf24;font-weight:600">'+fmt(com)+'</td></tr>';
+      '<td style="color:'+T().success+'">'+fmt(vp)+'</td>'+
+      '<td style="color:'+T().muted+'">'+fmt(vc)+'</td>'+
+      '<td style="color:'+T().warn+';font-weight:600">'+fmt(com)+'</td></tr>';
   }).join('');
 }
 
@@ -760,8 +944,8 @@ function drawFinChart() {
     data: {
       labels: homeHistory.map(function(d){ return d.nome; }),
       datasets: [
-        { label:'A receber', data:homeHistory.map(function(d){ return d.valor; }), backgroundColor:'rgba(59,130,246,0.45)', borderColor:'#3b82f6', borderWidth:1, borderRadius:4 },
-        { label:'Pago',      data:homeHistory.map(function(d){ return d.pago;  }), backgroundColor:'rgba(34,197,94,0.5)',   borderColor:'#22c55e', borderWidth:1, borderRadius:4 }
+        { label:'A receber', data:homeHistory.map(function(d){ return d.faturamento; }), backgroundColor:hexToRgba(T().accent,0.45), borderColor:T().accent, borderWidth:1, borderRadius:4 },
+        { label:'Pago',      data:homeHistory.map(function(d){ return d.pago;  }), backgroundColor:hexToRgba(T().success,0.5),   borderColor:T().success, borderWidth:1, borderRadius:4 }
       ]
     },
     options: chartOpts('R$', true)
@@ -815,25 +999,39 @@ function ativoClick(reg) {
 }
 
 // ── Chart.js helpers ──────────────────────────────────────────
-var CHART_DEFAULTS = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: { labels: { color:'#94a3b8', font:{ size:11 }, padding:10, boxWidth:12 } },
-    tooltip: { backgroundColor:'#22263a', titleColor:'#f1f5f9', bodyColor:'#94a3b8', borderColor:'rgba(255,255,255,0.1)', borderWidth:1, padding:10 }
-  },
-  scales: {
-    x: { grid:{ color:'rgba(255,255,255,0.04)' }, ticks:{ color:'#4a5568', font:{size:11} } },
-    y: { grid:{ color:'rgba(255,255,255,0.05)' }, ticks:{ color:'#4a5568', font:{size:11} }, beginAtZero:true }
-  }
-};
+function chartDefaults() {
+  var ct = chartTheme();
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color:ct.legend, font:{ size:11 }, padding:10, boxWidth:12 } },
+      tooltip: { backgroundColor:ct.tooltipBg, titleColor:ct.tooltipTitle, bodyColor:ct.tooltipBody, borderColor:ct.tooltipBorder, borderWidth:1, padding:10 }
+    },
+    scales: {
+      x: { grid:{ color:ct.grid }, ticks:{ color:ct.tick, font:{size:11} } },
+      y: { grid:{ color:ct.grid }, ticks:{ color:ct.tick, font:{size:11} }, beginAtZero:true }
+    }
+  };
+}
 
 function chartOpts(yLabel, isMoney) {
-  var opts = JSON.parse(JSON.stringify(CHART_DEFAULTS));
+  var opts = chartDefaults();
   if (isMoney) {
     opts.scales.y.ticks.callback = function(v){ return 'R$'+(v>=1000?(v/1000).toFixed(0)+'k':v); };
   }
   return opts;
+}
+
+// ── Reage a troca de tema em tempo real (chamado por shared.js) ─
+function onThemeChange() {
+  renderAllStatic();
+  ['cli-line','cli-donut','fin-bar','ped-bar'].forEach(function(k) {
+    if (homeCharts[k]) { try { homeCharts[k].destroy(); } catch(e){} delete homeCharts[k]; }
+  });
+  if (homeTab === 'clientes')   { homeChartInit['clientes']   = true; drawCliCharts(); }
+  if (homeTab === 'producao')   { homeChartInit['producao']   = true; drawProdChart(); }
+  if (homeTab === 'financeiro') { homeChartInit['financeiro'] = true; drawFinChart(); }
 }
 
 // ── Render estático (sem charts) ──────────────────────────────
@@ -871,6 +1069,7 @@ function showConnError(msg) {
 async function init() {
   try {
     await Promise.all([ loadControle(), loadPedidosAll(), loadGastos(), loadHistory() ]);
+    renderMonthDD();
     renderAllStatic();
     setHomeTab('clientes');
   } catch(e) {

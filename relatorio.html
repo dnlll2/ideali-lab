@@ -107,6 +107,62 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .month-label{color:#000 !important}
 }
 </style>
+<script>
+// ── Tema (espelho leve de THEMES em shared.js) ─────────────────
+// Esta página é standalone (não carrega shared.js, pra não colidir com seu
+// próprio login/escHtml/fmt/initials). Mantenha esta paleta sincronizada
+// manualmente se adicionar/mudar temas em shared.js.
+(function() {
+  var THEME_COLORS = {
+    sombra:     { bg:'#0f1117', card:'#1a1d27', border:'rgba(255,255,255,0.08)', text:'#e2e8f0', accent:'#3b82f6', success:'#22c55e', warn:'#fbbf24', danger:'#ef4444', mono:false },
+    terminal:   { bg:'#010b01', card:'#081408', border:'rgba(0,255,65,0.12)',    text:'#a8ffb8', accent:'#00ff41', success:'#00cc33', warn:'#c8ff00', danger:'#ff3333', mono:false },
+    forja:      { bg:'#120e06', card:'#1c1508', border:'rgba(180,130,20,0.18)', text:'#ead6a0', accent:'#d4a017', success:'#78b040', warn:'#e8b420', danger:'#c0392b', mono:false },
+    trincheira: { bg:'#09100a', card:'#111a0f', border:'rgba(100,130,60,0.18)', text:'#c0c8b0', accent:'#7a9a3c', success:'#6b8c42', warn:'#b8a040', danger:'#9c3a2a', mono:false },
+    cosmos:     { bg:'#04081a', card:'#081428', border:'rgba(0,180,216,0.14)',  text:'#c0e8f8', accent:'#00b4d8', success:'#48cae4', warn:'#90e0ef', danger:'#ef476f', mono:false },
+    codigo:     { bg:'#1e1e1e', card:'#252526', border:'rgba(255,255,255,0.1)', text:'#d4d4d4', accent:'#007acc', success:'#4ec9b0', warn:'#dcdcaa', danger:'#f44747', mono:false },
+    matrix:     { bg:'#000000', card:'#020f04', border:'rgba(0,255,65,0.22)',   text:'#d4ffdc', accent:'#00ff41', success:'#39ff6a', warn:'#ffd60a', danger:'#ff3b3b', mono:true }
+  };
+  function hexToRgba(hex, alpha) {
+    hex = String(hex||'').replace('#','');
+    if (hex.length===3) hex = hex.split('').map(function(c){return c+c;}).join('');
+    var r=parseInt(hex.substr(0,2),16)||0, g=parseInt(hex.substr(2,2),16)||0, b=parseInt(hex.substr(4,2),16)||0;
+    return 'rgba('+r+','+g+','+b+','+alpha+')';
+  }
+  var name = localStorage.getItem('ideali-theme') || 'sombra';
+  var t = THEME_COLORS[name] || THEME_COLORS.sombra;
+  var css = [
+    'body{background:'+t.bg+' !important;color:'+t.text+' !important}',
+    '.badge-ro{background:'+hexToRgba(t.accent,0.16)+' !important;color:'+t.accent+' !important;border-color:'+hexToRgba(t.accent,0.35)+' !important}',
+    '.fat-card{background:'+t.card+' !important;border-color:'+hexToRgba(t.accent,0.35)+' !important}',
+    '.sum-card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.sum-card.highlight{border-color:'+hexToRgba(t.warn,0.35)+' !important;background:'+hexToRgba(t.warn,0.06)+' !important}',
+    '.sum-card .val{color:'+t.text+' !important}',
+    '.table-wrap,.rel-table th{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.tick.on{background:'+hexToRgba(t.success,0.15)+' !important;border-color:'+t.success+' !important;color:'+t.success+' !important}',
+    '.tick-lbl.on{color:'+t.success+' !important}',
+    '.status-q,.status-e{background:'+hexToRgba(t.success,0.15)+' !important;color:'+t.success+' !important;border-color:'+t.success+' !important}',
+    '.status-r{background:'+hexToRgba(t.accent,0.18)+' !important;color:'+t.accent+' !important;border-color:'+hexToRgba(t.accent,0.5)+' !important}',
+    '.valor-mes{color:'+t.warn+' !important}',
+    '.valor-pago{color:'+t.success+' !important}',
+    '.comp-btn{background:'+hexToRgba(t.accent,0.16)+' !important;color:'+t.accent+' !important;border-color:'+hexToRgba(t.accent,0.4)+' !important}',
+    '.comp-btn:hover{background:'+hexToRgba(t.accent,0.26)+' !important;border-color:'+t.accent+' !important}',
+    '.spinner{border-top-color:'+t.accent+' !important}',
+    '.error-box{background:'+hexToRgba(t.danger,0.15)+' !important;border-color:'+t.danger+' !important}',
+    '.error-box i,.error-box p{color:'+t.danger+' !important}',
+    '#obs-modal{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    t.mono ? 'body,input,select,button,table{font-family:"Share Tech Mono","Courier New",monospace !important}' : ''
+  ].join('\n');
+  var styleEl = document.createElement('style');
+  styleEl.textContent = css;
+  document.head.appendChild(styleEl);
+  if (t.mono) {
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap';
+    document.head.appendChild(link);
+  }
+})();
+</script>
 </head>
 <body>
 <script>

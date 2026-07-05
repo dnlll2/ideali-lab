@@ -15,7 +15,7 @@ var COMISSAO = 0.15;
 // ── Clientes (array hardcoded) ────────────────────────────────
 var clients = [
   {reg:20,nome:"Adriana Tavares de Almeida",   cpf:"146.607.018-83",  cro:"CRO-SP 92640", end:"Rua Dezesseis de Dezembro, 10 - Sala 3",          bairro:"Jd. Rubio",          cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"",                  obs:""},
-  {reg:23,nome:"Alexandre Miranda Souza",      cpf:"364.962.048-59",  cro:"",             end:"Av. Brasil, 1336 - 1 Andar",                      bairro:"",                   cidade:"Ferraz de Vasconcelos",uf:"SP",cep:"",          tel:"(11) 97723-2657",   obs:""},
+  {reg:23,nome:"Alexandre Miranda Souza",      cpf:"364.961.048-59",  cro:"",             end:"Av. Brasil, 1336 - 1 Andar",                      bairro:"",                   cidade:"Ferraz de Vasconcelos",uf:"SP",cep:"",          tel:"(11) 97723-2657",   obs:""},
   {reg:3, nome:"Anthony Borges",               cpf:"378.641.768-79",  cro:"126.653",      end:"Av. Silvestre Pires de Freitas, 800",             bairro:"Jardim Paraiso",     cidade:"Guarulhos",           uf:"SP", cep:"07144-000", tel:"",                  obs:"Costa Borges Odontologia"},
   {reg:7, nome:"Bruno Rocco Giusto",           cpf:"300.066.978-79",  cro:"",             end:"Av. Agua Fria, 1896",                             bairro:"Agua Fria",          cidade:"Sao Paulo",           uf:"SP", cep:"02332-001", tel:"",                  obs:"Entregar via motoboy (Katia)"},
   {reg:10,nome:"Caio Vinicius Barreto dos Santos",cpf:"376.257.418-93",cro:"",            end:"Av. Inconfidencia Mineira, 1241",                 bairro:"Vila Antonieta",     cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"(11) 98216-2905",   obs:"Lab Barreto"},
@@ -190,44 +190,81 @@ var THEMES = {
     bg:'#0f1117', sbg:'#13151f', card:'#1a1d27', sec:'#22263a',
     hover:'#2d3250', active:'#1a2a40', border:'rgba(255,255,255,0.08)',
     text:'#e2e8f0', muted:'#94a3b8', dim:'#64748b',
-    accent:'#3b82f6', success:'#22c55e', warn:'#fbbf24', danger:'#ef4444'
+    accent:'#3b82f6', accent2:'#a78bfa', success:'#22c55e', warn:'#fbbf24', danger:'#ef4444'
   },
   terminal: {
     name:'Terminal', swatch:'#00ff41',
     bg:'#010b01', sbg:'#010601', card:'#081408', sec:'#0b1e0b',
     hover:'#102810', active:'#0a200a', border:'rgba(0,255,65,0.12)',
     text:'#a8ffb8', muted:'#4db860', dim:'#2a6e3a',
-    accent:'#00ff41', success:'#00cc33', warn:'#c8ff00', danger:'#ff3333'
+    accent:'#00ff41', accent2:'#00e6c3', success:'#00cc33', warn:'#c8ff00', danger:'#ff3333'
   },
   forja: {
     name:'Forja', swatch:'#d4a017',
     bg:'#120e06', sbg:'#0e0a04', card:'#1c1508', sec:'#261c0a',
     hover:'#30220c', active:'#281a08', border:'rgba(180,130,20,0.18)',
     text:'#ead6a0', muted:'#a08050', dim:'#6b5535',
-    accent:'#d4a017', success:'#78b040', warn:'#e8b420', danger:'#c0392b'
+    accent:'#d4a017', accent2:'#e8935a', success:'#78b040', warn:'#e8b420', danger:'#c0392b'
   },
   trincheira: {
     name:'Trincheira', swatch:'#7a9a3c',
     bg:'#09100a', sbg:'#060d07', card:'#111a0f', sec:'#182015',
     hover:'#1e2a1a', active:'#182415', border:'rgba(100,130,60,0.18)',
     text:'#c0c8b0', muted:'#7a8c68', dim:'#4e5a42',
-    accent:'#7a9a3c', success:'#6b8c42', warn:'#b8a040', danger:'#9c3a2a'
+    accent:'#7a9a3c', accent2:'#a8b878', success:'#6b8c42', warn:'#b8a040', danger:'#9c3a2a'
   },
   cosmos: {
     name:'Cosmos', swatch:'#00b4d8',
     bg:'#04081a', sbg:'#020612', card:'#081428', sec:'#0c1c38',
     hover:'#102240', active:'#0c1e3a', border:'rgba(0,180,216,0.14)',
     text:'#c0e8f8', muted:'#5aaccc', dim:'#2e7a9a',
-    accent:'#00b4d8', success:'#48cae4', warn:'#90e0ef', danger:'#ef476f'
+    accent:'#00b4d8', accent2:'#7c83fd', success:'#48cae4', warn:'#90e0ef', danger:'#ef476f'
   },
   codigo: {
     name:'Código', swatch:'#007acc',
     bg:'#1e1e1e', sbg:'#252526', card:'#252526', sec:'#2d2d30',
     hover:'#37373d', active:'#094771', border:'rgba(255,255,255,0.1)',
     text:'#d4d4d4', muted:'#888888', dim:'#6a6a6a',
-    accent:'#007acc', success:'#4ec9b0', warn:'#dcdcaa', danger:'#f44747'
+    accent:'#007acc', accent2:'#c586c0', success:'#4ec9b0', warn:'#dcdcaa', danger:'#f44747'
+  },
+  matrix: {
+    name:'Matrix', swatch:'#00ff41', mono:true,
+    bg:'#000000', sbg:'#000000', card:'#020f04', sec:'#041a06',
+    hover:'#0b2a0e', active:'#0a2409', border:'rgba(0,255,65,0.22)',
+    text:'#d4ffdc', muted:'#52d17a', dim:'#1f7a3d',
+    accent:'#00ff41', accent2:'#00e6a8', success:'#39ff6a', warn:'#ffd60a', danger:'#ff3b3b'
   }
 };
+
+// ── Cores dinâmicas por tema (cards e gráficos) ────────────────
+function T() { return THEMES[currentTheme] || THEMES.sombra; }
+
+function hexToRgba(hex, alpha) {
+  hex = String(hex||'').replace('#','');
+  if (hex.length === 3) hex = hex.split('').map(function(c){ return c+c; }).join('');
+  var r = parseInt(hex.substr(0,2),16)||0, g = parseInt(hex.substr(2,2),16)||0, b = parseInt(hex.substr(4,2),16)||0;
+  return 'rgba('+r+','+g+','+b+','+alpha+')';
+}
+
+// Cores de eixo/grade/tooltip do Chart.js, lidas do tema ativo
+function chartTheme() {
+  var t = T();
+  return {
+    grid: hexToRgba(t.text, 0.06),
+    tick: t.dim,
+    legend: t.muted,
+    tooltipBg: t.card,
+    tooltipTitle: t.text,
+    tooltipBody: t.muted,
+    tooltipBorder: t.border
+  };
+}
+
+// Chamado pelas páginas (se definirem window.onThemeChange) para re-renderizar
+// cards/gráficos quando o usuário troca de tema em tempo real.
+function notifyThemeChange() {
+  if (typeof onThemeChange === 'function') { try { onThemeChange(); } catch(e){ console.error('[onThemeChange]', e); } }
+}
 
 var currentTheme = localStorage.getItem('ideali-theme') || 'sombra';
 
@@ -272,6 +309,9 @@ function applyTheme(name) {
     '.month-dd-item:hover{background:'+t.hover+' !important;color:'+t.text+' !important}',
     '.month-dd-item.sel{background:'+t.active+' !important;color:'+t.accent+' !important}',
     '.dash-card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.hm-card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.hm-section{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.hm-section-title{border-color:'+t.border+' !important;color:'+t.muted+' !important}',
     '#sidebar-overlay{background:rgba(0,0,0,0.65) !important}',
     '.mob-back{background:'+t.sec+' !important;color:'+t.muted+' !important;border-color:'+t.border+' !important}',
     '.sealed-banner{background:'+t.active+' !important}'
@@ -279,7 +319,22 @@ function applyTheme(name) {
   var el = document.getElementById('theme-style');
   if (!el) { el = document.createElement('style'); el.id = 'theme-style'; document.head.appendChild(el); }
   el.textContent = css;
+
+  // Fonte monoespaçada apenas para temas marcados com mono:true (ex: Matrix)
+  if (t.mono && !document.getElementById('matrix-font-link')) {
+    var link = document.createElement('link');
+    link.id = 'matrix-font-link'; link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap';
+    document.head.appendChild(link);
+  }
+  var fontEl = document.getElementById('theme-font-style');
+  if (!fontEl) { fontEl = document.createElement('style'); fontEl.id = 'theme-font-style'; document.head.appendChild(fontEl); }
+  fontEl.textContent = t.mono
+    ? 'body,input,select,button,textarea,table{font-family:"Share Tech Mono","Courier New",monospace !important}'
+    : '';
+
   renderThemePicker();
+  notifyThemeChange();
 }
 
 function renderThemePicker() {
@@ -465,7 +520,11 @@ var IA_SYSTEM_PROMPT = 'Você é um assistente de gestão de laboratório odonto
 '- controle_mensal: {cliente_reg, mes, ano, valor_mes, valor_pago, valor_componente, obs_pagamento, recebido, enviado, quitado}\n' +
 '- tarefas: {texto, concluida, status, arquivada, cliente_reg, data} — status: pendente|em_execucao|concluida\n' +
 '- inove_pedidos: {descricao, cliente_reg, status, data_pedido} — status: pendente|em_execucao|finalizado — para serviços Inove 3D\n' +
-'- pedidos: {descricao, cliente_reg, valor, data_prevista, status, observacao, urgente} — status: orcamento|producao|enviado|entregue|cancelado — para pedidos de laboratório\n' +
+'- pedidos: {descricao, cliente_reg, valor, data_prevista, status, observacao, urgente, material, sobre_implante, componente, qtd_elementos} — status: orcamento|producao|enviado|entregue|cancelado — para pedidos de laboratório\n' +
+'  - material: zirconia|emax|pmma|resina|misto|outro (use "misto" se o pedido tiver mais de um material; se não for possível identificar, deixe null — não adivinhe)\n' +
+'  - sobre_implante: true se a descrição mencionar "implante"/"sobre implante", senão false\n' +
+'  - componente: neodent|sin|implacil|outro (se mencionado explicitamente; senão null)\n' +
+'  - qtd_elementos: conte quantos dentes/elementos distintos aparecem na descrição (ex: "dentes 13,11,21" = 3); se não houver número explícito, use 1\n' +
 '- gastos_entrega: {valor, tipo, descricao, data, cliente_reg, mes, ano} — tipo: correio|motoboy|uber|outro\n' +
 '- cadastro_clientes: {reg, nome, cpf, cro, end, bairro, cidade, uf, cep, tel, obs}\n\n' +
 'Tabela de preços atual (use para calcular o campo "valor" ao inserir pedidos):\n{{TABELA_PRECOS}}\n\n' +
@@ -488,7 +547,7 @@ var IA_ALLOWED_COLS = {
   controle_mensal:   ['cliente_reg','mes','ano','valor_mes','valor_pago','valor_componente','obs_pagamento','recebido','enviado','quitado'],
   tarefas:           ['texto','concluida','status','arquivada','cliente_reg','data'],
   inove_pedidos:     ['descricao','cliente_reg','status','data_pedido'],
-  pedidos:           ['descricao','cliente_reg','valor','data_prevista','status','observacao'],
+  pedidos:           ['descricao','cliente_reg','valor','data_prevista','status','observacao','urgente','material','sobre_implante','componente','qtd_elementos'],
   gastos_entrega:    ['valor','tipo','descricao','data','cliente_reg','mes','ano'],
   cadastro_clientes: ['reg','nome','cpf','cro','end','bairro','cidade','uf','cep','tel','obs']
 };
