@@ -1,0 +1,3 @@
+[{"id":"ab4fdac8-728a-48bb-aea7-7088aebf5e0c","cliente_reg":3,"mes":5,"ano":2026,"valor_mes":200,"valor_pago":200,"recebido":false,"enviado":false,"quitado":false,"obs_pagamento":"","created_at":"2026-06-23T02:57:14.877108+00:00"}, 
+ {"id":"a5ec801e-3f8f-4142-8f31-593cc278e664","cliente_reg":2,"mes":5,"ano":2026,"valor_mes":1000,"valor_pago":50,"recebido":false,"enviado":false,"quitado":false,"obs_pagamento":"","created_at":"2026-06-23T02:56:44.653266+00:00"}, 
+ {"id":"0885ad08-06e7-43af-b80c-068ad035321f","cliente_reg":4,"mes":6,"ano":2026,"valor_mes":10000,"valor_pago":5000,"recebido":false,"enviado":false,"quitado":false,"obs_pagamento":"","created_at":"2026-07-05T19:26:27.12579+00:00"}]

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pagamentos (Inove) — Ideali Laboratório</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;padding:1.25rem;min-height:100vh}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:12px}
+.header-left h1{font-size:20px;font-weight:600;color:#f1f5f9}
+.header-left p{font-size:13px;color:#64748b;margin-top:2px}
+.badge-ro{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 10px;border-radius:6px;background:#1a2a40;color:#60a5fa;border:0.5px solid rgba(96,165,250,0.3);font-weight:500}
+.nav-btn{width:34px;height:34px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+.nav-btn:hover{background:#2d3250;color:#e2e8f0}
+.month-nav{display:flex;align-items:center;gap:8px}
+.summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem}
+.sum-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px 16px}
+.sum-card .lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px}
+.sum-card .val{font-size:20px;font-weight:600;color:#f1f5f9}
+.table-wrap{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden}
+.rel-table{width:100%;border-collapse:collapse;font-size:13px}
+.rel-table th{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;padding:9px 12px;text-align:left;border-bottom:0.5px solid rgba(255,255,255,0.08);background:#1a1d27;white-space:nowrap;position:sticky;top:0}
+.rel-table td{padding:9px 12px;border-bottom:0.5px solid rgba(255,255,255,0.05);color:#e2e8f0;vertical-align:middle}
+.rel-table tbody tr:hover td{background:rgba(255,255,255,0.03)}
+.client-name{font-size:13px;font-weight:500;color:#e2e8f0}
+.status-badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;white-space:nowrap}
+.status-q{background:#0d3d2b;color:#4ade80;border:0.5px solid #22c55e}
+.status-e{background:#0d3d2b;color:#4ade80;border:0.5px solid #22c55e}
+.status-r{background:#1d3a6e;color:#93c5fd;border:0.5px solid rgba(96,165,250,0.5)}
+.status-p{background:#22263a;color:#64748b;border:0.5px solid rgba(255,255,255,0.08)}
+.valor-mes{color:#fbbf24;font-weight:500}
+.valor-pago{color:#22c55e;font-weight:500}
+.valor-zero{color:#4a5568}
+.comp-link{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#60a5fa;text-decoration:none;padding:2px 8px;border-radius:5px;background:rgba(96,165,250,0.1);white-space:nowrap}
+.comp-link:hover{background:rgba(96,165,250,0.2)}
+.no-comp{font-size:11px;color:#4a5568}
+.loading{text-align:center;padding:60px;color:#64748b;font-size:14px}
+.footer{margin-top:1.5rem;text-align:center;font-size:11px;color:#4a5568}
+@media(max-width:767px){
+  .summary-row{grid-template-columns:1fr 1fr}
+  .rel-table th:nth-child(5),.rel-table td:nth-child(5){display:none}
+  .header{gap:10px}
+}
+</style>
+<script>
+// ── Tema (espelho leve de THEMES em shared.js) ─────────────────
+// Página standalone, sem senha (mesmo padrão de cadista.html/relatorio.html).
+// Mantenha esta paleta sincronizada manualmente se mudar os temas em shared.js.
+(function() {
+  var THEME_COLORS = {
+    sombra:     { bg:'#0f1117', card:'#1a1d27', border:'rgba(255,255,255,0.08)', text:'#e2e8f0', accent:'#3b82f6', accent2:'#a78bfa', success:'#22c55e', warn:'#fbbf24', danger:'#ef4444', mono:false },
+    terminal:   { bg:'#010b01', card:'#081408', border:'rgba(0,255,65,0.12)',    text:'#a8ffb8', accent:'#00ff41', accent2:'#00e6c3', success:'#00cc33', warn:'#c8ff00', danger:'#ff3333', mono:false },
+    forja:      { bg:'#120e06', card:'#1c1508', border:'rgba(180,130,20,0.18)', text:'#ead6a0', accent:'#d4a017', accent2:'#e8935a', success:'#78b040', warn:'#e8b420', danger:'#c0392b', mono:false },
+    trincheira: { bg:'#09100a', card:'#111a0f', border:'rgba(100,130,60,0.18)', text:'#c0c8b0', accent:'#7a9a3c', accent2:'#a8b878', success:'#6b8c42', warn:'#b8a040', danger:'#9c3a2a', mono:false },
+    cosmos:     { bg:'#04081a', card:'#081428', border:'rgba(0,180,216,0.14)',  text:'#c0e8f8', accent:'#00b4d8', accent2:'#7c83fd', success:'#48cae4', warn:'#90e0ef', danger:'#ef476f', mono:false },
+    codigo:     { bg:'#1e1e1e', card:'#252526', border:'rgba(255,255,255,0.1)', text:'#d4d4d4', accent:'#007acc', accent2:'#c586c0', success:'#4ec9b0', warn:'#dcdcaa', danger:'#f44747', mono:false },
+    matrix:     { bg:'#000000', card:'#020f04', border:'rgba(0,255,65,0.22)',   text:'#d4ffdc', accent:'#00ff41', accent2:'#00e6a8', success:'#39ff6a', warn:'#ffd60a', danger:'#ff3b3b', mono:true }
+  };
+  function hexToRgba(hex, alpha) {
+    hex = String(hex||'').replace('#','');
+    if (hex.length===3) hex = hex.split('').map(function(c){return c+c;}).join('');
+    var r=parseInt(hex.substr(0,2),16)||0, g=parseInt(hex.substr(2,2),16)||0, b=parseInt(hex.substr(4,2),16)||0;
+    return 'rgba('+r+','+g+','+b+','+alpha+')';
+  }
+  var name = localStorage.getItem('ideali-theme') || 'sombra';
+  var t = THEME_COLORS[name] || THEME_COLORS.sombra;
+  window.__T = t; window.__hexToRgba = hexToRgba;
+  var css = [
+    'body{background:'+t.bg+' !important;color:'+t.text+' !important}',
+    '.badge-ro{background:'+hexToRgba(t.accent,0.16)+' !important;color:'+t.accent+' !important;border-color:'+hexToRgba(t.accent,0.35)+' !important}',
+    '.sum-card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.sum-card .val{color:'+t.text+' !important}',
+    '.table-wrap,.rel-table th{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.status-q,.status-e{background:'+hexToRgba(t.success,0.15)+' !important;color:'+t.success+' !important;border-color:'+t.success+' !important}',
+    '.status-r{background:'+hexToRgba(t.accent,0.18)+' !important;color:'+t.accent+' !important;border-color:'+hexToRgba(t.accent,0.5)+' !important}',
+    '.valor-mes{color:'+t.warn+' !important}',
+    '.valor-pago{color:'+t.success+' !important}',
+    '.comp-link{background:'+hexToRgba(t.accent,0.12)+' !important;color:'+t.accent+' !important}',
+    '.comp-link:hover{background:'+hexToRgba(t.accent,0.22)+' !important}',
+    '.month-dd-btn.cur{border-color:'+t.accent+' !important;background:'+hexToRgba(t.accent,0.15)+' !important;color:'+t.accent+' !important}',
+    '.month-dd-item.sel{background:'+hexToRgba(t.accent,0.15)+' !important;color:'+t.accent+' !important}',
+    '.month-dd-item.fech{color:'+t.success+' !important}',
+    t.mono ? 'body,input,select,button,table{font-family:"Share Tech Mono","Courier New",monospace !important}' : ''
+  ].join('\n');
+  document.addEventListener('DOMContentLoaded', function() {
+    var styleEl = document.createElement('style');
+    styleEl.textContent = css;
+    document.head.appendChild(styleEl);
+    if (t.mono) {
+      var link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap';
+      document.head.appendChild(link);
+    }
+  });
+})();
+</script>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>💰 Pagamentos — Inove</h1>
+    <p>Situação financeira por cliente e por mês <span class="badge-ro"><i class="ti ti-eye"></i> Somente leitura</span></p>
+  </div>
+  <div class="month-nav">
+    <button class="nav-btn" onclick="changeMonth(-1)"><i class="ti ti-chevron-left"></i></button>
+    <div style="position:relative">
+      <button id="month-dd-btn" class="month-dd-btn" onclick="toggleMonthDD()">
+        <span id="month-dd-label">Carregando...</span>
+        <i class="ti ti-chevron-down" id="month-dd-arrow" style="font-size:11px;transition:transform 0.2s"></i>
+      </button>
+      <div id="month-dd-list" style="display:none;position:absolute;top:calc(100% + 4px);right:0;z-index:50;min-width:200px;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.12);border-radius:10px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,0.5)"></div>
+    </div>
+    <button class="nav-btn" onclick="changeMonth(1)"><i class="ti ti-chevron-right"></i></button>
+  </div>
+</div>
+
+<div class="summary-row">
+  <div class="sum-card"><div class="lbl">Total do mês</div><div class="val" id="sum-total">R$ 0,00</div></div>
+  <div class="sum-card"><div class="lbl">Total pago</div><div class="val" id="sum-pago" style="color:#22c55e">R$ 0,00</div></div>
+  <div class="sum-card"><div class="lbl">Saldo a receber</div><div class="val" id="sum-saldo" style="color:#ef4444">R$ 0,00</div></div>
+</div>
+
+<div id="loading" class="loading">Carregando dados…</div>
+
+<div id="table-container" class="table-wrap" style="display:none">
+  <div style="overflow-x:auto;max-height:70vh">
+    <table class="rel-table">
+      <thead><tr>
+        <th>Cliente</th>
+        <th>Valor do mês</th>
+        <th>Valor pago</th>
+        <th>Restante</th>
+        <th>Status</th>
+        <th>Comprovantes</th>
+      </tr></thead>
+      <tbody id="rows-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="footer">Ideali Laboratório · Visão somente leitura, sem edição · Gerado em <span id="gen-time"></span></div>
+
+<script>
+// Espelho minimo de clients (reg+nome) — página standalone, sem shared.js.
+// Sincronize manualmente se clientes forem adicionados/renomeados em shared.js.
+var clients = [
+  {reg:20,nome:"Adriana Tavares de Almeida"},{reg:23,nome:"Alexandre Miranda Souza"},
+  {reg:3,nome:"Anthony Borges"},{reg:7,nome:"Bruno Rocco Giusto"},
+  {reg:10,nome:"Caio Vinicius Barreto dos Santos"},{reg:9,nome:"Danilo Tuttis T. G. dos Santos"},
+  {reg:4,nome:"Dr. Andre Ricardo G. Da Silva"},{reg:11,nome:"Dr. Renato Oliveira Ferreira da Silva"},
+  {reg:8,nome:"Fernando 021 Dental Barra"},{reg:22,nome:"Gilberto Ferreira Esquivel"},
+  {reg:18,nome:"Henrique Falcao"},{reg:5,nome:"Javier Garrido"},
+  {reg:24,nome:"Jose Ricardo de Miranda Pires"},{reg:15,nome:"Julia Ando"},
+  {reg:21,nome:"Juliano Balseiro"},{reg:2,nome:"Leonardo Moll"},
+  {reg:16,nome:"Luiz Junior"},{reg:12,nome:"Luiz Tolentino"},
+  {reg:19,nome:"Pedro Henrique de Araujo Cruz"},{reg:6,nome:"Renan Gerhard"},
+  {reg:1,nome:"Ricardo Cader"},{reg:13,nome:"Rodrigo Guimaraes"},
+  {reg:17,nome:"Talia Estefanelli Sampaio (Dr. Alfeu)"},{reg:25,nome:"Tiago Muller Pereira"},
+  {reg:26,nome:"Raquel Ghesso Brentzel"},{reg:27,nome:"Kleber Luander"},
+  {reg:28,nome:"Luiz Carlos Figueiredo Seixas"},{reg:29,nome:"Paulo Pagano"},
+  {reg:30,nome:"Juliana Barros"},{reg:31,nome:"Pedro Silva"},
+  {reg:32,nome:"Carlos Vinicios Camelo"},{reg:33,nome:"Clinica Dr Rosmar"},
+  {reg:34,nome:"Roberto Isao"},{reg:35,nome:"Rafael Heino Santos"},
+  {reg:36,nome:"Oral 360 Copa"}
+];
+
+var SUPABASE_URL = 'https://alqhhgysvehtgkwsxeok.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFscWhoZ3lzdmVodGdrd3N4ZW9rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDE0ODg2NSwiZXhwIjoyMDk1NzI0ODY1fQ.xogvgvFob-7Ir6hSLkz0pOj3GawRPRbwfz9oGuGQ90E';
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+var MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+var now = new Date();
+var currentMonth = now.getMonth();
+var currentYear  = now.getFullYear();
+var viewMonth = currentMonth;
+var viewYear  = currentYear;
+var monthDDOpen = false;
+var extraMonths = [];
+var dbState = {};
+
+function fmt(v) {
+  return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function buildMonthList() {
+  var base = [];
+  for (var i=5; i>=0; i--) {
+    var m = currentMonth - i, y = currentYear;
+    if (m < 0) { m += 12; y--; }
+    base.push({m:m, y:y});
+  }
+  var all = base.slice();
+  extraMonths.forEach(function(e) {
+    if (!all.some(function(t){return t.m===e.m&&t.y===e.y;})) all.push(e);
+  });
+  all.sort(function(a,b){ return b.y!==a.y ? b.y-a.y : b.m-a.m; });
+  return all;
+}
+
+function renderMonthDD() {
+  var all = buildMonthList();
+  var isCurMo = viewMonth===currentMonth && viewYear===currentYear;
+  var labelEl = document.getElementById('month-dd-label');
+  var ddBtn   = document.getElementById('month-dd-btn');
+  if (labelEl) labelEl.textContent = MESES[viewMonth].substring(0,3) + (viewYear!==currentYear ? '/'+viewYear : '') + (isCurMo ? ' (atual)' : '');
+  if (ddBtn)   ddBtn.className = 'month-dd-btn' + (isCurMo ? ' cur' : '');
+  var listEl = document.getElementById('month-dd-list');
+  if (listEl) {
+    listEl.innerHTML = all.map(function(t) {
+      var isView = t.m===viewMonth && t.y===viewYear;
+      var isCur  = t.m===currentMonth && t.y===currentYear;
+      var name   = MESES[t.m] + (t.y!==currentYear ? ' '+t.y : '') + (isCur ? ' (atual)' : '');
+      var check  = isView ? '<i class="ti ti-check" style="font-size:11px;flex-shrink:0"></i>' : '<span style="width:11px;flex-shrink:0"></span>';
+      return '<div class="month-dd-item' + (isView?' sel':'') + '" onclick="switchMonth(' + t.m + ',' + t.y + ');closeMonthDD()">' + check + '<span style="flex:1">' + name + '</span></div>';
+    }).join('');
+  }
+}
+
+function toggleMonthDD() {
+  monthDDOpen = !monthDDOpen;
+  var list  = document.getElementById('month-dd-list');
+  var arrow = document.getElementById('month-dd-arrow');
+  if (list)  list.style.display = monthDDOpen ? 'block' : 'none';
+  if (arrow) arrow.style.transform = monthDDOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+function closeMonthDD() {
+  monthDDOpen = false;
+  var list  = document.getElementById('month-dd-list');
+  var arrow = document.getElementById('month-dd-arrow');
+  if (list)  list.style.display = 'none';
+  if (arrow) arrow.style.transform = 'rotate(0deg)';
+}
+document.addEventListener('click', function(e) {
+  var btn  = document.getElementById('month-dd-btn');
+  var list = document.getElementById('month-dd-list');
+  if (monthDDOpen && btn && list && !btn.contains(e.target) && !list.contains(e.target)) closeMonthDD();
+});
+
+async function switchMonth(m, y) {
+  closeMonthDD();
+  viewMonth = m; viewYear = y;
+  renderMonthDD();
+  await loadMonthData();
+  renderTable();
+}
+
+async function changeMonth(delta) {
+  var all = buildMonthList();
+  var idx = all.findIndex(function(t){ return t.m===viewMonth && t.y===viewYear; });
+  var nextM = viewMonth + delta, nextY = viewYear;
+  if (nextM < 0) { nextM = 11; nextY--; }
+  if (nextM > 11) { nextM = 0; nextY++; }
+  if (!all.some(function(t){return t.m===nextM&&t.y===nextY;}) && !extraMonths.some(function(t){return t.m===nextM&&t.y===nextY;})) {
+    extraMonths.push({m:nextM, y:nextY});
+  }
+  await switchMonth(nextM, nextY);
+}
+
+async function loadMonthData() {
+  var folder = viewYear + '_' + viewMonth;
+  var dbRes = await sb.from('controle_mensal').select('*').eq('mes', viewMonth).eq('ano', viewYear);
+  var storRes = await sb.storage.from('comprovantes').list(folder);
+  var compMap = {};
+  if (!storRes.error && storRes.data) {
+    storRes.data.forEach(function(f) {
+      var match = f.name.match(/^reg(\d+)_/);
+      if (match) {
+        var reg = parseInt(match[1]);
+        if (!compMap[reg]) compMap[reg] = [];
+        compMap[reg].push({ name:f.name, url: sb.storage.from('comprovantes').getPublicUrl(folder+'/'+f.name).data.publicUrl });
+      }
+    });
+  }
+  var state = {};
+  clients.forEach(function(c) {
+    state[c.reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, comprovantes: compMap[c.reg]||[] };
+  });
+  if (!dbRes.error) {
+    (dbRes.data||[]).forEach(function(r) {
+      state[r.cliente_reg] = {
+        recebido: !!r.recebido, enviado: !!r.enviado, quitado: !!r.quitado,
+        valor_mes: Number(r.valor_mes)||0, valor_pago: Number(r.valor_pago)||0,
+        comprovantes: compMap[r.cliente_reg]||[]
+      };
+    });
+  }
+  dbState = state;
+}
+
+function statusOf(s) {
+  if (s.quitado)  return { cls:'status-q', lbl:'Quitado' };
+  if (s.enviado)  return { cls:'status-e', lbl:'Enviado' };
+  if (s.recebido) return { cls:'status-r', lbl:'Recebido' };
+  return { cls:'status-p', lbl:'Pendente' };
+}
+
+function renderTable() {
+  var rows = clients
+    .map(function(c) { return { c:c, s: dbState[c.reg] || {valor_mes:0,valor_pago:0,comprovantes:[]} }; })
+    .filter(function(r) { return r.s.valor_mes > 0 || r.s.valor_pago > 0 || (r.s.comprovantes||[]).length > 0; })
+    .sort(function(a,b){ return b.s.valor_mes - a.s.valor_mes; });
+
+  var totMes=0, totPago=0;
+  clients.forEach(function(c) {
+    var s = dbState[c.reg] || {};
+    totMes  += Number(s.valor_mes||0);
+    totPago += Number(s.valor_pago||0);
+  });
+  document.getElementById('sum-total').textContent = fmt(totMes);
+  document.getElementById('sum-pago').textContent  = fmt(totPago);
+  document.getElementById('sum-saldo').textContent = fmt(totMes - totPago);
+
+  var tbody = document.getElementById('rows-body');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#4a5568;padding:2rem">Nenhum lançamento neste mês.</td></tr>';
+  } else {
+    tbody.innerHTML = rows.map(function(r) {
+      var vm = Number(r.s.valor_mes||0), vp = Number(r.s.valor_pago||0), rest = vm - vp;
+      var st = statusOf(r.s);
+      var comps = r.s.comprovantes || [];
+      var compsHtml = comps.length
+        ? comps.map(function(f) { return '<a class="comp-link" href="'+f.url+'" target="_blank" rel="noopener"><i class="ti ti-paperclip"></i> '+ (f.name.length > 18 ? f.name.substring(0,15)+'…' : f.name) +'</a>'; }).join(' ')
+        : '<span class="no-comp">—</span>';
+      return '<tr>' +
+        '<td><p class="client-name">'+escHtml(r.c.nome)+'</p></td>' +
+        '<td class="'+(vm>0?'valor-mes':'valor-zero')+'">'+fmt(vm)+'</td>' +
+        '<td class="'+(vp>0?'valor-pago':'valor-zero')+'">'+fmt(vp)+'</td>' +
+        '<td style="color:'+(rest>0?'#ef4444':'#4a5568')+'">'+fmt(rest)+'</td>' +
+        '<td><span class="status-badge '+st.cls+'">'+st.lbl+'</span></td>' +
+        '<td>'+compsHtml+'</td>' +
+      '</tr>';
+    }).join('');
+  }
+}
+
+async function init() {
+  renderMonthDD();
+  await loadMonthData();
+  renderTable();
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('table-container').style.display = '';
+  document.getElementById('gen-time').textContent = new Date().toLocaleString('pt-BR');
+}
+init();
+</script>
+</body>
+</html>

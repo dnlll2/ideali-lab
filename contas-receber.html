@@ -59,12 +59,13 @@
       <option value="">Todos</option>
       <option>SP</option><option>RJ</option><option>BA</option>
     </select>
-    <select id="status-filter" style="width:130px" onchange="doFilter()">
+    <select id="status-filter" style="width:150px" onchange="doFilter()">
       <option value="">Todos status</option>
       <option value="recebido">Recebido</option>
       <option value="enviado">Enviado</option>
       <option value="quitado">Quitado</option>
       <option value="pendente">Pendente</option>
+      <option value="com_valor">Com valor a receber</option>
     </select>
   </div>
 
@@ -550,7 +551,8 @@ function doFilter() {
   var sf = document.getElementById('status-filter').value;
   var data = clients.filter(function(c) {
     var text = [c.nome,c.cpf,c.cro,c.cidade,c.bairro,c.end,c.obs,c.tel].join(' ').toLowerCase();
-    return (!q || text.includes(q)) && (!uf || c.uf===uf) && (!sf || statusOf(c.reg)===sf);
+    var matchStatus = !sf || (sf === 'com_valor' ? Number((dbState[c.reg]||{}).valor_mes||0) > 0 : statusOf(c.reg)===sf);
+    return (!q || text.includes(q)) && (!uf || c.uf===uf) && matchStatus;
   }).sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); });
   renderList(data);
 }
