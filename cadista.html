@@ -60,6 +60,57 @@
   /* ── Responsive ──────────────────────────────────────────── */
   @media(max-width:767px){.kanban{grid-template-columns:1fr;padding:12px}}
 </style>
+<script>
+// ── Tema (espelho leve de THEMES em shared.js) ─────────────────
+// Página standalone (não carrega shared.js, pra não colidir com escHtml/etc próprios).
+// Mantenha esta paleta sincronizada manualmente se mudar os temas em shared.js.
+// As 3 colunas do Kanban e as cores de urgência/status ficam de fora de propósito
+// (são indicadores de status, que o tema Matrix permite manter na cor de alerta).
+(function() {
+  var THEME_COLORS = {
+    sombra:     { bg:'#0f1117', card:'#1a1d27', border:'rgba(255,255,255,0.08)', text:'#e2e8f0', accent:'#3b82f6', accent2:'#a78bfa', success:'#22c55e', warn:'#fbbf24', danger:'#ef4444', mono:false },
+    terminal:   { bg:'#010b01', card:'#081408', border:'rgba(0,255,65,0.12)',    text:'#a8ffb8', accent:'#00ff41', accent2:'#00e6c3', success:'#00cc33', warn:'#c8ff00', danger:'#ff3333', mono:false },
+    forja:      { bg:'#120e06', card:'#1c1508', border:'rgba(180,130,20,0.18)', text:'#ead6a0', accent:'#d4a017', accent2:'#e8935a', success:'#78b040', warn:'#e8b420', danger:'#c0392b', mono:false },
+    trincheira: { bg:'#09100a', card:'#111a0f', border:'rgba(100,130,60,0.18)', text:'#c0c8b0', accent:'#7a9a3c', accent2:'#a8b878', success:'#6b8c42', warn:'#b8a040', danger:'#9c3a2a', mono:false },
+    cosmos:     { bg:'#04081a', card:'#081428', border:'rgba(0,180,216,0.14)',  text:'#c0e8f8', accent:'#00b4d8', accent2:'#7c83fd', success:'#48cae4', warn:'#90e0ef', danger:'#ef476f', mono:false },
+    codigo:     { bg:'#1e1e1e', card:'#252526', border:'rgba(255,255,255,0.1)', text:'#d4d4d4', accent:'#007acc', accent2:'#c586c0', success:'#4ec9b0', warn:'#dcdcaa', danger:'#f44747', mono:false },
+    matrix:     { bg:'#000000', card:'#020f04', border:'rgba(0,255,65,0.22)',   text:'#d4ffdc', accent:'#00ff41', accent2:'#00e6a8', success:'#39ff6a', warn:'#ffd60a', danger:'#ff3b3b', mono:true }
+  };
+  function hexToRgba(hex, alpha) {
+    hex = String(hex||'').replace('#','');
+    if (hex.length===3) hex = hex.split('').map(function(c){return c+c;}).join('');
+    var r=parseInt(hex.substr(0,2),16)||0, g=parseInt(hex.substr(2,2),16)||0, b=parseInt(hex.substr(4,2),16)||0;
+    return 'rgba('+r+','+g+','+b+','+alpha+')';
+  }
+  var name = localStorage.getItem('ideali-theme') || 'sombra';
+  var t = THEME_COLORS[name] || THEME_COLORS.sombra;
+  var css = [
+    'body{background:'+t.bg+' !important;color:'+t.text+' !important}',
+    '.header{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.header-title{color:'+t.text+' !important}',
+    '.col{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.field{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.modal,.modal-header{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.btn-ghost{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.btn-primary{background:'+t.accent+' !important;border-color:'+t.accent+' !important}',
+    '.btn-all{background:'+hexToRgba(t.accent2,0.12)+' !important;border-color:'+hexToRgba(t.accent2,0.45)+' !important;color:'+t.accent2+' !important}',
+    '.sync-dot{background:'+t.success+' !important}',
+    '.sync-dot.loading{background:'+t.warn+' !important}',
+    '.sync-dot.error{background:'+t.danger+' !important}',
+    t.mono ? 'body,input,select,button,table{font-family:"Share Tech Mono","Courier New",monospace !important}' : ''
+  ].join('\n');
+  var styleEl = document.createElement('style');
+  styleEl.textContent = css;
+  document.head.appendChild(styleEl);
+  if (t.mono) {
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap';
+    document.head.appendChild(link);
+  }
+})();
+</script>
 </head>
 <body>
 

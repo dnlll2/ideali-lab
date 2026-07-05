@@ -352,6 +352,26 @@ function openPedidoPanel(id) {
       '<div class="cf-group"><label class="cf-label">Data prevista</label><input type="date" id="pf-data" style="width:100%" value="'+(p&&p.data_prevista?p.data_prevista:'')+'"></div>'+
     '</div>'+
     '<div class="cf-group"><label class="cf-label">Status</label><select id="pf-status" style="width:100%">'+stOpts+'</select></div>'+
+    '<div class="cf-row2">'+
+      '<div class="cf-group"><label class="cf-label">Material</label><select id="pf-material" style="width:100%">'+
+        ['','zirconia','emax','pmma','resina','misto','outro'].map(function(m){
+          var lbl={'':'— Não informado —',zirconia:'Zircônia',emax:'Emax',pmma:'PMMA',resina:'Resina',misto:'Misto',outro:'Outro'}[m];
+          return '<option value="'+m+'"'+(p&&(p.material||'')===m?' selected':'')+'>'+lbl+'</option>';
+        }).join('')+
+      '</select></div>'+
+      '<div class="cf-group"><label class="cf-label">Qtd. elementos</label><input type="number" id="pf-qtd" style="width:100%" min="1" step="1" value="'+(p&&p.qtd_elementos?p.qtd_elementos:1)+'"></div>'+
+    '</div>'+
+    '<div class="cf-row2">'+
+      '<div class="cf-group"><label class="cf-label">Componente</label><select id="pf-componente" style="width:100%">'+
+        ['','neodent','sin','implacil','outro'].map(function(c){
+          var lbl={'':'— Nenhum —',neodent:'Neodent',sin:'SIN',implacil:'Implacil',outro:'Outro'}[c];
+          return '<option value="'+c+'"'+(p&&(p.componente||'')===c?' selected':'')+'>'+lbl+'</option>';
+        }).join('')+
+      '</select></div>'+
+      '<div class="cf-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:0 12px;height:100%;background:#22263a;border-radius:8px;border:0.5px solid rgba(255,255,255,0.08)">'+
+        '<input type="checkbox" id="pf-implante"'+(p&&p.sobre_implante?' checked':'')+' style="width:16px;height:16px;cursor:pointer;accent-color:#3b82f6">'+
+        '<span style="font-size:13px;color:#93c5fd;font-weight:500">Sobre implante</span></label></div>'+
+    '</div>'+
     '<div class="cf-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:#22263a;border-radius:8px;border:0.5px solid rgba(255,255,255,0.08)">'+
       '<input type="checkbox" id="pf-urgente"'+(p&&p.urgente?' checked':'')+' style="width:16px;height:16px;cursor:pointer;accent-color:#ef4444">'+
       '<span style="font-size:13px;color:#fca5a5;font-weight:500">🚨 Marcar como Urgente</span></label></div>'+
@@ -385,7 +405,11 @@ async function savePedidoPanel() {
     data_prevista:(document.getElementById('pf-data')||{value:null}).value||null,
     status:(document.getElementById('pf-status')||{value:'orcamento'}).value,
     observacao:(document.getElementById('pf-obs')||{value:''}).value.trim(),
-    urgente:!!(document.getElementById('pf-urgente')&&document.getElementById('pf-urgente').checked)
+    urgente:!!(document.getElementById('pf-urgente')&&document.getElementById('pf-urgente').checked),
+    material:(document.getElementById('pf-material')||{value:''}).value||null,
+    componente:(document.getElementById('pf-componente')||{value:''}).value||null,
+    sobre_implante:!!(document.getElementById('pf-implante')&&document.getElementById('pf-implante').checked),
+    qtd_elementos:parseInt((document.getElementById('pf-qtd')||{value:1}).value)||1
   };
   try {
     if(selectedPedidoId){
