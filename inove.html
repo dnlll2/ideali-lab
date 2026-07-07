@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inove 3D Lab — Controle Mensal</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+  <link rel="stylesheet" href="shared.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="shared.js"></script>
+</head>
+<body>
+<div id="shared-shell"></div>
+
+<div class="app-header">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button onclick="openSidebar()" style="width:36px;height:36px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">&#9776;</button>
+    <div>
+      <p style="font-size:17px;font-weight:500;color:#f1f5f9">&#127981; Inove 3D Lab — Controle Mensal</p>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span id="relogio" style="font-size:11px;color:#4a5568"></span>
+    <span id="sync-status" style="font-size:12px;color:#64748b"><span class="sync-dot" id="sync-dot"></span>Conectado</span>
+    <span id="total-badge" class="badge" style="background:#1d3a6e;color:#93c5fd">clientes</span>
+  </div>
+</div>
+
+<!-- Month picker row -->
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0.75rem;align-items:center;padding:0 1rem">
+  <span style="font-size:12px;color:#64748b;margin-right:4px">Mês:</span>
+  <div style="position:relative">
+    <button id="month-dd-btn" class="month-dd-btn" onclick="toggleMonthDD()">
+      <span id="month-dd-label">Carregando...</span>
+      <i class="ti ti-chevron-down" id="month-dd-arrow" style="font-size:11px;transition:transform 0.2s"></i>
+    </button>
+    <div id="month-dd-list" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:50;min-width:200px;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.12);border-radius:10px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,0.5)"></div>
+  </div>
+  <button onclick="addNextMonth()" title="Adicionar próximo mês" style="width:32px;height:32px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.15s">+</button>
+</div>
+
+<main id="page-content">
+  <div id="sealed-banner" style="display:none" class="sealed-banner">
+    <i id="sealed-icon" class="ti ti-rosette-discount-check" style="font-size:22px;color:#22c55e"></i>
+    <div>
+      <p id="sealed-title" style="font-size:14px;font-weight:500;color:#4ade80">Mês fechado — 100% quitado!</p>
+      <p id="sealed-sub" style="font-size:12px;color:#22c55e">Todos os clientes foram quitados neste mês.</p>
+    </div>
+  </div>
+
+  <div style="margin-bottom:1rem;display:flex;gap:8px">
+    <div style="flex:1;position:relative">
+      <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:16px;color:#4a5568"></i>
+      <input type="text" id="search" placeholder="Buscar por nome..." style="width:100%;padding-left:34px" oninput="doFilter()">
+    </div>
+    <select id="status-filter" style="width:150px" onchange="doFilter()">
+      <option value="">Todos status</option>
+      <option value="quitado">Quitado</option>
+      <option value="enviado">Enviado</option>
+      <option value="recebido">Recebido</option>
+      <option value="pendente">Pendente</option>
+    </select>
+  </div>
+
+  <div id="clientes-grid" style="display:grid;grid-template-columns:1fr 1.6fr;gap:12px">
+    <div class="card" style="padding:0.5rem;max-height:calc(100vh - 360px);overflow-y:auto" id="list-panel"></div>
+    <div class="card" id="detail-panel">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px">
+        <i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i>
+        <p style="font-size:13px;color:#4a5568">Selecione um cliente</p>
+      </div>
+    </div>
+  </div>
+
+  <p id="no-results" style="display:none;text-align:center;color:#64748b;font-size:13px;padding:1rem">Nenhum cliente encontrado.</p>
+
+  <!-- Status counters -->
+  <div id="counters-row" style="margin-top:1rem;display:flex;flex-wrap:wrap;gap:8px">
+    <div class="counter-card" style="flex:1;min-width:110px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Recebido</p><p style="font-size:26px;font-weight:500;color:#22c55e" id="count-recebido">0</p></div>
+    <div class="counter-card" style="flex:1;min-width:110px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Enviado</p><p style="font-size:26px;font-weight:500;color:#22c55e" id="count-enviado">0</p></div>
+    <div class="counter-card" style="flex:1;min-width:110px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Quitado</p><p style="font-size:26px;font-weight:500;color:#22c55e" id="count-quitado">0</p></div>
+    <div class="counter-card" style="flex:1;min-width:110px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Pendente</p><p style="font-size:26px;font-weight:500;color:#ef4444" id="count-pendente">0</p></div>
+  </div>
+  <!-- Totais -->
+  <div style="margin-top:8px;overflow-x:auto;padding-bottom:2px">
+    <div style="display:flex;gap:8px;min-width:max-content">
+      <div class="counter-card" style="min-width:140px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total a Receber</p><p style="font-size:20px;font-weight:500;color:#f1f5f9" id="total-valor">R$ 0,00</p></div>
+      <div class="counter-card" style="min-width:120px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total Pago</p><p style="font-size:20px;font-weight:500;color:#22c55e" id="total-pago">R$ 0,00</p></div>
+      <div class="counter-card" style="min-width:120px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Saldo Restante</p><p style="font-size:20px;font-weight:500;color:#ef4444" id="total-saldo">R$ 0,00</p></div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── State ─────────────────────────────────────────────────────
+var inoveClients     = [];
+var dbState          = {};
+var selected         = null;
+var historicoEditMode = false;
+var extraMonths      = [];
+var monthDDOpen      = false;
+
+// ── Data Loading ──────────────────────────────────────────────
+async function loadClients() {
+  try {
+    var res = await sb.from('inove_clientes').select('*').order('nome', {ascending:true});
+    if (res.error) throw res.error;
+    inoveClients = res.data || [];
+  } catch(e) {
+    console.error('loadClients:', e);
+    setSyncStatus('error');
+    showConnError(e.message || 'Erro ao carregar clientes');
+  }
+}
+
+async function loadMonthData(m, y) {
+  try {
+    var res = await sb.from('inove_controle_mensal').select('*').eq('mes', m).eq('ano', y);
+    if (res.error) throw res.error;
+    var state = {};
+    inoveClients.forEach(function(c) {
+      state[c.id] = {recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, obs:''};
+    });
+    (res.data || []).forEach(function(r) {
+      state[r.cliente_id] = {
+        recebido: !!r.recebido, enviado: !!r.enviado, quitado: !!r.quitado,
+        valor_mes: Number(r.valor_mes)||0, valor_pago: Number(r.valor_pago)||0,
+        obs: r.obs || ''
+      };
+    });
+    return state;
+  } catch(e) {
+    console.error('loadMonthData:', e);
+    setSyncStatus('error');
+    showConnError(e.message || 'Erro de conexão');
+    return {};
+  }
+}
+
+async function upsertRow(clienteId, data) {
+  setSyncStatus('syncing');
+  var payload = Object.assign({cliente_id: clienteId, mes: viewMonth, ano: viewYear, updated_at: new Date().toISOString()}, data);
+  var res = await sb.from('inove_controle_mensal').upsert(payload, {onConflict: 'cliente_id,mes,ano'});
+  if (res.error) {
+    console.error('upsertRow:', res.error);
+    setSyncStatus('error');
+    return false;
+  }
+  setSyncStatus('ok');
+  return true;
+}
+
+// ── Month helpers ─────────────────────────────────────────────
+function isCurrentMonth() { return viewMonth === currentMonth && viewYear === currentYear; }
+
+function isFechadoLocal() {
+  return inoveClients.length > 0 && inoveClients.every(function(c) {
+    return dbState[c.id] && dbState[c.id].quitado;
+  });
+}
+
+function buildMonthList() {
+  var base = [];
+  for (var i = 3; i >= 0; i--) {
+    var m = currentMonth - i, y = currentYear;
+    if (m < 0) { m += 12; y--; }
+    base.push({m:m, y:y});
+  }
+  var all = base.slice();
+  extraMonths.forEach(function(e) {
+    if (!all.some(function(t){return t.m===e.m && t.y===e.y;})) all.push(e);
+  });
+  all.sort(function(a,b){ return b.y !== a.y ? b.y - a.y : b.m - a.m; });
+  return all;
+}
+
+function renderMonthTabs() {
+  var all = buildMonthList();
+  var isCurMo = viewMonth === currentMonth && viewYear === currentYear;
+  var labelEl = document.getElementById('month-dd-label');
+  var ddBtn   = document.getElementById('month-dd-btn');
+  if (labelEl) labelEl.textContent = MESES[viewMonth] + (viewYear !== currentYear ? ' ' + viewYear : '') + (isCurMo ? ' (atual)' : '');
+  if (ddBtn)   ddBtn.className = 'month-dd-btn' + (isCurMo ? ' cur' : '');
+  var listEl = document.getElementById('month-dd-list');
+  if (listEl) {
+    listEl.innerHTML = all.map(function(t) {
+      var isView  = t.m === viewMonth && t.y === viewYear;
+      var isCur   = t.m === currentMonth && t.y === currentYear;
+      var fechado = isView ? isFechadoLocal() : false;
+      var name    = MESES[t.m] + (t.y !== currentYear ? ' ' + t.y : '') + (isCur ? ' (atual)' : '');
+      var check   = isView ? '<i class="ti ti-check" style="font-size:11px;flex-shrink:0"></i>' : '<span style="width:11px;flex-shrink:0"></span>';
+      var star    = fechado ? '<i class="ti ti-rosette-discount-check" style="font-size:11px;color:' + T().success + '"></i>' : '';
+      return '<div class="month-dd-item' + (isView ? ' sel' : '') + (fechado ? ' fech' : '') + '" onclick="switchMonth(' + t.m + ',' + t.y + ');closeMonthDD()">' + check + '<span style="flex:1">' + name + '</span>' + star + '</div>';
+    }).join('');
+  }
+}
+
+function toggleMonthDD() {
+  monthDDOpen = !monthDDOpen;
+  var list  = document.getElementById('month-dd-list');
+  var arrow = document.getElementById('month-dd-arrow');
+  if (list)  list.style.display = monthDDOpen ? 'block' : 'none';
+  if (arrow) arrow.style.transform = monthDDOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+function closeMonthDD() {
+  monthDDOpen = false;
+  var list  = document.getElementById('month-dd-list');
+  var arrow = document.getElementById('month-dd-arrow');
+  if (list)  list.style.display = 'none';
+  if (arrow) arrow.style.transform = 'rotate(0deg)';
+}
+
+function addNextMonth() {
+  var all = buildMonthList();
+  var newest = all.reduce(function(best,cur){return (cur.y > best.y || (cur.y === best.y && cur.m > best.m)) ? cur : best;}, all[0]);
+  var nextM = newest.m + 1, nextY = newest.y;
+  if (nextM > 11) { nextM = 0; nextY++; }
+  if (!extraMonths.some(function(e){return e.m === nextM && e.y === nextY;})) extraMonths.push({m:nextM, y:nextY});
+  switchMonth(nextM, nextY);
+}
+
+async function switchMonth(m, y) {
+  closeMonthDD();
+  viewMonth = m; viewYear = y;
+  localStorage.setItem('inove-viewMonth', m);
+  localStorage.setItem('inove-viewYear', y);
+  selected = null; historicoEditMode = false;
+  document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Carregando...</p></div>';
+  var loadedData = await loadMonthData(m, y);
+  if (viewMonth !== m || viewYear !== y) return;
+  dbState = loadedData;
+  renderMonthTabs();
+  updateCounts();
+  doFilter();
+  document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Selecione um cliente</p></div>';
+}
+
+document.addEventListener('click', function(e) {
+  var btn  = document.getElementById('month-dd-btn');
+  var list = document.getElementById('month-dd-list');
+  if (monthDDOpen && btn && list && !btn.contains(e.target) && !list.contains(e.target)) closeMonthDD();
+});
+
+// ── Counts ────────────────────────────────────────────────────
+function updateCounts() {
+  var rec=0, env=0, qui=0, pen=0, totVal=0, totPago=0;
+  inoveClients.forEach(function(c) {
+    var v = dbState[c.id] || {};
+    if (v.recebido) rec++;
+    if (v.enviado)  env++;
+    if (v.quitado)  qui++;
+    if (!v.recebido && !v.enviado && !v.quitado) pen++;
+    totVal  += Number(v.valor_mes || 0);
+    totPago += Number(v.valor_pago || 0);
+  });
+  document.getElementById('count-recebido').textContent = rec;
+  document.getElementById('count-enviado').textContent  = env;
+  document.getElementById('count-quitado').textContent  = qui;
+  document.getElementById('count-pendente').textContent = pen;
+  document.getElementById('total-valor').textContent  = fmt(totVal);
+  document.getElementById('total-pago').textContent   = fmt(totPago);
+  document.getElementById('total-saldo').textContent  = fmt(totVal - totPago);
+  var saldoEl = document.getElementById('total-saldo');
+  if (saldoEl) saldoEl.style.color = (totVal - totPago) > 0 ? T().danger : T().success;
+  document.getElementById('sealed-banner').style.display = isFechadoLocal() ? 'flex' : 'none';
+}
+
+function statusOf(id) {
+  var s = dbState[id] || {};
+  if (s.quitado)  return 'quitado';
+  if (s.enviado)  return 'enviado';
+  if (s.recebido) return 'recebido';
+  return 'pendente';
+}
+
+// ── List rendering ─────────────────────────────────────────────
+function tickBtn(id, tipo, icon, label) {
+  var s   = dbState[id] || {};
+  var on  = s[tipo];
+  var dis = (!isCurrentMonth() && !historicoEditMode) ? 'disabled' : '';
+  return '<div class="tick-col"><button class="tick-btn' + (on ? ' on' : '') + '" onclick="toggle(' + id + ',\'' + tipo + '\',event)" title="' + label + '" ' + dis + '><i class="ti ' + (on ? 'ti-check' : icon) + '"></i></button><span class="tick-label' + (on ? ' on' : '') + '">' + label + '</span></div>';
+}
+
+function renderList(data) {
+  var panel = document.getElementById('list-panel');
+  var noRes = document.getElementById('no-results');
+  var tb    = document.getElementById('total-badge');
+  if (tb) tb.textContent = data.length + ' cliente' + (data.length !== 1 ? 's' : '');
+  if (!data.length) { panel.innerHTML = ''; noRes.style.display = 'block'; return; }
+  noRes.style.display = 'none';
+  panel.innerHTML = data.map(function(c) {
+    var col = avatarColors[c.id % avatarColors.length];
+    var bg  = col[0], fg = col[1];
+    var isActive = selected && selected.id === c.id;
+    var fin = dbState[c.id] || {};
+    var temValor = fin.valor_mes > 0;
+    var valorLine = temValor
+      ? '<p style="font-size:10px;margin-top:1px"><span style="color:#94a3b8">Valor: </span><span style="color:' + T().warn + '">' + fmt(fin.valor_mes) + '</span><span style="color:#4a5568"> | </span><span style="color:#94a3b8">Pago: </span><span style="color:' + T().success + '">' + fmt(Number(fin.valor_pago||0)) + '</span></p>'
+      : '';
+    return '<div class="row-item' + (isActive ? ' active' : '') + '" onclick="selectClient(' + c.id + ')">' +
+      '<div style="width:32px;height:32px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:' + fg + ';flex-shrink:0">' + initials(c.nome) + '</div>' +
+      '<div style="min-width:0;flex:1"><p style="font-size:12px;font-weight:500;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(c.nome) + '</p>' +
+      (c.email ? '<p style="font-size:11px;color:#64748b">' + escHtml(c.email) + '</p>' : '') +
+      valorLine + '</div>' +
+      '<div style="display:flex;gap:5px;align-items:center">' +
+        tickBtn(c.id, 'recebido', 'ti-download', 'receb.') +
+        tickBtn(c.id, 'enviado',  'ti-upload',   'enviado') +
+        tickBtn(c.id, 'quitado',  'ti-circle-check', 'quitado') +
+      '</div></div>';
+  }).join('');
+}
+
+function renderDetail() {
+  if (!selected) return;
+  var c  = selected;
+  var col = avatarColors[c.id % avatarColors.length];
+  var bg  = col[0], fg = col[1];
+  var cv  = dbState[c.id] || {recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, obs:''};
+  var ro  = !isCurrentMonth() && !historicoEditMode;
+  var valorMes  = Number(cv.valor_mes||0);
+  var valorPago = Number(cv.valor_pago||0);
+  var restante  = valorMes - valorPago;
+
+  var badge = cv.quitado
+    ? '<span class="badge" style="background:' + hexToRgba(T().success,0.18) + ';color:' + T().success + ';border:0.5px solid ' + T().success + '"><i class="ti ti-check" style="font-size:11px"></i> Quitado</span>'
+    : cv.enviado
+    ? '<span class="badge" style="background:' + hexToRgba(T().success,0.18) + ';color:' + T().success + ';border:0.5px solid ' + T().success + '"><i class="ti ti-check" style="font-size:11px"></i> Enviado</span>'
+    : cv.recebido
+    ? '<span class="badge" style="background:' + hexToRgba(T().success,0.18) + ';color:' + T().success + ';border:0.5px solid ' + T().success + '"><i class="ti ti-check" style="font-size:11px"></i> Recebido</span>'
+    : '<span class="badge" style="background:#22263a;color:#64748b">Pendente</span>';
+
+  function dt(tipo, icon, label) {
+    var on = cv[tipo];
+    return '<button class="tick-btn detail-tick' + (on ? ' on' : '') + '" onclick="toggle(' + c.id + ',\'' + tipo + '\',event)" ' + (ro ? 'disabled' : '') + ' style="color:' + (on ? T().success : '#64748b') + '"><i class="ti ' + (on ? 'ti-check' : icon) + '" style="font-size:14px"></i> ' + label + '</button>';
+  }
+
+  var roNote = isCurrentMonth() ? '' :
+    historicoEditMode
+      ? '<button onclick="toggleEditHistorico()" style="display:flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;border:0.5px solid ' + hexToRgba(T().warn,0.5) + ';background:' + hexToRgba(T().warn,0.08) + ';color:' + T().warn + ';font-size:12px;cursor:pointer;margin-bottom:10px"><i class="ti ti-lock" style="font-size:13px"></i> Travar edição</button>'
+      : '<button onclick="toggleEditHistorico()" style="display:flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;border:0.5px solid ' + hexToRgba(T().accent2,0.5) + ';background:' + hexToRgba(T().accent2,0.08) + ';color:' + T().accent2 + ';font-size:12px;cursor:pointer;margin-bottom:10px"><i class="ti ti-pencil" style="font-size:13px"></i> Editar mês</button>' +
+        '<p style="font-size:11px;color:#4a5568;margin-bottom:10px"><i class="ti ti-lock" style="font-size:12px"></i> Histórico — não editável</p>';
+
+  var finSection = ro
+    ? '<div class="fin-card" style="margin-bottom:14px">' +
+        '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px"><i class="ti ti-currency-dollar" style="font-size:13px;vertical-align:-1px"></i> Valores</p>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">' +
+          '<div><p class="label">Valor do mês</p><p style="font-size:15px;font-weight:500;color:' + T().text + '">' + fmt(valorMes) + '</p></div>' +
+          '<div><p class="label">Valor pago</p><p style="font-size:15px;font-weight:500;color:' + T().success + '">' + fmt(valorPago) + '</p></div>' +
+        '</div>' +
+        '<div><p class="label">Restante</p><p style="font-size:15px;font-weight:500;color:' + (restante > 0 ? T().danger : T().success) + '">' + fmt(restante) + '</p></div>' +
+        (cv.obs ? '<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.08)"><p class="label" style="margin-bottom:3px"><i class="ti ti-message" style="font-size:12px;vertical-align:-1px"></i> Observação</p><p style="font-size:13px;color:#e2e8f0">' + escHtml(cv.obs) + '</p></div>' : '') +
+      '</div>'
+    : '<div class="fin-card" style="margin-bottom:14px">' +
+        '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px"><i class="ti ti-currency-dollar" style="font-size:13px;vertical-align:-1px"></i> Valores</p>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">' +
+          '<div><p class="label" style="margin-bottom:5px">Valor do mês (R$)</p><input class="fin-input" type="number" id="fin-valor-' + c.id + '" value="' + (Number(cv.valor_mes)||0) + '" placeholder="0,00" min="0" step="0.01" oninput="calcPreview(' + c.id + ')"></div>' +
+          '<div><p class="label" style="margin-bottom:5px">Valor pago (R$)</p><input class="fin-input" type="number" id="fin-pago-' + c.id + '" value="' + (Number(cv.valor_pago)||0) + '" placeholder="0,00" min="0" step="0.01" oninput="calcPreview(' + c.id + ')"></div>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;align-items:center">' +
+          '<div style="flex:1;background:#0f1117;border-radius:8px;padding:8px"><p class="label">Restante</p><p style="font-size:14px;font-weight:500;color:' + T().danger + '" id="prev-restante-' + c.id + '">' + fmt(restante) + '</p></div>' +
+          '<button class="save-btn" data-id="' + c.id + '" onclick="saveFinanceiro(' + c.id + ')"><i class="ti ti-device-floppy" style="font-size:13px"></i> Salvar</button>' +
+          '<button onclick="clearFinanceiro(' + c.id + ')" title="Zerar valores" style="height:32px;width:36px;border-radius:8px;border:0.5px solid ' + hexToRgba(T().danger,0.4) + ';background:#3d1d1d;color:' + T().danger + ';display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0"><i class="ti ti-trash" style="font-size:14px"></i></button>' +
+        '</div>' +
+        '<div style="margin-top:10px">' +
+          '<p class="label" style="margin-bottom:5px"><i class="ti ti-message" style="font-size:12px;vertical-align:-1px"></i> Observação</p>' +
+          '<textarea id="fin-obs-' + c.id + '" style="width:100%;height:54px;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 10px;font-size:13px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit;resize:none" placeholder="Ex: Aguardando, vai pagar dia X">' + escHtml(cv.obs||'') + '</textarea>' +
+        '</div>' +
+      '</div>';
+
+  var infoRows = '';
+  if (c.telefone) infoRows += '<div class="detail-row"><i class="ti ti-phone" style="font-size:16px;color:#4a5568;margin-top:1px;flex-shrink:0"></i><div><p class="label">Telefone</p><p class="val">' + escHtml(c.telefone) + '</p></div></div>';
+  if (c.email)    infoRows += '<div class="detail-row"><i class="ti ti-mail" style="font-size:16px;color:#4a5568;margin-top:1px;flex-shrink:0"></i><div><p class="label">E-mail</p><p class="val">' + escHtml(c.email) + '</p></div></div>';
+  if (c.cidade)   infoRows += '<div class="detail-row"><i class="ti ti-map-pin" style="font-size:16px;color:#4a5568;margin-top:1px;flex-shrink:0"></i><div><p class="label">Cidade</p><p class="val">' + escHtml(c.cidade) + (c.uf ? ' / ' + escHtml(c.uf) : '') + '</p></div></div>';
+  if (c.obs || c.observacao) infoRows += '<div class="detail-row"><i class="ti ti-note" style="font-size:16px;color:#4a5568;margin-top:1px;flex-shrink:0"></i><div><p class="label">Observação</p><p class="val">' + escHtml(c.obs || c.observacao) + '</p></div></div>';
+
+  document.getElementById('detail-panel').innerHTML =
+    '<button class="mob-back" onclick="mobBack()" style="align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:13px;margin-bottom:14px"><i class="ti ti-arrow-left" style="font-size:14px"></i> Voltar</button>' +
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="width:44px;height:44px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:500;color:' + fg + ';flex-shrink:0">' + initials(c.nome) + '</div><div style="flex:1"><p style="font-size:15px;font-weight:500;color:#f1f5f9">' + escHtml(c.nome) + '</p><p style="font-size:12px;color:#64748b">ID ' + c.id + ' · ' + MESES[viewMonth] + ' ' + viewYear + '</p></div>' + badge + '</div>' +
+    roNote +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' +
+      dt('recebido', 'ti-download', 'Extrato recebido') +
+      dt('enviado',  'ti-upload',   'Extrato enviado') +
+      dt('quitado',  'ti-circle-check', 'Quitado') +
+    '</div>' +
+    finSection +
+    '<div>' + infoRows + '</div>';
+}
+
+function calcPreview(id) {
+  var vM = parseFloat(document.getElementById('fin-valor-' + id).value) || 0;
+  var vP = parseFloat(document.getElementById('fin-pago-'  + id).value) || 0;
+  var el = document.getElementById('prev-restante-' + id);
+  if (el) { el.textContent = fmt(vM - vP); el.style.color = vM - vP > 0 ? T().danger : T().success; }
+}
+
+function doFilter() {
+  var q  = (document.getElementById('search').value || '').toLowerCase();
+  var sf = document.getElementById('status-filter').value;
+  var data = inoveClients.filter(function(c) {
+    var text = [c.nome, c.email, c.telefone, c.cidade].join(' ').toLowerCase();
+    var matchStatus = !sf || statusOf(c.id) === sf;
+    return (!q || text.includes(q)) && matchStatus;
+  });
+  renderList(data);
+}
+
+function selectClient(id) {
+  selected = inoveClients.find(function(c){ return c.id === id; });
+  historicoEditMode = false;
+  if (isMobile()) { var g = document.getElementById('clientes-grid'); if (g) g.classList.add('mob-detail'); }
+  renderDetail(); doFilter();
+}
+
+function mobBack() {
+  var g = document.getElementById('clientes-grid');
+  if (g) g.classList.remove('mob-detail');
+  selected = null; doFilter();
+}
+
+function toggleEditHistorico() {
+  historicoEditMode = !historicoEditMode;
+  renderDetail();
+}
+
+async function toggle(id, tipo, e) {
+  e.stopPropagation();
+  if (!isCurrentMonth() && !historicoEditMode) return;
+  var s = dbState[id] || {recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, obs:''};
+  s[tipo] = !s[tipo];
+  dbState[id] = s;
+  updateCounts(); renderMonthTabs(); doFilter();
+  if (selected && selected.id === id) renderDetail();
+  upsertRow(id, {recebido:s.recebido, enviado:s.enviado, quitado:s.quitado, valor_mes:s.valor_mes, valor_pago:s.valor_pago, obs:s.obs||''});
+}
+
+async function saveFinanceiro(id) {
+  if (!isCurrentMonth() && !historicoEditMode) return;
+  var s     = dbState[id] || {};
+  var elVal = document.getElementById('fin-valor-' + id);
+  var elPag = document.getElementById('fin-pago-'  + id);
+  var elObs = document.getElementById('fin-obs-'   + id);
+  var vM  = parseFloat(elVal ? elVal.value : '') || 0;
+  var vP  = parseFloat(elPag ? elPag.value : '') || 0;
+  var obs = elObs ? elObs.value.trim() : '';
+  var btns = Array.from(document.querySelectorAll('.save-btn[data-id="' + id + '"]'));
+  btns.forEach(function(btn){ btn.disabled = true; });
+  var ok = await upsertRow(id, {recebido:s.recebido||false, enviado:s.enviado||false, quitado:s.quitado||false, valor_mes:vM, valor_pago:vP, obs:obs});
+  if (!ok) { btns.forEach(function(btn){ btn.disabled = false; }); showConnError('Erro ao salvar. Verifique o console (F12).'); return; }
+  s.valor_mes = vM; s.valor_pago = vP; s.obs = obs;
+  dbState[id] = s;
+  updateCounts(); doFilter();
+  btns.forEach(function(btn){
+    var orig = btn.innerHTML;
+    btn.disabled = false;
+    btn.innerHTML = '&#10003; Salvo!';
+    btn.style.background = '#16a34a';
+    setTimeout(function(){ btn.innerHTML = orig; btn.style.background = ''; }, 2000);
+  });
+}
+
+async function clearFinanceiro(id) {
+  if (!isCurrentMonth() && !historicoEditMode) return;
+  var s = dbState[id] || {};
+  s.valor_mes = 0; s.valor_pago = 0;
+  dbState[id] = s;
+  updateCounts(); renderDetail();
+  await upsertRow(id, {recebido:s.recebido||false, enviado:s.enviado||false, quitado:s.quitado||false, valor_mes:0, valor_pago:0, obs:s.obs||''});
+}
+
+// ── Theme ─────────────────────────────────────────────────────
+function applyStaticThemeColors() {
+  var t = T();
+  var badge = document.getElementById('total-badge');
+  if (badge) { badge.style.background = hexToRgba(t.accent, 0.22); badge.style.color = t.accent; }
+  ['count-recebido','count-enviado','count-quitado','total-pago'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.color = t.success; });
+  var pend = document.getElementById('count-pendente'); if (pend) pend.style.color = t.danger;
+  var totVal = document.getElementById('total-valor'); if (totVal) totVal.style.color = t.text;
+}
+
+function onThemeChange() {
+  applyStaticThemeColors();
+  if (typeof renderMonthTabs === 'function') renderMonthTabs();
+  if (typeof updateCounts    === 'function') updateCounts();
+  if (typeof doFilter        === 'function') doFilter();
+  if (selected && typeof renderDetail === 'function') renderDetail();
+}
+
+// ── Shell & Init ──────────────────────────────────────────────
+function initShell() {
+  return fetch('sidebar.html')
+    .then(function(r){ return r.text(); })
+    .then(function(html){
+      document.getElementById('shared-shell').innerHTML = html;
+      updateSidebarActive();
+      var keyEl = document.getElementById('sb-groq-key');
+      if (keyEl && typeof GROQ_API_KEY !== 'undefined' && GROQ_API_KEY) keyEl.value = GROQ_API_KEY;
+    })
+    .catch(function(e){ console.error('Erro ao carregar sidebar.html:', e); });
+}
+
+function hideLoading() {
+  var el = document.getElementById('loading-overlay');
+  if (el) el.style.display = 'none';
+}
+
+function showConnError(msg) {
+  var el   = document.getElementById('conn-error');
+  var msg2 = document.getElementById('conn-error-msg');
+  if (el)   el.style.display = 'flex';
+  if (msg2) msg2.textContent = msg;
+}
+
+async function init() {
+  applyStaticThemeColors();
+  var savedM = parseInt(localStorage.getItem('inove-viewMonth'));
+  var savedY = parseInt(localStorage.getItem('inove-viewYear'));
+  if (!isNaN(savedM) && !isNaN(savedY)) { viewMonth = savedM; viewYear = savedY; }
+  await loadClients();
+  dbState = await loadMonthData(viewMonth, viewYear);
+  renderMonthTabs();
+  updateCounts();
+  doFilter();
+  hideLoading();
+}
+
+initShell().then(function(){ if (typeof init === 'function') init(); });
+</script>
+</body>
+</html>
