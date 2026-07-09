@@ -57,17 +57,30 @@
     <span id="ped-month-label" style="font-size:14px;font-weight:600;color:#f1f5f9;min-width:150px;text-align:center;user-select:none">Carregando...</span>
     <button onclick="pedNextMonth()" style="width:32px;height:32px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all 0.15s" title="Próximo mês"><i class="ti ti-chevron-right"></i></button>
   </div>
-  <div class="card" id="ped-total-card" style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:16px 22px;margin-bottom:1rem">
-    <div style="display:flex;align-items:center;gap:14px">
-      <div style="width:46px;height:46px;border-radius:12px;background:rgba(74,222,128,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <i class="ti ti-currency-dollar" style="font-size:24px;color:#4ade80" id="ped-total-icon"></i>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:1rem;align-items:stretch">
+    <div class="card" id="ped-total-card" style="flex:2;min-width:280px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:16px 22px">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:46px;height:46px;border-radius:12px;background:rgba(74,222,128,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="ti ti-currency-dollar" style="font-size:24px;color:#4ade80" id="ped-total-icon"></i>
+        </div>
+        <div>
+          <p style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">Total em pedidos — <span id="ped-total-mes">—</span></p>
+          <p id="ped-total-valor" style="font-size:34px;font-weight:800;color:#4ade80;line-height:1.15;letter-spacing:-0.01em">R$ 0,00</p>
+        </div>
       </div>
+      <span id="ped-total-count" style="font-size:13px;color:#94a3b8;white-space:nowrap">0 pedidos</span>
+    </div>
+    <div class="card" id="ped-summary-card" style="flex:1;min-width:220px;padding:14px 18px;display:flex;flex-direction:column;gap:10px">
       <div>
-        <p style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">Total em pedidos — <span id="ped-total-mes">—</span></p>
-        <p id="ped-total-valor" style="font-size:34px;font-weight:800;color:#4ade80;line-height:1.15;letter-spacing:-0.01em">R$ 0,00</p>
+        <p style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Por material</p>
+        <div id="ped-material-breakdown" style="display:flex;flex-direction:column;gap:4px"></div>
+      </div>
+      <div style="height:1px;background:rgba(255,255,255,0.08)"></div>
+      <div>
+        <p style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Top clientes</p>
+        <div id="ped-cliente-ranking" style="display:flex;flex-direction:column;gap:3px"></div>
       </div>
     </div>
-    <span id="ped-total-count" style="font-size:13px;color:#94a3b8;white-space:nowrap">0 pedidos</span>
   </div>
   <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
     <div style="flex:1;min-width:180px;position:relative">
@@ -297,6 +310,38 @@ function pedMaterialColor(mat) {
   return {zirconia:t.accent, emax:t.accent2, pmma:t.warn, resina:t.muted, misto:t.dim, outro:t.muted}[mat] || t.muted;
 }
 
+function renderPedSummaryBreakdown(filtered) {
+  var matEl = document.getElementById('ped-material-breakdown');
+  if (matEl) {
+    var byMat = {};
+    filtered.forEach(function(p){ if (!p.material) return; byMat[p.material] = (byMat[p.material]||0) + Number(p.valor||0); });
+    var matKeys = Object.keys(PED_MAT_INFO).filter(function(m){ return byMat[m] > 0; });
+    matEl.innerHTML = matKeys.length ? matKeys.map(function(m){
+      var col = pedMaterialColor(m);
+      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px">'+
+        '<span style="display:flex;align-items:center;gap:5px;color:'+col+';font-weight:600"><i class="ti '+PED_MAT_INFO[m].icon+'" style="font-size:12px"></i>'+PED_MAT_INFO[m].l+'</span>'+
+        '<span style="color:#e2e8f0;font-weight:600">'+fmt(byMat[m])+'</span>'+
+      '</div>';
+    }).join('') : '<p style="font-size:12px;color:#4a5568">Sem dados</p>';
+  }
+  var rkEl = document.getElementById('ped-cliente-ranking');
+  if (rkEl) {
+    var byCli = {};
+    filtered.forEach(function(p){
+      var key = p.cliente_reg || 0;
+      if (!byCli[key]) byCli[key] = { nome: p.cliente_reg ? cliNomePed(p.cliente_reg) : 'Sem cliente', total: 0 };
+      byCli[key].total += Number(p.valor||0);
+    });
+    var ranking = Object.keys(byCli).map(function(k){ return byCli[k]; }).sort(function(a,b){ return b.total - a.total; }).slice(0,5);
+    rkEl.innerHTML = ranking.length ? ranking.map(function(r, i){
+      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px">'+
+        '<span style="color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px">'+(i+1)+'. '+escHtml(r.nome)+'</span>'+
+        '<span style="color:#4ade80;font-weight:600;white-space:nowrap">'+fmt(r.total)+'</span>'+
+      '</div>';
+    }).join('') : '<p style="font-size:12px;color:#4a5568">Sem dados</p>';
+  }
+}
+
 function pedPacienteNome(p) {
   var m = (p.descricao || '').match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
   return m ? m[1] : (p.descricao || '—');
@@ -309,8 +354,6 @@ function pedMaterialSummary(p) {
   return '<div style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:10.5px;color:'+T().muted+'">'+
     '<span style="display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:5px;background:'+hexToRgba(col,0.15)+';color:'+col+';font-weight:600;white-space:nowrap"><i class="ti '+info.icon+'" style="font-size:11px"></i>'+info.l+'</span>'+
     '<span style="white-space:nowrap">'+(p.qtd_elementos||1)+' elem.</span>'+
-    '<span style="color:'+T().dim+'">·</span>'+
-    '<span style="white-space:nowrap">'+fmt(p.valor||0)+'</span>'+
   '</div>';
 }
 
@@ -346,6 +389,7 @@ function renderPedidosTable() {
   if(tmEl)tmEl.textContent=mesLabel;
   var tcEl=document.getElementById('ped-total-count');
   if(tcEl)tcEl.textContent=tot+' pedido'+(tot!==1?'s':'');
+  renderPedSummaryBreakdown(filtered);
   var tb=document.getElementById('ped-tbody');if(!tb)return;
   tb.innerHTML=filtered.map(function(p,i){
     var st=PED_STATUS[p.status]||PED_STATUS.orcamento;
