@@ -26,7 +26,7 @@ var clients = [
   {reg:22,nome:"[REMOVIDO]",   cpf:"CNPJ: 13.265.402/0001-60",cro:"[REMOVIDO]",end:"[REMOVIDO]",                bairro:"Castalia",           cidade:"Itabuna",             uf:"BA", cep:"",          tel:"",                  obs:""},
   {reg:18,nome:"[REMOVIDO]",              cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",     end:"[REMOVIDO]",                   bairro:"Tijuca",             cidade:"Rio de Janeiro",      uf:"RJ", cep:"",          tel:"",                  obs:"Clinica Odonto Premier"},
   {reg:5, nome:"[REMOVIDO]",               cpf:"CNPJ: 48.257.718/0001-94", cro:"[REMOVIDO]", end:"[REMOVIDO]",         bairro:"Vila Mariana",       cidade:"Sao Paulo",           uf:"SP", cep:"04014-001", tel:"+55 (11) 9[REMOVIDO]",obs:"Padrao"},
-  {reg:24,nome:"[REMOVIDO]",cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",  end:"[REMOVIDO]",                        bairro:"Centro",             cidade:"Cruz das Almas",      uf:"BA", cep:"44380-000", tel:"",                  obs:""},
+  {reg:24,nome:"[REMOVIDO]",cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",  end:"[REMOVIDO]",                        bairro:"Centro",             cidade:"Cruz das Almas",      uf:"BA", cep:"44380-000", tel:"",                  obs:"", regraPadrao:"Não cimentar componente — enviar sempre sem cimentar."},
   {reg:15,nome:"[REMOVIDO]",                   cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",end:"[REMOVIDO]", bairro:"Galeria Metropole",  cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"(11) 9[REMOVIDO]",   obs:""},
   {reg:21,nome:"[REMOVIDO]",             cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",    end:"[REMOVIDO]",                         bairro:"",                   cidade:"Sao Paulo",           uf:"SP", cep:"04041-054", tel:"",                  obs:""},
   {reg:2, nome:"[REMOVIDO]",                cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",    end:"[REMOVIDO]",   bairro:"Centro",             cidade:"Niteroi",             uf:"RJ", cep:"",          tel:"(21) 9[REMOVIDO]",   obs:""},
@@ -165,6 +165,29 @@ function cliNomePed(reg) {
   if (!reg) return '';
   var c = clients.find(function(x){ return x.reg == reg; });
   return c ? c.nome : ('Cliente #' + reg);
+}
+
+// Regra padrão cadastrada do cliente (texto ou '' se não houver)
+function cliRegraPadrao(reg) {
+  if (!reg) return '';
+  var c = clients.find(function(x){ return x.reg == reg; });
+  return (c && c.regraPadrao) ? c.regraPadrao.trim() : '';
+}
+
+// Badge ⚠️ para exibir ao lado do nome do cliente em cards/linhas quando há regra padrão
+function cliRegraBadgeHtml(reg) {
+  var regra = cliRegraPadrao(reg);
+  if (!regra) return '';
+  return ' <span title="Regra padrão: ' + escHtml(regra) + '" style="display:inline-block;font-size:11px;cursor:help">⚠️</span>';
+}
+
+// Anexa a regra padrão do cliente ao texto de descrição, se ainda não estiver presente
+function cliAnexarRegraPadrao(descricao, reg) {
+  var regra = cliRegraPadrao(reg);
+  var desc  = (descricao || '').trim();
+  if (!regra) return desc;
+  if (desc.indexOf(regra) !== -1) return desc;
+  return desc ? (desc + '\n\nRegra do cliente: ' + regra) : ('Regra do cliente: ' + regra);
 }
 
 // ── Relógio ───────────────────────────────────────────────────

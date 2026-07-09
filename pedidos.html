@@ -93,6 +93,7 @@
         <thead><tr>
           <th style="width:40px">#</th>
           <th style="cursor:pointer;user-select:none" onclick="pedSortBy('cliente')">Cliente <span id="ped-arrow-cliente" style="display:inline-block;width:12px"></span></th>
+          <th>Paciente</th>
           <th style="cursor:pointer;user-select:none" onclick="pedSortBy('descricao')">Descrição <span id="ped-arrow-descricao" style="display:inline-block;width:12px"></span></th>
           <th style="cursor:pointer;user-select:none" onclick="pedSortBy('criado')">Data Cadastro <span id="ped-arrow-criado" style="display:inline-block;width:12px"></span></th>
           <th style="cursor:pointer;user-select:none" onclick="pedSortBy('previsto')">Data Prevista <span id="ped-arrow-previsto" style="display:inline-block;width:12px"></span></th>
@@ -296,6 +297,11 @@ function pedMaterialColor(mat) {
   return {zirconia:t.accent, emax:t.accent2, pmma:t.warn, resina:t.muted, misto:t.dim, outro:t.muted}[mat] || t.muted;
 }
 
+function pedPacienteNome(p) {
+  var m = (p.descricao || '').match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
+  return m ? m[1] : (p.descricao || '—');
+}
+
 function pedMaterialSummary(p) {
   var info = p.material && PED_MAT_INFO[p.material];
   if (!info) return '';
@@ -346,7 +352,8 @@ function renderPedidosTable() {
     return '<tr onclick="openPedidoPanel(\''+p.id+'\')">'+
       '<td style="color:#4a5568;font-size:11px">'+(i+1)+'</td>'+
       '<td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500">'+
-        (p.cliente_reg?escHtml(cliNomePed(p.cliente_reg)):'<span style="color:#4a5568">—</span>')+'</td>'+
+        (p.cliente_reg?escHtml(cliNomePed(p.cliente_reg))+cliRegraBadgeHtml(p.cliente_reg):'<span style="color:#4a5568">—</span>')+'</td>'+
+      '<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e2e8f0">'+escHtml(pedPacienteNome(p))+'</td>'+
       '<td style="max-width:220px;color:#94a3b8">'+
         '<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(p.descricao||'—')+'</div>'+
         pedMaterialSummary(p)+
@@ -393,7 +400,8 @@ function openPedidoPanel(id) {
     }).join('')+'</div></div>':'';
   var body=document.getElementById('pp-body');if(!body)return;
   body.innerHTML=clienteHeader+
-    '<div class="cf-group"><label class="cf-label">Cliente</label><select id="pf-cliente" style="width:100%">'+cliOpts+'</select></div>'+
+    '<div class="cf-group"><label class="cf-label">Cliente</label><select id="pf-cliente" style="width:100%" onchange="pedUpdateRegraBanner()">'+cliOpts+'</select></div>'+
+    '<div id="pf-regra-banner"></div>'+
     '<div class="cf-group"><label class="cf-label">Descrição do serviço <span style="color:#ef4444">*</span></label>'+
       '<input type="text" id="pf-desc" style="width:100%" value="'+(p?escHtml(p.descricao||''):'')+'"></div>'+
     '<div class="cf-row2">'+
@@ -430,7 +438,22 @@ function openPedidoPanel(id) {
     '<div id="pp-error" style="display:none;font-size:12px;color:#fca5a5;background:#3d1d1d;border:0.5px solid rgba(239,68,68,0.3);border-radius:8px;padding:8px 12px"></div>';
   document.getElementById('pp-overlay').classList.add('open');
   document.getElementById('pp-panel').classList.add('open');
+  pedUpdateRegraBanner();
   setTimeout(function(){var i=document.getElementById('pf-desc');if(i)i.focus();},80);
+}
+
+function pedUpdateRegraBanner() {
+  var sel = document.getElementById('pf-cliente');
+  var el  = document.getElementById('pf-regra-banner');
+  if (!sel || !el) return;
+  var reg   = sel.value ? parseInt(sel.value) : null;
+  var regra = reg ? cliRegraPadrao(reg) : '';
+  el.innerHTML = regra ?
+    '<div style="display:flex;gap:8px;align-items:flex-start;padding:10px 12px;background:rgba(245,158,11,0.12);border:0.5px solid rgba(245,158,11,0.4);border-radius:8px;margin-bottom:14px">'+
+      '<span style="font-size:15px;line-height:1.3">⚠️</span>'+
+      '<div><p style="font-size:12px;font-weight:600;color:#fcd34d;margin:0 0 2px">Regra padrão deste cliente</p>'+
+      '<p style="font-size:12px;color:#fde68a;margin:0">'+escHtml(regra)+'</p></div>'+
+    '</div>' : '';
 }
 
 function closePedidoPanel() {
@@ -447,6 +470,7 @@ async function savePedidoPanel() {
   var btn=document.getElementById('pp-save-btn');
   if(btn){btn.disabled=true;btn.style.opacity='0.55';}
   var cliReg=(document.getElementById('pf-cliente')||{value:''}).value;
+  if (cliReg) desc = cliAnexarRegraPadrao(desc, parseInt(cliReg));
   var obj={
     descricao:desc,
     cliente_reg:cliReg?parseInt(cliReg):null,
