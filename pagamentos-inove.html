@@ -47,13 +47,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .footer{margin-top:1.5rem;text-align:center;font-size:11px;color:#4a5568}
 .view-tabs{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:1rem}
 .view-tab-btn{padding:7px 16px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px}
-.pend-days{font-size:11px;color:#64748b;margin-left:4px}
-.pend-qtd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:6px;background:#22263a;color:#e2e8f0;font-size:12px;font-weight:600}
-.pend-row{cursor:pointer}
-.pend-row:hover td{background:rgba(255,255,255,0.04)}
-.pend-wait-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:rgba(251,191,36,0.15);color:#fbbf24;border:0.5px solid rgba(251,191,36,0.4);white-space:nowrap}
-.pend-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:120;display:flex;align-items:center;justify-content:center;padding:20px}
-.pend-modal-panel{width:min(420px,100%);background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;padding:22px}
+.pend-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+.pend-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.pend-card-nome{font-size:14px;font-weight:600;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pend-card-valor{font-size:20px;font-weight:700;color:#fbbf24}
+.pend-card-btn{width:100%;height:32px;border-radius:7px;border:0.5px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.12);color:#4ade80;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s}
+.pend-card-btn:hover{background:rgba(34,197,94,0.22)}
+.pend-card-btn:disabled{opacity:0.5;cursor:default}
 @media(max-width:767px){
   .summary-row{grid-template-columns:1fr 1fr}
   .rel-table th:nth-child(5),.rel-table td:nth-child(5){display:none}
@@ -100,10 +100,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     '.month-dd-item.fech{color:'+t.success+' !important}',
     '.view-tab-btn.active{background:'+t.accent+' !important;color:'+t.text+' !important;border-color:'+t.accent+' !important}',
     '.view-tab-btn:not(.active):hover{background:'+hexToRgba(t.accent,0.12)+' !important;color:'+t.text+' !important}',
-    '.pend-qtd{background:'+hexToRgba(t.warn,0.18)+' !important;color:'+t.warn+' !important}',
-    '.pend-oldest{color:'+t.danger+' !important}',
-    '.pend-wait-badge{background:'+hexToRgba(t.warn,0.15)+' !important;color:'+t.warn+' !important;border-color:'+hexToRgba(t.warn,0.4)+' !important}',
-    '.pend-modal-panel{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.pend-card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    '.pend-card-valor{color:'+t.warn+' !important}',
+    '.pend-card-btn{background:'+hexToRgba(t.success,0.12)+' !important;color:'+t.success+' !important;border-color:'+hexToRgba(t.success,0.4)+' !important}',
+    '.pend-card-btn:hover{background:'+hexToRgba(t.success,0.22)+' !important}',
     t.mono ? 'body,input,select,button,table{font-family:"Share Tech Mono","Courier New",monospace !important}' : ''
   ].join('\n');
   document.addEventListener('DOMContentLoaded', function() {
@@ -184,40 +184,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <div id="pend-loading" class="loading" style="display:none">Carregando pendências…</div>
 
-  <div id="pend-table-container" class="table-wrap">
-    <div style="overflow-x:auto;max-height:70vh">
-      <table class="rel-table">
-        <thead><tr>
-          <th>Cliente</th>
-          <th>Pedidos pendentes</th>
-          <th>Valor total</th>
-          <th>Pedido mais antigo</th>
-          <th>Situação</th>
-        </tr></thead>
-        <tbody id="pend-rows-body"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<div id="pend-detail-overlay" class="pend-modal-overlay" onclick="if(event.target===this)closePendDetail()" style="display:none">
-  <div class="pend-modal-panel">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:16px">
-      <div>
-        <p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Extrato pendente</p>
-        <h2 id="pend-detail-nome" style="font-size:18px;font-weight:600;color:#f1f5f9">—</h2>
-      </div>
-      <button onclick="closePendDetail()" style="width:30px;height:30px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:15px;cursor:pointer;flex-shrink:0">✕</button>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
-      <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:#64748b">Pedidos pendentes</span><span id="pend-detail-qtd" style="font-weight:600">—</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:#64748b">Valor total</span><span id="pend-detail-valor" class="valor-mes" style="font-weight:600">—</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:#64748b">Pedido mais antigo</span><span id="pend-detail-antigo" style="font-weight:600">—</span></div>
-    </div>
-    <div id="pend-detail-status" style="margin-bottom:14px"></div>
-    <button id="pend-detail-btn" onclick="marcarExtratoEnviado(pendDetailReg)" style="width:100%;height:42px;border-radius:9px;border:none;background:#22c55e;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">✅ Extrato Enviado</button>
-    <p style="font-size:11px;color:#4a5568;margin-top:10px;text-align:center">Marca só o campo "enviado" em controle_mensal. Não altera valor nem status de pedidos.</p>
-  </div>
+  <div id="pend-cards-grid" class="pend-cards-grid"></div>
 </div>
 
 <div class="footer">Ideali Laboratório · Visão somente leitura (Pagamentos) · Extratos a Enviar permite apenas marcar "enviado" · Gerado em <span id="gen-time"></span></div>
@@ -420,72 +387,34 @@ function nomeClientePend(reg) {
 }
 
 function renderExtratos() {
+  var visiveis = pendData.filter(function(g) { return !(dbState[g.reg] && dbState[g.reg].enviado); });
+
   var clEl = document.getElementById('pend-sum-clientes');
   var vlEl = document.getElementById('pend-sum-valor');
   var anEl = document.getElementById('pend-sum-antigo');
   var mesEl = document.getElementById('pend-sum-mes');
   if (mesEl) mesEl.textContent = MESES[viewMonth] + ' ' + viewYear;
-  if (clEl) clEl.textContent = pendData.length;
-  if (vlEl) vlEl.textContent = fmt(pendData.reduce(function(s, g) { return s + g.valor; }, 0));
-  if (anEl) anEl.textContent = pendData.length ? (nomeClientePend(pendData[0].reg) + ' · ' + diasDesde(pendData[0].oldest) + 'd') : '—';
+  if (clEl) clEl.textContent = visiveis.length;
+  if (vlEl) vlEl.textContent = fmt(visiveis.reduce(function(s, g) { return s + g.valor; }, 0));
+  if (anEl) anEl.textContent = visiveis.length ? (nomeClientePend(visiveis[0].reg) + ' · ' + diasDesde(visiveis[0].oldest) + 'd') : '—';
 
-  var tbody = document.getElementById('pend-rows-body');
-  if (!tbody) return;
-  if (!pendData.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#4a5568;padding:2rem">Nenhum pedido pendente neste mês.</td></tr>';
+  var grid = document.getElementById('pend-cards-grid');
+  if (!grid) return;
+  if (!visiveis.length) {
+    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#4a5568;padding:2rem">Nenhum extrato pendente neste mês. 🎉</p>';
     return;
   }
-  tbody.innerHTML = pendData.map(function(g) {
-    var dias = diasDesde(g.oldest);
-    var dataFmt = new Date(g.oldest).toLocaleDateString('pt-BR');
-    var jaEnviado = !!(dbState[g.reg] && dbState[g.reg].enviado);
-    var situacao = jaEnviado
-      ? '<span class="pend-wait-badge"><i class="ti ti-clock"></i> Enviado · aguardando conferência</span>'
-      : '<span style="font-size:11px;color:#4a5568">Não enviado</span>';
-    return '<tr class="pend-row" onclick="openPendDetail(' + g.reg + ')">' +
-      '<td><p class="client-name">' + escHtml(nomeClientePend(g.reg)) + '</p></td>' +
-      '<td><span class="pend-qtd">' + g.qtd + '</span></td>' +
-      '<td class="valor-mes">' + fmt(g.valor) + '</td>' +
-      '<td class="pend-oldest">' + dataFmt + '<span class="pend-days">(há ' + dias + (dias === 1 ? ' dia' : ' dias') + ')</span></td>' +
-      '<td>' + situacao + '</td>' +
-    '</tr>';
+  grid.innerHTML = visiveis.map(function(g) {
+    return '<div class="pend-card" id="pend-card-' + g.reg + '">' +
+      '<p class="pend-card-nome">' + escHtml(nomeClientePend(g.reg)) + '</p>' +
+      '<p class="pend-card-valor">' + fmt(g.valor) + '</p>' +
+      '<button class="pend-card-btn" onclick="marcarExtratoEnviado(' + g.reg + ', this)">Enviado</button>' +
+    '</div>';
   }).join('');
 }
 
-var pendDetailReg = null;
-
-function openPendDetail(reg) {
-  var g = pendData.find(function(x) { return x.reg === reg; });
-  if (!g) return;
-  pendDetailReg = reg;
-  var dias = diasDesde(g.oldest);
-  document.getElementById('pend-detail-nome').textContent = nomeClientePend(reg);
-  document.getElementById('pend-detail-qtd').textContent = g.qtd;
-  document.getElementById('pend-detail-valor').textContent = fmt(g.valor);
-  document.getElementById('pend-detail-antigo').textContent = new Date(g.oldest).toLocaleDateString('pt-BR') + ' (há ' + dias + (dias === 1 ? ' dia' : ' dias') + ')';
-  var jaEnviado = !!(dbState[reg] && dbState[reg].enviado);
-  var statusEl = document.getElementById('pend-detail-status');
-  var btn = document.getElementById('pend-detail-btn');
-  if (jaEnviado) {
-    statusEl.innerHTML = '<span class="pend-wait-badge"><i class="ti ti-clock"></i> Extrato já sinalizado como enviado, aguardando conferência</span>';
-    btn.style.display = 'none';
-  } else {
-    statusEl.innerHTML = '';
-    btn.style.display = '';
-    btn.disabled = false;
-    btn.textContent = '✅ Extrato Enviado';
-  }
-  document.getElementById('pend-detail-overlay').style.display = 'flex';
-}
-
-function closePendDetail() {
-  document.getElementById('pend-detail-overlay').style.display = 'none';
-  pendDetailReg = null;
-}
-
-async function marcarExtratoEnviado(reg) {
+async function marcarExtratoEnviado(reg, btn) {
   if (!reg) return;
-  var btn = document.getElementById('pend-detail-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
   try {
     var existing = await sb.from('controle_mensal').select('id')
@@ -500,12 +429,19 @@ async function marcarExtratoEnviado(reg) {
     }
     if (!dbState[reg]) dbState[reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, comprovantes:[] };
     dbState[reg].enviado = true;
-    closePendDetail();
-    renderExtratos();
+    var card = document.getElementById('pend-card-' + reg);
+    if (card) {
+      card.style.transition = 'opacity 0.25s, transform 0.25s';
+      card.style.opacity = '0';
+      card.style.transform = 'scale(0.95)';
+      setTimeout(renderExtratos, 250);
+    } else {
+      renderExtratos();
+    }
   } catch (e) {
     console.error('marcarExtratoEnviado:', e);
     alert('Erro ao marcar extrato como enviado: ' + (e.message || e));
-    if (btn) { btn.disabled = false; btn.textContent = '✅ Extrato Enviado'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Enviado'; }
   }
 }
 
