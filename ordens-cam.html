@@ -435,16 +435,28 @@ function openCamDetail(id) {
   var descricao = o.descricao || '—';
   var mPac = (o.descricao || '').match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
   if (mPac) { paciente = mPac[1]; descricao = mPac[2] || '—'; }
+  var regra = o.cliente_reg ? cliRegraPadrao(o.cliente_reg) : '';
   var fields = [
-    { label: 'Cliente',         value: cli },
+    { label: 'Cliente', value: cli }
+  ];
+  if (regra) fields.push({ warn: true, value: '⚠️ REGRA PADRÃO DESTE CLIENTE: ' + regra });
+  fields.push(
     { label: 'Paciente',        value: paciente },
     { label: 'Descrição',       value: descricao },
     { label: 'Origem',          value: orig },
     { label: 'Data de criação', value: data }
-  ];
+  );
   var body = document.getElementById('cam-detail-body');
   if (!body) return;
   body.innerHTML = fields.map(function(f, i) {
+    if (f.warn) {
+      return '<div style="background:rgba(245,158,11,0.14);border:1px solid rgba(245,158,11,0.55);border-radius:10px;padding:12px 14px">'+
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
+          '<p style="flex:1;min-width:0;font-size:13px;font-weight:700;color:#fcd34d;margin:0;line-height:1.5;word-break:break-word" id="cam-det-val-'+i+'">'+escHtml(f.value)+'</p>'+
+          '<button onclick="camCopyField('+i+',this)" style="height:28px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(245,158,11,0.55);background:rgba(245,158,11,0.18);color:#fcd34d;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap">📋 Copiar</button>'+
+        '</div>'+
+      '</div>';
+    }
     return '<div style="background:#13161f;border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px">'+
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
         '<div style="flex:1;min-width:0">'+
