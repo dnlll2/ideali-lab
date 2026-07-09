@@ -187,8 +187,10 @@ function openClientePanel(reg) {
     '<div class="cf-group"><label class="cf-label">Observação</label>' +
       '<textarea id="cf-obs" style="width:100%;height:70px;resize:vertical;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:13px;background:#22263a;color:#e2e8f0;outline:none;font-family:inherit">'+escHtml(c&&c.obs||'')+'</textarea></div>' +
     '<div class="cf-group"><label class="cf-label">⚠️ Regra padrão do cliente</label>' +
-      '<textarea id="cf-regra-padrao" placeholder="Ex: Não cimentar componente — enviar sempre sem cimentar." style="width:100%;height:60px;resize:vertical;border:0.5px solid rgba(245,158,11,0.35);border-radius:8px;padding:8px 10px;font-size:13px;background:#22263a;color:#e2e8f0;outline:none;font-family:inherit">'+escHtml(c&&c.regraPadrao||'')+'</textarea>' +
-      '<p style="font-size:11px;color:#64748b;margin-top:4px">Aparece automaticamente em novas ordens CAM e pedidos deste cliente.</p></div>' +
+      (c && c.regraPadrao ?
+        '<div style="padding:8px 10px;border:0.5px solid rgba(245,158,11,0.35);border-radius:8px;background:#22263a;color:#e2e8f0;font-size:13px;white-space:pre-wrap">'+escHtml(c.regraPadrao)+'</div>' :
+        '<div style="padding:8px 10px;border:0.5px dashed rgba(255,255,255,0.15);border-radius:8px;color:#4a5568;font-size:12px">Nenhuma regra cadastrada.</div>') +
+      '<p style="font-size:11px;color:#64748b;margin-top:4px">🚧 Em construção — edição por aqui ainda não fica salva de verdade. Peça para o dev alterar direto no código.</p></div>' +
     '<div class="cf-group"><label class="cf-label">Status</label>' +
       '<select id="cf-status" style="width:100%">' +
         '<option value="ativo"'+((!c||c.status!=='inativo')?' selected':'')+'>Ativo</option>' +
@@ -231,8 +233,6 @@ async function saveClientePanel() {
     status:   (document.getElementById('cf-status') || {value:'ativo'}).value,
     updated_at: new Date().toISOString()
   };
-  // regraPadrao vive só no array local `clients` (shared.js), sem espelho no Supabase
-  var regraPadrao = (document.getElementById('cf-regra-padrao') || {value:''}).value.trim();
   try {
     var res = await sb.from('cadastro_clientes').upsert(obj, {onConflict:'reg'});
     if (res.error) throw res.error;
@@ -248,8 +248,6 @@ async function saveClientePanel() {
     console.error('saveClientePanel:', e);
     if (errEl) { errEl.textContent = e.message || 'Erro ao salvar.'; errEl.style.display = 'block'; }
   } finally {
-    var cReg = clients.find(function(x){ return x.reg === reg; });
-    if (cReg) cReg.regraPadrao = regraPadrao;
     if (btn) { btn.disabled = false; btn.style.opacity = ''; }
   }
 }
