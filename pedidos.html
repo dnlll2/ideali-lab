@@ -270,6 +270,32 @@ function updatePedClearBtn(q, sf, cf) {
   btn.style.display = (!!q || !!sf || !!cf || !!pedSortCol) ? '' : 'none';
 }
 
+var PED_MAT_INFO = {
+  zirconia: {l:'Zircônia', icon:'ti-diamond'},
+  emax:     {l:'Emax',     icon:'ti-sparkles'},
+  pmma:     {l:'PMMA',     icon:'ti-flask'},
+  resina:   {l:'Resina',   icon:'ti-droplet'},
+  misto:    {l:'Misto',    icon:'ti-color-swatch'},
+  outro:    {l:'Outro',    icon:'ti-package'}
+};
+
+function pedMaterialColor(mat) {
+  var t = T();
+  return {zirconia:t.accent, emax:t.accent2, pmma:t.warn, resina:t.muted, misto:t.dim, outro:t.muted}[mat] || t.muted;
+}
+
+function pedMaterialSummary(p) {
+  var info = p.material && PED_MAT_INFO[p.material];
+  if (!info) return '';
+  var col = pedMaterialColor(p.material);
+  return '<div style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:10.5px;color:'+T().muted+'">'+
+    '<span style="display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:5px;background:'+hexToRgba(col,0.15)+';color:'+col+';font-weight:600;white-space:nowrap"><i class="ti '+info.icon+'" style="font-size:11px"></i>'+info.l+'</span>'+
+    '<span style="white-space:nowrap">'+(p.qtd_elementos||1)+' elem.</span>'+
+    '<span style="color:'+T().dim+'">·</span>'+
+    '<span style="white-space:nowrap">'+fmt(p.valor||0)+'</span>'+
+  '</div>';
+}
+
 function renderPedidosTable() {
   var q=(document.getElementById('ped-search')||{value:''}).value.toLowerCase().trim();
   var sf=(document.getElementById('ped-status-filter')||{value:''}).value;
@@ -301,12 +327,15 @@ function renderPedidosTable() {
       '<td style="color:#4a5568;font-size:11px">'+(i+1)+'</td>'+
       '<td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500">'+
         (p.cliente_reg?escHtml(cliNomePed(p.cliente_reg)):'<span style="color:#4a5568">—</span>')+'</td>'+
-      '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#94a3b8">'+escHtml(p.descricao||'—')+'</td>'+
+      '<td style="max-width:220px;color:#94a3b8">'+
+        '<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(p.descricao||'—')+'</div>'+
+        pedMaterialSummary(p)+
+      '</td>'+
       '<td style="color:#64748b;white-space:nowrap">'+fmtCreatedAt(p.created_at)+'</td>'+
       '<td style="white-space:nowrap">'+(p.data_prevista
         ? '<span style="color:#64748b">'+fmtDate(p.data_prevista)+'</span>'
         : '<span style="color:#4a5568;font-style:italic">'+addWorkdays(p.created_at||new Date().toISOString(),7)+'*</span>')+'</td>'+
-      '<td style="color:#4ade80;font-weight:500;white-space:nowrap">'+fmt(p.valor||0)+'</td>'+
+      '<td style="color:'+T().success+';font-weight:700;font-size:15px;white-space:nowrap">'+fmt(p.valor||0)+'</td>'+
       '<td style="white-space:nowrap"><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:'+st.bg+';color:'+st.c+'">'+st.l+'</span>'+(p.urgente?' <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;background:#3d1d1d;color:#fca5a5">🚨</span>':'')+' </td>'+
     '</tr>';
   }).join('');
@@ -437,6 +466,11 @@ async function changePedidoStatus(status) {
   for(var i=0;i<pedidos.length;i++){if(pedidos[i].id===id){pedidos[i].status=status;break;}}
   openPedidoPanel(id);
   renderPedidosTable();
+}
+
+function onThemeChange() {
+  renderPedidosTable();
+  if (pedCurView === 'resumo') renderResumoMensal();
 }
 
 function initShell() {
