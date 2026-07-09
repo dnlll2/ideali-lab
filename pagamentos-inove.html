@@ -49,6 +49,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .view-tab-btn{padding:7px 16px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px}
 .pend-days{font-size:11px;color:#64748b;margin-left:4px}
 .pend-qtd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:6px;background:#22263a;color:#e2e8f0;font-size:12px;font-weight:600}
+.pend-row{cursor:pointer}
+.pend-row:hover td{background:rgba(255,255,255,0.04)}
+.pend-wait-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:rgba(251,191,36,0.15);color:#fbbf24;border:0.5px solid rgba(251,191,36,0.4);white-space:nowrap}
+.pend-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:120;display:flex;align-items:center;justify-content:center;padding:20px}
+.pend-modal-panel{width:min(420px,100%);background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;padding:22px}
 @media(max-width:767px){
   .summary-row{grid-template-columns:1fr 1fr}
   .rel-table th:nth-child(5),.rel-table td:nth-child(5){display:none}
@@ -97,6 +102,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     '.view-tab-btn:not(.active):hover{background:'+hexToRgba(t.accent,0.12)+' !important;color:'+t.text+' !important}',
     '.pend-qtd{background:'+hexToRgba(t.warn,0.18)+' !important;color:'+t.warn+' !important}',
     '.pend-oldest{color:'+t.danger+' !important}',
+    '.pend-wait-badge{background:'+hexToRgba(t.warn,0.15)+' !important;color:'+t.warn+' !important;border-color:'+hexToRgba(t.warn,0.4)+' !important}',
+    '.pend-modal-panel{background:'+t.card+' !important;border-color:'+t.border+' !important}',
     t.mono ? 'body,input,select,button,table{font-family:"Share Tech Mono","Courier New",monospace !important}' : ''
   ].join('\n');
   document.addEventListener('DOMContentLoaded', function() {
@@ -185,6 +192,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <th>Pedidos pendentes</th>
           <th>Valor total</th>
           <th>Pedido mais antigo</th>
+          <th>Situação</th>
         </tr></thead>
         <tbody id="pend-rows-body"></tbody>
       </table>
@@ -192,7 +200,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
-<div class="footer">Ideali Laboratório · Visão somente leitura, sem edição · Gerado em <span id="gen-time"></span></div>
+<div id="pend-detail-overlay" class="pend-modal-overlay" onclick="if(event.target===this)closePendDetail()" style="display:none">
+  <div class="pend-modal-panel">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:16px">
+      <div>
+        <p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Extrato pendente</p>
+        <h2 id="pend-detail-nome" style="font-size:18px;font-weight:600;color:#f1f5f9">—</h2>
+      </div>
+      <button onclick="closePendDetail()" style="width:30px;height:30px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:15px;cursor:pointer;flex-shrink:0">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:#64748b">Pedidos pendentes</span><span id="pend-detail-qtd" style="font-weight:600">—</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:#64748b">Valor total</span><span id="pend-detail-valor" class="valor-mes" style="font-weight:600">—</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:#64748b">Pedido mais antigo</span><span id="pend-detail-antigo" style="font-weight:600">—</span></div>
+    </div>
+    <div id="pend-detail-status" style="margin-bottom:14px"></div>
+    <button id="pend-detail-btn" onclick="marcarExtratoEnviado(pendDetailReg)" style="width:100%;height:42px;border-radius:9px;border:none;background:#22c55e;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">✅ Extrato Enviado</button>
+    <p style="font-size:11px;color:#4a5568;margin-top:10px;text-align:center">Marca só o campo "enviado" em controle_mensal. Não altera valor nem status de pedidos.</p>
+  </div>
+</div>
+
+<div class="footer">Ideali Laboratório · Visão somente leitura (Pagamentos) · Extratos a Enviar permite apenas marcar "enviado" · Gerado em <span id="gen-time"></span></div>
 
 <script>
 // Espelho minimo de clients (reg+nome) — página standalone, sem shared.js.
@@ -404,19 +432,81 @@ function renderExtratos() {
   var tbody = document.getElementById('pend-rows-body');
   if (!tbody) return;
   if (!pendData.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#4a5568;padding:2rem">Nenhum pedido pendente neste mês.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#4a5568;padding:2rem">Nenhum pedido pendente neste mês.</td></tr>';
     return;
   }
   tbody.innerHTML = pendData.map(function(g) {
     var dias = diasDesde(g.oldest);
     var dataFmt = new Date(g.oldest).toLocaleDateString('pt-BR');
-    return '<tr>' +
+    var jaEnviado = !!(dbState[g.reg] && dbState[g.reg].enviado);
+    var situacao = jaEnviado
+      ? '<span class="pend-wait-badge"><i class="ti ti-clock"></i> Enviado · aguardando conferência</span>'
+      : '<span style="font-size:11px;color:#4a5568">Não enviado</span>';
+    return '<tr class="pend-row" onclick="openPendDetail(' + g.reg + ')">' +
       '<td><p class="client-name">' + escHtml(nomeClientePend(g.reg)) + '</p></td>' +
       '<td><span class="pend-qtd">' + g.qtd + '</span></td>' +
       '<td class="valor-mes">' + fmt(g.valor) + '</td>' +
       '<td class="pend-oldest">' + dataFmt + '<span class="pend-days">(há ' + dias + (dias === 1 ? ' dia' : ' dias') + ')</span></td>' +
+      '<td>' + situacao + '</td>' +
     '</tr>';
   }).join('');
+}
+
+var pendDetailReg = null;
+
+function openPendDetail(reg) {
+  var g = pendData.find(function(x) { return x.reg === reg; });
+  if (!g) return;
+  pendDetailReg = reg;
+  var dias = diasDesde(g.oldest);
+  document.getElementById('pend-detail-nome').textContent = nomeClientePend(reg);
+  document.getElementById('pend-detail-qtd').textContent = g.qtd;
+  document.getElementById('pend-detail-valor').textContent = fmt(g.valor);
+  document.getElementById('pend-detail-antigo').textContent = new Date(g.oldest).toLocaleDateString('pt-BR') + ' (há ' + dias + (dias === 1 ? ' dia' : ' dias') + ')';
+  var jaEnviado = !!(dbState[reg] && dbState[reg].enviado);
+  var statusEl = document.getElementById('pend-detail-status');
+  var btn = document.getElementById('pend-detail-btn');
+  if (jaEnviado) {
+    statusEl.innerHTML = '<span class="pend-wait-badge"><i class="ti ti-clock"></i> Extrato já sinalizado como enviado, aguardando conferência</span>';
+    btn.style.display = 'none';
+  } else {
+    statusEl.innerHTML = '';
+    btn.style.display = '';
+    btn.disabled = false;
+    btn.textContent = '✅ Extrato Enviado';
+  }
+  document.getElementById('pend-detail-overlay').style.display = 'flex';
+}
+
+function closePendDetail() {
+  document.getElementById('pend-detail-overlay').style.display = 'none';
+  pendDetailReg = null;
+}
+
+async function marcarExtratoEnviado(reg) {
+  if (!reg) return;
+  var btn = document.getElementById('pend-detail-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+  try {
+    var existing = await sb.from('controle_mensal').select('id')
+      .eq('cliente_reg', reg).eq('mes', viewMonth).eq('ano', viewYear);
+    if (existing.error) throw existing.error;
+    if (existing.data && existing.data.length) {
+      var upd = await sb.from('controle_mensal').update({ enviado: true }).eq('id', existing.data[0].id);
+      if (upd.error) throw upd.error;
+    } else {
+      var ins = await sb.from('controle_mensal').insert({ cliente_reg: reg, mes: viewMonth, ano: viewYear, enviado: true });
+      if (ins.error) throw ins.error;
+    }
+    if (!dbState[reg]) dbState[reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, comprovantes:[] };
+    dbState[reg].enviado = true;
+    closePendDetail();
+    renderExtratos();
+  } catch (e) {
+    console.error('marcarExtratoEnviado:', e);
+    alert('Erro ao marcar extrato como enviado: ' + (e.message || e));
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Extrato Enviado'; }
+  }
 }
 
 function statusOf(s) {
