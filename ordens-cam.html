@@ -150,6 +150,16 @@
   <div id="cadista-dropdown-list"></div>
 </div>
 
+<!-- ── Observação Dropdown ──────────────────────────────────── -->
+<div id="obs-dropdown" onclick="event.stopPropagation()" style="display:none;position:fixed;z-index:300;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px;width:260px;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+  <p style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 6px">📝 Observação</p>
+  <textarea id="obs-dropdown-text" placeholder="Ex: aguardando novo escaneamento, cor a confirmar com o dentista..." style="width:100%;height:80px;resize:vertical;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:12px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit"></textarea>
+  <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px">
+    <button onclick="camCloseObsDropdown()" style="height:26px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.12);background:transparent;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit">Cancelar</button>
+    <button onclick="camSaveObs()" style="height:26px;padding:0 12px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Salvar</button>
+  </div>
+</div>
+
 <script>
 var ordensCam  = [];
 var camDragId  = null;
@@ -219,6 +229,9 @@ function camCardHtml(o) {
   var btnAprov  = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camToggleCol(\''+o.id+'\',\'aprovacao\','+aprov+')" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;'+(aprov?'background:#7c3aed;border-color:#a78bfa;color:#fff':'background:transparent;border-color:rgba(167,139,250,0.4);color:#94a3b8')+'">'+(aprov?'✔ ':'')+'⏳ Aprovação</button>';
   var btnCadist = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camOpenCadistaDropdown(\''+o.id+'\',event)" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'+(cadiNome?'background:#9d174d;border-color:#ec4899;color:#fff':'background:transparent;border-color:rgba(236,72,153,0.4);color:#94a3b8')+'">'+(cadiNome?'✓ '+escHtml(cadiNome):'📤 Enviar')+'</button>';
 
+  var hasObs   = !!(o.observacao && o.observacao.trim());
+  var btnObs   = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camOpenObsDropdown(\''+o.id+'\',event)" title="'+(hasObs?escHtml(o.observacao):'Adicionar observação')+'" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;'+(hasObs?'background:#0f766e;border-color:#2dd4bf;color:#fff':'background:transparent;border-color:rgba(45,212,191,0.4);color:#94a3b8')+'">📝'+(hasObs?' Obs.':'')+'</button>';
+
   return '<div class="cam-card" draggable="true" ondragstart="camDragStart(event,\''+o.id+'\')" onclick="openCamDetail(\''+o.id+'\')" style="'+ageStyle+';cursor:pointer">'+
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:5px">'+
       '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(cli)+'</p>'+
@@ -228,7 +241,7 @@ function camCardHtml(o) {
     '<p style="font-size:10px;color:#4a5568;margin:0 0 7px">'+(o.created_at?new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—')+'</p>'+
     '<div style="display:flex;align-items:center;justify-content:space-between">'+
       '<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;'+badgeSt+'">'+badgeLbl+'</span>'+
-      '<div draggable="false" style="display:flex;gap:4px;flex-wrap:wrap">'+btnScan+btnInove+btnAprov+btnCadist+'</div>'+
+      '<div draggable="false" style="display:flex;gap:4px;flex-wrap:wrap">'+btnScan+btnInove+btnAprov+btnCadist+btnObs+'</div>'+
     '</div>'+
   '</div>';
 }
@@ -521,6 +534,53 @@ async function camSetCadista(id, nome) {
   } catch(e) {
     console.error('[camSetCadista]', e.message || e);
     alert('Erro ao salvar cadista: ' + (e.message || e));
+  }
+}
+
+// ── Observação ──────────────────────────────────────────────
+var _obsDropId = null;
+
+function camOpenObsDropdown(id, event) {
+  _obsDropId = id;
+  var o  = ordensCam.find(function(x){ return x.id === id; });
+  var dd = document.getElementById('obs-dropdown');
+  var ta = document.getElementById('obs-dropdown-text');
+  ta.value = (o && o.observacao) || '';
+  var rect = event.currentTarget.getBoundingClientRect();
+  dd.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
+  var top = rect.bottom + 4;
+  dd.style.top = (top + 150 > window.innerHeight ? rect.top - 154 : top) + 'px';
+  dd.style.display = '';
+  setTimeout(function() { ta.focus(); }, 0);
+  setTimeout(function() {
+    document.addEventListener('click', camCloseObsDropdown, { once: true });
+  }, 0);
+}
+
+function camCloseObsDropdown() {
+  var dd = document.getElementById('obs-dropdown');
+  if (dd) dd.style.display = 'none';
+  _obsDropId = null;
+}
+
+async function camSaveObs() {
+  if (!_obsDropId) return;
+  var id = _obsDropId;
+  var texto = (document.getElementById('obs-dropdown-text').value || '').trim();
+  camCloseObsDropdown();
+  try {
+    setSyncStatus('syncing');
+    var res = await sb.from('ordens_exocad').update({ observacao: texto || null }).eq('id', id);
+    if (res.error) throw res.error;
+    var o = ordensCam.find(function(x){ return x.id === id; });
+    if (o) o.observacao = texto || null;
+    renderOrdensCam();
+    setSyncStatus('ok');
+  } catch(e) {
+    console.error('[camSaveObs]', e.message || e);
+    setSyncStatus('error');
+    setTimeout(function(){ setSyncStatus('ok'); }, 3000);
+    alert('Erro ao salvar observação: ' + (e.message || e));
   }
 }
 
