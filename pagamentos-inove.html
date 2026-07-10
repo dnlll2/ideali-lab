@@ -54,6 +54,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .pend-card-btn{width:100%;height:32px;border-radius:7px;border:0.5px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.12);color:#4ade80;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s}
 .pend-card-btn:hover{background:rgba(34,197,94,0.22)}
 .pend-card-btn:disabled{opacity:0.5;cursor:default}
+.pend-card-btn-sent:disabled{background:#22c55e;border-color:#22c55e;color:#fff;opacity:1;cursor:default}
 @media(max-width:767px){
   .summary-row{grid-template-columns:1fr 1fr}
   .rel-table th:nth-child(5),.rel-table td:nth-child(5){display:none}
@@ -387,28 +388,30 @@ function nomeClientePend(reg) {
 }
 
 function renderExtratos() {
-  var visiveis = pendData.filter(function(g) { return !(dbState[g.reg] && dbState[g.reg].enviado); });
-
   var clEl = document.getElementById('pend-sum-clientes');
   var vlEl = document.getElementById('pend-sum-valor');
   var anEl = document.getElementById('pend-sum-antigo');
   var mesEl = document.getElementById('pend-sum-mes');
   if (mesEl) mesEl.textContent = MESES[viewMonth] + ' ' + viewYear;
-  if (clEl) clEl.textContent = visiveis.length;
-  if (vlEl) vlEl.textContent = fmt(visiveis.reduce(function(s, g) { return s + g.valor; }, 0));
-  if (anEl) anEl.textContent = visiveis.length ? (nomeClientePend(visiveis[0].reg) + ' · ' + diasDesde(visiveis[0].oldest) + 'd') : '—';
+  if (clEl) clEl.textContent = pendData.length;
+  if (vlEl) vlEl.textContent = fmt(pendData.reduce(function(s, g) { return s + g.valor; }, 0));
+  if (anEl) anEl.textContent = pendData.length ? (nomeClientePend(pendData[0].reg) + ' · ' + diasDesde(pendData[0].oldest) + 'd') : '—';
 
   var grid = document.getElementById('pend-cards-grid');
   if (!grid) return;
-  if (!visiveis.length) {
+  if (!pendData.length) {
     grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#4a5568;padding:2rem">Nenhum extrato pendente neste mês. 🎉</p>';
     return;
   }
-  grid.innerHTML = visiveis.map(function(g) {
+  grid.innerHTML = pendData.map(function(g) {
+    var jaEnviado = !!(dbState[g.reg] && dbState[g.reg].enviado);
+    var btnHtml = jaEnviado
+      ? '<button class="pend-card-btn pend-card-btn-sent" disabled>✓ Enviado</button>'
+      : '<button class="pend-card-btn" onclick="marcarExtratoEnviado(' + g.reg + ', this)">Enviado</button>';
     return '<div class="pend-card" id="pend-card-' + g.reg + '">' +
       '<p class="pend-card-nome">' + escHtml(nomeClientePend(g.reg)) + '</p>' +
       '<p class="pend-card-valor">' + fmt(g.valor) + '</p>' +
-      '<button class="pend-card-btn" onclick="marcarExtratoEnviado(' + g.reg + ', this)">Enviado</button>' +
+      btnHtml +
     '</div>';
   }).join('');
 }
@@ -429,15 +432,7 @@ async function marcarExtratoEnviado(reg, btn) {
     }
     if (!dbState[reg]) dbState[reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, comprovantes:[] };
     dbState[reg].enviado = true;
-    var card = document.getElementById('pend-card-' + reg);
-    if (card) {
-      card.style.transition = 'opacity 0.25s, transform 0.25s';
-      card.style.opacity = '0';
-      card.style.transform = 'scale(0.95)';
-      setTimeout(renderExtratos, 250);
-    } else {
-      renderExtratos();
-    }
+    renderExtratos();
   } catch (e) {
     console.error('marcarExtratoEnviado:', e);
     alert('Erro ao marcar extrato como enviado: ' + (e.message || e));
