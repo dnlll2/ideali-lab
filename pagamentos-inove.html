@@ -54,7 +54,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .pend-card-btn{width:100%;height:32px;border-radius:7px;border:0.5px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.12);color:#4ade80;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s}
 .pend-card-btn:hover{background:rgba(34,197,94,0.22)}
 .pend-card-btn:disabled{opacity:0.5;cursor:default}
-.pend-card-btn-sent:disabled{background:#22c55e;border-color:#22c55e;color:#fff;opacity:1;cursor:default}
+.pend-card-btn-done:disabled{background:#22c55e;border-color:#22c55e;color:#fff;opacity:1;cursor:default}
 @media(max-width:767px){
   .summary-row{grid-template-columns:1fr 1fr}
   .rel-table th:nth-child(5),.rel-table td:nth-child(5){display:none}
@@ -399,24 +399,26 @@ function renderExtratos() {
 
   var grid = document.getElementById('pend-cards-grid');
   if (!grid) return;
-  if (!pendData.length) {
-    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#4a5568;padding:2rem">Nenhum extrato pendente neste mês. 🎉</p>';
-    return;
-  }
-  grid.innerHTML = pendData.map(function(g) {
-    var jaEnviado = !!(dbState[g.reg] && dbState[g.reg].enviado);
-    var btnHtml = jaEnviado
-      ? '<button class="pend-card-btn pend-card-btn-sent" disabled>✓ Enviado</button>'
-      : '<button class="pend-card-btn" onclick="marcarExtratoEnviado(' + g.reg + ', this)">Enviado</button>';
-    return '<div class="pend-card" id="pend-card-' + g.reg + '">' +
-      '<p class="pend-card-nome">' + escHtml(nomeClientePend(g.reg)) + '</p>' +
-      '<p class="pend-card-valor">' + fmt(g.valor) + '</p>' +
+  var valorPorCliente = {};
+  pendData.forEach(function(g) { valorPorCliente[g.reg] = g.valor; });
+  // Lista todos os clientes cadastrados — a Elisangela escolhe manualmente quem marcar,
+  // comparando com a lista dela do lado do Inove, sem depender do que o sistema acha pendente.
+  var todos = clients.slice().sort(function(a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
+  grid.innerHTML = todos.map(function(c) {
+    var jaRecebido = !!(dbState[c.reg] && dbState[c.reg].recebido);
+    var valor = valorPorCliente[c.reg] || 0;
+    var btnHtml = jaRecebido
+      ? '<button class="pend-card-btn pend-card-btn-done" disabled>✓ Recebido</button>'
+      : '<button class="pend-card-btn" onclick="marcarExtratoRecebido(' + c.reg + ', this)">Recebido</button>';
+    return '<div class="pend-card" id="pend-card-' + c.reg + '">' +
+      '<p class="pend-card-nome">' + escHtml(c.nome) + '</p>' +
+      '<p class="pend-card-valor">' + fmt(valor) + '</p>' +
       btnHtml +
     '</div>';
   }).join('');
 }
 
-async function marcarExtratoEnviado(reg, btn) {
+async function marcarExtratoRecebido(reg, btn) {
   if (!reg) return;
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
   try {
@@ -424,19 +426,19 @@ async function marcarExtratoEnviado(reg, btn) {
       .eq('cliente_reg', reg).eq('mes', viewMonth).eq('ano', viewYear);
     if (existing.error) throw existing.error;
     if (existing.data && existing.data.length) {
-      var upd = await sb.from('controle_mensal').update({ enviado: true }).eq('id', existing.data[0].id);
+      var upd = await sb.from('controle_mensal').update({ recebido: true }).eq('id', existing.data[0].id);
       if (upd.error) throw upd.error;
     } else {
-      var ins = await sb.from('controle_mensal').insert({ cliente_reg: reg, mes: viewMonth, ano: viewYear, enviado: true });
+      var ins = await sb.from('controle_mensal').insert({ cliente_reg: reg, mes: viewMonth, ano: viewYear, recebido: true });
       if (ins.error) throw ins.error;
     }
     if (!dbState[reg]) dbState[reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, comprovantes:[] };
-    dbState[reg].enviado = true;
+    dbState[reg].recebido = true;
     renderExtratos();
   } catch (e) {
-    console.error('marcarExtratoEnviado:', e);
-    alert('Erro ao marcar extrato como enviado: ' + (e.message || e));
-    if (btn) { btn.disabled = false; btn.textContent = 'Enviado'; }
+    console.error('marcarExtratoRecebido:', e);
+    alert('Erro ao marcar extrato como recebido: ' + (e.message || e));
+    if (btn) { btn.disabled = false; btn.textContent = 'Recebido'; }
   }
 }
 
@@ -486,7 +488,22 @@ function renderTable() {
   }
 }
 
+// Acha o mes mais recente (ate o mes calendario atual) com dado real em controle_mensal
+// (valor_mes > 0). Se o mes atual ja tiver dado, fica nele; so cai pro anterior se estiver vazio.
+async function findDefaultMonth() {
+  var res = await sb.from('controle_mensal').select('mes,ano,valor_mes').gt('valor_mes', 0);
+  if (res.error || !res.data || !res.data.length) return { m: currentMonth, y: currentYear };
+  var rows = res.data.filter(function(r) {
+    return r.ano < currentYear || (r.ano === currentYear && r.mes <= currentMonth);
+  });
+  if (!rows.length) return { m: currentMonth, y: currentYear };
+  rows.sort(function(a, b) { return (b.ano - a.ano) || (b.mes - a.mes); });
+  return { m: rows[0].mes, y: rows[0].ano };
+}
+
 async function init() {
+  var def = await findDefaultMonth();
+  viewMonth = def.m; viewYear = def.y;
   renderMonthDD();
   await Promise.all([loadMonthData(), loadExtratosPendentes()]);
   renderTable();
