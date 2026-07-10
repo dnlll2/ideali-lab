@@ -50,11 +50,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .pend-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
 .pend-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px}
 .pend-card-nome{font-size:14px;font-weight:600;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pend-card-valor{font-size:20px;font-weight:700;color:#fbbf24}
 .pend-card-btn{width:100%;height:32px;border-radius:7px;border:0.5px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.12);color:#4ade80;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s}
 .pend-card-btn:hover{background:rgba(34,197,94,0.22)}
 .pend-card-btn:disabled{opacity:0.5;cursor:default}
-.pend-card-btn-done:disabled{background:#22c55e;border-color:#22c55e;color:#fff;opacity:1;cursor:default}
+.pend-card-btn-done{background:#22c55e;border-color:#22c55e;color:#fff}
+.pend-card-btn-done:hover{background:#16a34a;border-color:#16a34a}
 @media(max-width:767px){
   .summary-row{grid-template-columns:1fr 1fr}
   .rel-table th:nth-child(5),.rel-table td:nth-child(5){display:none}
@@ -102,7 +102,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     '.view-tab-btn.active{background:'+t.accent+' !important;color:'+t.text+' !important;border-color:'+t.accent+' !important}',
     '.view-tab-btn:not(.active):hover{background:'+hexToRgba(t.accent,0.12)+' !important;color:'+t.text+' !important}',
     '.pend-card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
-    '.pend-card-valor{color:'+t.warn+' !important}',
     '.pend-card-btn{background:'+hexToRgba(t.success,0.12)+' !important;color:'+t.success+' !important;border-color:'+hexToRgba(t.success,0.4)+' !important}',
     '.pend-card-btn:hover{background:'+hexToRgba(t.success,0.22)+' !important}',
     t.mono ? 'body,input,select,button,table{font-family:"Share Tech Mono","Courier New",monospace !important}' : ''
@@ -211,7 +210,7 @@ var clients = [
   {reg:30,nome:"Juliana Barros"},{reg:31,nome:"Pedro Silva"},
   {reg:32,nome:"Carlos Vinicios Camelo"},{reg:33,nome:"Clinica Dr Rosmar"},
   {reg:34,nome:"Roberto Isao"},{reg:35,nome:"Rafael Heino Santos"},
-  {reg:36,nome:"Oral 360 Copa"}
+  {reg:36,nome:"Oral 360 Copa"},{reg:37,nome:"Zivana Castilhos dos Santos"}
 ];
 
 var SUPABASE_URL = 'https://alqhhgysvehtgkwsxeok.supabase.co';
@@ -399,46 +398,42 @@ function renderExtratos() {
 
   var grid = document.getElementById('pend-cards-grid');
   if (!grid) return;
-  var valorPorCliente = {};
-  pendData.forEach(function(g) { valorPorCliente[g.reg] = g.valor; });
   // Lista todos os clientes cadastrados — a Elisangela escolhe manualmente quem marcar,
   // comparando com a lista dela do lado do Inove, sem depender do que o sistema acha pendente.
   var todos = clients.slice().sort(function(a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
   grid.innerHTML = todos.map(function(c) {
     var jaRecebido = !!(dbState[c.reg] && dbState[c.reg].recebido);
-    var valor = valorPorCliente[c.reg] || 0;
-    var btnHtml = jaRecebido
-      ? '<button class="pend-card-btn pend-card-btn-done" disabled>✓ Recebido</button>'
-      : '<button class="pend-card-btn" onclick="marcarExtratoRecebido(' + c.reg + ', this)">Recebido</button>';
+    var btnClass = jaRecebido ? 'pend-card-btn pend-card-btn-done' : 'pend-card-btn';
+    var btnText = jaRecebido ? '✓ Recebido' : 'Recebido';
     return '<div class="pend-card" id="pend-card-' + c.reg + '">' +
       '<p class="pend-card-nome">' + escHtml(c.nome) + '</p>' +
-      '<p class="pend-card-valor">' + fmt(valor) + '</p>' +
-      btnHtml +
+      '<button class="' + btnClass + '" onclick="toggleExtratoRecebido(' + c.reg + ', this)">' + btnText + '</button>' +
     '</div>';
   }).join('');
 }
 
-async function marcarExtratoRecebido(reg, btn) {
+async function toggleExtratoRecebido(reg, btn) {
   if (!reg) return;
+  var novoValor = !(dbState[reg] && dbState[reg].recebido);
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
   try {
     var existing = await sb.from('controle_mensal').select('id')
       .eq('cliente_reg', reg).eq('mes', viewMonth).eq('ano', viewYear);
     if (existing.error) throw existing.error;
     if (existing.data && existing.data.length) {
-      var upd = await sb.from('controle_mensal').update({ recebido: true }).eq('id', existing.data[0].id);
+      var upd = await sb.from('controle_mensal').update({ recebido: novoValor }).eq('id', existing.data[0].id);
       if (upd.error) throw upd.error;
     } else {
-      var ins = await sb.from('controle_mensal').insert({ cliente_reg: reg, mes: viewMonth, ano: viewYear, recebido: true });
+      var ins = await sb.from('controle_mensal').insert({ cliente_reg: reg, mes: viewMonth, ano: viewYear, recebido: novoValor });
       if (ins.error) throw ins.error;
     }
     if (!dbState[reg]) dbState[reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, comprovantes:[] };
-    dbState[reg].recebido = true;
+    dbState[reg].recebido = novoValor;
     renderExtratos();
   } catch (e) {
-    console.error('marcarExtratoRecebido:', e);
-    alert('Erro ao marcar extrato como recebido: ' + (e.message || e));
-    if (btn) { btn.disabled = false; btn.textContent = 'Recebido'; }
+    console.error('toggleExtratoRecebido:', e);
+    alert('Erro ao atualizar extrato: ' + (e.message || e));
+    if (btn) { btn.disabled = false; btn.textContent = novoValor ? 'Recebido' : '✓ Recebido'; }
   }
 }
 
