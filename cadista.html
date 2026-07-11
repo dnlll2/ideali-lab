@@ -4,6 +4,68 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel do Cadista — Ideali Laboratório</title>
+<script>
+// ── Autenticação por senha (espelho leve de checkAuth em shared.js) ────────
+// Página standalone (não carrega shared.js, pra não colidir com escHtml/etc próprios).
+// Usa a mesma senha e a mesma chave de sessionStorage, então a sessão continua
+// válida ao navegar pra/de outras páginas do sistema. Sincronize manualmente
+// se a senha mudar em shared.js.
+(function checkAuth() {
+  var IDEALI_PASSWORD = 'ideali2026';
+  if (sessionStorage.getItem('ideali-auth') === 'ok') return;
+
+  function injectLogin() {
+    var overlay = document.createElement('div');
+    overlay.id = 'auth-overlay';
+    overlay.style.cssText = [
+      'position:fixed','inset:0','background:#0f1117','z-index:99999',
+      'display:flex','align-items:center','justify-content:center',
+      'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif'
+    ].join(';');
+    overlay.innerHTML =
+      '<div style="background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px 28px;width:min(340px,90vw);text-align:center">'+
+        '<p style="font-size:30px;margin-bottom:8px">🦷</p>'+
+        '<p style="font-size:18px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Ideali Laboratório</p>'+
+        '<p style="font-size:13px;color:#64748b;margin-bottom:24px">Digite a senha para continuar</p>'+
+        '<input id="auth-inp" type="password" placeholder="Senha" autocomplete="current-password" '+
+          'style="width:100%;height:40px;background:#0f1117;border:0.5px solid rgba(255,255,255,0.15);'+
+          'border-radius:8px;padding:0 14px;font-size:14px;color:#e2e8f0;outline:none;font-family:inherit;margin-bottom:10px"/>'+
+        '<p id="auth-err" style="font-size:12px;color:#ef4444;margin-bottom:10px;min-height:16px"></p>'+
+        '<button id="auth-btn" '+
+          'style="width:100%;height:40px;background:#1d4ed8;border:none;border-radius:8px;'+
+          'color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Entrar</button>'+
+      '</div>';
+    document.body.appendChild(overlay);
+    document.getElementById('auth-inp').focus();
+
+    function tryLogin() {
+      var val = (document.getElementById('auth-inp').value || '').trim();
+      if (val === IDEALI_PASSWORD) {
+        sessionStorage.setItem('ideali-auth', 'ok');
+        document.getElementById('auth-overlay').remove();
+      } else {
+        var err = document.getElementById('auth-err');
+        var inp = document.getElementById('auth-inp');
+        if (err) err.textContent = 'Senha incorreta. Tente novamente.';
+        if (inp) {
+          inp.value = '';
+          inp.style.borderColor = '#ef4444';
+          inp.focus();
+          setTimeout(function(){ inp.style.borderColor = ''; }, 1500);
+        }
+      }
+    }
+
+    document.getElementById('auth-btn').addEventListener('click', tryLogin);
+    document.getElementById('auth-inp').addEventListener('keydown', function(e){
+      if (e.key === 'Enter') tryLogin();
+    });
+  }
+
+  if (document.body) { injectLogin(); }
+  else { document.addEventListener('DOMContentLoaded', injectLogin); }
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -74,7 +136,8 @@
     trincheira: { bg:'#09100a', card:'#111a0f', border:'rgba(100,130,60,0.18)', text:'#c0c8b0', accent:'#7a9a3c', accent2:'#a8b878', success:'#6b8c42', warn:'#b8a040', danger:'#9c3a2a', mono:false },
     cosmos:     { bg:'#04081a', card:'#081428', border:'rgba(0,180,216,0.14)',  text:'#c0e8f8', accent:'#00b4d8', accent2:'#7c83fd', success:'#48cae4', warn:'#90e0ef', danger:'#ef476f', mono:false },
     codigo:     { bg:'#1e1e1e', card:'#252526', border:'rgba(255,255,255,0.1)', text:'#d4d4d4', accent:'#007acc', accent2:'#c586c0', success:'#4ec9b0', warn:'#dcdcaa', danger:'#f44747', mono:false },
-    matrix:     { bg:'#000000', card:'#020f04', border:'rgba(0,255,65,0.22)',   text:'#d4ffdc', accent:'#00ff41', accent2:'#00e6a8', success:'#39ff6a', warn:'#ffd60a', danger:'#ff3b3b', mono:true }
+    matrix:     { bg:'#000000', card:'#020f04', border:'rgba(0,255,65,0.22)',   text:'#d4ffdc', accent:'#00ff41', accent2:'#00e6a8', success:'#39ff6a', warn:'#ffd60a', danger:'#ff3b3b', mono:true, monoFamily:'Share Tech Mono', monoHref:'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap' },
+    msdos:      { bg:'#0000aa', card:'#0000aa', border:'#ffffff', text:'#ffffff', accent:'#00ffff', accent2:'#ffff55', success:'#55ff55', warn:'#ffff55', danger:'#ff5555', mono:true, square:true, monoFamily:'VT323', monoHref:'https://fonts.googleapis.com/css2?family=VT323&display=swap' }
   };
   function hexToRgba(hex, alpha) {
     hex = String(hex||'').replace('#','');
@@ -98,7 +161,8 @@
     '.sync-dot{background:'+t.success+' !important}',
     '.sync-dot.loading{background:'+t.warn+' !important}',
     '.sync-dot.error{background:'+t.danger+' !important}',
-    t.mono ? 'body,input,select,button,table{font-family:"Share Tech Mono","Courier New",monospace !important}' : ''
+    t.mono ? 'body,input,select,button,table{font-family:"'+(t.monoFamily||'Share Tech Mono')+'","Courier New",monospace !important}' : '',
+    t.square ? '*{border-radius:0 !important}\n*{box-shadow:none !important}' : ''
   ].join('\n');
   var styleEl = document.createElement('style');
   styleEl.textContent = css;
@@ -106,7 +170,7 @@
   if (t.mono) {
     var link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap';
+    link.href = t.monoHref || 'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap';
     document.head.appendChild(link);
   }
 })();

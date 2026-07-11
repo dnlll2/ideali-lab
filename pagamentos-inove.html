@@ -9,7 +9,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // Página pública (sem senha) — pula a autenticação de shared.js antes dela rodar.
-sessionStorage.setItem('ideali-auth', 'ok');
+// Flag local à página (não grava em sessionStorage) pra não vazar acesso pras
+// outras páginas do sistema caso alguém navegue pra elas na mesma aba.
+window.IDEALI_SKIP_AUTH = true;
 </script>
 <script src="shared.js"></script>
 <style>
@@ -82,7 +84,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     trincheira: { bg:'#09100a', card:'#111a0f', border:'rgba(100,130,60,0.18)', text:'#c0c8b0', accent:'#7a9a3c', accent2:'#a8b878', success:'#6b8c42', warn:'#b8a040', danger:'#9c3a2a', mono:false },
     cosmos:     { bg:'#04081a', card:'#081428', border:'rgba(0,180,216,0.14)',  text:'#c0e8f8', accent:'#00b4d8', accent2:'#7c83fd', success:'#48cae4', warn:'#90e0ef', danger:'#ef476f', mono:false },
     codigo:     { bg:'#1e1e1e', card:'#252526', border:'rgba(255,255,255,0.1)', text:'#d4d4d4', accent:'#007acc', accent2:'#c586c0', success:'#4ec9b0', warn:'#dcdcaa', danger:'#f44747', mono:false },
-    matrix:     { bg:'#000000', card:'#020f04', border:'rgba(0,255,65,0.22)',   text:'#d4ffdc', accent:'#00ff41', accent2:'#00e6a8', success:'#39ff6a', warn:'#ffd60a', danger:'#ff3b3b', mono:true }
+    matrix:     { bg:'#000000', card:'#020f04', border:'rgba(0,255,65,0.22)',   text:'#d4ffdc', accent:'#00ff41', accent2:'#00e6a8', success:'#39ff6a', warn:'#ffd60a', danger:'#ff3b3b', mono:true, monoFamily:'Share Tech Mono', monoHref:'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap' },
+    msdos:      { bg:'#0000aa', card:'#0000aa', border:'#ffffff', text:'#ffffff', accent:'#00ffff', accent2:'#ffff55', success:'#55ff55', warn:'#ffff55', danger:'#ff5555', mono:true, square:true, monoFamily:'VT323', monoHref:'https://fonts.googleapis.com/css2?family=VT323&display=swap' }
   };
   function hexToRgba(hex, alpha) {
     hex = String(hex||'').replace('#','');
@@ -119,7 +122,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     '.pend-card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
     '.pend-card-btn{background:'+hexToRgba(t.success,0.12)+' !important;color:'+t.success+' !important;border-color:'+hexToRgba(t.success,0.4)+' !important}',
     '.pend-card-btn:hover{background:'+hexToRgba(t.success,0.22)+' !important}',
-    t.mono ? 'body,input,select,button,table{font-family:"Share Tech Mono","Courier New",monospace !important}' : ''
+    t.mono ? 'body,input,select,button,table{font-family:"'+(t.monoFamily||'Share Tech Mono')+'","Courier New",monospace !important}' : '',
+    t.square ? '*{border-radius:0 !important}\n*{box-shadow:none !important}' : ''
   ].join('\n');
   document.addEventListener('DOMContentLoaded', function() {
     var styleEl = document.createElement('style');
@@ -128,7 +132,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     if (t.mono) {
       var link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap';
+      link.href = t.monoHref || 'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap';
       document.head.appendChild(link);
     }
   });
@@ -140,7 +144,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="header">
   <div style="display:flex;align-items:center;gap:12px">
-    <button onclick="openSidebar()" style="width:36px;height:36px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">&#9776;</button>
     <div class="header-left">
       <h1>💰 Pagamentos — Inove</h1>
       <p>Situação financeira por cliente e por mês <span class="badge-ro"><i class="ti ti-eye"></i> Somente leitura</span></p>
@@ -559,12 +562,18 @@ async function init() {
   hideLoading();
 }
 
+// Página da Elisangela (Inove): usa sidebar.html só pelo loading-overlay/banner de
+// erro/painel de IA, mas remove o sidebar de navegação em si — sem hambúrguer pra abri-lo
+// e sem o próprio elemento no DOM, essa página não pode levar pra nenhuma outra do sistema.
 function initShell() {
   return fetch('sidebar.html')
     .then(function(r) { return r.text(); })
     .then(function(html) {
       document.getElementById('shared-shell').innerHTML = html;
-      updateSidebarActive();
+      var navEl = document.getElementById('sidebar');
+      var ovEl  = document.getElementById('sidebar-overlay');
+      if (navEl) navEl.remove();
+      if (ovEl)  ovEl.remove();
       var keyEl = document.getElementById('sb-groq-key');
       if (keyEl && typeof GROQ_API_KEY !== 'undefined') keyEl.value = GROQ_API_KEY;
     })

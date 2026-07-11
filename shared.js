@@ -253,10 +253,19 @@ var THEMES = {
   },
   matrix: {
     name:'Matrix', swatch:'#00ff41', mono:true,
+    monoFamily:'Share Tech Mono', monoHref:'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap',
     bg:'#000000', sbg:'#000000', card:'#020f04', sec:'#041a06',
     hover:'#0b2a0e', active:'#0a2409', border:'rgba(0,255,65,0.22)',
     text:'#d4ffdc', muted:'#52d17a', dim:'#1f7a3d',
     accent:'#00ff41', accent2:'#00e6a8', success:'#39ff6a', warn:'#ffd60a', danger:'#ff3b3b'
+  },
+  msdos: {
+    name:'MS-DOS', swatch:'#0000aa', mono:true, square:true,
+    monoFamily:'VT323', monoHref:'https://fonts.googleapis.com/css2?family=VT323&display=swap',
+    bg:'#0000aa', sbg:'#0000aa', card:'#0000aa', sec:'#000088',
+    hover:'#0000ff', active:'#1818cc', border:'#ffffff',
+    text:'#ffffff', muted:'#aaaaaa', dim:'#7777bb',
+    accent:'#00ffff', accent2:'#ffff55', success:'#55ff55', warn:'#ffff55', danger:'#ff5555'
   }
 };
 
@@ -343,23 +352,23 @@ function applyTheme(name) {
     '.hm-section-title{border-color:'+t.border+' !important;color:'+t.muted+' !important}',
     '#sidebar-overlay{background:rgba(0,0,0,0.65) !important}',
     '.mob-back{background:'+t.sec+' !important;color:'+t.muted+' !important;border-color:'+t.border+' !important}',
-    '.sealed-banner{background:'+t.active+' !important}'
+    '.sealed-banner{background:'+t.active+' !important}',
+    // Temas "square" (ex: MS-DOS) removem cantos arredondados e sombras pra reforçar a estética de terminal antigo.
+    t.square ? '*{border-radius:0 !important}\n*{box-shadow:none !important}' : ''
   ].join('\n');
   var el = document.getElementById('theme-style');
   if (!el) { el = document.createElement('style'); el.id = 'theme-style'; document.head.appendChild(el); }
   el.textContent = css;
 
-  // Fonte monoespaçada apenas para temas marcados com mono:true (ex: Matrix)
-  if (t.mono && !document.getElementById('matrix-font-link')) {
-    var link = document.createElement('link');
-    link.id = 'matrix-font-link'; link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap';
-    document.head.appendChild(link);
-  }
+  // Fonte monoespaçada apenas para temas marcados com mono:true (ex: Matrix, MS-DOS).
+  // Cada tema mono define sua própria fonte via monoFamily/monoHref.
+  var fontLinkEl = document.getElementById('theme-font-link');
+  if (!fontLinkEl) { fontLinkEl = document.createElement('link'); fontLinkEl.id = 'theme-font-link'; fontLinkEl.rel = 'stylesheet'; document.head.appendChild(fontLinkEl); }
+  if (t.mono) fontLinkEl.href = t.monoHref || 'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap';
   var fontEl = document.getElementById('theme-font-style');
   if (!fontEl) { fontEl = document.createElement('style'); fontEl.id = 'theme-font-style'; document.head.appendChild(fontEl); }
   fontEl.textContent = t.mono
-    ? 'body,input,select,button,textarea,table{font-family:"Share Tech Mono","Courier New",monospace !important}'
+    ? 'body,input,select,button,textarea,table{font-family:"'+(t.monoFamily||'Share Tech Mono')+'","Courier New",monospace !important}'
     : '';
 
   renderThemePicker();
@@ -767,7 +776,10 @@ function renderIAHistory() {
 var IDEALI_PASSWORD = 'ideali2026';
 
 (function checkAuth() {
-  if (sessionStorage.getItem('ideali-auth') === 'ok') return;
+  // window.IDEALI_SKIP_AUTH é um flag JS local à página (não persiste em storage),
+  // usado só por páginas standalone sem senha (ex: pagamentos-inove.html) para pular
+  // esta tela sem conceder acesso às demais páginas do sistema na mesma aba.
+  if (sessionStorage.getItem('ideali-auth') === 'ok' || window.IDEALI_SKIP_AUTH === true) return;
 
   function injectLogin() {
     var overlay = document.createElement('div');
