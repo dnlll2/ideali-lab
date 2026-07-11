@@ -42,6 +42,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .status-p{background:#22263a;color:#64748b;border:0.5px solid rgba(255,255,255,0.08)}
 .status-parcial{background:#3d330d;color:#fbbf24;border:0.5px solid #f59e0b}
 .status-nada{background:#3d0d0d;color:#ef4444;border:0.5px solid #ef4444}
+.status-filter-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.status-filter-btn{padding:6px 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s}
+.status-filter-btn:hover{background:#2d3250;color:#e2e8f0}
 .valor-mes{color:#fbbf24;font-weight:500}
 .valor-pago{color:#22c55e;font-weight:500}
 .valor-zero{color:#4a5568}
@@ -102,6 +105,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     '.status-r{background:'+hexToRgba(t.accent,0.18)+' !important;color:'+t.accent+' !important;border-color:'+hexToRgba(t.accent,0.5)+' !important}',
     '.status-parcial{background:'+hexToRgba(t.warn,0.15)+' !important;color:'+t.warn+' !important;border-color:'+t.warn+' !important}',
     '.status-nada{background:'+hexToRgba(t.danger,0.15)+' !important;color:'+t.danger+' !important;border-color:'+t.danger+' !important}',
+    '.status-filter-btn.active{background:'+t.accent+' !important;color:'+t.text+' !important;border-color:'+t.accent+' !important}',
+    '.status-filter-btn:not(.active):hover{background:'+hexToRgba(t.accent,0.12)+' !important;color:'+t.text+' !important}',
     '.valor-mes{color:'+t.warn+' !important}',
     '.valor-pago{color:'+t.success+' !important}',
     '.comp-link{background:'+hexToRgba(t.accent,0.12)+' !important;color:'+t.accent+' !important}',
@@ -166,6 +171,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="sum-card"><div class="lbl">Saldo a receber</div><div class="val" id="sum-saldo" style="color:#ef4444">R$ 0,00</div></div>
     <div class="sum-card sum-card-highlight"><div class="lbl">% pago do mês</div><div class="val" id="sum-pct-pago">0% pago</div></div>
     <div class="sum-card"><div class="lbl">Clientes que pagaram</div><div class="val" id="sum-clientes-pagos" style="font-size:16px">0 de 0</div></div>
+  </div>
+
+  <div class="status-filter-row" id="status-filter-row">
+    <button class="status-filter-btn active" data-filter="todos" onclick="setStatusFilter('todos')">Todos</button>
+    <button class="status-filter-btn" data-filter="quitado" onclick="setStatusFilter('quitado')">Quitado</button>
+    <button class="status-filter-btn" data-filter="parcial" onclick="setStatusFilter('parcial')">Parcial</button>
+    <button class="status-filter-btn" data-filter="nada" onclick="setStatusFilter('nada')">Nada Pago</button>
   </div>
 
   <div id="loading" class="loading">Carregando dados…</div>
@@ -455,15 +467,24 @@ async function toggleExtratoRecebido(reg, btn) {
 // que continuam existindo e sendo usados normalmente em contas-receber.html e na aba Extratos a Enviar).
 function statusOf(s) {
   var vm = Number(s.valor_mes||0), vp = Number(s.valor_pago||0);
-  if (vp <= 0) return { cls:'status-nada', lbl:'Nada Pago' };
-  if (vm > 0 && vp < vm) return { cls:'status-parcial', lbl:'Parcial' };
-  return { cls:'status-q', lbl:'Quitado' };
+  if (vp <= 0) return { cls:'status-nada', lbl:'Nada Pago', key:'nada' };
+  if (vm > 0 && vp < vm) return { cls:'status-parcial', lbl:'Parcial', key:'parcial' };
+  return { cls:'status-q', lbl:'Quitado', key:'quitado' };
+}
+
+var statusFilter = 'todos';
+function setStatusFilter(f) {
+  statusFilter = f;
+  var btns = document.querySelectorAll('#status-filter-row .status-filter-btn');
+  for (var i=0; i<btns.length; i++) btns[i].classList.toggle('active', btns[i].dataset.filter === f);
+  renderTable();
 }
 
 function renderTable() {
   var rows = clients
     .map(function(c) { return { c:c, s: dbState[c.reg] || {valor_mes:0,valor_pago:0,comprovantes:[]} }; })
     .filter(function(r) { return r.s.valor_mes > 0 || r.s.valor_pago > 0 || (r.s.comprovantes||[]).length > 0; })
+    .filter(function(r) { return statusFilter === 'todos' || statusOf(r.s).key === statusFilter; })
     .sort(function(a,b){ return b.s.valor_mes - a.s.valor_mes; });
 
   var totMes=0, totPago=0, clientesComPendencia=0, clientesQuePagaram=0;
@@ -486,7 +507,8 @@ function renderTable() {
 
   var tbody = document.getElementById('rows-body');
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#4a5568;padding:2rem">Nenhum lançamento neste mês.</td></tr>';
+    var emptyMsg = statusFilter === 'todos' ? 'Nenhum lançamento neste mês.' : 'Nenhum cliente com esse status neste mês.';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#4a5568;padding:2rem">'+emptyMsg+'</td></tr>';
   } else {
     tbody.innerHTML = rows.map(function(r) {
       var vm = Number(r.s.valor_mes||0), vp = Number(r.s.valor_pago||0), rest = vm - vp;
