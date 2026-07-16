@@ -49,7 +49,8 @@ var clients = [
   {reg:34,nome:"[REMOVIDO]",               cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
   {reg:35,nome:"[REMOVIDO]",        cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
   {reg:36,nome:"[REMOVIDO]",              cpf:"",                cro:"",             end:"[REMOVIDO]",           bairro:"Copacabana",         cidade:"Rio de Janeiro",      uf:"RJ", cep:"22031-012", tel:"",                  obs:""},
-  {reg:37,nome:"[REMOVIDO]",cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""}
+  {reg:37,nome:"[REMOVIDO]",cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
+  {reg:38,nome:"[REMOVIDO]",          cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",       end:"Av. Eugen Wissmann, 600 - 1º andar, loja 8",       bairro:"São Luiz",           cidade:"Itu",                 uf:"SP", cep:"13304-270", tel:"",                  obs:""}
 ];
 
 // ── Estado global ─────────────────────────────────────────────
