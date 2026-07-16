@@ -49,7 +49,8 @@ var clients = [
   {reg:34,nome:"Roberto Isao",               cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
   {reg:35,nome:"Rafael Heino Santos",        cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
   {reg:36,nome:"Oral 360 Copa",              cpf:"",                cro:"",             end:"R. Figueiredo de Magalhães, 226 - 201",           bairro:"Copacabana",         cidade:"Rio de Janeiro",      uf:"RJ", cep:"22031-012", tel:"",                  obs:""},
-  {reg:37,nome:"Zivana Castilhos dos Santos",cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""}
+  {reg:37,nome:"Zivana Castilhos dos Santos",cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
+  {reg:38,nome:"José Vitor Ortega",          cpf:"349.656.358-33",  cro:"115567",       end:"Av. Eugen Wissmann, 600 - 1º andar, loja 8",       bairro:"São Luiz",           cidade:"Itu",                 uf:"SP", cep:"13304-270", tel:"",                  obs:""}
 ];
 
 // ── Estado global ─────────────────────────────────────────────
