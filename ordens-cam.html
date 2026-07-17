@@ -33,6 +33,7 @@
   .cam-report-table th{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;padding:7px 9px;text-align:left;border-bottom:0.5px solid rgba(255,255,255,0.08);background:#13161f;position:sticky;top:0;z-index:1}
   .cam-report-table th.num,.cam-report-table td.num{text-align:center}
   .cam-report-table td{padding:6px 9px;border-bottom:0.5px solid rgba(255,255,255,0.05);font-size:12px;color:#e2e8f0}
+  .cam-report-table tbody tr{cursor:pointer}
   .cam-report-table tbody tr:hover td{background:rgba(255,255,255,0.025)}
   .cam-report-table tbody tr:last-child td{border-bottom:none}
   @media(max-width:767px){.cam-report-totals{grid-template-columns:repeat(2,1fr)}}
@@ -104,6 +105,22 @@
   <div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px" id="cam-detail-body"></div>
   <div style="padding:12px 18px;border-top:0.5px solid rgba(255,255,255,0.08);display:flex;justify-content:flex-end">
     <button onclick="camCopyAll()" style="height:34px;padding:0 16px;border-radius:8px;border:0.5px solid rgba(99,179,237,0.4);background:rgba(99,179,237,0.08);color:#63b3ed;font-size:13px;cursor:pointer;font-family:inherit">📋 Copiar tudo</button>
+  </div>
+</div>
+
+<!-- ── Modal: Ordens do Cliente (via Relatório) ──────────────────── -->
+<div id="cam-client-overlay" onclick="closeCamClientModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:90"></div>
+<div id="cam-client-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:91;width:min(600px,95vw);max-height:85vh;overflow-y:auto;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:0.5px solid rgba(255,255,255,0.08);position:sticky;top:0;background:#1a1d27;z-index:1">
+    <div style="flex:1;min-width:0">
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9;margin:0" id="cam-client-title">Ordens do Cliente</p>
+      <p style="font-size:11px;color:#64748b;margin-top:2px" id="cam-client-subtitle"></p>
+    </div>
+    <button onclick="closeCamClientModal()" style="width:28px;height:28px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+  </div>
+  <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px" id="cam-client-body"></div>
+  <div style="padding:12px 18px;border-top:0.5px solid rgba(255,255,255,0.08);display:flex;justify-content:flex-end;position:sticky;bottom:0;background:#1a1d27">
+    <button onclick="camClientCopyAll()" style="height:34px;padding:0 16px;border-radius:8px;border:0.5px solid rgba(99,179,237,0.4);background:rgba(99,179,237,0.08);color:#63b3ed;font-size:13px;cursor:pointer;font-family:inherit">📋 Copiar tudo</button>
   </div>
 </div>
 
@@ -203,6 +220,8 @@
 var ordensCam  = [];
 var camDragId  = null;
 var camDetailId = null;
+var _camReportRows  = [];
+var _camClientTexts = [];
 
 // ── Carregamento ──────────────────────────────────────────────
 async function loadOrdensCam() {
@@ -325,11 +344,12 @@ function renderCamReport() {
     var c = byCli[nome];
     return { nome:nome, a_fazer:c.a_fazer, fazendo:c.fazendo, finalizado:c.finalizado, total:c.a_fazer+c.fazendo+c.finalizado };
   }).sort(function(a,b) { return b.total - a.total || a.nome.localeCompare(b.nome,'pt-BR'); });
+  _camReportRows = rows;
 
   var tbody = document.getElementById('cam-report-tbody');
   if (tbody) {
-    tbody.innerHTML = rows.length ? rows.map(function(r) {
-      return '<tr>'+
+    tbody.innerHTML = rows.length ? rows.map(function(r, i) {
+      return '<tr onclick="camOpenClientOrders('+i+')" title="Ver todas as ordens de '+escHtml(r.nome)+'">'+
         '<td>'+escHtml(r.nome)+'</td>'+
         '<td class="num" style="color:#93c5fd">'+r.a_fazer+'</td>'+
         '<td class="num" style="color:#fbbf24">'+r.fazendo+'</td>'+
@@ -359,6 +379,86 @@ function camInitReportToggle() {
   var chev = document.getElementById('cam-report-chevron');
   if (body) body.style.display = open ? '' : 'none';
   if (chev && open) chev.classList.add('open');
+}
+
+// ── Modal: Ordens do Cliente (a partir da linha do relatório) ──
+function camParsePacDesc(descricao) {
+  var paciente = '';
+  var desc = descricao || '—';
+  var m = (descricao || '').match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
+  if (m) { paciente = m[1]; desc = m[2] || '—'; }
+  return { paciente: paciente, descricao: desc };
+}
+
+function camStatusLabel(status) {
+  return {a_fazer:'A Fazer', fazendo:'Fazendo', finalizado:'Finalizado'}[status] || status;
+}
+
+function camStatusBadgeHtml(status) {
+  var st = {a_fazer:'background:#1d3a6e;color:#93c5fd', fazendo:'background:#3d2e0e;color:#fbbf24', finalizado:'background:#0d3d2b;color:#4ade80'}[status] || 'background:#22263a;color:#94a3b8';
+  return '<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;'+st+'">'+camStatusLabel(status)+'</span>';
+}
+
+function camOpenClientOrders(idx) {
+  var row = _camReportRows[idx];
+  if (!row) return;
+  var STATUS_ORDER = { a_fazer:0, fazendo:1, finalizado:2 };
+  var list = ordensCam.filter(function(o){ return camReportClienteNome(o) === row.nome; })
+    .sort(function(a,b) {
+      var da = STATUS_ORDER[a.status] !== undefined ? STATUS_ORDER[a.status] : 3;
+      var db = STATUS_ORDER[b.status] !== undefined ? STATUS_ORDER[b.status] : 3;
+      if (da !== db) return da - db;
+      return new Date(b.created_at||0) - new Date(a.created_at||0);
+    });
+
+  var titleEl = document.getElementById('cam-client-title');
+  var subEl   = document.getElementById('cam-client-subtitle');
+  if (titleEl) titleEl.textContent = row.nome;
+  if (subEl) subEl.textContent = list.length + (list.length===1?' ordem':' ordens') +
+    ' · A Fazer '+row.a_fazer+' · Fazendo '+row.fazendo+' · Finalizado '+row.finalizado;
+
+  _camClientTexts = [];
+  var body = document.getElementById('cam-client-body');
+  if (body) {
+    body.innerHTML = list.length ? list.map(function(o, i) {
+      var pd   = camParsePacDesc(o.descricao);
+      var data = o.created_at ? new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+      var txt  = 'Cliente: '+row.nome+(pd.paciente?'\nPaciente: '+pd.paciente:'')+'\nDescrição: '+pd.descricao+'\nStatus: '+camStatusLabel(o.status)+'\nData: '+data;
+      _camClientTexts.push(txt);
+      return '<div style="background:#13161f;border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">'+
+          camStatusBadgeHtml(o.status)+
+          '<span style="font-size:10px;color:#4a5568">'+data+'</span>'+
+        '</div>'+
+        (pd.paciente ? '<p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 3px">Paciente</p>'+
+          '<p style="font-size:13px;color:#e2e8f0;margin:0 0 8px;line-height:1.5;word-break:break-word">'+escHtml(pd.paciente)+'</p>' : '')+
+        '<p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 3px">Descrição</p>'+
+        '<p style="font-size:13px;color:#e2e8f0;margin:0 0 10px;line-height:1.5;word-break:break-word">'+escHtml(pd.descricao)+'</p>'+
+        '<div style="display:flex;justify-content:flex-end">'+
+          '<button onclick="camClientCopyField('+i+',this)" style="height:28px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap">📋 Copiar</button>'+
+        '</div>'+
+      '</div>';
+    }).join('') : '<p style="font-size:13px;color:#4a5568;text-align:center;padding:24px">Nenhuma ordem encontrada.</p>';
+  }
+
+  document.getElementById('cam-client-overlay').style.display = '';
+  document.getElementById('cam-client-panel').style.display   = '';
+}
+
+function closeCamClientModal() {
+  document.getElementById('cam-client-overlay').style.display = 'none';
+  document.getElementById('cam-client-panel').style.display   = 'none';
+}
+
+function camClientCopyField(idx, btn) {
+  var txt = _camClientTexts[idx];
+  if (txt === undefined) return;
+  camCopy(txt, btn, btn.textContent);
+}
+
+function camClientCopyAll() {
+  if (!_camClientTexts.length) return;
+  camCopy(_camClientTexts.join('\n\n---\n\n'), event.currentTarget, '📋 Copiar tudo');
 }
 
 // ── Drag & Drop ───────────────────────────────────────────────
