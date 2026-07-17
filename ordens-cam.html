@@ -17,6 +17,25 @@
   .cam-orig-btn{height:32px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:12px;cursor:pointer;font-family:inherit;transition:all 0.15s}
   .cam-orig-btn.active{background:#1d3a6e;border-color:#60a5fa;color:#93c5fd}
   @media(max-width:767px){#cam-kanban{grid-template-columns:1fr !important}}
+
+  .cam-report{background:#13161f;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;margin-bottom:12px;overflow:hidden}
+  .cam-report-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;user-select:none}
+  .cam-report-head:hover{background:rgba(255,255,255,0.03)}
+  .cam-report-chevron{transition:transform 0.15s ease;color:#64748b;font-size:15px}
+  .cam-report-chevron.open{transform:rotate(180deg)}
+  .cam-report-body{padding:0 16px 16px}
+  .cam-report-totals{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+  .cam-report-stat{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 8px;text-align:center}
+  .cam-report-stat .n{font-size:20px;font-weight:700;display:block;line-height:1.2}
+  .cam-report-stat .l{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-top:3px;display:block}
+  .cam-report-scroll{max-height:320px;overflow-y:auto;border:0.5px solid rgba(255,255,255,0.06);border-radius:8px;background:#13161f}
+  .cam-report-table{width:100%;border-collapse:collapse}
+  .cam-report-table th{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;padding:7px 9px;text-align:left;border-bottom:0.5px solid rgba(255,255,255,0.08);background:#13161f;position:sticky;top:0;z-index:1}
+  .cam-report-table th.num,.cam-report-table td.num{text-align:center}
+  .cam-report-table td{padding:6px 9px;border-bottom:0.5px solid rgba(255,255,255,0.05);font-size:12px;color:#e2e8f0}
+  .cam-report-table tbody tr:hover td{background:rgba(255,255,255,0.025)}
+  .cam-report-table tbody tr:last-child td{border-bottom:none}
+  @media(max-width:767px){.cam-report-totals{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -116,6 +135,25 @@
         <button onclick="openCamArquivados()" style="height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(113,113,122,0.35);background:#1c1c24;color:#71717a;font-size:13px;cursor:pointer;font-family:inherit">📦 Ver arquivados</button>
         <button onclick="loadOrdensCam()" style="height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">&#8635; Atualizar</button>
         <button onclick="openNovaCamOrdem()" class="cad-btn-primary"><i class="ti ti-plus" style="font-size:15px"></i> Nova Ordem</button>
+      </div>
+    </div>
+
+    <div class="cam-report" id="cam-report-section">
+      <div class="cam-report-head" onclick="camToggleReport()">
+        <span style="font-size:13px;font-weight:600;color:#f1f5f9;display:flex;align-items:center;gap:8px">
+          📊 Relatório por Cliente
+          <span class="badge" id="cam-report-count-badge" style="background:#22263a;color:#94a3b8"></span>
+        </span>
+        <i class="ti ti-chevron-down cam-report-chevron" id="cam-report-chevron"></i>
+      </div>
+      <div class="cam-report-body" id="cam-report-body" style="display:none">
+        <div class="cam-report-totals" id="cam-report-totals"></div>
+        <div class="cam-report-scroll">
+          <table class="cam-report-table">
+            <thead><tr><th>Cliente</th><th class="num">A Fazer</th><th class="num">Fazendo</th><th class="num">Finalizado</th><th class="num">Total</th></tr></thead>
+            <tbody id="cam-report-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -255,6 +293,72 @@ function renderOrdensCam() {
     if (el) el.innerHTML = list.length ? list.map(camCardHtml).join('') : '<p style="font-size:12px;color:#4a5568;padding:16px;text-align:center">Nenhuma ordem</p>';
     if (ct) ct.textContent = list.length;
   });
+  renderCamReport();
+}
+
+// ── Relatório por Cliente ──────────────────────────────────────
+function camReportClienteNome(o) {
+  return o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : 'Sem cliente');
+}
+
+function renderCamReport() {
+  var totals  = { a_fazer:0, fazendo:0, finalizado:0 };
+  var byCli   = {};
+  ordensCam.forEach(function(o) {
+    var nome = camReportClienteNome(o);
+    if (!byCli[nome]) byCli[nome] = { a_fazer:0, fazendo:0, finalizado:0 };
+    if (byCli[nome][o.status] !== undefined) byCli[nome][o.status]++;
+    if (totals[o.status] !== undefined) totals[o.status]++;
+  });
+  var totalGeral = totals.a_fazer + totals.fazendo + totals.finalizado;
+
+  var totalsEl = document.getElementById('cam-report-totals');
+  if (totalsEl) {
+    totalsEl.innerHTML =
+      '<div class="cam-report-stat"><span class="n" style="color:#93c5fd">'+totals.a_fazer+'</span><span class="l">A Fazer</span></div>'+
+      '<div class="cam-report-stat"><span class="n" style="color:#fbbf24">'+totals.fazendo+'</span><span class="l">Fazendo</span></div>'+
+      '<div class="cam-report-stat"><span class="n" style="color:#4ade80">'+totals.finalizado+'</span><span class="l">Finalizado</span></div>'+
+      '<div class="cam-report-stat"><span class="n" style="color:#f1f5f9">'+totalGeral+'</span><span class="l">Total geral</span></div>';
+  }
+
+  var rows = Object.keys(byCli).map(function(nome) {
+    var c = byCli[nome];
+    return { nome:nome, a_fazer:c.a_fazer, fazendo:c.fazendo, finalizado:c.finalizado, total:c.a_fazer+c.fazendo+c.finalizado };
+  }).sort(function(a,b) { return b.total - a.total || a.nome.localeCompare(b.nome,'pt-BR'); });
+
+  var tbody = document.getElementById('cam-report-tbody');
+  if (tbody) {
+    tbody.innerHTML = rows.length ? rows.map(function(r) {
+      return '<tr>'+
+        '<td>'+escHtml(r.nome)+'</td>'+
+        '<td class="num" style="color:#93c5fd">'+r.a_fazer+'</td>'+
+        '<td class="num" style="color:#fbbf24">'+r.fazendo+'</td>'+
+        '<td class="num" style="color:#4ade80">'+r.finalizado+'</td>'+
+        '<td class="num" style="font-weight:600;color:#f1f5f9">'+r.total+'</td>'+
+      '</tr>';
+    }).join('') : '<tr><td colspan="5" style="text-align:center;color:#4a5568;padding:16px">Nenhuma ordem</td></tr>';
+  }
+
+  var countBadge = document.getElementById('cam-report-count-badge');
+  if (countBadge) countBadge.textContent = rows.length + (rows.length===1 ? ' cliente' : ' clientes');
+}
+
+function camToggleReport() {
+  var body = document.getElementById('cam-report-body');
+  var chev = document.getElementById('cam-report-chevron');
+  if (!body) return;
+  var open = body.style.display === 'none';
+  body.style.display = open ? '' : 'none';
+  if (chev) chev.classList.toggle('open', open);
+  localStorage.setItem('cam-report-open', open ? '1' : '0');
+}
+
+function camInitReportToggle() {
+  var open = localStorage.getItem('cam-report-open') === '1';
+  var body = document.getElementById('cam-report-body');
+  var chev = document.getElementById('cam-report-chevron');
+  if (body) body.style.display = open ? '' : 'none';
+  if (chev && open) chev.classList.add('open');
 }
 
 // ── Drag & Drop ───────────────────────────────────────────────
@@ -639,6 +743,7 @@ function showConnError(msg) {
 }
 
 async function init() {
+  camInitReportToggle();
   try {
     await loadOrdensCam();
   } catch(e) {
