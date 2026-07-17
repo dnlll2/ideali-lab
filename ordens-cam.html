@@ -316,6 +316,18 @@ function renderOrdensCam() {
 }
 
 // ── Relatório por Cliente ──────────────────────────────────────
+// Chave estrita de identidade: cliente_reg quando existe (vínculo oficial
+// do cadastro), senão o texto literal de cliente_nome. Nunca resolvemos
+// para o mesmo nome de exibição — isso evitava que ordens "soltas" (sem
+// cliente_reg, mas com cliente_nome coincidindo com o nome de um cliente
+// cadastrado) se misturassem com as ordens realmente vinculadas a esse
+// cliente.
+function camReportGroupKey(o) {
+  if (o.cliente_reg) return 'reg:' + o.cliente_reg;
+  if (o.cliente_nome) return 'nome:' + o.cliente_nome;
+  return 'sem-cliente';
+}
+
 function camReportClienteNome(o) {
   return o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : 'Sem cliente');
 }
@@ -324,9 +336,11 @@ function renderCamReport() {
   var totals  = { a_fazer:0, fazendo:0, finalizado:0 };
   var byCli   = {};
   ordensCam.forEach(function(o) {
-    var nome = camReportClienteNome(o);
-    if (!byCli[nome]) byCli[nome] = { a_fazer:0, fazendo:0, finalizado:0 };
-    if (byCli[nome][o.status] !== undefined) byCli[nome][o.status]++;
+    var key  = camReportGroupKey(o);
+    if (!byCli[key]) {
+      byCli[key] = { key:key, nome:camReportClienteNome(o), semCadastro:!o.cliente_reg, a_fazer:0, fazendo:0, finalizado:0 };
+    }
+    if (byCli[key][o.status] !== undefined) byCli[key][o.status]++;
     if (totals[o.status] !== undefined) totals[o.status]++;
   });
   var totalGeral = totals.a_fazer + totals.fazendo + totals.finalizado;
@@ -340,17 +354,18 @@ function renderCamReport() {
       '<div class="cam-report-stat"><span class="n" style="color:#f1f5f9">'+totalGeral+'</span><span class="l">Total geral</span></div>';
   }
 
-  var rows = Object.keys(byCli).map(function(nome) {
-    var c = byCli[nome];
-    return { nome:nome, a_fazer:c.a_fazer, fazendo:c.fazendo, finalizado:c.finalizado, total:c.a_fazer+c.fazendo+c.finalizado };
+  var rows = Object.keys(byCli).map(function(k) {
+    var c = byCli[k];
+    return { key:c.key, nome:c.nome, semCadastro:c.semCadastro, a_fazer:c.a_fazer, fazendo:c.fazendo, finalizado:c.finalizado, total:c.a_fazer+c.fazendo+c.finalizado };
   }).sort(function(a,b) { return b.total - a.total || a.nome.localeCompare(b.nome,'pt-BR'); });
   _camReportRows = rows;
 
   var tbody = document.getElementById('cam-report-tbody');
   if (tbody) {
     tbody.innerHTML = rows.length ? rows.map(function(r, i) {
+      var nomeCell = escHtml(r.nome) + (r.semCadastro ? ' <span style="font-size:9px;color:#71717a;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">(sem cadastro)</span>' : '');
       return '<tr onclick="camOpenClientOrders('+i+')" title="Ver todas as ordens de '+escHtml(r.nome)+'">'+
-        '<td>'+escHtml(r.nome)+'</td>'+
+        '<td>'+nomeCell+'</td>'+
         '<td class="num" style="color:#93c5fd">'+r.a_fazer+'</td>'+
         '<td class="num" style="color:#fbbf24">'+r.fazendo+'</td>'+
         '<td class="num" style="color:#4ade80">'+r.finalizado+'</td>'+
@@ -403,7 +418,7 @@ function camOpenClientOrders(idx) {
   var row = _camReportRows[idx];
   if (!row) return;
   var STATUS_ORDER = { a_fazer:0, fazendo:1, finalizado:2 };
-  var list = ordensCam.filter(function(o){ return camReportClienteNome(o) === row.nome; })
+  var list = ordensCam.filter(function(o){ return camReportGroupKey(o) === row.key; })
     .sort(function(a,b) {
       var da = STATUS_ORDER[a.status] !== undefined ? STATUS_ORDER[a.status] : 3;
       var db = STATUS_ORDER[b.status] !== undefined ? STATUS_ORDER[b.status] : 3;
@@ -413,7 +428,7 @@ function camOpenClientOrders(idx) {
 
   var titleEl = document.getElementById('cam-client-title');
   var subEl   = document.getElementById('cam-client-subtitle');
-  if (titleEl) titleEl.textContent = row.nome;
+  if (titleEl) titleEl.textContent = row.nome + (row.semCadastro ? ' (sem cadastro)' : '');
   if (subEl) subEl.textContent = list.length + (list.length===1?' ordem':' ordens') +
     ' · A Fazer '+row.a_fazer+' · Fazendo '+row.fazendo+' · Finalizado '+row.finalizado;
 
