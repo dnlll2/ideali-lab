@@ -92,6 +92,7 @@
     <select id="ped-cliente-filter" style="width:180px" onchange="renderPedidosTable()">
       <option value="">Todos os clientes</option>
     </select>
+    <button id="ped-recent-btn" onclick="pedToggleRecentSort()" title="Ordenar pelos pedidos cadastrados mais recentemente" style="height:36px;padding:0 12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;display:flex;align-items:center;gap:6px;transition:all 0.15s"><i class="ti ti-clock" style="font-size:14px"></i> Últimos cadastrados</button>
     <button id="ped-clear-filters" onclick="pedClearFilters()" style="display:none;height:36px;padding:0 12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap">&#10005; Limpar</button>
   </div>
   <div class="card" style="padding:0;overflow:hidden">
@@ -130,6 +131,23 @@ var PED_STATUS = {
   entregue:  {l:'Entregue',  c:'#8b5cf6', bg:'rgba(139,92,246,0.15)'},
   cancelado: {l:'Cancelado', c:'#ef4444', bg:'rgba(239,68,68,0.15)'},
 };
+
+async function loadCadastroClientes() {
+  try {
+    var res = await sb.from('cadastro_clientes').select('*');
+    if (res.error) return;
+    (res.data||[]).forEach(function(row) {
+      var idx = -1;
+      for (var i=0;i<clients.length;i++){if(clients[i].reg===row.reg){idx=i;break;}}
+      var obj={reg:row.reg,nome:row.nome||'',cpf:row.cpf||'',cro:row.cro||'',
+        end:row.end_str||'',bairro:row.bairro||'',cidade:row.cidade||'',
+        uf:row.uf||'',cep:row.cep||'',tel:row.tel||'',email:row.email||'',
+        obs:row.obs||'',status:row.status||'ativo'};
+      if(idx>=0)clients[idx]=obj; else clients.push(obj);
+    });
+    clients.sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR');});
+  } catch(e) { console.warn('[loadCadastroClientes]', e); }
+}
 
 async function loadPedidos() {
   try {
@@ -284,6 +302,21 @@ function pedClearFilters() {
   renderPedidosTable();
 }
 
+function pedToggleRecentSort() {
+  if (pedSortCol === 'criado' && pedSortDir === 'desc') { pedSortCol = null; pedSortDir = null; }
+  else { pedSortCol = 'criado'; pedSortDir = 'desc'; }
+  renderPedidosTable();
+}
+
+function updatePedRecentBtn() {
+  var btn = document.getElementById('ped-recent-btn');
+  if (!btn) return;
+  var active = pedSortCol === 'criado' && pedSortDir === 'desc';
+  btn.style.background = active ? '#3b82f6' : '#22263a';
+  btn.style.color = active ? '#f1f5f9' : '#94a3b8';
+  btn.style.borderColor = active ? '#3b82f6' : 'rgba(255,255,255,0.12)';
+}
+
 function updatePedClearBtn(q, sf, cf) {
   var btn = document.getElementById('ped-clear-filters');
   if (!btn) return;
@@ -395,6 +428,7 @@ function renderPedidosTable() {
     });
   }
   updatePedSortArrows();
+  updatePedRecentBtn();
   updatePedClearBtn(q, sf, cf);
   var tot=filtered.length, totVal=filtered.reduce(function(s,p){return s+Number(p.valor||0);},0);
   var se=document.getElementById('ped-summary');
@@ -615,6 +649,7 @@ function showConnError(msg) {
 
 async function init() {
   updatePedMonthLabel();
+  await loadCadastroClientes();
   await loadPedidos();
   hideLoading();
 }
