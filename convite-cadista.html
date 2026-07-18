@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadastro de Cadista — Ideali Laboratório</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0f1117;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .wrap{width:min(460px,100%)}
+  .card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px 26px}
+  .logo{font-size:30px;text-align:center;margin-bottom:6px}
+  h1{font-size:18px;font-weight:600;color:#f1f5f9;text-align:center;margin-bottom:2px}
+  .sub{font-size:13px;color:#64748b;text-align:center;margin-bottom:22px}
+  .group{margin-bottom:14px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  label{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px}
+  input{width:100%;height:40px;background:#22263a;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:0 12px;font-size:14px;color:#e2e8f0;outline:none;font-family:inherit}
+  input:focus{border-color:#7c3aed}
+  .req{color:#ef4444}
+  .btn{width:100%;height:44px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px}
+  .btn:hover{background:#8b5cf6}
+  .btn:disabled{opacity:0.55;cursor:default}
+  .msg{font-size:13px;border-radius:8px;padding:10px 12px;margin-bottom:14px;display:none}
+  .msg.error{background:#3d1d1d;border:0.5px solid rgba(239,68,68,0.3);color:#fca5a5;display:block}
+  .msg.success{background:#0d3d2b;border:0.5px solid rgba(34,197,94,0.3);color:#86efac;display:block}
+  .center{text-align:center;padding:20px 0}
+  @media(max-width:520px){.row2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="card">
+    <p class="logo">🛠️</p>
+    <h1>Ideali Laboratório</h1>
+    <p class="sub">Cadastro de Cadista</p>
+
+    <div id="msg" class="msg"></div>
+
+    <div id="loading" class="center" style="color:#64748b">Verificando link de convite…</div>
+
+    <form id="form" style="display:none" onsubmit="return enviarCadastro(event)">
+      <div class="group">
+        <label>Nome <span class="req">*</span></label>
+        <input type="text" id="f-nome" required>
+      </div>
+      <div class="group">
+        <label>CNPJ</label>
+        <input type="text" id="f-cnpj">
+      </div>
+      <div class="group">
+        <label>Telefone <span class="req">*</span></label>
+        <input type="text" id="f-tel" required>
+      </div>
+      <div class="row2">
+        <div class="group">
+          <label>Usuário <span class="req">*</span></label>
+          <input type="text" id="f-usuario" required autocomplete="username">
+        </div>
+        <div class="group">
+          <label>Senha <span class="req">*</span></label>
+          <input type="password" id="f-senha" required minlength="6" autocomplete="new-password">
+        </div>
+      </div>
+      <div class="group">
+        <label>Confirmar senha <span class="req">*</span></label>
+        <input type="password" id="f-senha2" required minlength="6" autocomplete="new-password">
+      </div>
+      <button type="submit" class="btn" id="btn-enviar">Enviar cadastro</button>
+    </form>
+  </div>
+</div>
+
+<script>
+var SUPABASE_URL      = 'https://alqhhgysvehtgkwsxeok.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_oq7JWHoMvMqvjeaTDGHoqA_din8-sjJ';
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+var token = new URLSearchParams(window.location.search).get('token');
+
+function showMsg(text, type) {
+  var el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'msg ' + type;
+}
+
+async function init() {
+  if (!token) {
+    document.getElementById('loading').style.display = 'none';
+    showMsg('Link inválido: token de convite ausente.', 'error');
+    return;
+  }
+  try {
+    var res = await sb.rpc('validar_convite', { p_token: token });
+    if (res.error) throw res.error;
+    var row = res.data && res.data[0];
+    document.getElementById('loading').style.display = 'none';
+    if (!row || !row.valido || row.tipo !== 'cadista') {
+      showMsg('Este link já foi usado ou não é mais válido. Peça um novo link ao laboratório.', 'error');
+      return;
+    }
+    document.getElementById('form').style.display = 'block';
+  } catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    showMsg('Erro ao verificar convite: ' + (e.message || e), 'error');
+  }
+}
+
+async function enviarCadastro(event) {
+  event.preventDefault();
+  var senha  = document.getElementById('f-senha').value;
+  var senha2 = document.getElementById('f-senha2').value;
+  if (senha !== senha2) { showMsg('As senhas não coincidem.', 'error'); return false; }
+  if (senha.length < 6) { showMsg('A senha deve ter ao menos 6 caracteres.', 'error'); return false; }
+
+  var btn = document.getElementById('btn-enviar');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+
+  try {
+    var res = await sb.rpc('enviar_cadastro_cadista', {
+      p_token: token,
+      p_nome: document.getElementById('f-nome').value.trim(),
+      p_cnpj: document.getElementById('f-cnpj').value.trim(),
+      p_tel: document.getElementById('f-tel').value.trim(),
+      p_usuario: document.getElementById('f-usuario').value.trim(),
+      p_senha: senha
+    });
+    if (res.error) throw res.error;
+
+    document.getElementById('form').style.display = 'none';
+    showMsg('Cadastro enviado com sucesso! Aguarde a aprovação do laboratório — você receberá acesso assim que for liberado.', 'success');
+  } catch(e) {
+    showMsg(e.message || 'Erro ao enviar cadastro.', 'error');
+    btn.disabled = false; btn.textContent = 'Enviar cadastro';
+  }
+  return false;
+}
+
+init();
+</script>
+</body>
+</html>

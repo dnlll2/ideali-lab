@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Convites — Ideali Laboratório</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared.js"></script>
+</head>
+<body>
+
+<div id="shared-shell"></div>
+
+<div style="max-width:100%">
+  <div id="app-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="hamburger" onclick="openSidebar()" title="Menu">&#9776;</button>
+      <div>
+        <p style="font-size:22px;font-weight:500;color:#f1f5f9">🔗 Convites</p>
+        <p style="font-size:14px;color:#64748b">Cadastro de clientes e cadistas via link de convite</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span id="relogio" style="font-size:11px;color:#4a5568"></span>
+      <span id="sync-status" style="font-size:12px;color:#64748b">
+        <span class="sync-dot" id="sync-dot"></span>Conectado
+      </span>
+    </div>
+  </div>
+
+  <main id="page-content">
+
+    <!-- ── Gerar link ─────────────────────────────────────────── -->
+    <div class="card" style="padding:18px 20px;margin-bottom:16px">
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9;margin-bottom:12px">Gerar novo link de convite</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="cad-btn-primary" onclick="gerarConvite('cliente')"><i class="ti ti-user-plus" style="font-size:15px"></i> Link para Cliente</button>
+        <button class="cad-btn-primary" onclick="gerarConvite('cadista')" style="background:#7c3aed"><i class="ti ti-user-plus" style="font-size:15px"></i> Link para Cadista</button>
+      </div>
+      <div id="cv-link-result" style="display:none">
+        <label class="cf-label">Link gerado — copie e envie</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="cv-link-input" readonly style="flex:1" onclick="this.select()">
+          <button class="cad-btn-ghost" onclick="copiarLink()">📋 Copiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Cadastros pendentes: clientes ───────────────────────── -->
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+      <div style="padding:16px 20px 0">
+        <p style="font-size:15px;font-weight:600;color:#f1f5f9">👥 Clientes pendentes</p>
+        <p id="cv-cli-count" style="font-size:12px;color:#64748b;margin:2px 0 12px">—</p>
+      </div>
+      <div style="overflow-x:auto;max-height:50vh">
+        <table class="cad-table">
+          <thead><tr>
+            <th>Nome</th><th>CPF/CNPJ</th><th>CRO</th><th>Cidade/UF</th><th>Telefone</th><th>Usuário</th><th>Enviado em</th><th style="width:170px">Ações</th>
+          </tr></thead>
+          <tbody id="cv-cli-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Cadastros pendentes: cadistas ───────────────────────── -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:16px 20px 0">
+        <p style="font-size:15px;font-weight:600;color:#f1f5f9">🛠️ Cadistas pendentes</p>
+        <p id="cv-cad-count" style="font-size:12px;color:#64748b;margin:2px 0 12px">—</p>
+      </div>
+      <div style="overflow-x:auto;max-height:50vh">
+        <table class="cad-table">
+          <thead><tr>
+            <th>Nome</th><th>CNPJ</th><th>Telefone</th><th>Usuário</th><th>Enviado em</th><th style="width:170px">Ações</th>
+          </tr></thead>
+          <tbody id="cv-cad-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+var clientesPendentes = [];
+var cadistasPendentes = [];
+
+async function gerarConvite(tipo) {
+  try {
+    var res = await sb.from('convites').insert({tipo: tipo}).select().single();
+    if (res.error) throw res.error;
+    var arquivo = tipo === 'cliente' ? 'convite-cliente.html' : 'convite-cadista.html';
+    var url = new URL(arquivo + '?token=' + res.data.token, window.location.href).href;
+    var inp = document.getElementById('cv-link-input');
+    inp.value = url;
+    document.getElementById('cv-link-result').style.display = 'block';
+    inp.focus(); inp.select();
+  } catch(e) {
+    alert('Erro ao gerar convite: ' + (e.message || e));
+  }
+}
+
+function copiarLink() {
+  var inp = document.getElementById('cv-link-input');
+  inp.select();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(inp.value).catch(function(){ document.execCommand('copy'); });
+  } else {
+    document.execCommand('copy');
+  }
+}
+
+// ── Clientes pendentes ──────────────────────────────────────────
+async function loadPendentes() {
+  var [resCli, resCad] = await Promise.all([
+    sb.from('clientes_pendentes').select('*').eq('status', 'pendente').order('criado_em', {ascending: false}),
+    sb.from('cadistas_pendentes').select('*').eq('status', 'pendente').order('criado_em', {ascending: false})
+  ]);
+  clientesPendentes = resCli.data || [];
+  cadistasPendentes = resCad.data || [];
+  renderClientesPendentes();
+  renderCadistasPendentes();
+}
+
+function renderClientesPendentes() {
+  var ce = document.getElementById('cv-cli-count');
+  if (ce) ce.textContent = clientesPendentes.length + ' aguardando aprovação';
+  var tb = document.getElementById('cv-cli-tbody');
+  if (!tb) return;
+  tb.innerHTML = clientesPendentes.length ? clientesPendentes.map(function(p) {
+    var cid = (p.cidade || '') + (p.cidade && p.uf ? ' / ' + p.uf : (p.uf || ''));
+    return '<tr>' +
+      '<td style="font-weight:500">' + escHtml(p.nome) + '</td>' +
+      '<td style="color:#94a3b8">' + escHtml(p.cpf_cnpj || '—') + '</td>' +
+      '<td style="color:#94a3b8">' + escHtml(p.cro || '—') + '</td>' +
+      '<td style="color:#94a3b8">' + escHtml(cid || '—') + '</td>' +
+      '<td style="color:#94a3b8">' + escHtml(p.tel || '—') + '</td>' +
+      '<td style="color:#94a3b8">' + escHtml(p.usuario) + '</td>' +
+      '<td style="color:#4a5568;font-size:11px">' + fmtCreatedAt(p.criado_em) + '</td>' +
+      '<td><div style="display:flex;gap:6px">' +
+        '<button class="cad-btn-primary" style="height:28px;padding:0 10px;font-size:12px" onclick="aprovarCliente(' + p.id + ')">Aprovar</button>' +
+        '<button class="cad-btn-ghost" style="height:28px;padding:0 10px;font-size:12px" onclick="rejeitarCliente(' + p.id + ')">Rejeitar</button>' +
+      '</div></td>' +
+    '</tr>';
+  }).join('') : '<tr><td colspan="8" style="text-align:center;color:#4a5568;padding:20px">Nenhum cadastro pendente</td></tr>';
+}
+
+function renderCadistasPendentes() {
+  var ce = document.getElementById('cv-cad-count');
+  if (ce) ce.textContent = cadistasPendentes.length + ' aguardando aprovação';
+  var tb = document.getElementById('cv-cad-tbody');
+  if (!tb) return;
+  tb.innerHTML = cadistasPendentes.length ? cadistasPendentes.map(function(p) {
+    return '<tr>' +
+      '<td style="font-weight:500">' + escHtml(p.nome) + '</td>' +
+      '<td style="color:#94a3b8">' + escHtml(p.cnpj || '—') + '</td>' +
+      '<td style="color:#94a3b8">' + escHtml(p.tel || '—') + '</td>' +
+      '<td style="color:#94a3b8">' + escHtml(p.usuario) + '</td>' +
+      '<td style="color:#4a5568;font-size:11px">' + fmtCreatedAt(p.criado_em) + '</td>' +
+      '<td><div style="display:flex;gap:6px">' +
+        '<button class="cad-btn-primary" style="height:28px;padding:0 10px;font-size:12px" onclick="aprovarCadista(' + p.id + ')">Aprovar</button>' +
+        '<button class="cad-btn-ghost" style="height:28px;padding:0 10px;font-size:12px" onclick="rejeitarCadista(' + p.id + ')">Rejeitar</button>' +
+      '</div></td>' +
+    '</tr>';
+  }).join('') : '<tr><td colspan="6" style="text-align:center;color:#4a5568;padding:20px">Nenhum cadastro pendente</td></tr>';
+}
+
+async function aprovarCliente(id) {
+  var p = clientesPendentes.find(function(x){ return x.id === id; });
+  if (!p) return;
+  if (!confirm('Aprovar cadastro de "' + p.nome + '"? Ele passa a ter reg próprio e login ativo no sistema.')) return;
+  try {
+    var maxRes = await sb.from('cadastro_clientes').select('reg').order('reg', {ascending: false}).limit(1);
+    if (maxRes.error) throw maxRes.error;
+    var reg = ((maxRes.data && maxRes.data[0] && maxRes.data[0].reg) || 0) + 1;
+
+    var insCli = await sb.from('cadastro_clientes').insert({
+      reg: reg, nome: p.nome, cpf: p.cpf_cnpj, cro: p.cro, end_str: p.end_str,
+      bairro: p.bairro, cidade: p.cidade, uf: p.uf, cep: p.cep, tel: p.tel,
+      obs: '', status: 'ativo'
+    });
+    if (insCli.error) throw insCli.error;
+
+    var insLogin = await sb.from('clientes_login').insert({
+      cliente_reg: reg, usuario: p.usuario, senha_hash: p.senha_hash, ativo: true
+    });
+    if (insLogin.error) throw insLogin.error;
+
+    var upd = await sb.from('clientes_pendentes').update({status: 'aprovado'}).eq('id', id);
+    if (upd.error) throw upd.error;
+
+    alert('Cliente aprovado com reg #' + reg + '.');
+    await loadPendentes();
+  } catch(e) {
+    alert('Erro ao aprovar: ' + (e.message || e));
+  }
+}
+
+async function rejeitarCliente(id) {
+  if (!confirm('Rejeitar este cadastro?')) return;
+  try {
+    var res = await sb.from('clientes_pendentes').update({status: 'rejeitado'}).eq('id', id);
+    if (res.error) throw res.error;
+    await loadPendentes();
+  } catch(e) {
+    alert('Erro ao rejeitar: ' + (e.message || e));
+  }
+}
+
+async function aprovarCadista(id) {
+  var p = cadistasPendentes.find(function(x){ return x.id === id; });
+  if (!p) return;
+  if (!confirm('Aprovar cadastro de "' + p.nome + '"? Ele passa a ter login ativo no sistema.')) return;
+  try {
+    var insCad = await sb.from('cadastro_cadistas').insert({
+      nome: p.nome, cnpj: p.cnpj, tel: p.tel, ativo: true
+    }).select().single();
+    if (insCad.error) throw insCad.error;
+
+    var insLogin = await sb.from('cadistas_login').insert({
+      cadista_reg: insCad.data.cadista_reg, usuario: p.usuario, senha_hash: p.senha_hash, ativo: true
+    });
+    if (insLogin.error) throw insLogin.error;
+
+    var upd = await sb.from('cadistas_pendentes').update({status: 'aprovado'}).eq('id', id);
+    if (upd.error) throw upd.error;
+
+    alert('Cadista aprovado com cadista_reg #' + insCad.data.cadista_reg + '.');
+    await loadPendentes();
+  } catch(e) {
+    alert('Erro ao aprovar: ' + (e.message || e));
+  }
+}
+
+async function rejeitarCadista(id) {
+  if (!confirm('Rejeitar este cadastro?')) return;
+  try {
+    var res = await sb.from('cadistas_pendentes').update({status: 'rejeitado'}).eq('id', id);
+    if (res.error) throw res.error;
+    await loadPendentes();
+  } catch(e) {
+    alert('Erro ao rejeitar: ' + (e.message || e));
+  }
+}
+
+function init() {
+  loadPendentes();
+  hideLoading();
+}
+
+function initShell() {
+  return fetch('sidebar.html')
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+      document.getElementById('shared-shell').innerHTML = html;
+      updateSidebarActive();
+      var keyEl = document.getElementById('sb-groq-key');
+      if (keyEl && GROQ_API_KEY) keyEl.value = GROQ_API_KEY;
+    })
+    .catch(function(e) { console.error('Erro ao carregar sidebar.html:', e); });
+}
+
+initShell().then(function() { if (typeof init === 'function') init(); });
+</script>
+
+</body>
+</html>

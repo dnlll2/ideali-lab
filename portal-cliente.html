@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal do Cliente — Ideali Laboratório</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0f1117;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .wrap{width:min(380px,100%)}
+  .card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px 26px;text-align:center}
+  .logo{font-size:34px;margin-bottom:8px}
+  h1{font-size:18px;font-weight:600;color:#f1f5f9;margin-bottom:2px}
+  .sub{font-size:13px;color:#64748b;margin-bottom:22px}
+  .group{margin-bottom:14px;text-align:left}
+  label{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px}
+  input{width:100%;height:42px;background:#22263a;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:0 12px;font-size:14px;color:#e2e8f0;outline:none;font-family:inherit}
+  input:focus{border-color:#3b82f6}
+  .btn{width:100%;height:44px;border-radius:8px;border:none;background:#1d4ed8;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px}
+  .btn:hover{background:#2563eb}
+  .btn:disabled{opacity:0.55;cursor:default}
+  .btn-ghost{width:100%;height:40px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit;margin-top:14px}
+  .btn-ghost:hover{background:#2d3250;color:#e2e8f0}
+  .msg{font-size:13px;border-radius:8px;padding:10px 12px;margin-bottom:14px;display:none;text-align:left}
+  .msg.error{background:#3d1d1d;border:0.5px solid rgba(239,68,68,0.3);color:#fca5a5;display:block}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="card">
+
+    <div id="view-login">
+      <p class="logo">🦷</p>
+      <h1>Ideali Laboratório</h1>
+      <p class="sub">Portal do Cliente</p>
+      <div id="msg-login" class="msg"></div>
+      <form onsubmit="return fazerLogin(event)">
+        <div class="group">
+          <label>Usuário</label>
+          <input type="text" id="f-usuario" required autocomplete="username">
+        </div>
+        <div class="group">
+          <label>Senha</label>
+          <input type="password" id="f-senha" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn" id="btn-login">Entrar</button>
+      </form>
+    </div>
+
+    <div id="view-painel" style="display:none">
+      <p class="logo">✅</p>
+      <h1 id="painel-nome">Bem-vindo</h1>
+      <p class="sub">Cadastro aprovado — painel em construção</p>
+      <p style="font-size:13px;color:#94a3b8;line-height:1.5">
+        Em breve você poderá enviar novos casos e acompanhar o andamento de cada trabalho por aqui.
+      </p>
+      <button class="btn-ghost" onclick="sair()">Sair</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+var SUPABASE_URL      = 'https://alqhhgysvehtgkwsxeok.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_oq7JWHoMvMqvjeaTDGHoqA_din8-sjJ';
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+var SESSAO_KEY = 'ideali-portal-cliente';
+
+function showMsg(text) {
+  var el = document.getElementById('msg-login');
+  el.textContent = text;
+  el.className = 'msg error';
+}
+
+function mostrarPainel(sessao) {
+  document.getElementById('view-login').style.display = 'none';
+  document.getElementById('view-painel').style.display = 'block';
+  document.getElementById('painel-nome').textContent = 'Bem-vindo, ' + sessao.nome;
+}
+
+async function fazerLogin(event) {
+  event.preventDefault();
+  var usuario = document.getElementById('f-usuario').value.trim();
+  var senha   = document.getElementById('f-senha').value;
+  var btn     = document.getElementById('btn-login');
+  btn.disabled = true; btn.textContent = 'Entrando…';
+
+  try {
+    var res = await sb.rpc('cliente_login', { p_usuario: usuario, p_senha: senha });
+    if (res.error) throw res.error;
+    var row = res.data && res.data[0];
+    if (!row) throw new Error('Usuário ou senha inválidos');
+
+    var sessao = { token: row.token, cliente_reg: row.cliente_reg, nome: row.nome };
+    localStorage.setItem(SESSAO_KEY, JSON.stringify(sessao));
+    mostrarPainel(sessao);
+  } catch(e) {
+    showMsg(e.message || 'Usuário ou senha inválidos.');
+    btn.disabled = false; btn.textContent = 'Entrar';
+  }
+  return false;
+}
+
+function sair() {
+  localStorage.removeItem(SESSAO_KEY);
+  document.getElementById('view-painel').style.display = 'none';
+  document.getElementById('view-login').style.display = 'block';
+  document.getElementById('f-usuario').value = '';
+  document.getElementById('f-senha').value = '';
+}
+
+(function init() {
+  var raw = localStorage.getItem(SESSAO_KEY);
+  if (!raw) return;
+  try {
+    var sessao = JSON.parse(raw);
+    if (sessao && sessao.token) mostrarPainel(sessao);
+  } catch(e) {}
+})();
+</script>
+</body>
+</html>

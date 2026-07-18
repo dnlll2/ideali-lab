@@ -412,7 +412,8 @@ var PAGE_MAP = {
   'gastos':         'gastos.html',
   'relatorios':     'relatorios.html',
   'ordens-cam':     'ordens-cam.html',
-  'tabela-precos':  'tabela-precos.html'
+  'tabela-precos':  'tabela-precos.html',
+  'convites':       'convites.html'
 };
 
 function sbNav(target) {
@@ -461,11 +462,12 @@ function updateSidebarActive() {
     'gastos.html':          'gastos',
     'relatorios.html':      'relatorios',
     'ordens-cam.html':      'ordens-cam',
-    'tabela-precos.html':   'tabela-precos'
+    'tabela-precos.html':   'tabela-precos',
+    'convites.html':        'convites'
   };
   var activeId = targetMap[currentPage] || 'home';
   ['home','clientes','tarefas','inove','resumo','dashboard','cadastro','pedidos',
-   'orcamento','cobranca','recibo','gastos','relatorios','ordens-cam','tabela-precos'].forEach(function(v) {
+   'orcamento','cobranca','recibo','gastos','relatorios','ordens-cam','tabela-precos','convites'].forEach(function(v) {
     var el = document.getElementById('sb-' + v);
     if (el) el.classList.toggle('active', activeId === v);
   });
