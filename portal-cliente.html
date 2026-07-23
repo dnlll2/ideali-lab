@@ -8,15 +8,20 @@
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:#0f1117;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-  .wrap{width:min(380px,100%)}
+  .wrap{width:min(380px,100%);transition:width 0.15s}
+  .wrap.wide{width:min(560px,100%)}
   .card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px 26px;text-align:center}
   .logo{font-size:34px;margin-bottom:8px}
   h1{font-size:18px;font-weight:600;color:#f1f5f9;margin-bottom:2px}
   .sub{font-size:13px;color:#64748b;margin-bottom:22px}
   .group{margin-bottom:14px;text-align:left}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   label{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px}
-  input{width:100%;height:42px;background:#22263a;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:0 12px;font-size:14px;color:#e2e8f0;outline:none;font-family:inherit}
-  input:focus{border-color:#3b82f6}
+  input,select,textarea{width:100%;background:#22263a;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:0 12px;font-size:14px;color:#e2e8f0;outline:none;font-family:inherit}
+  input,select{height:42px}
+  textarea{padding:10px 12px;resize:vertical;min-height:70px}
+  input:focus,select:focus,textarea:focus{border-color:#3b82f6}
+  .req{color:#ef4444}
   .btn{width:100%;height:44px;border-radius:8px;border:none;background:#1d4ed8;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px}
   .btn:hover{background:#2563eb}
   .btn:disabled{opacity:0.55;cursor:default}
@@ -24,11 +29,23 @@
   .btn-ghost:hover{background:#2d3250;color:#e2e8f0}
   .msg{font-size:13px;border-radius:8px;padding:10px 12px;margin-bottom:14px;display:none;text-align:left}
   .msg.error{background:#3d1d1d;border:0.5px solid rgba(239,68,68,0.3);color:#fca5a5;display:block}
+  .msg.success{background:#0d3d2b;border:0.5px solid rgba(34,197,94,0.3);color:#86efac;display:block}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;text-align:left;margin-bottom:18px}
+  .panel-head h1{margin:0}
+  .odonto{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
+  .odonto-row{display:flex;gap:4px;justify-content:center}
+  .odonto-quad{display:flex;gap:3px}
+  .dente{width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.15);background:#22263a;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;transition:all 0.1s}
+  .dente:hover{border-color:#3b82f6}
+  .dente.on{background:#1d4ed8;border-color:#3b82f6;color:#fff;font-weight:600}
+  .odonto-gap{width:8px}
+  .upload-placeholder{border:1px dashed rgba(255,255,255,0.18);border-radius:8px;padding:14px 12px;text-align:center;font-size:12px;color:#64748b;background:#181b26}
+  @media(max-width:520px){.row2{grid-template-columns:1fr}.dente{width:24px;height:24px;font-size:10px}}
 </style>
 </head>
 <body>
 
-<div class="wrap">
+<div class="wrap" id="wrap">
   <div class="card">
 
     <div id="view-login">
@@ -50,13 +67,66 @@
     </div>
 
     <div id="view-painel" style="display:none">
-      <p class="logo">✅</p>
-      <h1 id="painel-nome">Bem-vindo</h1>
-      <p class="sub">Cadastro aprovado — painel em construção</p>
-      <p style="font-size:13px;color:#94a3b8;line-height:1.5">
-        Em breve você poderá enviar novos casos e acompanhar o andamento de cada trabalho por aqui.
-      </p>
-      <button class="btn-ghost" onclick="sair()">Sair</button>
+      <div class="panel-head">
+        <div>
+          <h1 id="painel-nome">Bem-vindo</h1>
+          <p class="sub" style="margin-bottom:0">Enviar novo caso</p>
+        </div>
+        <button class="btn-ghost" style="width:auto;height:34px;padding:0 14px;margin-top:0" onclick="sair()">Sair</button>
+      </div>
+
+      <div id="msg-caso" class="msg"></div>
+
+      <form onsubmit="return enviarCaso(event)">
+        <div class="group">
+          <label>Paciente <span class="req">*</span></label>
+          <input type="text" id="c-paciente" required>
+        </div>
+
+        <div class="group">
+          <label>Tipo de trabalho <span class="req">*</span></label>
+          <select id="c-tipo" required>
+            <option value="">— Selecione —</option>
+            <option>Coroa</option>
+            <option>Onlay</option>
+            <option>Faceta</option>
+            <option>Prótese fixa / Ponte</option>
+            <option>Implante</option>
+            <option>Outro</option>
+          </select>
+        </div>
+
+        <div class="group">
+          <label>Odontograma — selecione os dentes <span class="req">*</span></label>
+          <div class="odonto" id="odonto"></div>
+          <p id="odonto-sel" style="font-size:12px;color:#64748b;margin-top:6px;text-align:center">Nenhum dente selecionado</p>
+        </div>
+
+        <div class="row2">
+          <div class="group">
+            <label>Cor</label>
+            <input type="text" id="c-cor" list="cores-comuns" placeholder="Ex: A2, BL3...">
+            <datalist id="cores-comuns">
+              <option value="A1"><option value="A2"><option value="A3"><option value="A3.5"><option value="A4">
+              <option value="B1"><option value="B2"><option value="B3"><option value="B4">
+              <option value="BL1"><option value="BL2"><option value="BL3"><option value="BL4">
+              <option value="C1"><option value="C2"><option value="C3">
+              <option value="D2"><option value="D3">
+            </datalist>
+          </div>
+          <div class="group">
+            <label>Anexo (STL)</label>
+            <div class="upload-placeholder">📎 Upload de arquivo em breve</div>
+          </div>
+        </div>
+
+        <div class="group">
+          <label>Observações</label>
+          <textarea id="c-obs" rows="3" placeholder="Detalhes adicionais do caso..."></textarea>
+        </div>
+
+        <button type="submit" class="btn" id="btn-caso">Enviar caso</button>
+      </form>
     </div>
 
   </div>
@@ -75,10 +145,90 @@ function showMsg(text) {
   el.className = 'msg error';
 }
 
+function showMsgCaso(text, type) {
+  var el = document.getElementById('msg-caso');
+  el.textContent = text;
+  el.className = 'msg ' + type;
+}
+
 function mostrarPainel(sessao) {
   document.getElementById('view-login').style.display = 'none';
   document.getElementById('view-painel').style.display = 'block';
   document.getElementById('painel-nome').textContent = 'Bem-vindo, ' + sessao.nome;
+  document.getElementById('wrap').classList.add('wide');
+}
+
+// ── Odontograma (FDI) ─────────────────────────────────────────
+var dentesSelecionados = [];
+var QUADRANTES = [[18,17,16,15,14,13,12,11],[21,22,23,24,25,26,27,28],
+                  [48,47,46,45,44,43,42,41],[31,32,33,34,35,36,37,38]];
+
+function buildOdontograma() {
+  var el = document.getElementById('odonto');
+  if (!el) return;
+  function quadHtml(q) {
+    return '<div class="odonto-quad">' + q.map(function(n){
+      return '<button type="button" class="dente" data-dente="'+n+'" onclick="toggleDente('+n+')">'+n+'</button>';
+    }).join('') + '</div>';
+  }
+  el.innerHTML =
+    '<div class="odonto-row">' + quadHtml(QUADRANTES[0]) + '<span class="odonto-gap"></span>' + quadHtml(QUADRANTES[1]) + '</div>' +
+    '<div class="odonto-row">' + quadHtml(QUADRANTES[2]) + '<span class="odonto-gap"></span>' + quadHtml(QUADRANTES[3]) + '</div>';
+}
+
+function toggleDente(n) {
+  var i = dentesSelecionados.indexOf(n);
+  if (i >= 0) dentesSelecionados.splice(i, 1); else dentesSelecionados.push(n);
+  dentesSelecionados.sort(function(a,b){ return a-b; });
+  var btn = document.querySelector('.dente[data-dente="'+n+'"]');
+  if (btn) btn.classList.toggle('on', dentesSelecionados.indexOf(n) >= 0);
+  var lbl = document.getElementById('odonto-sel');
+  if (lbl) lbl.textContent = dentesSelecionados.length ? 'Selecionado: ' + dentesSelecionados.join(', ') : 'Nenhum dente selecionado';
+}
+
+async function enviarCaso(event) {
+  event.preventDefault();
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  if (!sessao || !sessao.token) { showMsgCaso('Sessão expirada. Saia e faça login novamente.', 'error'); return false; }
+
+  var paciente = document.getElementById('c-paciente').value.trim();
+  var tipo     = document.getElementById('c-tipo').value;
+  var cor      = document.getElementById('c-cor').value.trim();
+  var obs      = document.getElementById('c-obs').value.trim();
+
+  if (!paciente) { showMsgCaso('Informe o nome do paciente.', 'error'); return false; }
+  if (!tipo)     { showMsgCaso('Selecione o tipo de trabalho.', 'error'); return false; }
+  if (!dentesSelecionados.length) { showMsgCaso('Selecione ao menos um dente no odontograma.', 'error'); return false; }
+
+  var btn = document.getElementById('btn-caso');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+
+  try {
+    var res = await sb.rpc('enviar_caso', {
+      p_sessao: sessao.token,
+      p_paciente: paciente,
+      p_tipo_trabalho: tipo,
+      p_dentes: dentesSelecionados,
+      p_cor: cor,
+      p_observacoes: obs
+    });
+    if (res.error) throw res.error;
+
+    showMsgCaso('Caso enviado com sucesso! O laboratório já recebeu na fila de produção.', 'success');
+    document.getElementById('c-paciente').value = '';
+    document.getElementById('c-tipo').value = '';
+    document.getElementById('c-cor').value = '';
+    document.getElementById('c-obs').value = '';
+    dentesSelecionados = [];
+    document.querySelectorAll('.dente.on').forEach(function(b){ b.classList.remove('on'); });
+    document.getElementById('odonto-sel').textContent = 'Nenhum dente selecionado';
+  } catch(e) {
+    showMsgCaso(e.message || 'Erro ao enviar caso.', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Enviar caso';
+  }
+  return false;
 }
 
 async function fazerLogin(event) {
@@ -108,11 +258,13 @@ function sair() {
   localStorage.removeItem(SESSAO_KEY);
   document.getElementById('view-painel').style.display = 'none';
   document.getElementById('view-login').style.display = 'block';
+  document.getElementById('wrap').classList.remove('wide');
   document.getElementById('f-usuario').value = '';
   document.getElementById('f-senha').value = '';
 }
 
 (function init() {
+  buildOdontograma();
   var raw = localStorage.getItem(SESSAO_KEY);
   if (!raw) return;
   try {
