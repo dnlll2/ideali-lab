@@ -206,6 +206,12 @@
   <div id="cadista-dropdown-list"></div>
 </div>
 
+<!-- ── Atribuir Cadista (portal) Dropdown ────────────────────── -->
+<div id="cadista-real-dropdown" onclick="event.stopPropagation()" style="display:none;position:fixed;z-index:300;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:6px;min-width:170px;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+  <p style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.07em;padding:4px 8px 6px;margin:0">Atribuir cadista (portal)</p>
+  <div id="cadista-real-dropdown-list"></div>
+</div>
+
 <!-- ── Observação Dropdown ──────────────────────────────────── -->
 <div id="obs-dropdown" onclick="event.stopPropagation()" style="display:none;position:fixed;z-index:300;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px;width:260px;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
   <p style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 6px">📝 Observação</p>
@@ -287,6 +293,9 @@ function camCardHtml(o) {
   var btnAprov  = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camToggleCol(\''+o.id+'\',\'aprovacao\','+aprov+')" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;'+(aprov?'background:#7c3aed;border-color:#a78bfa;color:#fff':'background:transparent;border-color:rgba(167,139,250,0.4);color:#94a3b8')+'">'+(aprov?'✔ ':'')+'⏳ Aprovação</button>';
   var btnCadist = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camOpenCadistaDropdown(\''+o.id+'\',event)" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'+(cadiNome?'background:#9d174d;border-color:#ec4899;color:#fff':'background:transparent;border-color:rgba(236,72,153,0.4);color:#94a3b8')+'">'+(cadiNome?'✓ '+escHtml(cadiNome):'📤 Enviar')+'</button>';
 
+  var cadiRealNome = o.cadista_reg ? camCadistaRealNome(o.cadista_reg) : '';
+  var btnCadistReal = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camOpenCadistaRealDropdown(\''+o.id+'\',event)" title="Atribuir a um cadista do portal" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'+(cadiRealNome?'background:#0e7490;border-color:#22d3ee;color:#fff':'background:transparent;border-color:rgba(34,211,238,0.4);color:#94a3b8')+'">'+(cadiRealNome?'🎯 '+escHtml(cadiRealNome):'🎯 Atribuir')+'</button>';
+
   var hasObs   = !!(o.observacao && o.observacao.trim());
   var btnObs   = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camOpenObsDropdown(\''+o.id+'\',event)" title="'+(hasObs?escHtml(o.observacao):'Adicionar observação')+'" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;'+(hasObs?'background:#0f766e;border-color:#2dd4bf;color:#fff':'background:transparent;border-color:rgba(45,212,191,0.4);color:#94a3b8')+'">📝'+(hasObs?' Obs.':'')+'</button>';
 
@@ -299,7 +308,7 @@ function camCardHtml(o) {
     '<p style="font-size:10px;color:#4a5568;margin:0 0 7px">'+(o.created_at?new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—')+'</p>'+
     '<div style="display:flex;align-items:center;justify-content:space-between">'+
       '<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;'+badgeSt+'">'+badgeLbl+'</span>'+
-      '<div draggable="false" style="display:flex;gap:4px;flex-wrap:wrap">'+btnScan+btnInove+btnAprov+btnCadist+btnObs+'</div>'+
+      '<div draggable="false" style="display:flex;gap:4px;flex-wrap:wrap">'+btnScan+btnInove+btnAprov+btnCadist+btnCadistReal+btnObs+'</div>'+
     '</div>'+
   '</div>';
 }
@@ -785,6 +794,71 @@ async function camSetCadista(id, nome) {
   }
 }
 
+// ── Atribuir cadista do portal (cadista_reg) ──────────────────
+var cadistasReais    = [];
+var _cadiRealDropId  = null;
+
+async function loadCadistasReais() {
+  try {
+    var res = await sb.from('cadastro_cadistas').select('cadista_reg,nome').eq('ativo', true).order('nome');
+    if (res.error) throw res.error;
+    cadistasReais = res.data || [];
+  } catch(e) {
+    console.error('[loadCadistasReais]', e.message || e);
+  }
+}
+
+function camCadistaRealNome(reg) {
+  var c = cadistasReais.find(function(x){ return x.cadista_reg === reg; });
+  return c ? c.nome : '';
+}
+
+function camOpenCadistaRealDropdown(id, event) {
+  _cadiRealDropId = id;
+  var o  = ordensCam.find(function(x){ return x.id === id; });
+  var dd = document.getElementById('cadista-real-dropdown');
+  var dl = document.getElementById('cadista-real-dropdown-list');
+  dl.innerHTML = (cadistasReais.length ? cadistasReais.map(function(c) {
+    var cur = o && o.cadista_reg === c.cadista_reg;
+    return '<button onclick="camSetCadistaReal(\''+id+'\','+c.cadista_reg+')" '+
+      'style="display:block;width:100%;text-align:left;padding:6px 10px;border-radius:6px;'+
+      'border:none;background:'+(cur?'rgba(14,116,144,0.4)':'transparent')+';'+
+      'color:'+(cur?'#67e8f9':'#e2e8f0')+';font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap">'+
+      (cur?'✓ ':'')+escHtml(c.nome)+'</button>';
+  }).join('') : '<p style="font-size:11px;color:#64748b;padding:6px 10px;margin:0">Nenhum cadista aprovado ainda</p>') +
+  '<div style="border-top:0.5px solid rgba(255,255,255,0.08);margin:4px 0"></div>'+
+  '<button onclick="camSetCadistaReal(\''+id+'\',null)" '+
+    'style="display:block;width:100%;text-align:left;padding:6px 10px;border-radius:6px;'+
+    'border:none;background:transparent;color:#ef4444;font-size:12px;cursor:pointer;font-family:inherit">'+
+    '✕ Remover atribuição</button>';
+  var rect = event.currentTarget.getBoundingClientRect();
+  dd.style.left = Math.min(rect.left, window.innerWidth - 190) + 'px';
+  dd.style.top  = (rect.bottom + 4) + 'px';
+  dd.style.display = '';
+  setTimeout(function() {
+    document.addEventListener('click', camCloseCadistaRealDropdown, { once: true });
+  }, 0);
+}
+
+function camCloseCadistaRealDropdown() {
+  var dd = document.getElementById('cadista-real-dropdown');
+  if (dd) dd.style.display = 'none';
+}
+
+async function camSetCadistaReal(id, reg) {
+  camCloseCadistaRealDropdown();
+  try {
+    var res = await sb.from('ordens_exocad').update({ cadista_reg: reg }).eq('id', id);
+    if (res.error) throw res.error;
+    var o = ordensCam.find(function(x){ return x.id === id; });
+    if (o) o.cadista_reg = reg;
+    renderOrdensCam();
+  } catch(e) {
+    console.error('[camSetCadistaReal]', e.message || e);
+    alert('Erro ao atribuir cadista: ' + (e.message || e));
+  }
+}
+
 // ── Observação ──────────────────────────────────────────────
 var _obsDropId = null;
 
@@ -860,6 +934,7 @@ function showConnError(msg) {
 async function init() {
   camInitReportToggle();
   try {
+    await loadCadistasReais();
     await loadOrdensCam();
   } catch(e) {
     showConnError(e.message || String(e));
