@@ -245,9 +245,26 @@ async function rejeitarCadista(id) {
   }
 }
 
-function init() {
-  loadPendentes();
-  hideLoading();
+function hideLoading() {
+  var el = document.getElementById('loading-overlay');
+  if (el) el.style.display = 'none';
+}
+
+function showConnError(msg) {
+  var el   = document.getElementById('conn-error');
+  var msg2 = document.getElementById('conn-error-msg');
+  if (el)   el.style.display  = 'flex';
+  if (msg2) msg2.textContent  = msg;
+}
+
+async function init() {
+  try {
+    await loadPendentes();
+  } catch(e) {
+    showConnError(e.message);
+  } finally {
+    hideLoading();
+  }
 }
 
 function initShell() {
