@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="shared.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf-autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script>
 // Página pública (sem senha) — pula a autenticação de shared.js antes dela rodar.
 // Flag local à página (não grava em sessionStorage) pra não vazar acesso pras
@@ -31,11 +31,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .summary-row-comissao{display:flex;align-items:stretch;gap:10px;margin-bottom:1rem;flex-wrap:wrap}
 .summary-row-comissao .sum-card{flex:1 1 220px}
 .comissao-btn{flex:0 0 auto;width:auto;padding:0 18px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.comissao-btn-saque{border-color:rgba(167,139,250,0.4);background:rgba(167,139,250,0.12);color:#c4b5fd}
+.comissao-btn-saque:hover{background:rgba(167,139,250,0.22)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:90}
+.modal{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:91;width:min(560px,95vw);max-height:85vh;overflow-y:auto;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:0.5px solid rgba(255,255,255,0.08);position:sticky;top:0;background:#1a1d27;z-index:1}
+.modal-body{padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.modal-footer{padding:12px 18px;border-top:0.5px solid rgba(255,255,255,0.08);display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap}
+.modal-close{width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#64748b;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+.modal-close:hover{background:#2d3250;color:#e2e8f0}
+.comissao-table{width:100%;border-collapse:collapse;font-size:13px}
+.comissao-table th{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;padding:6px 8px;text-align:left;border-bottom:0.5px solid rgba(255,255,255,0.08)}
+.comissao-table td{padding:7px 8px;border-bottom:0.5px solid rgba(255,255,255,0.05)}
+.comissao-total-row{display:flex;justify-content:space-between;align-items:center;padding:12px 4px 4px;font-size:15px;font-weight:600}
+.btn-secondary{height:36px;padding:0 16px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn-confirmar-saque{height:36px;padding:0 18px;border-radius:8px;border:0.5px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.15);color:#4ade80;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+.btn-confirmar-saque:hover{background:rgba(34,197,94,0.28)}
+.btn-confirmar-saque:disabled{opacity:0.5;cursor:default}
+.btn-excluir-saque{height:36px;padding:0 16px;border-radius:8px;border:0.5px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.12);color:#f87171;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
+.btn-excluir-saque:hover{background:rgba(239,68,68,0.22)}
 .sum-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px 16px}
 .sum-card .lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px}
 .sum-card .val{font-size:20px;font-weight:600;color:#f1f5f9}
 .sum-card-highlight{background:rgba(167,139,250,0.08) !important;border-color:rgba(167,139,250,0.35) !important}
 .sum-card-highlight .val{color:#a78bfa}
+.sum-card-futura{border-style:dashed !important;opacity:0.75}
+.sum-card-futura .val{color:#94a3b8 !important}
+.sum-card-futura .lbl-sub{font-size:10px;color:#64748b;margin-top:2px;font-style:italic}
 .table-wrap{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden}
 .rel-table{width:100%;border-collapse:collapse;font-size:13px}
 .rel-table th{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;padding:9px 12px;text-align:left;border-bottom:0.5px solid rgba(255,255,255,0.08);background:#1a1d27;white-space:nowrap;position:sticky;top:0}
@@ -170,6 +192,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="view-tabs">
   <button id="tab-pagamentos" class="view-tab-btn active" onclick="switchView('pagamentos')"><i class="ti ti-cash"></i> Pagamentos</button>
   <button id="tab-extratos" class="view-tab-btn" onclick="switchView('extratos')"><i class="ti ti-clock-exclamation"></i> Extratos a Enviar</button>
+  <button id="tab-comissao" class="view-tab-btn" onclick="switchView('comissao')"><i class="ti ti-percentage"></i> Comissão</button>
 </div>
 
 <div id="view-pagamentos">
@@ -179,12 +202,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="sum-card"><div class="lbl">Saldo a receber</div><div class="val" id="sum-saldo" style="color:#ef4444">R$ 0,00</div></div>
     <div class="sum-card sum-card-highlight"><div class="lbl">% pago do mês</div><div class="val" id="sum-pct-pago">0% pago</div></div>
     <div class="sum-card"><div class="lbl">Clientes que pagaram</div><div class="val" id="sum-clientes-pagos" style="font-size:16px">0 de 0</div></div>
-  </div>
-
-  <div class="summary-row-comissao">
-    <div class="sum-card sum-card-highlight"><div class="lbl">Comissão total do mês (15%)</div><div class="val" id="sum-comissao-total">R$ 0,00</div></div>
-    <div class="sum-card sum-card-highlight"><div class="lbl">Comissão a receber agora (15%)</div><div class="val" id="sum-comissao-receber">R$ 0,00</div></div>
-    <button class="pend-card-btn comissao-btn" onclick="gerarRelatorioComissao()"><i class="ti ti-file-download"></i> Gerar relatório de comissão</button>
   </div>
 
   <div class="status-filter-row" id="status-filter-row">
@@ -226,7 +243,62 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="pend-cards-grid" class="pend-cards-grid"></div>
 </div>
 
+<div id="view-comissao" style="display:none">
+  <div class="summary-row-comissao">
+    <div class="sum-card"><div class="lbl">Valor total vendido</div><div class="val" id="sum-comissao-vendido">R$ 0,00</div></div>
+    <div class="sum-card"><div class="lbl">Valor total recebido</div><div class="val" id="sum-comissao-recebido" style="color:#22c55e">R$ 0,00</div></div>
+    <div class="sum-card"><div class="lbl">Comissão bruta (15%)</div><div class="val" id="sum-comissao-bruta" style="color:#fbbf24">R$ 0,00</div></div>
+    <div class="sum-card"><div class="lbl">Comissão líquida (15%)</div><div class="val" id="sum-comissao-liquida" style="color:#fbbf24">R$ 0,00</div></div>
+    <div class="sum-card sum-card-highlight"><div class="lbl">Comissão a Receber</div><div class="val" id="sum-comissao-restante">R$ 0,00</div></div>
+    <div class="sum-card sum-card-futura"><div class="lbl">Comissão a Receber (Futura)</div><div class="val" id="sum-comissao-futura">R$ 0,00</div><div class="lbl-sub">⏳ quando o cliente pagar — não disponível pra saque agora</div></div>
+    <div class="sum-card sum-card-highlight"><div class="lbl">Pago (sacado neste mês)</div><div class="val" id="sum-comissao-pago" style="color:#22c55e">R$ 0,00</div></div>
+  </div>
+  <div id="comissao-acoes" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:1rem"></div>
+
+  <div id="comissoes-pagas-wrap" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+      <p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em">Comissões pagas neste mês</p>
+      <button class="btn-excluir-saque" onclick="excluirComissaoPaga()"><i class="ti ti-trash"></i> Excluir Comissão Paga</button>
+    </div>
+    <div class="table-wrap">
+      <table class="rel-table">
+        <thead><tr><th>Data do pagamento</th><th>Valor</th><th></th></tr></thead>
+        <tbody id="comissoes-pagas-rows"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <div class="footer">Ideali Laboratório · Visão somente leitura (Pagamentos) · Extratos a Enviar permite apenas marcar "enviado" · Gerado em <span id="gen-time"></span></div>
+
+<div class="modal-overlay" id="comissao-modal-overlay" onclick="fecharModalComissao()"></div>
+<div class="modal" id="comissao-modal">
+  <div class="modal-header">
+    <div>
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9">Pagar Comissão</p>
+      <p style="font-size:12px;color:#64748b" id="comissao-modal-mes">—</p>
+    </div>
+    <button class="modal-close" onclick="fecharModalComissao()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="modal-body">
+    <p style="font-size:12px;color:#64748b">Comissão de 15% sobre o que cada cliente já pagou e que ainda não foi sacado antes. Ao confirmar, esse valor fica marcado como pago e não entra em nenhum saque futuro.</p>
+    <div style="overflow-x:auto">
+      <table class="comissao-table">
+        <thead><tr><th>Cliente</th><th>Base de cálculo</th><th>Comissão (15%)</th></tr></thead>
+        <tbody id="comissao-modal-rows"></tbody>
+      </table>
+    </div>
+    <div id="comissao-modal-empty" style="display:none;text-align:center;color:#4a5568;padding:1.5rem;font-size:13px">Nenhuma comissão pendente neste mês — tudo que já foi pago já foi sacado antes.</div>
+    <div class="comissao-total-row">
+      <span style="color:#94a3b8;font-size:13px;font-weight:500">Total a sacar agora</span>
+      <span id="comissao-modal-total" style="color:#4ade80">R$ 0,00</span>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-secondary" onclick="fecharModalComissao()">Cancelar</button>
+    <button class="btn-confirmar-saque" id="btn-confirmar-saque" onclick="confirmarPagamentoComissao()"><i class="ti ti-check"></i> Confirmar saque</button>
+  </div>
+</div>
 
 <script>
 // Espelho minimo de clients (reg+nome) — página standalone, sem shared.js.
@@ -331,20 +403,23 @@ async function switchMonth(m, y) {
   closeMonthDD();
   viewMonth = m; viewYear = y;
   renderMonthDD();
-  await Promise.all([loadMonthData(), loadExtratosPendentes()]);
+  await Promise.all([loadMonthData(), loadExtratosPendentes(), loadComissaoHistorico()]);
   renderTable();
   renderExtratos();
+  renderComissaoTab();
 }
 
 var curView = 'pagamentos';
 function switchView(view) {
   curView = view;
-  var tp = document.getElementById('tab-pagamentos'), te = document.getElementById('tab-extratos');
-  var vp = document.getElementById('view-pagamentos'), ve = document.getElementById('view-extratos');
+  var tp = document.getElementById('tab-pagamentos'), te = document.getElementById('tab-extratos'), tc = document.getElementById('tab-comissao');
+  var vp = document.getElementById('view-pagamentos'), ve = document.getElementById('view-extratos'), vc = document.getElementById('view-comissao');
   if (tp) tp.classList.toggle('active', view === 'pagamentos');
   if (te) te.classList.toggle('active', view === 'extratos');
+  if (tc) tc.classList.toggle('active', view === 'comissao');
   if (vp) vp.style.display = view === 'pagamentos' ? '' : 'none';
   if (ve) ve.style.display = view === 'extratos' ? '' : 'none';
+  if (vc) vc.style.display = view === 'comissao' ? '' : 'none';
 }
 
 async function changeMonth(delta) {
@@ -376,19 +451,30 @@ async function loadMonthData() {
   }
   var state = {};
   clients.forEach(function(c) {
-    state[c.reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, obs_pagamento:'', comprovantes: compMap[c.reg]||[] };
+    state[c.reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, valor_pago_comissionado:0, obs_pagamento:'', comprovantes: compMap[c.reg]||[] };
   });
   if (!dbRes.error) {
     (dbRes.data||[]).forEach(function(r) {
       state[r.cliente_reg] = {
         recebido: !!r.recebido, enviado: !!r.enviado, quitado: !!r.quitado,
         valor_mes: Number(r.valor_mes)||0, valor_pago: Number(r.valor_pago)||0,
+        valor_pago_comissionado: Number(r.valor_pago_comissionado)||0,
         obs_pagamento: r.obs_pagamento||'',
         comprovantes: compMap[r.cliente_reg]||[]
       };
     });
   }
   dbState = state;
+}
+
+// Comissao (15%) sobre a parte de valor_pago que ainda nao foi sacada antes
+// (valor_pago_comissionado e o "ate onde ja foi pago" do ultimo saque confirmado).
+function baseComissaoPendente(s) {
+  var base = Number(s.valor_pago||0) - Number(s.valor_pago_comissionado||0);
+  return base > 0 ? base : 0;
+}
+function comissaoPendente(s) {
+  return baseComissaoPendente(s) * COMISSAO;
 }
 
 var pendData = [];
@@ -494,51 +580,214 @@ function setStatusFilter(f) {
   renderTable();
 }
 
-// Relatório de comissão em PDF — comissão calculada sobre valor_pago (o que já entrou),
-// não sobre valor_mes (o que ainda está pendente de pagamento pelo dentista).
-function gerarRelatorioComissao() {
+// "Saque" de comissão — revisão (client-side, só pra preview) + confirmação, que chama
+// a função pagar_comissao no banco. O cálculo de verdade e a gravação acontecem lá dentro
+// numa única transação, então o preview aqui pode ficar levemente desatualizado (ex: outra
+// aba mexeu no valor_pago) sem risco: o banco recalcula tudo de novo no momento do commit.
+function abrirModalComissao() {
+  var linhas = clients
+    .map(function(c) { return { c:c, base: baseComissaoPendente(dbState[c.reg]||{}), com: comissaoPendente(dbState[c.reg]||{}) }; })
+    .filter(function(r) { return r.com > 0; })
+    .sort(function(a,b) { return b.com - a.com; });
+
+  var mesEl = document.getElementById('comissao-modal-mes');
+  if (mesEl) mesEl.textContent = MESES[viewMonth] + ' ' + viewYear;
+
+  var tbody     = document.getElementById('comissao-modal-rows');
+  var emptyEl   = document.getElementById('comissao-modal-empty');
+  var totalEl   = document.getElementById('comissao-modal-total');
+  var btnConfirmar = document.getElementById('btn-confirmar-saque');
+  var total = linhas.reduce(function(s,r){ return s + r.com; }, 0);
+  if (totalEl) totalEl.textContent = fmt(total);
+
+  if (!linhas.length) {
+    if (tbody)   tbody.innerHTML = '';
+    if (emptyEl) emptyEl.style.display = '';
+    if (btnConfirmar) btnConfirmar.disabled = true;
+  } else {
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (tbody) tbody.innerHTML = linhas.map(function(r) {
+      return '<tr><td>'+escHtml(r.c.nome)+'</td><td>'+fmt(r.base)+'</td><td style="color:#4ade80;font-weight:600">'+fmt(r.com)+'</td></tr>';
+    }).join('');
+    if (btnConfirmar) btnConfirmar.disabled = false;
+  }
+
+  document.getElementById('comissao-modal-overlay').style.display = 'block';
+  document.getElementById('comissao-modal').style.display = 'block';
+}
+
+function fecharModalComissao() {
+  document.getElementById('comissao-modal-overlay').style.display = 'none';
+  document.getElementById('comissao-modal').style.display = 'none';
+}
+
+async function confirmarPagamentoComissao() {
+  var btn = document.getElementById('btn-confirmar-saque');
+  var origHtml = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i> Processando…'; }
+  try {
+    var res = await sb.rpc('pagar_comissao', { p_mes: viewMonth, p_ano: viewYear });
+    if (res.error) throw res.error;
+    var data = res.data;
+    fecharModalComissao();
+    await Promise.all([loadMonthData(), loadComissaoHistorico()]);
+    renderTable();
+    renderComissaoTab();
+    if (!data || data.ok === false) {
+      alert('Nada a sacar: essa comissão já foi paga antes, ou não há valor pago pendente neste mês.');
+    } else {
+      alert('Comissão de ' + fmt(data.valor_total) + ' registrada como paga.');
+    }
+  } catch (e) {
+    console.error('confirmarPagamentoComissao:', e);
+    alert('Erro ao registrar o pagamento da comissão: ' + (e.message || e) + '\nNada foi alterado — pode tentar de novo.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
+  }
+}
+
+// ── Aba Comissão ────────────────────────────────────────────
+var comissaoHistorico = [];
+
+// Saques (comissoes_pagas) ja confirmados pro mes/ano selecionado — usado tanto pra
+// decidir qual botao mostrar (Pagar vs Relatorio de Comissao Paga) quanto pra montar
+// o relatorio historico.
+async function loadComissaoHistorico() {
+  var res = await sb.from('comissoes_pagas').select('*').eq('mes', viewMonth).eq('ano', viewYear).order('data_pagamento', { ascending: true });
+  if (res.error) { console.error('loadComissaoHistorico:', res.error); comissaoHistorico = []; return; }
+  comissaoHistorico = res.data || [];
+}
+
+function nomeCliente(reg) {
+  var c = clients.find(function(x) { return x.reg === reg; });
+  return c ? c.nome : ('Cliente #' + reg);
+}
+
+function renderComissaoTab() {
+  var totVendido = 0, totRecebido = 0, restante = 0, futuraBase = 0;
+  clients.forEach(function(c) {
+    var s = dbState[c.reg] || {};
+    var vm = Number(s.valor_mes || 0), vp = Number(s.valor_pago || 0);
+    totVendido  += vm;
+    totRecebido += vp;
+    restante    += comissaoPendente(s);
+    if (vm > vp) futuraBase += (vm - vp);
+  });
+  var pago = comissaoHistorico.reduce(function(s, h) { return s + Number(h.valor_total || 0); }, 0);
+
+  document.getElementById('sum-comissao-vendido').textContent  = fmt(totVendido);
+  document.getElementById('sum-comissao-recebido').textContent = fmt(totRecebido);
+  document.getElementById('sum-comissao-bruta').textContent    = fmt(totVendido  * COMISSAO);
+  document.getElementById('sum-comissao-liquida').textContent  = fmt(totRecebido * COMISSAO);
+  document.getElementById('sum-comissao-restante').textContent = fmt(restante);
+  document.getElementById('sum-comissao-futura').textContent   = fmt(futuraBase * COMISSAO);
+  document.getElementById('sum-comissao-pago').textContent     = fmt(pago);
+
+  var acoes = document.getElementById('comissao-acoes');
+  if (acoes) {
+    acoes.innerHTML = restante > 0
+      ? '<button class="pend-card-btn comissao-btn comissao-btn-saque" onclick="abrirModalComissao()"><i class="ti ti-cash-banknote"></i> Pagar Comissão</button>'
+      : (pago > 0 ? '' : '<p style="font-size:13px;color:#4a5568">Nenhuma comissão paga ou pendente neste mês ainda.</p>');
+  }
+
+  var wrap = document.getElementById('comissoes-pagas-wrap');
+  var tbody = document.getElementById('comissoes-pagas-rows');
+  if (wrap && tbody) {
+    if (!comissaoHistorico.length) {
+      wrap.style.display = 'none';
+    } else {
+      wrap.style.display = '';
+      tbody.innerHTML = comissaoHistorico.slice().reverse().map(function(h) {
+        var quando = new Date(h.data_pagamento).toLocaleString('pt-BR');
+        return '<tr><td>'+quando+'</td><td class="valor-pago">'+fmt(h.valor_total)+'</td>' +
+          '<td><button class="btn-secondary" style="height:28px;padding:0 12px;font-size:12px" onclick="gerarRelatorioComissaoPaga(\''+h.id+'\')"><i class="ti ti-file-check"></i> Ver relatório</button></td></tr>';
+      }).join('');
+    }
+  }
+}
+
+// Relatório em PDF do que já foi sacado (comissoes_pagas). Sem argumento, lista todos
+// os saques do mês selecionado; passando um id (clique numa linha da planilha), lista
+// só aquele saque específico.
+function gerarRelatorioComissaoPaga(id) {
   if (typeof jspdf === 'undefined' || !jspdf.jsPDF) {
     alert('Não foi possível carregar o gerador de PDF. Verifique sua conexão e tente novamente.');
     return;
   }
-  var linhas = clients
-    .map(function(c) { return { c: c, s: dbState[c.reg] || { valor_pago: 0 } }; })
-    .filter(function(r) { return Number(r.s.valor_pago || 0) > 0; })
-    .sort(function(a, b) { return Number(b.s.valor_pago || 0) - Number(a.s.valor_pago || 0); });
-
-  if (!linhas.length) {
-    alert('Nenhum valor pago neste mês ainda — não há comissão a receber para gerar relatório.');
+  var lista = id ? comissaoHistorico.filter(function(h) { return h.id === id; }) : comissaoHistorico;
+  if (!lista.length) {
+    alert('Nenhuma comissão paga registrada neste mês.');
     return;
   }
 
-  var totalPago = linhas.reduce(function(s, r) { return s + Number(r.s.valor_pago || 0); }, 0);
-  var totalComissao = totalPago * COMISSAO;
-
   var doc = new jspdf.jsPDF();
   var mesLabel = MESES[viewMonth] + ' de ' + viewYear;
+  var totalGeral = lista.reduce(function(s, h) { return s + Number(h.valor_total || 0); }, 0);
 
   doc.setFontSize(16);
-  doc.text('Relatório de Comissão — Ideali Laboratório', 14, 18);
+  doc.text('Relatório de Comissão Paga — Ideali Laboratório', 14, 18);
   doc.setFontSize(11);
   doc.setTextColor(100);
-  doc.text('Referência: ' + mesLabel + '  ·  Comissão: ' + (COMISSAO * 100) + '% sobre valor pago', 14, 26);
+  doc.text('Referência: ' + mesLabel + '  ·  ' + lista.length + ' saque' + (lista.length > 1 ? 's' : '') + '  ·  Total pago: ' + fmt(totalGeral), 14, 26);
   doc.text('Gerado em: ' + new Date().toLocaleString('pt-BR'), 14, 32);
 
-  doc.autoTable({
-    startY: 38,
-    head: [['Cliente', 'Valor pago', 'Comissão (' + (COMISSAO * 100) + '%)']],
-    body: linhas.map(function(r) {
-      var vp = Number(r.s.valor_pago || 0);
-      return [r.c.nome, fmt(vp), fmt(vp * COMISSAO)];
-    }),
-    foot: [['Total', fmt(totalPago), fmt(totalComissao)]],
-    headStyles: { fillColor: [26, 29, 39] },
-    footStyles: { fillColor: [26, 29, 39], fontStyle: 'bold' },
-    styles: { fontSize: 10, cellPadding: 4 },
-    columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } }
+  var y = 40;
+  lista.forEach(function(h, idx) {
+    if (y > 260) { doc.addPage(); y = 20; }
+    doc.setFontSize(12);
+    doc.setTextColor(20);
+    doc.text('Saque ' + (idx + 1) + ' — ' + new Date(h.data_pagamento).toLocaleString('pt-BR'), 14, y);
+    y += 4;
+    var detalhes = Array.isArray(h.detalhes_json) ? h.detalhes_json : [];
+    doc.autoTable({
+      startY: y,
+      head: [['Cliente', 'Base de cálculo', 'Comissão']],
+      body: detalhes.map(function(d) {
+        return [nomeCliente(d.cliente_reg), fmt(d.valor_base_comissao), fmt(d.comissao)];
+      }),
+      foot: [['Total do saque', '', fmt(h.valor_total)]],
+      headStyles: { fillColor: [26, 29, 39] },
+      footStyles: { fillColor: [26, 29, 39], fontStyle: 'bold' },
+      styles: { fontSize: 10, cellPadding: 4 },
+      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } },
+      margin: { top: y }
+    });
+    y = doc.lastAutoTable.finalY + 12;
   });
 
-  doc.save('comissao_' + MESES[viewMonth].toLowerCase() + '_' + viewYear + '.pdf');
+  doc.save('comissao_paga_' + MESES[viewMonth].toLowerCase() + '_' + viewYear + '.pdf');
+}
+
+// Desfaz o saque mais recente do mês (ex: saque de teste, ou engano) — devolve
+// valor_pago_comissionado dos clientes envolvidos pro valor de antes daquele saque,
+// e apaga o registro em comissoes_pagas. Só deixa excluir o mais recente do mês
+// (trava de segurança dentro da função excluir_comissao_paga no banco).
+async function excluirComissaoPaga() {
+  if (!comissaoHistorico.length) return;
+  var ultimo = comissaoHistorico[comissaoHistorico.length - 1];
+  var quando = new Date(ultimo.data_pagamento).toLocaleString('pt-BR');
+  if (!confirm('Excluir o saque de ' + fmt(ultimo.valor_total) + ' feito em ' + quando + '?\n\nOs clientes envolvidos voltam a ter essa comissão como pendente (não sacada).')) return;
+
+  try {
+    var res = await sb.rpc('excluir_comissao_paga', { p_id: ultimo.id });
+    if (res.error) throw res.error;
+    var data = res.data;
+    if (!data || data.ok === false) {
+      if (data && data.motivo === 'nao_e_o_mais_recente') {
+        alert('Esse saque não é mais o mais recente do mês — só é possível excluir na ordem do mais novo pro mais antigo.');
+      } else {
+        alert('Não foi possível excluir: saque não encontrado.');
+      }
+      return;
+    }
+    await Promise.all([loadMonthData(), loadComissaoHistorico()]);
+    renderTable();
+    renderComissaoTab();
+    alert('Saque de ' + fmt(data.valor_total) + ' excluído. A comissão voltou a ficar pendente.');
+  } catch (e) {
+    console.error('excluirComissaoPaga:', e);
+    alert('Erro ao excluir o saque: ' + (e.message || e));
+  }
 }
 
 function renderTable() {
@@ -565,8 +814,6 @@ function renderTable() {
   var pctPago = totMes > 0 ? Math.round((totPago / totMes) * 100) : 0;
   document.getElementById('sum-pct-pago').textContent = pctPago + '% pago';
   document.getElementById('sum-clientes-pagos').textContent = clientesQuePagaram + ' de ' + clientesComPendencia + ' clientes pagaram';
-  document.getElementById('sum-comissao-total').textContent    = fmt(totMes  * COMISSAO);
-  document.getElementById('sum-comissao-receber').textContent  = fmt(totPago * COMISSAO);
 
   var tbody = document.getElementById('rows-body');
   if (!rows.length) {
@@ -613,9 +860,10 @@ async function init() {
   var def = await findDefaultMonth();
   viewMonth = def.m; viewYear = def.y;
   renderMonthDD();
-  await Promise.all([loadMonthData(), loadExtratosPendentes()]);
+  await Promise.all([loadMonthData(), loadExtratosPendentes(), loadComissaoHistorico()]);
   renderTable();
   renderExtratos();
+  renderComissaoTab();
   document.getElementById('loading').style.display = 'none';
   document.getElementById('table-container').style.display = '';
   document.getElementById('gen-time').textContent = new Date().toLocaleString('pt-BR');
