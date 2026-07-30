@@ -26,7 +26,7 @@ var clients = [
   {reg:22,nome:"[REMOVIDO]",   cpf:"CNPJ: 13.265.402/0001-60",cro:"[REMOVIDO]",end:"[REMOVIDO]",                bairro:"Castalia",           cidade:"Itabuna",             uf:"BA", cep:"",          tel:"",                  obs:""},
   {reg:18,nome:"[REMOVIDO]",              cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",     end:"[REMOVIDO]",                   bairro:"Tijuca",             cidade:"Rio de Janeiro",      uf:"RJ", cep:"",          tel:"",                  obs:"Clinica Odonto Premier"},
   {reg:5, nome:"[REMOVIDO]",               cpf:"CNPJ: 48.257.718/0001-94", cro:"[REMOVIDO]", end:"[REMOVIDO]",         bairro:"Vila Mariana",       cidade:"Sao Paulo",           uf:"SP", cep:"04014-001", tel:"+55 (11) 9[REMOVIDO]",obs:"Padrao"},
-  {reg:24,nome:"[REMOVIDO]",cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",  end:"[REMOVIDO]",                        bairro:"Centro",             cidade:"Cruz das Almas",      uf:"BA", cep:"44380-000", tel:"",                  obs:"", regraPadrao:"Não cimentar componente — enviar sempre sem cimentar."},
+  {reg:24,nome:"[REMOVIDO]",cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",  end:"[REMOVIDO]",                        bairro:"Centro",             cidade:"Cruz das Almas",      uf:"BA", cep:"44380-000", tel:"",                  obs:"", regraPadrao:"Não cimentar componente — enviar sempre sem cimentar. Componente: casos unitários usar Icmut; casos múltiplos usar Imat."},
   {reg:15,nome:"[REMOVIDO]",                   cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",end:"[REMOVIDO]", bairro:"Galeria Metropole",  cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"(11) 9[REMOVIDO]",   obs:""},
   {reg:21,nome:"[REMOVIDO]",             cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",    end:"[REMOVIDO]",                         bairro:"",                   cidade:"Sao Paulo",           uf:"SP", cep:"04041-054", tel:"",                  obs:""},
   {reg:2, nome:"[REMOVIDO]",                cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",    end:"[REMOVIDO]",   bairro:"Centro",             cidade:"Niteroi",             uf:"RJ", cep:"",          tel:"(21) 9[REMOVIDO]",   obs:""},
@@ -50,7 +50,8 @@ var clients = [
   {reg:35,nome:"[REMOVIDO]",        cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
   {reg:36,nome:"[REMOVIDO]",              cpf:"",                cro:"",             end:"[REMOVIDO]",           bairro:"Copacabana",         cidade:"Rio de Janeiro",      uf:"RJ", cep:"22031-012", tel:"",                  obs:""},
   {reg:37,nome:"[REMOVIDO]",cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
-  {reg:38,nome:"[REMOVIDO]",          cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",       end:"Av. Eugen Wissmann, 600 - 1º andar, loja 8",       bairro:"São Luiz",           cidade:"Itu",                 uf:"SP", cep:"13304-270", tel:"",                  obs:""}
+  {reg:38,nome:"[REMOVIDO]",          cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",       end:"Av. Eugen Wissmann, 600 - 1º andar, loja 8",       bairro:"São Luiz",           cidade:"Itu",                 uf:"SP", cep:"13304-270", tel:"",                  obs:""},
+  {reg:39,nome:"[REMOVIDO]",     cpf:"[REMOVIDO]",  cro:"[REMOVIDO]",  end:"[REMOVIDO]",                  bairro:"",                   cidade:"Ribeirão do Sul",     uf:"SP", cep:"19930-025", tel:"",                  obs:""}
 ];
 
 // ── Estado global ─────────────────────────────────────────────
