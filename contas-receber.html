@@ -91,16 +91,10 @@
   <!-- Totais -->
   <div style="margin-top:8px;overflow-x:auto;padding-bottom:2px">
     <div id="totals-row" style="display:flex;gap:8px;min-width:max-content">
-      <div class="counter-card" style="min-width:130px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total a Receber</p><p style="font-size:20px;font-weight:500;color:#f1f5f9" id="total-valor">R$ 0,00</p></div>
-      <div class="counter-card" style="min-width:120px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total Pago</p><p style="font-size:20px;font-weight:500;color:#22c55e" id="total-pago">R$ 0,00</p></div>
-      <div class="counter-card" id="card-total-comp" style="min-width:130px;transition:background 0.2s,border 0.2s"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total Componentes</p><p style="font-size:20px;font-weight:500;color:#94a3b8" id="total-comp">R$ 0,00</p></div>
-      <div class="counter-card" style="min-width:110px;transition:background 0.2s,border 0.2s" id="card-correio"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">📦 Correio</p><p style="font-size:20px;font-weight:500;color:#64748b" id="total-correio">R$ 0,00</p></div>
-      <div class="counter-card" style="min-width:110px;transition:background 0.2s,border 0.2s" id="card-motoboy"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">🛵 Motoboy</p><p style="font-size:20px;font-weight:500;color:#64748b" id="total-motoboy">R$ 0,00</p></div>
-      <div class="counter-card" style="min-width:110px;transition:background 0.2s,border 0.2s" id="card-uber"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">🚗 Uber</p><p style="font-size:20px;font-weight:500;color:#64748b" id="total-uber">R$ 0,00</p></div>
-      <div class="counter-card" style="min-width:110px;transition:background 0.2s,border 0.2s" id="card-outros-g"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">📌 Outros</p><p style="font-size:20px;font-weight:500;color:#64748b" id="total-outros-g">R$ 0,00</p></div>
-      <div class="counter-card" style="min-width:130px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissão Bruta (15%)</p><p style="font-size:20px;font-weight:500;color:#fbbf24" id="total-com-bruta">R$ 0,00</p></div>
-      <div class="counter-card" style="min-width:120px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total Descontos</p><p style="font-size:20px;font-weight:500;color:#fca5a5" id="total-descontos">R$ 0,00</p></div>
-      <div class="counter-card" style="min-width:120px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissão Líquida</p><p style="font-size:20px;font-weight:500;color:#fbbf24" id="total-com-liq">R$ 0,00</p></div>
+      <div class="counter-card" style="min-width:150px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">A Receber (clientes)</p><p style="font-size:20px;font-weight:500;color:#ef4444" id="total-a-receber">R$ 0,00</p></div>
+      <div class="counter-card" style="min-width:150px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissão Líquida (já recebida)</p><p style="font-size:20px;font-weight:500;color:#22c55e" id="total-com-liq">R$ 0,00</p></div>
+      <div class="counter-card" style="min-width:150px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissão Total (mês)</p><p style="font-size:20px;font-weight:500;color:#fbbf24" id="total-com-bruta">R$ 0,00</p></div>
+      <div class="counter-card" style="min-width:150px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissão a Receber</p><p style="font-size:20px;font-weight:500;color:#fb923c" id="total-com-restante">R$ 0,00</p></div>
     </div>
   </div>
 </main>
@@ -113,12 +107,6 @@ var historicoEditMode = false;
 var extraMonths = [];
 var monthDDOpen = false;
 var tarefasAbertas = {};
-var fretesMes = 0;
-var outrosDescontos = 0;
-var gastosCorreio = 0;
-var gastosMotoboy = 0;
-var gastosUber = 0;
-var gastosOutro = 0;
 var _compMenuReg = null;
 var _compUploadReg = null;
 
@@ -145,13 +133,13 @@ async function loadMonthData(m, y) {
     }
     var state = {};
     clients.forEach(function(c) {
-      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0,obs_pagamento:'',comprovantes:compMap[c.reg]||[]};
+      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,obs_pagamento:'',comprovantes:compMap[c.reg]||[]};
     });
     rows.forEach(function(r) {
       state[r.cliente_reg] = {
         recebido:!!r.recebido, enviado:!!r.enviado, quitado:!!r.quitado,
         valor_mes:Number(r.valor_mes)||0, valor_pago:Number(r.valor_pago)||0,
-        valor_componente:Number(r.valor_componente)||0, obs_pagamento:r.obs_pagamento||'',
+        obs_pagamento:r.obs_pagamento||'',
         comprovantes:compMap[r.cliente_reg]||[]
       };
     });
@@ -173,42 +161,52 @@ function mesTemDados(state) {
   return false;
 }
 
-async function upsertRow(reg, data) {
-  setSyncStatus('syncing');
-  var payload = Object.assign({cliente_reg:reg, mes:viewMonth, ano:viewYear, updated_at:new Date().toISOString()}, data);
-  var res = await sb.from('controle_mensal').upsert(payload, {onConflict:'cliente_reg,mes,ano'});
-  if (res.error) {
-    var msg = res.error.message || '';
-    if (msg.includes('valor_componente') || msg.includes('obs_pagamento')) {
-      var payloadSem = Object.assign({}, payload);
-      if (msg.includes('valor_componente')) delete payloadSem.valor_componente;
-      if (msg.includes('obs_pagamento')) delete payloadSem.obs_pagamento;
-      var res2 = await sb.from('controle_mensal').upsert(payloadSem, {onConflict:'cliente_reg,mes,ano'});
-      if (res2.error) { setSyncStatus('error'); return false; }
-      setSyncStatus('ok'); return true;
-    }
-    console.error('upsertRow:', res.error);
-    setSyncStatus('error');
-    return false;
-  }
-  setSyncStatus('ok');
-  return true;
+// Busca o registro atual DIRETO DO SERVIDOR (nunca confia em dbState local pra decidir
+// se uma gravacao esta reduzindo um valor — foi exatamente dbState desatualizado que
+// causou perda de dado real: um clique em tick reenviava valor_mes/valor_pago da memoria
+// do navegador, sobrescrevendo valores que tinham mudado no servidor nesse meio-tempo).
+async function fetchCurrentRow(reg) {
+  var res = await sb.from('controle_mensal').select('id,valor_mes,valor_pago').eq('cliente_reg',reg).eq('mes',viewMonth).eq('ano',viewYear);
+  if (res.error) { console.error('fetchCurrentRow:', res.error); return null; }
+  return (res.data && res.data[0]) || null;
 }
 
-async function reloadGastosFooter(m, y) {
-  try {
-    var res = await sb.from('gastos_entrega').select('tipo,valor').eq('mes',m).eq('ano',y);
-    if (!res.error) {
-      var gc=0,gm=0,gu=0,go=0;
-      (res.data||[]).forEach(function(g){
-        var v=Number(g.valor)||0;
-        if(g.tipo==='correio') gc+=v; else if(g.tipo==='motoboy') gm+=v; else if(g.tipo==='uber') gu+=v; else go+=v;
-      });
-      gastosCorreio=gc; gastosMotoboy=gm; gastosUber=gu; gastosOutro=go;
-      fretesMes=gc+gm+gu+go;
-      updateCounts();
-    }
-  } catch(e) { console.warn('[reloadGastosFooter]', e); }
+// Pede confirmacao explicita se a gravacao for reduzir valor_mes ou valor_pago
+// (comparando contra o valor atual do SERVIDOR, nao da memoria local).
+function confirmReducaoValor(atual, novos) {
+  var partes = [];
+  if (novos.valor_mes !== undefined) {
+    var oldM = Number(atual ? atual.valor_mes : 0) || 0;
+    var novoM = Number(novos.valor_mes) || 0;
+    if (novoM < oldM) partes.push('valor do mês de ' + fmt(oldM) + ' para ' + fmt(novoM));
+  }
+  if (novos.valor_pago !== undefined) {
+    var oldP = Number(atual ? atual.valor_pago : 0) || 0;
+    var novoP = Number(novos.valor_pago) || 0;
+    if (novoP < oldP) partes.push('valor pago de ' + fmt(oldP) + ' para ' + fmt(novoP));
+  }
+  if (!partes.length) return true;
+  return confirm('Você está reduzindo o ' + partes.join(' e o ') + '. Confirma?');
+}
+
+// UPDATE parcial — grava só os campos passados em `campos`, nunca reenvia campos que
+// o clique atual nao tocou (ex: um tick de recebido/enviado/quitado nao deve incluir
+// valor_mes/valor_pago no payload). So faz INSERT (com os defaults da tabela pros
+// campos ausentes) quando a linha realmente ainda nao existe.
+async function patchControleMensal(reg, campos) {
+  setSyncStatus('syncing');
+  var existing = await sb.from('controle_mensal').select('id').eq('cliente_reg',reg).eq('mes',viewMonth).eq('ano',viewYear);
+  if (existing.error) { console.error('patchControleMensal (select):', existing.error); setSyncStatus('error'); return false; }
+  var res;
+  if (existing.data && existing.data.length) {
+    var payload = Object.assign({}, campos, {updated_at:new Date().toISOString()});
+    res = await sb.from('controle_mensal').update(payload).eq('id', existing.data[0].id);
+  } else {
+    res = await sb.from('controle_mensal').insert(Object.assign({cliente_reg:reg, mes:viewMonth, ano:viewYear}, campos));
+  }
+  if (res.error) { console.error('patchControleMensal (write):', res.error); setSyncStatus('error'); return false; }
+  setSyncStatus('ok');
+  return true;
 }
 
 async function loadTarefasAbertas() {
@@ -322,7 +320,6 @@ async function switchMonth(m, y) {
   renderMonthTabs();
   updateCounts();
   doFilter();
-  reloadGastosFooter(viewMonth, viewYear);
   loadTarefasAbertas();
   document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Selecione um cliente</p></div>';
 }
@@ -337,7 +334,7 @@ document.addEventListener('click', function(e) {
 
 // ── Counts ────────────────────────────────────────────────────
 function updateCounts() {
-  var rec=0,env=0,qui=0,pen=0,totVal=0,totPago=0,totComp=0;
+  var rec=0,env=0,qui=0,pen=0,totVal=0,totPago=0;
   clients.forEach(function(c) {
     var v = dbState[c.reg] || {};
     if (v.recebido) rec++;
@@ -346,46 +343,19 @@ function updateCounts() {
     if (!v.recebido && !v.enviado && !v.quitado) pen++;
     totVal  += Number(v.valor_mes  || 0);
     totPago += Number(v.valor_pago || 0);
-    totComp += Number(v.valor_componente || 0);
   });
   document.getElementById('count-recebido').textContent = rec;
   document.getElementById('count-enviado').textContent  = env;
   document.getElementById('count-quitado').textContent  = qui;
   document.getElementById('count-pendente').textContent = pen;
-  var comBruta       = totVal * COMISSAO;
-  var totalDescontos = gastosCorreio + gastosMotoboy + gastosUber + gastosOutro;
-  document.getElementById('total-valor').textContent     = fmt(totVal);
-  document.getElementById('total-pago').textContent      = fmt(totPago);
-  document.getElementById('total-comp').textContent      = fmt(totComp);
-  document.getElementById('total-com-bruta').textContent = fmt(comBruta);
-  var elDesc = document.getElementById('total-descontos');
-  if (elDesc) elDesc.textContent = fmt(totalDescontos);
-  document.getElementById('total-com-liq').textContent   = fmt(comBruta);
-  function setGastoCard(cardId, valId, val, bg, border, color) {
-    var card = document.getElementById(cardId), vEl = document.getElementById(valId);
-    if (!card || !vEl) return;
-    vEl.textContent = fmt(val);
-    if (val > 0) { card.style.background=bg; card.style.border=border; vEl.style.color=color; }
-    else         { card.style.background=''; card.style.border=''; vEl.style.color='#64748b'; }
-  }
-  setGastoCard('card-correio',  'total-correio',  gastosCorreio, hexToRgba(T().accent,0.12),  '0.5px solid '+hexToRgba(T().accent,0.4),  T().accent);
-  setGastoCard('card-motoboy',  'total-motoboy',  gastosMotoboy, hexToRgba(T().warn,0.12),  '0.5px solid '+hexToRgba(T().warn,0.4), T().warn);
-  setGastoCard('card-uber',     'total-uber',     gastosUber,    hexToRgba(T().accent2,0.12), '0.5px solid '+hexToRgba(T().accent2,0.4),T().accent2);
-  setGastoCard('card-outros-g', 'total-outros-g', gastosOutro,   'rgba(148,163,184,0.12)', '0.5px solid rgba(148,163,184,0.4)','#94a3b8');
+  var comTotal      = totVal * COMISSAO;
+  var comLiquida     = totPago * COMISSAO;
+  var comRestante    = comTotal - comLiquida;
+  document.getElementById('total-a-receber').textContent    = fmt(totVal - totPago);
+  document.getElementById('total-com-liq').textContent      = fmt(comLiquida);
+  document.getElementById('total-com-bruta').textContent    = fmt(comTotal);
+  document.getElementById('total-com-restante').textContent = fmt(comRestante);
   document.getElementById('sealed-banner').style.display = isFechadoLocal() ? 'flex' : 'none';
-  var compCard = document.getElementById('card-total-comp');
-  var compVal  = document.getElementById('total-comp');
-  if (compCard && compVal) {
-    if (totComp > 0) {
-      compCard.style.background = hexToRgba(T().warn,0.15);
-      compCard.style.border     = '0.5px solid '+hexToRgba(T().warn,0.4);
-      compVal.style.color       = T().warn;
-    } else {
-      compCard.style.background = '';
-      compCard.style.border     = '';
-      compVal.style.color       = '#94a3b8';
-    }
-  }
 }
 
 function statusOf(reg) {
@@ -443,10 +413,10 @@ function renderDetail() {
   var c  = selected;
   var col = avatarColors[c.reg % avatarColors.length];
   var bg = col[0], fg = col[1];
-  var cv = dbState[c.reg] || {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,valor_componente:0};
+  var cv = dbState[c.reg] || {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0};
   var hasEnd  = c.end || c.bairro || c.cidade;
   var ro      = !isCurrentMonth() && !historicoEditMode;
-  var valorMes = Number(cv.valor_mes||0), valorPago = Number(cv.valor_pago||0), valorComp = Number(cv.valor_componente||0);
+  var valorMes = Number(cv.valor_mes||0), valorPago = Number(cv.valor_pago||0);
   var restante = valorMes - valorPago, comissao = valorMes * COMISSAO;
 
   var badge = cv.quitado
@@ -479,9 +449,6 @@ function renderDetail() {
           '<div><p class="label">Restante</p><p style="font-size:15px;font-weight:500;color:'+(restante>0?T().danger:T().success)+'">'+fmt(restante)+'</p></div>'+
           '<div><p class="label">Comissão (15%)</p><p style="font-size:15px;font-weight:600;color:'+T().warn+'">'+fmt(comissao)+'</p></div>'+
         '</div>'+
-        '<div style="border-top:0.5px solid rgba(255,255,255,0.08);margin:12px 0"></div>'+
-        '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px"><i class="ti ti-scissors" style="font-size:13px;vertical-align:-1px"></i> Descontos</p>'+
-        '<div><p class="label">Componente</p><p style="font-size:15px;font-weight:500;color:'+T().muted+'">'+fmt(valorComp)+'</p></div>'+
         (cv.obs_pagamento ? '<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.08)"><p class="label" style="margin-bottom:3px"><i class="ti ti-message" style="font-size:12px;vertical-align:-1px"></i> Observação</p><p style="font-size:13px;color:#e2e8f0">'+escHtml(cv.obs_pagamento)+'</p></div>' : '')+
       '</div>'
     : '<div class="fin-card" style="margin-bottom:14px">'+
@@ -499,12 +466,6 @@ function renderDetail() {
         '<div id="fin-obs-wrap-'+c.reg+'" style="margin-top:10px;">'+
           '<p class="label" style="margin-bottom:5px"><i class="ti ti-message" style="font-size:12px;vertical-align:-1px"></i> Motivo / Observação</p>'+
           '<textarea id="fin-obs-'+c.reg+'" style="width:100%;height:54px;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 10px;font-size:13px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit;resize:none" placeholder="Ex: Aguardando, vai pagar dia X">'+escHtml(cv.obs_pagamento||'')+'</textarea>'+
-        '</div>'+
-        '<div style="border-top:0.5px solid rgba(255,255,255,0.08);margin:14px 0"></div>'+
-        '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px"><i class="ti ti-scissors" style="font-size:13px;vertical-align:-1px"></i> Descontos</p>'+
-        '<div><p class="label" style="margin-bottom:5px">Componente (R$)</p>'+
-          '<input class="fin-input" type="number" id="fin-comp-'+c.reg+'" value="'+(Number(cv.valor_componente)||0)+'" placeholder="0,00" min="0" step="0.01" oninput="calcPreview('+c.reg+')" style="width:140px">'+
-          '<p style="font-size:11px;color:#4a5568;margin-top:5px">Salvo pelo botão Salvar acima</p>'+
         '</div>'+
       '</div>';
 
@@ -588,29 +549,32 @@ async function toggle(reg, tipo, e) {
   dbState[reg] = s;
   updateCounts(); renderMonthTabs(); doFilter();
   if (selected && selected.reg===reg) renderDetail();
-  upsertRow(reg, {recebido:s.recebido,enviado:s.enviado,quitado:s.quitado,valor_mes:s.valor_mes,valor_pago:s.valor_pago,valor_componente:s.valor_componente||0});
+  var campo = {}; campo[tipo] = s[tipo];
+  patchControleMensal(reg, campo);
 }
 
 async function saveFinanceiro(reg) {
   if (!isCurrentMonth() && !historicoEditMode) return;
   var s = dbState[reg] || {};
   var elValor = document.getElementById('fin-valor-'+reg);
-  var elComp  = document.getElementById('fin-comp-'+reg);
   var elPago  = document.getElementById('fin-pago-'+reg);
   var elObs   = document.getElementById('fin-obs-'+reg);
   var vM   = parseFloat(elValor ? elValor.value : '') || 0;
-  var vC   = parseFloat(elComp  ? elComp.value  : '') || 0;
   var vP   = parseFloat(elPago  ? elPago.value  : '') || 0;
   var vObs = elObs ? elObs.value.trim() : '';
+
+  var atual = await fetchCurrentRow(reg);
+  if (!confirmReducaoValor(atual, {valor_mes:vM, valor_pago:vP})) return;
+
   var btns = Array.from(document.querySelectorAll('.save-btn[data-reg="'+reg+'"]'));
   btns.forEach(function(btn) { btn.disabled = true; });
-  var ok = await upsertRow(reg, {recebido:s.recebido||false,enviado:s.enviado||false,quitado:s.quitado||false,valor_mes:vM,valor_pago:vP,valor_componente:vC,obs_pagamento:vObs});
+  var ok = await patchControleMensal(reg, {valor_mes:vM, valor_pago:vP, obs_pagamento:vObs});
   if (ok === false) {
     btns.forEach(function(btn) { btn.disabled = false; });
     showConnError('Erro ao salvar financeiro. Verifique o console (F12).');
     return;
   }
-  s.valor_mes = vM; s.valor_componente = vC; s.valor_pago = vP; s.obs_pagamento = vObs;
+  s.valor_mes = vM; s.valor_pago = vP; s.obs_pagamento = vObs;
   dbState[reg] = s;
   updateCounts();
   doFilter();
@@ -626,11 +590,13 @@ async function saveFinanceiro(reg) {
 
 async function clearFinanceiro(reg) {
   if (!isCurrentMonth() && !historicoEditMode) return;
+  var atual = await fetchCurrentRow(reg);
+  if (!confirmReducaoValor(atual, {valor_mes:0, valor_pago:0})) return;
   var s = dbState[reg] || {};
-  s.valor_mes = 0; s.valor_componente = 0; s.valor_pago = 0;
+  s.valor_mes = 0; s.valor_pago = 0;
   dbState[reg] = s;
   updateCounts(); renderDetail();
-  await upsertRow(reg, {recebido:s.recebido||false,enviado:s.enviado||false,quitado:s.quitado||false,valor_mes:0,valor_pago:0,valor_componente:0});
+  await patchControleMensal(reg, {valor_mes:0, valor_pago:0});
 }
 
 // ── Comprovantes ──────────────────────────────────────────────
@@ -757,11 +723,12 @@ function applyStaticThemeColors() {
   if (badge) { badge.style.background = hexToRgba(t.accent, 0.22); badge.style.color = t.accent; }
   ['sealed-icon','sealed-sub'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.color = t.success; });
   var sealedTitle = document.getElementById('sealed-title'); if (sealedTitle) sealedTitle.style.color = t.success;
-  ['count-recebido','count-enviado','count-quitado','total-pago'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.color = t.success; });
+  ['count-recebido','count-enviado','count-quitado'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.color = t.success; });
   var pend = document.getElementById('count-pendente'); if (pend) pend.style.color = t.danger;
-  var totVal = document.getElementById('total-valor'); if (totVal) totVal.style.color = t.text;
-  ['total-com-bruta','total-com-liq'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.color = t.warn; });
-  var desc = document.getElementById('total-descontos'); if (desc) desc.style.color = t.danger;
+  var aReceber = document.getElementById('total-a-receber'); if (aReceber) aReceber.style.color = t.danger;
+  var comLiq = document.getElementById('total-com-liq'); if (comLiq) comLiq.style.color = t.success;
+  var comBruta = document.getElementById('total-com-bruta'); if (comBruta) comBruta.style.color = t.warn;
+  var comRest = document.getElementById('total-com-restante'); if (comRest) comRest.style.color = t.accent2;
 }
 
 function onThemeChange() {
@@ -790,7 +757,6 @@ async function init() {
   updateCounts();
   doFilter();
   hideLoading();
-  reloadGastosFooter(viewMonth, viewYear);
   loadTarefasAbertas();
   loadCadastroClientes();
 }
