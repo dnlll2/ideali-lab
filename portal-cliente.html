@@ -53,12 +53,86 @@
   .status-a_fazer{background:#1d3a6e;color:#93c5fd}
   .status-fazendo{background:#3d2e0e;color:#fbbf24}
   .status-finalizado{background:#0d3d2b;color:#4ade80}
-  .caso-datas{display:flex;gap:18px;font-size:12px;color:#64748b}
+  .caso-datas{display:flex;gap:8px 18px;flex-wrap:wrap;font-size:12px;color:#64748b}
   .caso-datas b{color:#cbd5e1;font-weight:600}
+  .admin-banner{font-size:12px;font-weight:600;color:#fcd34d;background:#3d2e0e;border:0.5px solid rgba(251,191,36,0.35);border-radius:8px;padding:8px 12px;margin-bottom:14px;text-align:left}
+
+  /* ── Hamburguer + menu lateral (mesmo padrao visual do painel
+       interno: shared.css .hamburger / #sidebar) ────────────────── */
+  .panel-head-left{display:flex;align-items:center;gap:12px}
+  .hamburger{width:38px;height:38px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;flex-shrink:0}
+  .hamburger:hover{background:#2d3250;color:#e2e8f0}
+  #menu-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:300;opacity:0;pointer-events:none;transition:opacity 0.2s}
+  #menu-overlay.open{opacity:1;pointer-events:all}
+  #menu-drawer{position:fixed;top:0;left:0;height:100vh;width:260px;max-width:80vw;background:#1a1d27;border-right:0.5px solid rgba(255,255,255,0.1);z-index:301;transform:translateX(-100%);transition:transform 0.25s;display:flex;flex-direction:column;text-align:left}
+  #menu-drawer.open{transform:translateX(0)}
+  .menu-logo{display:flex;align-items:center;justify-content:space-between;padding:20px 18px;border-bottom:0.5px solid rgba(255,255,255,0.08)}
+  .menu-close{width:28px;height:28px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .menu-item{display:flex;align-items:center;gap:12px;padding:11px 20px;cursor:pointer;color:#e2e8f0;font-size:14px}
+  .menu-item:hover{background:rgba(255,255,255,0.04)}
   @media(max-width:520px){.row2{grid-template-columns:1fr}.dente{width:24px;height:24px;font-size:10px}.caso-datas{flex-direction:column;gap:4px}}
+
+  /* ── Desktop only (>=860px): cabecalho no padrao do painel interno,
+       abas segmentadas com 4 secoes, grid de cards, form em 2 colunas.
+       Abaixo de 860px nada muda. ─────────────────────────────────── */
+  .head-right{display:flex;align-items:center;gap:14px}
+  .sync-status{display:none;align-items:center;font-size:12px;color:#64748b}
+  .sync-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:6px}
+  .tabs-desktop{display:none}
+
+  .fin-mes-atual{font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px}
+  .fin-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px}
+  .fin-stat{background:#181b26;border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:16px 14px;text-align:center}
+  .fin-stat .l{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:6px}
+  .fin-stat .v{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;display:block;color:#f1f5f9}
+  .fin-stat.pago .v{color:#4ade80}
+  .fin-stat.restante .v{color:#fbbf24}
+  .fin-stat.restante.quitado .v{color:#4ade80}
+  .fin-empty{background:#181b26;border:0.5px dashed rgba(255,255,255,0.15);border-radius:10px;padding:18px;text-align:center;font-size:13px;color:#64748b;margin-bottom:22px}
+  .fin-hist-title{font-size:13px;font-weight:600;color:#94a3b8;margin-bottom:10px}
+  .fin-table{width:100%;border-collapse:collapse}
+  .fin-table th{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;padding:8px 10px;text-align:left;border-bottom:0.5px solid rgba(255,255,255,0.1)}
+  .fin-table th.num,.fin-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .fin-table td{padding:10px;border-bottom:0.5px solid rgba(255,255,255,0.05);font-size:13px;color:#e2e8f0}
+  .fin-table tr:last-child td{border-bottom:none}
+  .fin-badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .fin-badge.quitado{background:#0d3d2b;color:#4ade80}
+  .fin-badge.aberto{background:#3d2e0e;color:#fbbf24}
+  .fin-badge.sem{background:rgba(255,255,255,0.06);color:#64748b}
+
+  @media(min-width:860px){
+    .wrap.wide{width:min(980px,100%)}
+    #view-painel .panel-head h1{font-size:22px;font-weight:500}
+    #view-painel .panel-head .sub{font-size:14px}
+    .sync-status{display:flex}
+    .tabs{display:none}
+    .tabs-desktop{display:flex;gap:4px;background:#181b26;border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:4px;margin-bottom:20px}
+    .tabs-desktop .tab-btn-d{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;height:38px;border:none;border-radius:8px;background:transparent;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+    .tabs-desktop .tab-btn-d:hover:not(.active){color:#e2e8f0}
+    .tabs-desktop .tab-btn-d.active{background:#1a1d27;color:#f1f5f9}
+    .tabs-desktop .count{font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,0.08);color:#94a3b8}
+    .tabs-desktop .tab-btn-d.active .count{background:#1d4ed8;color:#fff}
+    #casos-lista,#casos-andamento-lista,#casos-entregues-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+    #casos-lista .caso-card,#casos-andamento-lista .caso-card,#casos-entregues-lista .caso-card{margin-bottom:0}
+    .form-grid{display:grid;grid-template-columns:1.1fr 0.9fr;column-gap:28px;align-items:start}
+  }
 </style>
 </head>
 <body>
+
+<div id="menu-overlay" onclick="closeMenu()"></div>
+<div id="menu-drawer">
+  <div class="menu-logo">
+    <div>
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9">Ideali Laboratório</p>
+      <p style="font-size:11px;color:#4a5568;margin-top:2px">Portal do Cliente</p>
+    </div>
+    <button class="menu-close" onclick="closeMenu()">✕</button>
+  </div>
+  <nav style="padding:8px 0;flex:1">
+    <div class="menu-item" onclick="closeMenu();sair()">🚪 Sair</div>
+  </nav>
+</div>
 
 <div class="wrap" id="wrap">
   <div class="card">
@@ -83,38 +157,57 @@
 
     <div id="view-painel" style="display:none">
       <div class="panel-head">
-        <div>
-          <h1 id="painel-nome">Bem-vindo</h1>
-          <p class="sub" style="margin-bottom:0">Portal do Cliente</p>
+        <div class="panel-head-left">
+          <button class="hamburger" onclick="openMenu()" title="Menu">&#9776;</button>
+          <div>
+            <h1 id="painel-nome">Bem-vindo</h1>
+            <p class="sub" style="margin-bottom:0">Portal do Cliente</p>
+          </div>
         </div>
-        <button class="btn-ghost" style="width:auto;height:34px;padding:0 14px;margin-top:0" onclick="sair()">Sair</button>
+        <div class="head-right">
+          <span class="sync-status"><span class="sync-dot"></span>Conectado</span>
+          <button class="btn-ghost" style="width:auto;height:34px;padding:0 14px;margin-top:0" onclick="sair()">Sair</button>
+        </div>
       </div>
 
+      <div id="admin-banner" class="admin-banner" style="display:none">👁️ Modo visualização (admin) — ações aqui (enviar caso, etc.) são reais e afetam o cliente de verdade.</div>
+
       <div class="tabs">
-        <button type="button" class="tab-btn active" id="tab-btn-novo" onclick="mostrarAba('novo')">Enviar novo caso</button>
-        <button type="button" class="tab-btn" id="tab-btn-casos" onclick="mostrarAba('casos')">Meus casos</button>
+        <button type="button" class="tab-btn active" id="tab-btn-novo" data-tab="novo" onclick="mostrarAba('novo')">Enviar novo caso</button>
+        <button type="button" class="tab-btn" id="tab-btn-casos" data-tab="casos" onclick="mostrarAba('casos')">Meus casos</button>
       </div>
+
+      <div class="tabs-desktop">
+        <button type="button" class="tab-btn-d active" data-tab="novo" onclick="mostrarAba('novo')">Novo Pedido</button>
+        <button type="button" class="tab-btn-d" data-tab="andamento" onclick="mostrarAba('andamento')">Pedidos em Andamento <span class="count" id="count-andamento">0</span></button>
+        <button type="button" class="tab-btn-d" data-tab="entregues" onclick="mostrarAba('entregues')">Pedidos Entregues <span class="count" id="count-entregues">0</span></button>
+        <button type="button" class="tab-btn-d" data-tab="financeiro" onclick="mostrarAba('financeiro')">Financeiro</button>
+      </div>
+
+      <div id="msg-casos" class="msg"></div>
 
       <div id="tab-novo">
         <div id="msg-caso" class="msg"></div>
 
-        <form onsubmit="return enviarCaso(event)">
+        <form class="form-grid" onsubmit="return enviarCaso(event)">
           <div class="group">
             <label>Paciente <span class="req">*</span></label>
             <input type="text" id="c-paciente" required>
           </div>
 
-          <div class="group">
-            <label>Tipo de trabalho <span class="req">*</span></label>
-            <select id="c-tipo" required>
-              <option value="">— Selecione —</option>
-              <option>Coroa</option>
-              <option>Onlay</option>
-              <option>Faceta</option>
-              <option>Prótese fixa / Ponte</option>
-              <option>Implante</option>
-              <option>Outro</option>
-            </select>
+          <div class="col-right">
+            <div class="group">
+              <label>Tipo de trabalho <span class="req">*</span></label>
+              <select id="c-tipo" required>
+                <option value="">— Selecione —</option>
+                <option>Coroa</option>
+                <option>Onlay</option>
+                <option>Faceta</option>
+                <option>Prótese fixa / Ponte</option>
+                <option>Implante</option>
+                <option>Outro</option>
+              </select>
+            </div>
           </div>
 
           <div class="group">
@@ -123,36 +216,49 @@
             <p id="odonto-sel" style="font-size:12px;color:#64748b;margin-top:6px;text-align:center">Nenhum dente selecionado</p>
           </div>
 
-          <div class="row2">
-            <div class="group">
-              <label>Cor</label>
-              <input type="text" id="c-cor" list="cores-comuns" placeholder="Ex: A2, BL3...">
-              <datalist id="cores-comuns">
-                <option value="A1"><option value="A2"><option value="A3"><option value="A3.5"><option value="A4">
-                <option value="B1"><option value="B2"><option value="B3"><option value="B4">
-                <option value="BL1"><option value="BL2"><option value="BL3"><option value="BL4">
-                <option value="C1"><option value="C2"><option value="C3">
-                <option value="D2"><option value="D3">
-              </datalist>
+          <div class="col-right">
+            <div class="row2">
+              <div class="group">
+                <label>Cor</label>
+                <input type="text" id="c-cor" list="cores-comuns" placeholder="Ex: A2, BL3...">
+                <datalist id="cores-comuns">
+                  <option value="A1"><option value="A2"><option value="A3"><option value="A3.5"><option value="A4">
+                  <option value="B1"><option value="B2"><option value="B3"><option value="B4">
+                  <option value="BL1"><option value="BL2"><option value="BL3"><option value="BL4">
+                  <option value="C1"><option value="C2"><option value="C3">
+                  <option value="D2"><option value="D3">
+                </datalist>
+              </div>
+              <div class="group">
+                <label>Anexo (STL)</label>
+                <div class="upload-placeholder">📎 Upload de arquivo em breve</div>
+              </div>
             </div>
+
             <div class="group">
-              <label>Anexo (STL)</label>
-              <div class="upload-placeholder">📎 Upload de arquivo em breve</div>
+              <label>Observações</label>
+              <textarea id="c-obs" rows="3" placeholder="Detalhes adicionais do caso..."></textarea>
             </div>
-          </div>
 
-          <div class="group">
-            <label>Observações</label>
-            <textarea id="c-obs" rows="3" placeholder="Detalhes adicionais do caso..."></textarea>
+            <button type="submit" class="btn" id="btn-caso">Enviar caso</button>
           </div>
-
-          <button type="submit" class="btn" id="btn-caso">Enviar caso</button>
         </form>
       </div>
 
       <div id="tab-casos" style="display:none">
-        <div id="msg-casos" class="msg"></div>
         <div id="casos-lista"><p class="casos-empty">Carregando…</p></div>
+      </div>
+
+      <div id="tab-andamento" style="display:none">
+        <div id="casos-andamento-lista"><p class="casos-empty">Carregando…</p></div>
+      </div>
+
+      <div id="tab-entregues" style="display:none">
+        <div id="casos-entregues-lista"><p class="casos-empty">Carregando…</p></div>
+      </div>
+
+      <div id="tab-financeiro" style="display:none">
+        <div id="fin-content"><p class="casos-empty">Carregando…</p></div>
       </div>
     </div>
 
@@ -178,21 +284,38 @@ function showMsgCaso(text, type) {
   el.className = 'msg ' + type;
 }
 
+function openMenu() {
+  document.getElementById('menu-overlay').classList.add('open');
+  document.getElementById('menu-drawer').classList.add('open');
+}
+function closeMenu() {
+  document.getElementById('menu-overlay').classList.remove('open');
+  document.getElementById('menu-drawer').classList.remove('open');
+}
+
 function mostrarPainel(sessao) {
   document.getElementById('view-login').style.display = 'none';
   document.getElementById('view-painel').style.display = 'block';
   document.getElementById('painel-nome').textContent = 'Bem-vindo, ' + sessao.nome;
   document.getElementById('wrap').classList.add('wide');
+  document.getElementById('admin-banner').style.display = sessao.admin ? 'block' : 'none';
+  carregarMeusCasos(); // pre-carrega contadores das abas "Em Andamento"/"Entregues" (desktop)
 }
 
-// ── Abas (Enviar novo caso / Meus casos) ──────────────────────
+// ── Abas (mobile: Enviar novo caso / Meus casos — desktop: Novo
+//    Pedido / Em Andamento / Entregues / Financeiro) ───────────
+var ABAS = ['novo', 'casos', 'andamento', 'entregues', 'financeiro'];
+
 function mostrarAba(aba) {
-  var isNovo = aba === 'novo';
-  document.getElementById('tab-novo').style.display = isNovo ? 'block' : 'none';
-  document.getElementById('tab-casos').style.display = isNovo ? 'none' : 'block';
-  document.getElementById('tab-btn-novo').classList.toggle('active', isNovo);
-  document.getElementById('tab-btn-casos').classList.toggle('active', !isNovo);
-  if (!isNovo) carregarMeusCasos();
+  ABAS.forEach(function(t) {
+    var painel = document.getElementById('tab-' + t);
+    if (painel) painel.style.display = (t === aba) ? 'block' : 'none';
+  });
+  document.querySelectorAll('[data-tab]').forEach(function(btn) {
+    btn.classList.toggle('active', btn.getAttribute('data-tab') === aba);
+  });
+  if (aba === 'casos' || aba === 'andamento' || aba === 'entregues') carregarMeusCasos();
+  if (aba === 'financeiro') carregarFinanceiro();
 }
 
 var STATUS_LABEL = { a_fazer: 'A Fazer', fazendo: 'Fazendo', finalizado: 'Finalizado' };
@@ -215,50 +338,139 @@ function escHtml(s) {
   });
 }
 
+function renderCasosEm(containerId, casos, textoVazio) {
+  var lista = document.getElementById(containerId);
+  if (!lista) return;
+  if (!casos.length) {
+    lista.innerHTML = '<p class="casos-empty">' + escHtml(textoVazio) + '</p>';
+    return;
+  }
+  lista.innerHTML = casos.map(function(c) {
+    var st = STATUS_LABEL[c.status] || c.status;
+    return '' +
+      '<div class="caso-card">' +
+        '<div class="caso-top">' +
+          '<div>' +
+            '<div class="caso-paciente">' + escHtml(c.paciente) + '</div>' +
+            '<div class="caso-tipo">' + escHtml(c.tipo_trabalho) + '</div>' +
+          '</div>' +
+          '<span class="status-badge status-' + escHtml(c.status) + '">' + escHtml(st) + '</span>' +
+        '</div>' +
+        '<div class="caso-datas">' +
+          '<span>Entrada: <b>' + formatarDataHora(c.criado_em) + '</b></span>' +
+          '<span>Previsão de saída: <b>' + formatarData(c.previsao_saida) + '</b></span>' +
+        '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function mostrarErroCasos(texto) {
+  var msg = document.getElementById('msg-casos');
+  msg.textContent = texto;
+  msg.className = 'msg error';
+  ['casos-lista', 'casos-andamento-lista', 'casos-entregues-lista'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  });
+}
+
 async function carregarMeusCasos() {
   var raw = localStorage.getItem(SESSAO_KEY);
   var sessao = raw ? JSON.parse(raw) : null;
-  var lista = document.getElementById('casos-lista');
-  var msg = document.getElementById('msg-casos');
-  msg.className = 'msg';
   if (!sessao || !sessao.token) {
-    msg.textContent = 'Sessão expirada. Saia e faça login novamente.';
-    msg.className = 'msg error';
+    mostrarErroCasos('Sessão expirada. Saia e faça login novamente.');
     return;
   }
 
-  lista.innerHTML = '<p class="casos-empty">Carregando…</p>';
   try {
     var res = await sb.rpc('listar_meus_casos', { p_sessao: sessao.token });
     if (res.error) throw res.error;
     var casos = res.data || [];
 
-    if (!casos.length) {
-      lista.innerHTML = '<p class="casos-empty">Você ainda não enviou nenhum caso.</p>';
-      return;
-    }
+    var msg = document.getElementById('msg-casos');
+    msg.textContent = '';
+    msg.className = 'msg';
 
-    lista.innerHTML = casos.map(function(c) {
-      var st = STATUS_LABEL[c.status] || c.status;
-      return '' +
-        '<div class="caso-card">' +
-          '<div class="caso-top">' +
-            '<div>' +
-              '<div class="caso-paciente">' + escHtml(c.paciente) + '</div>' +
-              '<div class="caso-tipo">' + escHtml(c.tipo_trabalho) + '</div>' +
-            '</div>' +
-            '<span class="status-badge status-' + escHtml(c.status) + '">' + escHtml(st) + '</span>' +
-          '</div>' +
-          '<div class="caso-datas">' +
-            '<span>Entrada: <b>' + formatarDataHora(c.criado_em) + '</b></span>' +
-            '<span>Previsão de saída: <b>' + formatarData(c.previsao_saida) + '</b></span>' +
-          '</div>' +
-        '</div>';
-    }).join('');
+    var andamento = casos.filter(function(c) { return c.status === 'a_fazer' || c.status === 'fazendo'; });
+    var entregues  = casos.filter(function(c) { return c.status === 'finalizado'; });
+
+    renderCasosEm('casos-lista', casos, 'Você ainda não enviou nenhum caso.');
+    renderCasosEm('casos-andamento-lista', andamento, 'Nenhum pedido em andamento.');
+    renderCasosEm('casos-entregues-lista', entregues, 'Nenhum pedido entregue ainda.');
+
+    var countA = document.getElementById('count-andamento');
+    var countE = document.getElementById('count-entregues');
+    if (countA) countA.textContent = andamento.length;
+    if (countE) countE.textContent = entregues.length;
   } catch(e) {
-    lista.innerHTML = '';
-    msg.textContent = e.message || 'Erro ao carregar seus casos.';
-    msg.className = 'msg error';
+    mostrarErroCasos(e.message || 'Erro ao carregar seus casos.');
+  }
+}
+
+// ── Financeiro ─────────────────────────────────────────────────
+var MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function formatarMoeda(v) {
+  return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function renderFinanceiro(linhas) {
+  var wrap = document.getElementById('fin-content');
+  var hoje = new Date();
+  var mesAtual = hoje.getMonth() + 1, anoAtual = hoje.getFullYear();
+  var atual = linhas.filter(function(l) { return l.mes === mesAtual && l.ano === anoAtual; })[0];
+  var historico = linhas.filter(function(l) { return !(l.mes === mesAtual && l.ano === anoAtual); });
+
+  var html = '<p class="fin-mes-atual">Mês atual — ' + MESES[mesAtual - 1] + '/' + anoAtual + '</p>';
+  if (atual) {
+    html += '<div class="fin-stats">' +
+      '<div class="fin-stat"><span class="l">Valor do mês</span><span class="v">' + formatarMoeda(atual.valor_mes) + '</span></div>' +
+      '<div class="fin-stat pago"><span class="l">Pago</span><span class="v">' + formatarMoeda(atual.valor_pago) + '</span></div>' +
+      '<div class="fin-stat restante' + (atual.quitado ? ' quitado' : '') + '"><span class="l">Restante</span><span class="v">' + formatarMoeda(atual.restante) + '</span></div>' +
+    '</div>';
+  } else {
+    html += '<div class="fin-empty">Ainda não há lançamento para este mês. Assim que o laboratório fechar o valor, ele aparece aqui.</div>';
+  }
+
+  html += '<p class="fin-hist-title">Histórico</p>';
+  if (!historico.length) {
+    html += '<p class="casos-empty">Nenhum mês anterior lançado.</p>';
+  } else {
+    html += '<table class="fin-table"><thead><tr><th>Mês</th><th class="num">Valor do mês</th><th class="num">Pago</th><th class="num">Restante</th><th>Status</th></tr></thead><tbody>';
+    html += historico.map(function(l) {
+      var badge = l.quitado
+        ? '<span class="fin-badge quitado">Quitado</span>'
+        : (Number(l.valor_mes) > 0
+            ? '<span class="fin-badge aberto">Em aberto</span>'
+            : '<span class="fin-badge sem">Sem lançamento</span>');
+      return '<tr>' +
+        '<td>' + MESES[l.mes - 1] + '/' + l.ano + '</td>' +
+        '<td class="num">' + formatarMoeda(l.valor_mes) + '</td>' +
+        '<td class="num">' + formatarMoeda(l.valor_pago) + '</td>' +
+        '<td class="num">' + formatarMoeda(l.restante) + '</td>' +
+        '<td>' + badge + '</td>' +
+      '</tr>';
+    }).join('');
+    html += '</tbody></table>';
+  }
+  wrap.innerHTML = html;
+}
+
+async function carregarFinanceiro() {
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  var wrap = document.getElementById('fin-content');
+  if (!sessao || !sessao.token) {
+    wrap.innerHTML = '<p class="casos-empty">Sessão expirada. Saia e faça login novamente.</p>';
+    return;
+  }
+  wrap.innerHTML = '<p class="casos-empty">Carregando…</p>';
+  try {
+    var res = await sb.rpc('listar_financeiro_cliente', { p_sessao: sessao.token });
+    if (res.error) throw res.error;
+    renderFinanceiro(res.data || []);
+  } catch(e) {
+    wrap.innerHTML = '<p class="casos-empty">' + escHtml(e.message || 'Erro ao carregar financeiro.') + '</p>';
   }
 }
 
@@ -366,11 +578,28 @@ function sair() {
   document.getElementById('wrap').classList.remove('wide');
   document.getElementById('f-usuario').value = '';
   document.getElementById('f-senha').value = '';
+  document.getElementById('admin-banner').style.display = 'none';
   mostrarAba('novo');
 }
 
 (function init() {
   buildOdontograma();
+
+  var params = new URLSearchParams(window.location.search);
+  var adminToken = params.get('admin_token');
+  if (adminToken) {
+    var sessaoAdmin = {
+      token: adminToken,
+      cliente_reg: Number(params.get('admin_reg')),
+      nome: params.get('admin_nome') || '',
+      admin: true
+    };
+    localStorage.setItem(SESSAO_KEY, JSON.stringify(sessaoAdmin));
+    history.replaceState(null, '', window.location.pathname);
+    mostrarPainel(sessaoAdmin);
+    return;
+  }
+
   var raw = localStorage.getItem(SESSAO_KEY);
   if (!raw) return;
   try {

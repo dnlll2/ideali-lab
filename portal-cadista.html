@@ -44,9 +44,39 @@
   .caso-avancar.finalizar{background:#0f766e}
   .caso-avancar.finalizar:hover{background:#14b8a6}
   .caso-avancar:disabled{opacity:0.55;cursor:default}
+  .admin-banner{font-size:12px;font-weight:600;color:#fcd34d;background:#3d2e0e;border:0.5px solid rgba(251,191,36,0.35);border-radius:8px;padding:8px 12px;margin-bottom:14px;text-align:left}
+  .caso-desc{font-size:12px;color:#94a3b8;margin:6px 0 10px;line-height:1.5;white-space:pre-line;word-break:break-word}
+
+  /* ── Hamburguer + menu lateral (mesmo padrao visual do painel
+       interno: shared.css .hamburger / #sidebar) ────────────────── */
+  .panel-head-left{display:flex;align-items:center;gap:12px}
+  .hamburger{width:38px;height:38px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;flex-shrink:0}
+  .hamburger:hover{background:#2d3250;color:#e2e8f0}
+  #menu-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:300;opacity:0;pointer-events:none;transition:opacity 0.2s}
+  #menu-overlay.open{opacity:1;pointer-events:all}
+  #menu-drawer{position:fixed;top:0;left:0;height:100vh;width:260px;max-width:80vw;background:#1a1d27;border-right:0.5px solid rgba(255,255,255,0.1);z-index:301;transform:translateX(-100%);transition:transform 0.25s;display:flex;flex-direction:column;text-align:left}
+  #menu-drawer.open{transform:translateX(0)}
+  .menu-logo{display:flex;align-items:center;justify-content:space-between;padding:20px 18px;border-bottom:0.5px solid rgba(255,255,255,0.08)}
+  .menu-close{width:28px;height:28px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .menu-item{display:flex;align-items:center;gap:12px;padding:11px 20px;cursor:pointer;color:#e2e8f0;font-size:14px}
+  .menu-item:hover{background:rgba(255,255,255,0.04)}
 </style>
 </head>
 <body>
+
+<div id="menu-overlay" onclick="closeMenu()"></div>
+<div id="menu-drawer">
+  <div class="menu-logo">
+    <div>
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9">Ideali Laboratório</p>
+      <p style="font-size:11px;color:#4a5568;margin-top:2px">Portal do Cadista</p>
+    </div>
+    <button class="menu-close" onclick="closeMenu()">✕</button>
+  </div>
+  <nav style="padding:8px 0;flex:1">
+    <div class="menu-item" onclick="closeMenu();sair()">🚪 Sair</div>
+  </nav>
+</div>
 
 <div class="wrap" id="wrap">
   <div class="card">
@@ -71,12 +101,17 @@
 
     <div id="view-painel" style="display:none">
       <div class="panel-head">
-        <div>
-          <h1 id="painel-nome">Bem-vindo</h1>
-          <p class="sub" style="margin-bottom:0">Meus casos</p>
+        <div class="panel-head-left">
+          <button class="hamburger" onclick="openMenu()" title="Menu">&#9776;</button>
+          <div>
+            <h1 id="painel-nome">Bem-vindo</h1>
+            <p class="sub" style="margin-bottom:0">Meus casos</p>
+          </div>
         </div>
         <button class="btn-ghost" style="width:auto;height:34px;padding:0 14px;margin-top:0" onclick="sair()">Sair</button>
       </div>
+
+      <div id="admin-banner" class="admin-banner" style="display:none">👁️ Modo visualização (admin) — ações aqui (mudar status, etc.) são reais e afetam o cadista de verdade.</div>
 
       <div id="msg-casos" class="msg"></div>
       <div id="casos-lista"><p class="casos-empty">Carregando…</p></div>
@@ -98,11 +133,21 @@ function showMsg(text) {
   el.className = 'msg error';
 }
 
+function openMenu() {
+  document.getElementById('menu-overlay').classList.add('open');
+  document.getElementById('menu-drawer').classList.add('open');
+}
+function closeMenu() {
+  document.getElementById('menu-overlay').classList.remove('open');
+  document.getElementById('menu-drawer').classList.remove('open');
+}
+
 function mostrarPainel(sessao) {
   document.getElementById('view-login').style.display = 'none';
   document.getElementById('view-painel').style.display = 'block';
   document.getElementById('painel-nome').textContent = 'Bem-vindo, ' + sessao.nome;
   document.getElementById('wrap').classList.add('wide');
+  document.getElementById('admin-banner').style.display = sessao.admin ? 'block' : 'none';
   carregarMeusCasosCadista();
 }
 
@@ -145,7 +190,6 @@ async function carregarMeusCasosCadista() {
 
     lista.innerHTML = casos.map(function(c) {
       var st = STATUS_LABEL[c.status] || c.status;
-      var tipo = c.tipo_trabalho || (c.paciente ? '' : (c.descricao || '—'));
       var acao = '';
       if (c.status === 'a_fazer') {
         acao = '<button class="caso-avancar iniciar" onclick="avancarStatusCadista(\''+c.id+'\',\'fazendo\',this)">Iniciar</button>';
@@ -157,10 +201,11 @@ async function carregarMeusCasosCadista() {
           '<div class="caso-top">' +
             '<div>' +
               '<div class="caso-cliente">' + escHtml(c.cliente_nome) + (c.paciente ? ' — ' + escHtml(c.paciente) : '') + '</div>' +
-              '<div class="caso-tipo">' + escHtml(tipo) + '</div>' +
+              (c.tipo_trabalho ? '<div class="caso-tipo">' + escHtml(c.tipo_trabalho) + '</div>' : '') +
             '</div>' +
             '<span class="status-badge status-' + escHtml(c.status) + '">' + escHtml(st) + '</span>' +
           '</div>' +
+          '<div class="caso-desc">' + escHtml(c.descricao || '—') + '</div>' +
           '<div class="caso-bottom">' +
             '<span class="caso-data">Entrada: ' + formatarDataHora(c.criado_em) + '</span>' +
             acao +
@@ -226,9 +271,25 @@ function sair() {
   document.getElementById('wrap').classList.remove('wide');
   document.getElementById('f-usuario').value = '';
   document.getElementById('f-senha').value = '';
+  document.getElementById('admin-banner').style.display = 'none';
 }
 
 (function init() {
+  var params = new URLSearchParams(window.location.search);
+  var adminToken = params.get('admin_token');
+  if (adminToken) {
+    var sessaoAdmin = {
+      token: adminToken,
+      cadista_reg: Number(params.get('admin_reg')),
+      nome: params.get('admin_nome') || '',
+      admin: true
+    };
+    localStorage.setItem(SESSAO_KEY, JSON.stringify(sessaoAdmin));
+    history.replaceState(null, '', window.location.pathname);
+    mostrarPainel(sessaoAdmin);
+    return;
+  }
+
   var raw = localStorage.getItem(SESSAO_KEY);
   if (!raw) return;
   try {

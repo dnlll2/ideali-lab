@@ -65,7 +65,7 @@
     </div>
 
     <!-- ── Cadastros pendentes: cadistas ───────────────────────── -->
-    <div class="card" style="padding:0;overflow:hidden">
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
       <div style="padding:16px 20px 0">
         <p style="font-size:15px;font-weight:600;color:#f1f5f9">🛠️ Cadistas pendentes</p>
         <p id="cv-cad-count" style="font-size:12px;color:#64748b;margin:2px 0 12px">—</p>
@@ -76,6 +76,34 @@
             <th>Nome</th><th>CNPJ</th><th>Telefone</th><th>Usuário</th><th>Enviado em</th><th style="width:170px">Ações</th>
           </tr></thead>
           <tbody id="cv-cad-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Clientes com acesso ao portal ───────────────────────── -->
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+      <div style="padding:16px 20px 0">
+        <p style="font-size:15px;font-weight:600;color:#f1f5f9">👁️ Clientes com acesso ao portal</p>
+        <p id="cv-cli-ap-count" style="font-size:12px;color:#64748b;margin:2px 0 12px">—</p>
+      </div>
+      <div style="overflow-x:auto;max-height:50vh">
+        <table class="cad-table">
+          <thead><tr><th>Nome</th><th>Usuário</th><th style="width:150px">Ações</th></tr></thead>
+          <tbody id="cv-cli-ap-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Cadistas com acesso ao portal ───────────────────────── -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:16px 20px 0">
+        <p style="font-size:15px;font-weight:600;color:#f1f5f9">👁️ Cadistas com acesso ao portal</p>
+        <p id="cv-cad-ap-count" style="font-size:12px;color:#64748b;margin:2px 0 12px">—</p>
+      </div>
+      <div style="overflow-x:auto;max-height:50vh">
+        <table class="cad-table">
+          <thead><tr><th>Nome</th><th>Usuário</th><th style="width:150px">Ações</th></tr></thead>
+          <tbody id="cv-cad-ap-tbody"></tbody>
         </table>
       </div>
     </div>
@@ -192,7 +220,7 @@ async function aprovarCliente(id) {
     if (upd.error) throw upd.error;
 
     alert('Cliente aprovado com reg #' + reg + '.');
-    await loadPendentes();
+    await Promise.all([loadPendentes(), loadAprovados()]);
   } catch(e) {
     alert('Erro ao aprovar: ' + (e.message || e));
   }
@@ -228,7 +256,7 @@ async function aprovarCadista(id) {
     if (upd.error) throw upd.error;
 
     alert('Cadista aprovado com cadista_reg #' + insCad.data.cadista_reg + '.');
-    await loadPendentes();
+    await Promise.all([loadPendentes(), loadAprovados()]);
   } catch(e) {
     alert('Erro ao aprovar: ' + (e.message || e));
   }
@@ -242,6 +270,87 @@ async function rejeitarCadista(id) {
     await loadPendentes();
   } catch(e) {
     alert('Erro ao rejeitar: ' + (e.message || e));
+  }
+}
+
+// ── Clientes/Cadistas com acesso ao portal (view-as) ─────────────
+var clientesAprovados = [];
+var cadistasAprovados = [];
+
+async function loadAprovados() {
+  var [resCli, resCad] = await Promise.all([
+    sb.from('clientes_login').select('cliente_reg,usuario,ativo,cadastro_clientes(nome)').eq('ativo', true),
+    sb.from('cadistas_login').select('cadista_reg,usuario,ativo,cadastro_cadistas(nome)').eq('ativo', true)
+  ]);
+  clientesAprovados = (resCli.data || []).sort(function(a, b) {
+    return (a.cadastro_clientes && a.cadastro_clientes.nome || '').localeCompare(b.cadastro_clientes && b.cadastro_clientes.nome || '', 'pt-BR');
+  });
+  cadistasAprovados = (resCad.data || []).sort(function(a, b) {
+    return (a.cadastro_cadistas && a.cadastro_cadistas.nome || '').localeCompare(b.cadastro_cadistas && b.cadastro_cadistas.nome || '', 'pt-BR');
+  });
+  renderClientesAprovados();
+  renderCadistasAprovados();
+}
+
+function renderClientesAprovados() {
+  var ce = document.getElementById('cv-cli-ap-count');
+  if (ce) ce.textContent = clientesAprovados.length + ' com login ativo';
+  var tb = document.getElementById('cv-cli-ap-tbody');
+  if (!tb) return;
+  tb.innerHTML = clientesAprovados.length ? clientesAprovados.map(function(p) {
+    var nome = (p.cadastro_clientes && p.cadastro_clientes.nome) || '—';
+    return '<tr>' +
+      '<td style="font-weight:500">' + escHtml(nome) + '</td>' +
+      '<td style="color:#94a3b8">' + escHtml(p.usuario) + '</td>' +
+      '<td><button class="cad-btn-ghost" style="height:28px;padding:0 10px;font-size:12px" onclick="verPainelCliente(' + p.cliente_reg + ')">👁️ Ver painel</button></td>' +
+    '</tr>';
+  }).join('') : '<tr><td colspan="3" style="text-align:center;color:#4a5568;padding:20px">Nenhum cliente com login ativo</td></tr>';
+}
+
+function renderCadistasAprovados() {
+  var ce = document.getElementById('cv-cad-ap-count');
+  if (ce) ce.textContent = cadistasAprovados.length + ' com login ativo';
+  var tb = document.getElementById('cv-cad-ap-tbody');
+  if (!tb) return;
+  tb.innerHTML = cadistasAprovados.length ? cadistasAprovados.map(function(p) {
+    var nome = (p.cadastro_cadistas && p.cadastro_cadistas.nome) || '—';
+    return '<tr>' +
+      '<td style="font-weight:500">' + escHtml(nome) + '</td>' +
+      '<td style="color:#94a3b8">' + escHtml(p.usuario) + '</td>' +
+      '<td><button class="cad-btn-ghost" style="height:28px;padding:0 10px;font-size:12px" onclick="verPainelCadista(' + p.cadista_reg + ')">👁️ Ver painel</button></td>' +
+    '</tr>';
+  }).join('') : '<tr><td colspan="3" style="text-align:center;color:#4a5568;padding:20px">Nenhum cadista com login ativo</td></tr>';
+}
+
+async function verPainelCliente(cliente_reg) {
+  try {
+    var res = await sb.rpc('admin_gerar_sessao_cliente', { p_cliente_reg: cliente_reg });
+    if (res.error) throw res.error;
+    var row = res.data && res.data[0];
+    if (!row) throw new Error('Não foi possível gerar a sessão de visualização.');
+    var url = new URL('portal-cliente.html', window.location.href);
+    url.searchParams.set('admin_token', row.token);
+    url.searchParams.set('admin_reg', row.cliente_reg);
+    url.searchParams.set('admin_nome', row.nome || '');
+    window.open(url.href, '_blank');
+  } catch(e) {
+    alert('Erro ao abrir painel do cliente: ' + (e.message || e));
+  }
+}
+
+async function verPainelCadista(cadista_reg) {
+  try {
+    var res = await sb.rpc('admin_gerar_sessao_cadista', { p_cadista_reg: cadista_reg });
+    if (res.error) throw res.error;
+    var row = res.data && res.data[0];
+    if (!row) throw new Error('Não foi possível gerar a sessão de visualização.');
+    var url = new URL('portal-cadista.html', window.location.href);
+    url.searchParams.set('admin_token', row.token);
+    url.searchParams.set('admin_reg', row.cadista_reg);
+    url.searchParams.set('admin_nome', row.nome || '');
+    window.open(url.href, '_blank');
+  } catch(e) {
+    alert('Erro ao abrir painel do cadista: ' + (e.message || e));
   }
 }
 
@@ -259,7 +368,7 @@ function showConnError(msg) {
 
 async function init() {
   try {
-    await loadPendentes();
+    await Promise.all([loadPendentes(), loadAprovados()]);
   } catch(e) {
     showConnError(e.message);
   } finally {
