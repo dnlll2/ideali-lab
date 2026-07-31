@@ -28,33 +28,32 @@
   .panel-head{display:flex;align-items:center;justify-content:space-between;text-align:left;margin-bottom:18px}
   .panel-head h1{margin:0}
   .casos-empty{font-size:13px;color:#64748b;text-align:center;padding:26px 10px}
-  .caso-card{background:#181b26;border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px 16px;margin-bottom:10px;text-align:left}
+  .caso-card{background:#181b26;border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px 16px;margin-bottom:8px;text-align:left;cursor:grab}
+  .caso-card:active{cursor:grabbing}
   .caso-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
   .caso-cliente{font-size:14px;font-weight:600;color:#f1f5f9}
   .caso-tipo{font-size:12px;color:#94a3b8;margin-top:2px}
-  .status-badge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap}
-  .status-a_fazer{background:#1d3a6e;color:#93c5fd}
-  .status-fazendo{background:#3d2e0e;color:#fbbf24}
-  .status-finalizado{background:#0d3d2b;color:#4ade80}
   .caso-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px}
   .caso-data{font-size:12px;color:#64748b}
-  .caso-avancar{height:30px;padding:0 14px;border-radius:7px;border:none;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0}
-  .caso-avancar.iniciar{background:#7c3aed}
-  .caso-avancar.iniciar:hover{background:#8b5cf6}
-  .caso-avancar.finalizar{background:#0f766e}
-  .caso-avancar.finalizar:hover{background:#14b8a6}
-  .caso-avancar:disabled{opacity:0.55;cursor:default}
   .admin-banner{font-size:12px;font-weight:600;color:#fcd34d;background:#3d2e0e;border:0.5px solid rgba(251,191,36,0.35);border-radius:8px;padding:8px 12px;margin-bottom:14px;text-align:left}
   .caso-desc{font-size:12px;color:#94a3b8;margin:6px 0 10px;line-height:1.5;white-space:pre-line;word-break:break-word}
   .caso-obs-btn{height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid rgba(45,212,191,0.4);background:transparent;color:#94a3b8;transition:all 0.15s}
   .caso-obs-btn.tem-obs{background:#0f766e;border-color:#2dd4bf;color:#fff}
 
-  .tabs-status{display:flex;gap:4px;background:#181b26;border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:4px;margin-bottom:16px}
-  .tabs-status .tab-btn-s{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:36px;border:none;border-radius:8px;background:transparent;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
-  .tabs-status .tab-btn-s:hover:not(.active){color:#e2e8f0}
-  .tabs-status .tab-btn-s.active{background:#1a1d27;color:#f1f5f9}
-  .tabs-status .count{font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,0.08);color:#94a3b8}
-  .tabs-status .tab-btn-s.active .count{background:#7c3aed;color:#fff}
+  /* ── Kanban (mesmo padrao visual/interacao do ordens-cam.html):
+       drag-and-drop nativo HTML5 -- so mouse/desktop, sem suporte a
+       toque. Abaixo de 767px vira 1 coluna empilhada (ainda sem
+       drag por toque, mas visivel/legivel). ─────────────────────── */
+  #cad-board{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start}
+  @media(max-width:767px){#cad-board{grid-template-columns:1fr !important}}
+  .cad-col{background:#13161f;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:160px}
+  .cad-col-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px}
+  .cad-col-body{padding:8px;display:flex;flex-direction:column;gap:8px;min-height:100px}
+  .cad-count{font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;background:rgba(255,255,255,0.1);color:#e2e8f0}
+
+  #undo-toast{display:none;position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:400;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:12px 14px;align-items:center;gap:14px;box-shadow:0 8px 24px rgba(0,0,0,0.5);font-size:13px;color:#e2e8f0;max-width:90vw}
+  #undo-toast button{height:28px;padding:0 12px;border-radius:6px;border:none;background:#7c3aed;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0}
+  #undo-toast button:hover{background:#8b5cf6}
 
   /* ── Hamburguer + menu lateral (mesmo padrao visual do painel
        interno: shared.css .hamburger / #sidebar) ────────────────── */
@@ -93,8 +92,6 @@
     body.painel-ativo .content-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:24px 28px}
     #view-painel .panel-head h1{font-size:22px;font-weight:500}
     #view-painel .panel-head .sub{font-size:14px}
-    #casos-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
-    #casos-lista .caso-card{margin-bottom:0}
   }
 
   #obs-dropdown-cadista{display:none;position:fixed;z-index:300;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px;width:260px;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
@@ -126,6 +123,11 @@
     <button onclick="fecharObsCadista()" style="height:26px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.12);background:transparent;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit">Cancelar</button>
     <button onclick="salvarObsCadista()" style="height:26px;padding:0 12px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Salvar</button>
   </div>
+</div>
+
+<div id="undo-toast">
+  <span id="undo-toast-text"></span>
+  <button onclick="desfazerUltimoMovimento()">Desfazer</button>
 </div>
 
 <div class="wrap" id="wrap">
@@ -165,13 +167,30 @@
 
       <div class="content-card">
         <div id="tab-casos">
-          <div class="tabs-status">
-            <button type="button" class="tab-btn-s active" data-status="a_fazer" onclick="mostrarStatusCadista('a_fazer')">A Fazer <span class="count" id="count-a_fazer">0</span></button>
-            <button type="button" class="tab-btn-s" data-status="fazendo" onclick="mostrarStatusCadista('fazendo')">Fazendo <span class="count" id="count-fazendo">0</span></button>
-            <button type="button" class="tab-btn-s" data-status="finalizado" onclick="mostrarStatusCadista('finalizado')">Finalizado <span class="count" id="count-finalizado">0</span></button>
-          </div>
           <div id="msg-casos" class="msg"></div>
-          <div id="casos-lista"><p class="casos-empty">Carregando…</p></div>
+          <div id="cad-board">
+            <div class="cad-col" ondragover="cadDragOver(event)" ondrop="cadDrop(event,'a_fazer')">
+              <div class="cad-col-head" style="background:rgba(99,179,237,0.08);border-bottom:2px solid #63b3ed">
+                <span style="font-size:13px;font-weight:600;color:#e2e8f0">A Fazer</span>
+                <span class="cad-count" id="cad-count-a_fazer">0</span>
+              </div>
+              <div class="cad-col-body" id="cad-body-a_fazer"><p class="casos-empty">Carregando…</p></div>
+            </div>
+            <div class="cad-col" ondragover="cadDragOver(event)" ondrop="cadDrop(event,'fazendo')">
+              <div class="cad-col-head" style="background:rgba(251,191,36,0.07);border-bottom:2px solid #fbbf24">
+                <span style="font-size:13px;font-weight:600;color:#e2e8f0">Fazendo</span>
+                <span class="cad-count" id="cad-count-fazendo">0</span>
+              </div>
+              <div class="cad-col-body" id="cad-body-fazendo"><p class="casos-empty">Carregando…</p></div>
+            </div>
+            <div class="cad-col" ondragover="cadDragOver(event)" ondrop="cadDrop(event,'finalizado')">
+              <div class="cad-col-head" style="background:rgba(34,197,94,0.07);border-bottom:2px solid #22c55e">
+                <span style="font-size:13px;font-weight:600;color:#e2e8f0">Finalizado</span>
+                <span class="cad-count" id="cad-count-finalizado">0</span>
+              </div>
+              <div class="cad-col-body" id="cad-body-finalizado"><p class="casos-empty">Carregando…</p></div>
+            </div>
+          </div>
         </div>
 
         <div id="tab-financeiro" style="display:none">
@@ -240,64 +259,39 @@ function escHtml(s) {
 }
 
 var casosCadista = [];
-var statusAtivoCadista = 'a_fazer';
-
-function mostrarStatusCadista(status) {
-  statusAtivoCadista = status;
-  document.querySelectorAll('.tab-btn-s').forEach(function(btn) {
-    btn.classList.toggle('active', btn.getAttribute('data-status') === status);
-  });
-  renderCasosPorStatusCadista();
-}
 
 function casoCardHtmlCadista(c) {
-  var st = STATUS_LABEL[c.status] || c.status;
-  var acao = '';
-  if (c.status === 'a_fazer') {
-    acao = '<button class="caso-avancar iniciar" onclick="avancarStatusCadista(\''+c.id+'\',\'fazendo\',this)">Iniciar</button>';
-  } else if (c.status === 'fazendo') {
-    acao = '<button class="caso-avancar finalizar" onclick="avancarStatusCadista(\''+c.id+'\',\'finalizado\',this)">Finalizar</button>';
-  }
   var hasObs = !!(c.observacao && c.observacao.trim());
-  var btnObs = '<button class="caso-obs-btn' + (hasObs ? ' tem-obs' : '') + '" onclick="event.stopPropagation();abrirObsCadista(\''+c.id+'\',event)" title="'+(hasObs?escHtml(c.observacao):'Adicionar observação')+'">📝'+(hasObs?' Obs.':'')+'</button>';
+  var btnObs = '<button class="caso-obs-btn' + (hasObs ? ' tem-obs' : '') + '" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();abrirObsCadista(\''+c.id+'\',event)" title="'+(hasObs?escHtml(c.observacao):'Adicionar observação')+'">📝'+(hasObs?' Obs.':'')+'</button>';
   return '' +
-    '<div class="caso-card">' +
+    '<div class="caso-card" draggable="true" ondragstart="cadDragStart(event,\''+c.id+'\')">' +
       '<div class="caso-top">' +
         '<div>' +
           '<div class="caso-cliente">' + escHtml(c.cliente_nome) + (c.paciente ? ' — ' + escHtml(c.paciente) : '') + '</div>' +
           (c.tipo_trabalho ? '<div class="caso-tipo">' + escHtml(c.tipo_trabalho) + '</div>' : '') +
         '</div>' +
-        '<span class="status-badge status-' + escHtml(c.status) + '">' + escHtml(st) + '</span>' +
       '</div>' +
       '<div class="caso-desc">' + escHtml(c.descricao || '—') + '</div>' +
       '<div class="caso-bottom">' +
         '<span class="caso-data">Entrada: ' + formatarDataHora(c.criado_em) + '</span>' +
-        '<div style="display:flex;gap:6px;align-items:center">' + btnObs + acao + '</div>' +
+        btnObs +
       '</div>' +
     '</div>';
 }
 
-function renderCasosPorStatusCadista() {
-  var lista = document.getElementById('casos-lista');
+function renderCadistaBoard() {
   ['a_fazer', 'fazendo', 'finalizado'].forEach(function(st) {
-    var count = casosCadista.filter(function(c) { return c.status === st; }).length;
-    var el = document.getElementById('count-' + st);
-    if (el) el.textContent = count;
+    var casos = casosCadista.filter(function(c) { return c.status === st; });
+    var body  = document.getElementById('cad-body-' + st);
+    var count = document.getElementById('cad-count-' + st);
+    if (count) count.textContent = casos.length;
+    if (body) body.innerHTML = casos.length ? casos.map(casoCardHtmlCadista).join('') : '<p class="casos-empty">Nenhum caso aqui.</p>';
   });
-
-  var casos = casosCadista.filter(function(c) { return c.status === statusAtivoCadista; });
-  if (!casos.length) {
-    var vazio = { a_fazer: 'Nenhum caso a fazer.', fazendo: 'Nenhum caso em andamento.', finalizado: 'Nenhum caso finalizado ainda.' }[statusAtivoCadista];
-    lista.innerHTML = '<p class="casos-empty">' + vazio + '</p>';
-    return;
-  }
-  lista.innerHTML = casos.map(casoCardHtmlCadista).join('');
 }
 
 async function carregarMeusCasosCadista() {
   var raw = localStorage.getItem(SESSAO_KEY);
   var sessao = raw ? JSON.parse(raw) : null;
-  var lista = document.getElementById('casos-lista');
   var msg = document.getElementById('msg-casos');
   msg.className = 'msg';
   if (!sessao || !sessao.token) {
@@ -306,15 +300,112 @@ async function carregarMeusCasosCadista() {
     return;
   }
 
-  lista.innerHTML = '<p class="casos-empty">Carregando…</p>';
   try {
     var res = await sb.rpc('listar_casos_cadista', { p_sessao: sessao.token });
     if (res.error) throw res.error;
     casosCadista = res.data || [];
-    renderCasosPorStatusCadista();
+    renderCadistaBoard();
   } catch(e) {
-    lista.innerHTML = '';
+    ['a_fazer', 'fazendo', 'finalizado'].forEach(function(st) {
+      var body = document.getElementById('cad-body-' + st);
+      if (body) body.innerHTML = '';
+    });
     msg.textContent = e.message || 'Erro ao carregar seus casos.';
+    msg.className = 'msg error';
+  }
+}
+
+// ── Drag-and-drop (mesmo padrao do kanban em ordens-cam.html: HTML5
+//    nativo, so mouse/desktop) ──────────────────────────────────
+var _cadDragId = null;
+
+function cadDragStart(event, id) {
+  _cadDragId = id;
+  event.dataTransfer.effectAllowed = 'move';
+}
+
+function cadDragOver(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+}
+
+async function cadDrop(event, novoStatus) {
+  event.preventDefault();
+  var id = _cadDragId;
+  _cadDragId = null;
+  if (!id) return;
+  var c = casosCadista.find(function(x){ return x.id === id; });
+  if (!c || c.status === novoStatus) return;
+  mudarStatusCadista(id, novoStatus, c.status);
+}
+
+async function mudarStatusCadista(id, novoStatus, statusAnterior) {
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  if (!sessao || !sessao.token) return;
+
+  try {
+    var res = await sb.rpc('atualizar_status_caso_cadista', {
+      p_sessao: sessao.token,
+      p_caso_id: id,
+      p_novo_status: novoStatus
+    });
+    if (res.error) throw res.error;
+    var c = casosCadista.find(function(x){ return x.id === id; });
+    if (c) c.status = novoStatus;
+    renderCadistaBoard();
+    mostrarUndoToast(id, statusAnterior, novoStatus);
+  } catch(e) {
+    var msg = document.getElementById('msg-casos');
+    msg.textContent = e.message || 'Erro ao atualizar status.';
+    msg.className = 'msg error';
+  }
+}
+
+// ── Desfazer (aviso temporario pos-arraste, tipo Gmail "Desfazer") ──
+var _undoTimer = null;
+var _undoInfo  = null;
+
+function mostrarUndoToast(id, statusAnterior, novoStatus) {
+  clearTimeout(_undoTimer);
+  _undoInfo = { id: id, statusAnterior: statusAnterior };
+  var toast = document.getElementById('undo-toast');
+  var texto = document.getElementById('undo-toast-text');
+  texto.textContent = 'Movido para ' + (STATUS_LABEL[novoStatus] || novoStatus);
+  toast.style.display = 'flex';
+  _undoTimer = setTimeout(esconderUndoToast, 6000);
+}
+
+function esconderUndoToast() {
+  clearTimeout(_undoTimer);
+  _undoTimer = null;
+  _undoInfo = null;
+  var toast = document.getElementById('undo-toast');
+  if (toast) toast.style.display = 'none';
+}
+
+async function desfazerUltimoMovimento() {
+  if (!_undoInfo) return;
+  var info = _undoInfo;
+  esconderUndoToast();
+
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  if (!sessao || !sessao.token) return;
+
+  try {
+    var res = await sb.rpc('atualizar_status_caso_cadista', {
+      p_sessao: sessao.token,
+      p_caso_id: info.id,
+      p_novo_status: info.statusAnterior
+    });
+    if (res.error) throw res.error;
+    var c = casosCadista.find(function(x){ return x.id === info.id; });
+    if (c) c.status = info.statusAnterior;
+    renderCadistaBoard();
+  } catch(e) {
+    var msg = document.getElementById('msg-casos');
+    msg.textContent = e.message || 'Erro ao desfazer.';
     msg.className = 'msg error';
   }
 }
@@ -364,7 +455,7 @@ async function salvarObsCadista() {
     if (res.error) throw res.error;
     var c = casosCadista.find(function(x){ return x.id === id; });
     if (c) c.observacao = texto || null;
-    renderCasosPorStatusCadista();
+    renderCadistaBoard();
   } catch(e) {
     var msg = document.getElementById('msg-casos');
     msg.textContent = e.message || 'Erro ao salvar observação.';
@@ -429,28 +520,6 @@ async function carregarFinanceiroCadista() {
   }
 }
 
-async function avancarStatusCadista(id, novoStatus, btn) {
-  var raw = localStorage.getItem(SESSAO_KEY);
-  var sessao = raw ? JSON.parse(raw) : null;
-  if (!sessao || !sessao.token) return;
-
-  if (btn) { btn.disabled = true; btn.textContent = '…'; }
-  try {
-    var res = await sb.rpc('atualizar_status_caso_cadista', {
-      p_sessao: sessao.token,
-      p_caso_id: id,
-      p_novo_status: novoStatus
-    });
-    if (res.error) throw res.error;
-    carregarMeusCasosCadista();
-  } catch(e) {
-    var msg = document.getElementById('msg-casos');
-    msg.textContent = e.message || 'Erro ao atualizar status.';
-    msg.className = 'msg error';
-    if (btn) { btn.disabled = false; btn.textContent = novoStatus === 'fazendo' ? 'Iniciar' : 'Finalizar'; }
-  }
-}
-
 async function fazerLogin(event) {
   event.preventDefault();
   var usuario = document.getElementById('f-usuario').value.trim();
@@ -484,7 +553,7 @@ function sair() {
   document.getElementById('f-senha').value = '';
   document.getElementById('admin-banner').style.display = 'none';
   mostrarAbaCadista('casos');
-  mostrarStatusCadista('a_fazer');
+  esconderUndoToast();
 }
 
 (function init() {
