@@ -46,6 +46,15 @@
   .caso-avancar:disabled{opacity:0.55;cursor:default}
   .admin-banner{font-size:12px;font-weight:600;color:#fcd34d;background:#3d2e0e;border:0.5px solid rgba(251,191,36,0.35);border-radius:8px;padding:8px 12px;margin-bottom:14px;text-align:left}
   .caso-desc{font-size:12px;color:#94a3b8;margin:6px 0 10px;line-height:1.5;white-space:pre-line;word-break:break-word}
+  .caso-obs-btn{height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid rgba(45,212,191,0.4);background:transparent;color:#94a3b8;transition:all 0.15s}
+  .caso-obs-btn.tem-obs{background:#0f766e;border-color:#2dd4bf;color:#fff}
+
+  .tabs-status{display:flex;gap:4px;background:#181b26;border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:4px;margin-bottom:16px}
+  .tabs-status .tab-btn-s{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:36px;border:none;border-radius:8px;background:transparent;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .tabs-status .tab-btn-s:hover:not(.active){color:#e2e8f0}
+  .tabs-status .tab-btn-s.active{background:#1a1d27;color:#f1f5f9}
+  .tabs-status .count{font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,0.08);color:#94a3b8}
+  .tabs-status .tab-btn-s.active .count{background:#7c3aed;color:#fff}
 
   /* ── Hamburguer + menu lateral (mesmo padrao visual do painel
        interno: shared.css .hamburger / #sidebar) ────────────────── */
@@ -87,6 +96,9 @@
     #casos-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
     #casos-lista .caso-card{margin-bottom:0}
   }
+
+  #obs-dropdown-cadista{display:none;position:fixed;z-index:300;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px;width:260px;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
+  #obs-dropdown-cadista-text{width:100%;height:80px;resize:vertical;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:12px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit}
 </style>
 </head>
 <body>
@@ -105,6 +117,15 @@
     <div class="menu-item" onclick="closeMenu();mostrarAbaCadista('financeiro')">💰 Financeiro</div>
     <div class="menu-item" onclick="closeMenu();sair()">🚪 Sair</div>
   </nav>
+</div>
+
+<div id="obs-dropdown-cadista" onclick="event.stopPropagation()">
+  <p style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 6px">📝 Observação</p>
+  <textarea id="obs-dropdown-cadista-text" placeholder="Ex: aguardando confirmação de cor com o dentista..."></textarea>
+  <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px">
+    <button onclick="fecharObsCadista()" style="height:26px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.12);background:transparent;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit">Cancelar</button>
+    <button onclick="salvarObsCadista()" style="height:26px;padding:0 12px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Salvar</button>
+  </div>
 </div>
 
 <div class="wrap" id="wrap">
@@ -144,6 +165,11 @@
 
       <div class="content-card">
         <div id="tab-casos">
+          <div class="tabs-status">
+            <button type="button" class="tab-btn-s active" data-status="a_fazer" onclick="mostrarStatusCadista('a_fazer')">A Fazer <span class="count" id="count-a_fazer">0</span></button>
+            <button type="button" class="tab-btn-s" data-status="fazendo" onclick="mostrarStatusCadista('fazendo')">Fazendo <span class="count" id="count-fazendo">0</span></button>
+            <button type="button" class="tab-btn-s" data-status="finalizado" onclick="mostrarStatusCadista('finalizado')">Finalizado <span class="count" id="count-finalizado">0</span></button>
+          </div>
           <div id="msg-casos" class="msg"></div>
           <div id="casos-lista"><p class="casos-empty">Carregando…</p></div>
         </div>
@@ -213,6 +239,61 @@ function escHtml(s) {
   });
 }
 
+var casosCadista = [];
+var statusAtivoCadista = 'a_fazer';
+
+function mostrarStatusCadista(status) {
+  statusAtivoCadista = status;
+  document.querySelectorAll('.tab-btn-s').forEach(function(btn) {
+    btn.classList.toggle('active', btn.getAttribute('data-status') === status);
+  });
+  renderCasosPorStatusCadista();
+}
+
+function casoCardHtmlCadista(c) {
+  var st = STATUS_LABEL[c.status] || c.status;
+  var acao = '';
+  if (c.status === 'a_fazer') {
+    acao = '<button class="caso-avancar iniciar" onclick="avancarStatusCadista(\''+c.id+'\',\'fazendo\',this)">Iniciar</button>';
+  } else if (c.status === 'fazendo') {
+    acao = '<button class="caso-avancar finalizar" onclick="avancarStatusCadista(\''+c.id+'\',\'finalizado\',this)">Finalizar</button>';
+  }
+  var hasObs = !!(c.observacao && c.observacao.trim());
+  var btnObs = '<button class="caso-obs-btn' + (hasObs ? ' tem-obs' : '') + '" onclick="event.stopPropagation();abrirObsCadista(\''+c.id+'\',event)" title="'+(hasObs?escHtml(c.observacao):'Adicionar observação')+'">📝'+(hasObs?' Obs.':'')+'</button>';
+  return '' +
+    '<div class="caso-card">' +
+      '<div class="caso-top">' +
+        '<div>' +
+          '<div class="caso-cliente">' + escHtml(c.cliente_nome) + (c.paciente ? ' — ' + escHtml(c.paciente) : '') + '</div>' +
+          (c.tipo_trabalho ? '<div class="caso-tipo">' + escHtml(c.tipo_trabalho) + '</div>' : '') +
+        '</div>' +
+        '<span class="status-badge status-' + escHtml(c.status) + '">' + escHtml(st) + '</span>' +
+      '</div>' +
+      '<div class="caso-desc">' + escHtml(c.descricao || '—') + '</div>' +
+      '<div class="caso-bottom">' +
+        '<span class="caso-data">Entrada: ' + formatarDataHora(c.criado_em) + '</span>' +
+        '<div style="display:flex;gap:6px;align-items:center">' + btnObs + acao + '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+function renderCasosPorStatusCadista() {
+  var lista = document.getElementById('casos-lista');
+  ['a_fazer', 'fazendo', 'finalizado'].forEach(function(st) {
+    var count = casosCadista.filter(function(c) { return c.status === st; }).length;
+    var el = document.getElementById('count-' + st);
+    if (el) el.textContent = count;
+  });
+
+  var casos = casosCadista.filter(function(c) { return c.status === statusAtivoCadista; });
+  if (!casos.length) {
+    var vazio = { a_fazer: 'Nenhum caso a fazer.', fazendo: 'Nenhum caso em andamento.', finalizado: 'Nenhum caso finalizado ainda.' }[statusAtivoCadista];
+    lista.innerHTML = '<p class="casos-empty">' + vazio + '</p>';
+    return;
+  }
+  lista.innerHTML = casos.map(casoCardHtmlCadista).join('');
+}
+
 async function carregarMeusCasosCadista() {
   var raw = localStorage.getItem(SESSAO_KEY);
   var sessao = raw ? JSON.parse(raw) : null;
@@ -229,40 +310,64 @@ async function carregarMeusCasosCadista() {
   try {
     var res = await sb.rpc('listar_casos_cadista', { p_sessao: sessao.token });
     if (res.error) throw res.error;
-    var casos = res.data || [];
-
-    if (!casos.length) {
-      lista.innerHTML = '<p class="casos-empty">Nenhum caso atribuído a você ainda.</p>';
-      return;
-    }
-
-    lista.innerHTML = casos.map(function(c) {
-      var st = STATUS_LABEL[c.status] || c.status;
-      var acao = '';
-      if (c.status === 'a_fazer') {
-        acao = '<button class="caso-avancar iniciar" onclick="avancarStatusCadista(\''+c.id+'\',\'fazendo\',this)">Iniciar</button>';
-      } else if (c.status === 'fazendo') {
-        acao = '<button class="caso-avancar finalizar" onclick="avancarStatusCadista(\''+c.id+'\',\'finalizado\',this)">Finalizar</button>';
-      }
-      return '' +
-        '<div class="caso-card">' +
-          '<div class="caso-top">' +
-            '<div>' +
-              '<div class="caso-cliente">' + escHtml(c.cliente_nome) + (c.paciente ? ' — ' + escHtml(c.paciente) : '') + '</div>' +
-              (c.tipo_trabalho ? '<div class="caso-tipo">' + escHtml(c.tipo_trabalho) + '</div>' : '') +
-            '</div>' +
-            '<span class="status-badge status-' + escHtml(c.status) + '">' + escHtml(st) + '</span>' +
-          '</div>' +
-          '<div class="caso-desc">' + escHtml(c.descricao || '—') + '</div>' +
-          '<div class="caso-bottom">' +
-            '<span class="caso-data">Entrada: ' + formatarDataHora(c.criado_em) + '</span>' +
-            acao +
-          '</div>' +
-        '</div>';
-    }).join('');
+    casosCadista = res.data || [];
+    renderCasosPorStatusCadista();
   } catch(e) {
     lista.innerHTML = '';
     msg.textContent = e.message || 'Erro ao carregar seus casos.';
+    msg.className = 'msg error';
+  }
+}
+
+// ── Observação (mesmo padrao do badge de qtd_elementos em ordens-cam.html) ──
+var _obsDropIdCadista = null;
+
+function abrirObsCadista(id, event) {
+  _obsDropIdCadista = id;
+  var c  = casosCadista.find(function(x){ return x.id === id; });
+  var dd = document.getElementById('obs-dropdown-cadista');
+  var ta = document.getElementById('obs-dropdown-cadista-text');
+  ta.value = (c && c.observacao) || '';
+  var rect = event.currentTarget.getBoundingClientRect();
+  dd.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
+  var top = rect.bottom + 4;
+  dd.style.top = (top + 150 > window.innerHeight ? rect.top - 154 : top) + 'px';
+  dd.style.display = '';
+  setTimeout(function() { ta.focus(); }, 0);
+  setTimeout(function() {
+    document.addEventListener('click', fecharObsCadista, { once: true });
+  }, 0);
+}
+
+function fecharObsCadista() {
+  var dd = document.getElementById('obs-dropdown-cadista');
+  if (dd) dd.style.display = 'none';
+  _obsDropIdCadista = null;
+}
+
+async function salvarObsCadista() {
+  if (!_obsDropIdCadista) return;
+  var id = _obsDropIdCadista;
+  var texto = (document.getElementById('obs-dropdown-cadista-text').value || '').trim();
+  fecharObsCadista();
+
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  if (!sessao || !sessao.token) return;
+
+  try {
+    var res = await sb.rpc('atualizar_observacao_caso_cadista', {
+      p_sessao: sessao.token,
+      p_caso_id: id,
+      p_observacao: texto
+    });
+    if (res.error) throw res.error;
+    var c = casosCadista.find(function(x){ return x.id === id; });
+    if (c) c.observacao = texto || null;
+    renderCasosPorStatusCadista();
+  } catch(e) {
+    var msg = document.getElementById('msg-casos');
+    msg.textContent = e.message || 'Erro ao salvar observação.';
     msg.className = 'msg error';
   }
 }
@@ -379,6 +484,7 @@ function sair() {
   document.getElementById('f-senha').value = '';
   document.getElementById('admin-banner').style.display = 'none';
   mostrarAbaCadista('casos');
+  mostrarStatusCadista('a_fazer');
 }
 
 (function init() {
