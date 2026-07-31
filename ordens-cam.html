@@ -71,6 +71,10 @@
         style="width:100%;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:13px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit;resize:vertical"></textarea>
     </div>
     <div>
+      <p class="label" style="margin-bottom:4px">Qtd. elementos</p>
+      <input type="number" id="cam-form-qtd" min="1" step="1" value="1" style="width:100%;height:36px">
+    </div>
+    <div>
       <p class="label" style="margin-bottom:6px">Origem</p>
       <div style="display:flex;gap:8px">
         <button id="cam-orig-whatsapp" class="cam-orig-btn active" onclick="camSetOrigem('whatsapp')">📱 WhatsApp</button>
@@ -222,6 +226,16 @@
   </div>
 </div>
 
+<!-- ── Qtd. elementos Dropdown ─────────────────────────────────── -->
+<div id="qtd-dropdown" onclick="event.stopPropagation()" style="display:none;position:fixed;z-index:300;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px;width:180px;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+  <p style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 6px">🦷 Qtd. elementos</p>
+  <input type="number" id="qtd-dropdown-input" min="1" step="1" style="width:100%;height:32px;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:0 10px;font-size:13px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit">
+  <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px">
+    <button onclick="camCloseQtdDropdown()" style="height:26px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.12);background:transparent;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit">Cancelar</button>
+    <button onclick="camSaveQtd()" style="height:26px;padding:0 12px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Salvar</button>
+  </div>
+</div>
+
 <script>
 var ordensCam  = [];
 var camDragId  = null;
@@ -299,6 +313,9 @@ function camCardHtml(o) {
   var hasObs   = !!(o.observacao && o.observacao.trim());
   var btnObs   = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camOpenObsDropdown(\''+o.id+'\',event)" title="'+(hasObs?escHtml(o.observacao):'Adicionar observação')+'" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;'+(hasObs?'background:#0f766e;border-color:#2dd4bf;color:#fff':'background:transparent;border-color:rgba(45,212,191,0.4);color:#94a3b8')+'">📝'+(hasObs?' Obs.':'')+'</button>';
 
+  var qtdElem  = o.qtd_elementos || 1;
+  var btnQtd   = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camOpenQtdDropdown(\''+o.id+'\',event)" title="Qtd. elementos (base do pagamento do cadista)" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;background:transparent;border-color:rgba(148,163,184,0.4);color:#94a3b8">🦷 '+qtdElem+'</button>';
+
   return '<div class="cam-card" draggable="true" ondragstart="camDragStart(event,\''+o.id+'\')" onclick="openCamDetail(\''+o.id+'\')" style="'+ageStyle+';cursor:pointer">'+
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:5px">'+
       '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(cli)+(o.cliente_reg?cliRegraBadgeHtml(o.cliente_reg):'')+'</p>'+
@@ -308,7 +325,7 @@ function camCardHtml(o) {
     '<p style="font-size:10px;color:#4a5568;margin:0 0 7px">'+(o.created_at?new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—')+'</p>'+
     '<div style="display:flex;align-items:center;justify-content:space-between">'+
       '<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;'+badgeSt+'">'+badgeLbl+'</span>'+
-      '<div draggable="false" style="display:flex;gap:4px;flex-wrap:wrap">'+btnScan+btnInove+btnAprov+btnCadist+btnCadistReal+btnObs+'</div>'+
+      '<div draggable="false" style="display:flex;gap:4px;flex-wrap:wrap">'+btnScan+btnInove+btnAprov+btnCadist+btnCadistReal+btnQtd+btnObs+'</div>'+
     '</div>'+
   '</div>';
 }
@@ -553,6 +570,8 @@ function openNovaCamOrdem() {
   if (nomeInp) nomeInp.value = '';
   var descEl  = document.getElementById('cam-form-desc');
   if (descEl) descEl.value = '';
+  var qtdEl   = document.getElementById('cam-form-qtd');
+  if (qtdEl) qtdEl.value = 1;
   if (sel) sel.value = '';
   document.querySelectorAll('.cam-orig-btn').forEach(function(b){ b.classList.remove('active'); });
   var wb = document.getElementById('cam-orig-whatsapp');
@@ -598,12 +617,14 @@ async function saveNovaCamOrdem() {
   var clienteNome = clienteReg ? null : ((nomeEl && nomeEl.value) || '').trim();
   var descEl      = document.getElementById('cam-form-desc');
   var desc        = ((descEl && descEl.value) || '').trim();
+  var qtdEl       = document.getElementById('cam-form-qtd');
+  var qtdElementos = parseInt(qtdEl && qtdEl.value) || 1;
   var origEl      = document.getElementById('cam-form-origem');
   var origem      = (origEl && origEl.value) || 'whatsapp';
   if (!desc) { alert('Preencha a descrição.'); return; }
   if (!clienteReg && !clienteNome) { alert('Selecione um cliente ou informe um nome livre.'); return; }
   if (clienteReg) desc = cliAnexarRegraPadrao(desc, clienteReg);
-  var payload = { descricao: desc, origem: origem, status: 'a_fazer' };
+  var payload = { descricao: desc, origem: origem, status: 'a_fazer', qtd_elementos: qtdElementos };
   if (clienteReg) payload.cliente_reg = clienteReg; else payload.cliente_nome = clienteNome;
   try {
     var res = await sb.from('ordens_exocad').insert([payload]).select();
@@ -903,6 +924,53 @@ async function camSaveObs() {
     setSyncStatus('error');
     setTimeout(function(){ setSyncStatus('ok'); }, 3000);
     alert('Erro ao salvar observação: ' + (e.message || e));
+  }
+}
+
+// ── Qtd. elementos (base do pagamento do cadista: R$15/elemento) ──
+var _qtdDropId = null;
+
+function camOpenQtdDropdown(id, event) {
+  _qtdDropId = id;
+  var o  = ordensCam.find(function(x){ return x.id === id; });
+  var dd = document.getElementById('qtd-dropdown');
+  var inp = document.getElementById('qtd-dropdown-input');
+  inp.value = (o && o.qtd_elementos) || 1;
+  var rect = event.currentTarget.getBoundingClientRect();
+  dd.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px';
+  var top = rect.bottom + 4;
+  dd.style.top = (top + 110 > window.innerHeight ? rect.top - 114 : top) + 'px';
+  dd.style.display = '';
+  setTimeout(function() { inp.focus(); inp.select(); }, 0);
+  setTimeout(function() {
+    document.addEventListener('click', camCloseQtdDropdown, { once: true });
+  }, 0);
+}
+
+function camCloseQtdDropdown() {
+  var dd = document.getElementById('qtd-dropdown');
+  if (dd) dd.style.display = 'none';
+  _qtdDropId = null;
+}
+
+async function camSaveQtd() {
+  if (!_qtdDropId) return;
+  var id  = _qtdDropId;
+  var qtd = parseInt(document.getElementById('qtd-dropdown-input').value) || 1;
+  camCloseQtdDropdown();
+  try {
+    setSyncStatus('syncing');
+    var res = await sb.from('ordens_exocad').update({ qtd_elementos: qtd }).eq('id', id);
+    if (res.error) throw res.error;
+    var o = ordensCam.find(function(x){ return x.id === id; });
+    if (o) o.qtd_elementos = qtd;
+    renderOrdensCam();
+    setSyncStatus('ok');
+  } catch(e) {
+    console.error('[camSaveQtd]', e.message || e);
+    setSyncStatus('error');
+    setTimeout(function(){ setSyncStatus('ok'); }, 3000);
+    alert('Erro ao salvar quantidade de elementos: ' + (e.message || e));
   }
 }
 

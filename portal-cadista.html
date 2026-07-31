@@ -60,6 +60,33 @@
   .menu-close{width:28px;height:28px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
   .menu-item{display:flex;align-items:center;gap:12px;padding:11px 20px;cursor:pointer;color:#e2e8f0;font-size:14px}
   .menu-item:hover{background:rgba(255,255,255,0.04)}
+
+  .fin-mes-atual{font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px}
+  .fin-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:22px}
+  .fin-stat{background:#181b26;border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:16px 14px;text-align:center}
+  .fin-stat .l{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:6px}
+  .fin-stat .v{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;display:block;color:#f1f5f9}
+  .fin-stat.valor .v{color:#4ade80}
+  .fin-hist-title{font-size:13px;font-weight:600;color:#94a3b8;margin-bottom:10px}
+  .fin-table{width:100%;border-collapse:collapse}
+  .fin-table th{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;padding:8px 10px;text-align:left;border-bottom:0.5px solid rgba(255,255,255,0.1)}
+  .fin-table th.num,.fin-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .fin-table td{padding:10px;border-bottom:0.5px solid rgba(255,255,255,0.05);font-size:13px;color:#e2e8f0}
+  .fin-table tr:last-child td{border-bottom:none}
+
+  /* ── Desktop only (>=860px): mesmo padrao do portal-cliente
+       (pagina cheia, cabecalho fora do card). Abaixo de 860px
+       nada muda. ─────────────────────────────────────────────── */
+  @media(min-width:860px){
+    body.painel-ativo{display:block;padding:0.5rem}
+    body.painel-ativo .wrap,body.painel-ativo .wrap.wide{width:100%;max-width:100%}
+    body.painel-ativo .card{background:none;border:none;border-radius:0;padding:0;text-align:left}
+    body.painel-ativo .content-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:24px 28px}
+    #view-painel .panel-head h1{font-size:22px;font-weight:500}
+    #view-painel .panel-head .sub{font-size:14px}
+    #casos-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+    #casos-lista .caso-card{margin-bottom:0}
+  }
 </style>
 </head>
 <body>
@@ -74,6 +101,8 @@
     <button class="menu-close" onclick="closeMenu()">✕</button>
   </div>
   <nav style="padding:8px 0;flex:1">
+    <div class="menu-item" onclick="closeMenu();mostrarAbaCadista('casos')">📋 Meus casos</div>
+    <div class="menu-item" onclick="closeMenu();mostrarAbaCadista('financeiro')">💰 Financeiro</div>
     <div class="menu-item" onclick="closeMenu();sair()">🚪 Sair</div>
   </nav>
 </div>
@@ -113,8 +142,16 @@
 
       <div id="admin-banner" class="admin-banner" style="display:none">👁️ Modo visualização (admin) — ações aqui (mudar status, etc.) são reais e afetam o cadista de verdade.</div>
 
-      <div id="msg-casos" class="msg"></div>
-      <div id="casos-lista"><p class="casos-empty">Carregando…</p></div>
+      <div class="content-card">
+        <div id="tab-casos">
+          <div id="msg-casos" class="msg"></div>
+          <div id="casos-lista"><p class="casos-empty">Carregando…</p></div>
+        </div>
+
+        <div id="tab-financeiro" style="display:none">
+          <div id="fin-content"><p class="casos-empty">Carregando…</p></div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -147,8 +184,19 @@ function mostrarPainel(sessao) {
   document.getElementById('view-painel').style.display = 'block';
   document.getElementById('painel-nome').textContent = 'Bem-vindo, ' + sessao.nome;
   document.getElementById('wrap').classList.add('wide');
+  document.body.classList.add('painel-ativo');
   document.getElementById('admin-banner').style.display = sessao.admin ? 'block' : 'none';
   carregarMeusCasosCadista();
+}
+
+var ABAS_CADISTA = ['casos', 'financeiro'];
+
+function mostrarAbaCadista(aba) {
+  ABAS_CADISTA.forEach(function(t) {
+    var painel = document.getElementById('tab-' + t);
+    if (painel) painel.style.display = (t === aba) ? 'block' : 'none';
+  });
+  if (aba === 'financeiro') carregarFinanceiroCadista();
 }
 
 var STATUS_LABEL = { a_fazer: 'A Fazer', fazendo: 'Fazendo', finalizado: 'Finalizado' };
@@ -219,6 +267,63 @@ async function carregarMeusCasosCadista() {
   }
 }
 
+// ── Financeiro ─────────────────────────────────────────────────
+var MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+var VALOR_POR_ELEMENTO = 15;
+
+function formatarMoeda(v) {
+  return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function renderFinanceiroCadista(linhas) {
+  var wrap = document.getElementById('fin-content');
+  var hoje = new Date();
+  var mesAtual = hoje.getMonth() + 1, anoAtual = hoje.getFullYear();
+  var atual = linhas.filter(function(l) { return l.mes === mesAtual && l.ano === anoAtual; })[0];
+  var historico = linhas.filter(function(l) { return !(l.mes === mesAtual && l.ano === anoAtual); });
+
+  var html = '<p class="fin-mes-atual">Mês atual — ' + MESES[mesAtual - 1] + '/' + anoAtual + '</p>';
+  html += '<div class="fin-stats">' +
+    '<div class="fin-stat"><span class="l">Casos finalizados</span><span class="v">' + (atual ? atual.qtd_casos : 0) + '</span></div>' +
+    '<div class="fin-stat valor"><span class="l">A receber (R$' + VALOR_POR_ELEMENTO + '/elemento)</span><span class="v">' + formatarMoeda(atual ? atual.valor : 0) + '</span></div>' +
+  '</div>';
+
+  html += '<p class="fin-hist-title">Histórico</p>';
+  if (!historico.length) {
+    html += '<p class="casos-empty">Nenhum mês anterior com casos finalizados.</p>';
+  } else {
+    html += '<table class="fin-table"><thead><tr><th>Mês</th><th class="num">Casos</th><th class="num">Elementos</th><th class="num">Valor</th></tr></thead><tbody>';
+    html += historico.map(function(l) {
+      return '<tr>' +
+        '<td>' + MESES[l.mes - 1] + '/' + l.ano + '</td>' +
+        '<td class="num">' + l.qtd_casos + '</td>' +
+        '<td class="num">' + l.qtd_elementos + '</td>' +
+        '<td class="num">' + formatarMoeda(l.valor) + '</td>' +
+      '</tr>';
+    }).join('');
+    html += '</tbody></table>';
+  }
+  wrap.innerHTML = html;
+}
+
+async function carregarFinanceiroCadista() {
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  var wrap = document.getElementById('fin-content');
+  if (!sessao || !sessao.token) {
+    wrap.innerHTML = '<p class="casos-empty">Sessão expirada. Saia e faça login novamente.</p>';
+    return;
+  }
+  wrap.innerHTML = '<p class="casos-empty">Carregando…</p>';
+  try {
+    var res = await sb.rpc('listar_financeiro_cadista', { p_sessao: sessao.token });
+    if (res.error) throw res.error;
+    renderFinanceiroCadista(res.data || []);
+  } catch(e) {
+    wrap.innerHTML = '<p class="casos-empty">' + escHtml(e.message || 'Erro ao carregar financeiro.') + '</p>';
+  }
+}
+
 async function avancarStatusCadista(id, novoStatus, btn) {
   var raw = localStorage.getItem(SESSAO_KEY);
   var sessao = raw ? JSON.parse(raw) : null;
@@ -269,9 +374,11 @@ function sair() {
   document.getElementById('view-painel').style.display = 'none';
   document.getElementById('view-login').style.display = 'block';
   document.getElementById('wrap').classList.remove('wide');
+  document.body.classList.remove('painel-ativo');
   document.getElementById('f-usuario').value = '';
   document.getElementById('f-senha').value = '';
   document.getElementById('admin-banner').style.display = 'none';
+  mostrarAbaCadista('casos');
 }
 
 (function init() {

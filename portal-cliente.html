@@ -101,7 +101,12 @@
   .fin-badge.sem{background:rgba(255,255,255,0.06);color:#64748b}
 
   @media(min-width:860px){
-    .wrap.wide{width:min(980px,100%)}
+    /* login continua uma caixa centralizada em qualquer largura; so o
+       painel logado (body.painel-ativo) vira pagina cheia no desktop */
+    body.painel-ativo{display:block;padding:0.5rem}
+    body.painel-ativo .wrap,body.painel-ativo .wrap.wide{width:100%;max-width:100%}
+    body.painel-ativo .card{background:none;border:none;border-radius:0;padding:0;text-align:left}
+    body.painel-ativo .content-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:24px 28px}
     #view-painel .panel-head h1{font-size:22px;font-weight:500}
     #view-painel .panel-head .sub{font-size:14px}
     .sync-status{display:flex}
@@ -172,6 +177,7 @@
 
       <div id="admin-banner" class="admin-banner" style="display:none">👁️ Modo visualização (admin) — ações aqui (enviar caso, etc.) são reais e afetam o cliente de verdade.</div>
 
+      <div class="content-card">
       <div class="tabs">
         <button type="button" class="tab-btn active" id="tab-btn-novo" data-tab="novo" onclick="mostrarAba('novo')">Enviar novo caso</button>
         <button type="button" class="tab-btn" id="tab-btn-casos" data-tab="casos" onclick="mostrarAba('casos')">Meus casos</button>
@@ -260,6 +266,7 @@
       <div id="tab-financeiro" style="display:none">
         <div id="fin-content"><p class="casos-empty">Carregando…</p></div>
       </div>
+      </div>
     </div>
 
   </div>
@@ -298,6 +305,7 @@ function mostrarPainel(sessao) {
   document.getElementById('view-painel').style.display = 'block';
   document.getElementById('painel-nome').textContent = 'Bem-vindo, ' + sessao.nome;
   document.getElementById('wrap').classList.add('wide');
+  document.body.classList.add('painel-ativo');
   document.getElementById('admin-banner').style.display = sessao.admin ? 'block' : 'none';
   carregarMeusCasos(); // pre-carrega contadores das abas "Em Andamento"/"Entregues" (desktop)
 }
@@ -576,6 +584,7 @@ function sair() {
   document.getElementById('view-painel').style.display = 'none';
   document.getElementById('view-login').style.display = 'block';
   document.getElementById('wrap').classList.remove('wide');
+  document.body.classList.remove('painel-ativo');
   document.getElementById('f-usuario').value = '';
   document.getElementById('f-senha').value = '';
   document.getElementById('admin-banner').style.display = 'none';
