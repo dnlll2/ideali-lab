@@ -28,25 +28,107 @@
   .panel-head{display:flex;align-items:center;justify-content:space-between;text-align:left;margin-bottom:18px}
   .panel-head h1{margin:0}
   .casos-empty{font-size:13px;color:#64748b;text-align:center;padding:26px 10px}
-  .caso-card{background:#181b26;border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px 16px;margin-bottom:10px;text-align:left}
+  .caso-card{background:#181b26;border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px 16px;margin-bottom:8px;text-align:left;cursor:grab}
+  .caso-card:active{cursor:grabbing}
   .caso-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
   .caso-cliente{font-size:14px;font-weight:600;color:#f1f5f9}
   .caso-tipo{font-size:12px;color:#94a3b8;margin-top:2px}
-  .status-badge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap}
-  .status-a_fazer{background:#1d3a6e;color:#93c5fd}
-  .status-fazendo{background:#3d2e0e;color:#fbbf24}
-  .status-finalizado{background:#0d3d2b;color:#4ade80}
   .caso-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px}
   .caso-data{font-size:12px;color:#64748b}
-  .caso-avancar{height:30px;padding:0 14px;border-radius:7px;border:none;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0}
-  .caso-avancar.iniciar{background:#7c3aed}
-  .caso-avancar.iniciar:hover{background:#8b5cf6}
-  .caso-avancar.finalizar{background:#0f766e}
-  .caso-avancar.finalizar:hover{background:#14b8a6}
-  .caso-avancar:disabled{opacity:0.55;cursor:default}
+  .admin-banner{font-size:12px;font-weight:600;color:#fcd34d;background:#3d2e0e;border:0.5px solid rgba(251,191,36,0.35);border-radius:8px;padding:8px 12px;margin-bottom:14px;text-align:left}
+  .caso-desc{font-size:12px;color:#94a3b8;margin:6px 0 10px;line-height:1.5;white-space:pre-line;word-break:break-word}
+  .caso-obs-btn{height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid rgba(45,212,191,0.4);background:transparent;color:#94a3b8;transition:all 0.15s}
+  .caso-obs-btn.tem-obs{background:#0f766e;border-color:#2dd4bf;color:#fff}
+
+  /* ── Kanban (mesmo padrao visual/interacao do ordens-cam.html):
+       drag-and-drop nativo HTML5 -- so mouse/desktop, sem suporte a
+       toque. Abaixo de 767px vira 1 coluna empilhada (ainda sem
+       drag por toque, mas visivel/legivel). ─────────────────────── */
+  #cad-board{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start}
+  @media(max-width:767px){#cad-board{grid-template-columns:1fr !important}}
+  .cad-col{background:#13161f;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:160px}
+  .cad-col-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px}
+  .cad-col-body{padding:8px;display:flex;flex-direction:column;gap:8px;min-height:100px}
+  .cad-count{font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;background:rgba(255,255,255,0.1);color:#e2e8f0}
+
+  #undo-toast{display:none;position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:400;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:12px 14px;align-items:center;gap:14px;box-shadow:0 8px 24px rgba(0,0,0,0.5);font-size:13px;color:#e2e8f0;max-width:90vw}
+  #undo-toast button{height:28px;padding:0 12px;border-radius:6px;border:none;background:#7c3aed;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0}
+  #undo-toast button:hover{background:#8b5cf6}
+
+  /* ── Hamburguer + menu lateral (mesmo padrao visual do painel
+       interno: shared.css .hamburger / #sidebar) ────────────────── */
+  .panel-head-left{display:flex;align-items:center;gap:12px}
+  .hamburger{width:38px;height:38px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;flex-shrink:0}
+  .hamburger:hover{background:#2d3250;color:#e2e8f0}
+  #menu-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:300;opacity:0;pointer-events:none;transition:opacity 0.2s}
+  #menu-overlay.open{opacity:1;pointer-events:all}
+  #menu-drawer{position:fixed;top:0;left:0;height:100vh;width:260px;max-width:80vw;background:#1a1d27;border-right:0.5px solid rgba(255,255,255,0.1);z-index:301;transform:translateX(-100%);transition:transform 0.25s;display:flex;flex-direction:column;text-align:left}
+  #menu-drawer.open{transform:translateX(0)}
+  .menu-logo{display:flex;align-items:center;justify-content:space-between;padding:20px 18px;border-bottom:0.5px solid rgba(255,255,255,0.08)}
+  .menu-close{width:28px;height:28px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .menu-item{display:flex;align-items:center;gap:12px;padding:11px 20px;cursor:pointer;color:#e2e8f0;font-size:14px}
+  .menu-item:hover{background:rgba(255,255,255,0.04)}
+
+  .fin-mes-atual{font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px}
+  .fin-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:22px}
+  .fin-stat{background:#181b26;border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:16px 14px;text-align:center}
+  .fin-stat .l{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:6px}
+  .fin-stat .v{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;display:block;color:#f1f5f9}
+  .fin-stat.valor .v{color:#4ade80}
+  .fin-hist-title{font-size:13px;font-weight:600;color:#94a3b8;margin-bottom:10px}
+  .fin-table{width:100%;border-collapse:collapse}
+  .fin-table th{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;padding:8px 10px;text-align:left;border-bottom:0.5px solid rgba(255,255,255,0.1)}
+  .fin-table th.num,.fin-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .fin-table td{padding:10px;border-bottom:0.5px solid rgba(255,255,255,0.05);font-size:13px;color:#e2e8f0}
+  .fin-table tr:last-child td{border-bottom:none}
+
+  /* ── Desktop only (>=860px): mesmo padrao do portal-cliente
+       (pagina cheia, cabecalho fora do card). Abaixo de 860px
+       nada muda. ─────────────────────────────────────────────── */
+  @media(min-width:860px){
+    body.painel-ativo{display:block;padding:0.5rem}
+    body.painel-ativo .wrap,body.painel-ativo .wrap.wide{width:100%;max-width:100%}
+    body.painel-ativo .card{background:none;border:none;border-radius:0;padding:0;text-align:left}
+    body.painel-ativo .content-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:24px 28px}
+    #view-painel .panel-head h1{font-size:22px;font-weight:500}
+    #view-painel .panel-head .sub{font-size:14px}
+  }
+
+  #obs-dropdown-cadista{display:none;position:fixed;z-index:300;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px;width:260px;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
+  #obs-dropdown-cadista-text{width:100%;height:80px;resize:vertical;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:12px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit}
 </style>
 </head>
 <body>
+
+<div id="menu-overlay" onclick="closeMenu()"></div>
+<div id="menu-drawer">
+  <div class="menu-logo">
+    <div>
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9">Ideali Laboratório</p>
+      <p style="font-size:11px;color:#4a5568;margin-top:2px">Portal do Cadista</p>
+    </div>
+    <button class="menu-close" onclick="closeMenu()">✕</button>
+  </div>
+  <nav style="padding:8px 0;flex:1">
+    <div class="menu-item" onclick="closeMenu();mostrarAbaCadista('casos')">📋 Meus casos</div>
+    <div class="menu-item" onclick="closeMenu();mostrarAbaCadista('financeiro')">💰 Financeiro</div>
+    <div class="menu-item" onclick="closeMenu();sair()">🚪 Sair</div>
+  </nav>
+</div>
+
+<div id="obs-dropdown-cadista" onclick="event.stopPropagation()">
+  <p style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 6px">📝 Observação</p>
+  <textarea id="obs-dropdown-cadista-text" placeholder="Ex: aguardando confirmação de cor com o dentista..."></textarea>
+  <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px">
+    <button onclick="fecharObsCadista()" style="height:26px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.12);background:transparent;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit">Cancelar</button>
+    <button onclick="salvarObsCadista()" style="height:26px;padding:0 12px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Salvar</button>
+  </div>
+</div>
+
+<div id="undo-toast">
+  <span id="undo-toast-text"></span>
+  <button onclick="desfazerUltimoMovimento()">Desfazer</button>
+</div>
 
 <div class="wrap" id="wrap">
   <div class="card">
@@ -71,15 +153,50 @@
 
     <div id="view-painel" style="display:none">
       <div class="panel-head">
-        <div>
-          <h1 id="painel-nome">Bem-vindo</h1>
-          <p class="sub" style="margin-bottom:0">Meus casos</p>
+        <div class="panel-head-left">
+          <button class="hamburger" onclick="openMenu()" title="Menu">&#9776;</button>
+          <div>
+            <h1 id="painel-nome">Bem-vindo</h1>
+            <p class="sub" style="margin-bottom:0">Meus casos</p>
+          </div>
         </div>
         <button class="btn-ghost" style="width:auto;height:34px;padding:0 14px;margin-top:0" onclick="sair()">Sair</button>
       </div>
 
-      <div id="msg-casos" class="msg"></div>
-      <div id="casos-lista"><p class="casos-empty">Carregando…</p></div>
+      <div id="admin-banner" class="admin-banner" style="display:none">👁️ Modo visualização (admin) — ações aqui (mudar status, etc.) são reais e afetam o cadista de verdade.</div>
+
+      <div class="content-card">
+        <div id="tab-casos">
+          <div id="msg-casos" class="msg"></div>
+          <div id="cad-board">
+            <div class="cad-col" ondragover="cadDragOver(event)" ondrop="cadDrop(event,'a_fazer')">
+              <div class="cad-col-head" style="background:rgba(99,179,237,0.08);border-bottom:2px solid #63b3ed">
+                <span style="font-size:13px;font-weight:600;color:#e2e8f0">A Fazer</span>
+                <span class="cad-count" id="cad-count-a_fazer">0</span>
+              </div>
+              <div class="cad-col-body" id="cad-body-a_fazer"><p class="casos-empty">Carregando…</p></div>
+            </div>
+            <div class="cad-col" ondragover="cadDragOver(event)" ondrop="cadDrop(event,'fazendo')">
+              <div class="cad-col-head" style="background:rgba(251,191,36,0.07);border-bottom:2px solid #fbbf24">
+                <span style="font-size:13px;font-weight:600;color:#e2e8f0">Fazendo</span>
+                <span class="cad-count" id="cad-count-fazendo">0</span>
+              </div>
+              <div class="cad-col-body" id="cad-body-fazendo"><p class="casos-empty">Carregando…</p></div>
+            </div>
+            <div class="cad-col" ondragover="cadDragOver(event)" ondrop="cadDrop(event,'finalizado')">
+              <div class="cad-col-head" style="background:rgba(34,197,94,0.07);border-bottom:2px solid #22c55e">
+                <span style="font-size:13px;font-weight:600;color:#e2e8f0">Finalizado</span>
+                <span class="cad-count" id="cad-count-finalizado">0</span>
+              </div>
+              <div class="cad-col-body" id="cad-body-finalizado"><p class="casos-empty">Carregando…</p></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-financeiro" style="display:none">
+          <div id="fin-content"><p class="casos-empty">Carregando…</p></div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -98,12 +215,33 @@ function showMsg(text) {
   el.className = 'msg error';
 }
 
+function openMenu() {
+  document.getElementById('menu-overlay').classList.add('open');
+  document.getElementById('menu-drawer').classList.add('open');
+}
+function closeMenu() {
+  document.getElementById('menu-overlay').classList.remove('open');
+  document.getElementById('menu-drawer').classList.remove('open');
+}
+
 function mostrarPainel(sessao) {
   document.getElementById('view-login').style.display = 'none';
   document.getElementById('view-painel').style.display = 'block';
   document.getElementById('painel-nome').textContent = 'Bem-vindo, ' + sessao.nome;
   document.getElementById('wrap').classList.add('wide');
+  document.body.classList.add('painel-ativo');
+  document.getElementById('admin-banner').style.display = sessao.admin ? 'block' : 'none';
   carregarMeusCasosCadista();
+}
+
+var ABAS_CADISTA = ['casos', 'financeiro'];
+
+function mostrarAbaCadista(aba) {
+  ABAS_CADISTA.forEach(function(t) {
+    var painel = document.getElementById('tab-' + t);
+    if (painel) painel.style.display = (t === aba) ? 'block' : 'none';
+  });
+  if (aba === 'financeiro') carregarFinanceiroCadista();
 }
 
 var STATUS_LABEL = { a_fazer: 'A Fazer', fazendo: 'Fazendo', finalizado: 'Finalizado' };
@@ -120,10 +258,40 @@ function escHtml(s) {
   });
 }
 
+var casosCadista = [];
+
+function casoCardHtmlCadista(c) {
+  var hasObs = !!(c.observacao && c.observacao.trim());
+  var btnObs = '<button class="caso-obs-btn' + (hasObs ? ' tem-obs' : '') + '" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();abrirObsCadista(\''+c.id+'\',event)" title="'+(hasObs?escHtml(c.observacao):'Adicionar observação')+'">📝'+(hasObs?' Obs.':'')+'</button>';
+  return '' +
+    '<div class="caso-card" draggable="true" ondragstart="cadDragStart(event,\''+c.id+'\')">' +
+      '<div class="caso-top">' +
+        '<div>' +
+          '<div class="caso-cliente">' + escHtml(c.cliente_nome) + (c.paciente ? ' — ' + escHtml(c.paciente) : '') + '</div>' +
+          (c.tipo_trabalho ? '<div class="caso-tipo">' + escHtml(c.tipo_trabalho) + '</div>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="caso-desc">' + escHtml(c.descricao || '—') + '</div>' +
+      '<div class="caso-bottom">' +
+        '<span class="caso-data">Entrada: ' + formatarDataHora(c.criado_em) + '</span>' +
+        btnObs +
+      '</div>' +
+    '</div>';
+}
+
+function renderCadistaBoard() {
+  ['a_fazer', 'fazendo', 'finalizado'].forEach(function(st) {
+    var casos = casosCadista.filter(function(c) { return c.status === st; });
+    var body  = document.getElementById('cad-body-' + st);
+    var count = document.getElementById('cad-count-' + st);
+    if (count) count.textContent = casos.length;
+    if (body) body.innerHTML = casos.length ? casos.map(casoCardHtmlCadista).join('') : '<p class="casos-empty">Nenhum caso aqui.</p>';
+  });
+}
+
 async function carregarMeusCasosCadista() {
   var raw = localStorage.getItem(SESSAO_KEY);
   var sessao = raw ? JSON.parse(raw) : null;
-  var lista = document.getElementById('casos-lista');
   var msg = document.getElementById('msg-casos');
   msg.className = 'msg';
   if (!sessao || !sessao.token) {
@@ -132,54 +300,50 @@ async function carregarMeusCasosCadista() {
     return;
   }
 
-  lista.innerHTML = '<p class="casos-empty">Carregando…</p>';
   try {
     var res = await sb.rpc('listar_casos_cadista', { p_sessao: sessao.token });
     if (res.error) throw res.error;
-    var casos = res.data || [];
-
-    if (!casos.length) {
-      lista.innerHTML = '<p class="casos-empty">Nenhum caso atribuído a você ainda.</p>';
-      return;
-    }
-
-    lista.innerHTML = casos.map(function(c) {
-      var st = STATUS_LABEL[c.status] || c.status;
-      var tipo = c.tipo_trabalho || (c.paciente ? '' : (c.descricao || '—'));
-      var acao = '';
-      if (c.status === 'a_fazer') {
-        acao = '<button class="caso-avancar iniciar" onclick="avancarStatusCadista(\''+c.id+'\',\'fazendo\',this)">Iniciar</button>';
-      } else if (c.status === 'fazendo') {
-        acao = '<button class="caso-avancar finalizar" onclick="avancarStatusCadista(\''+c.id+'\',\'finalizado\',this)">Finalizar</button>';
-      }
-      return '' +
-        '<div class="caso-card">' +
-          '<div class="caso-top">' +
-            '<div>' +
-              '<div class="caso-cliente">' + escHtml(c.cliente_nome) + (c.paciente ? ' — ' + escHtml(c.paciente) : '') + '</div>' +
-              '<div class="caso-tipo">' + escHtml(tipo) + '</div>' +
-            '</div>' +
-            '<span class="status-badge status-' + escHtml(c.status) + '">' + escHtml(st) + '</span>' +
-          '</div>' +
-          '<div class="caso-bottom">' +
-            '<span class="caso-data">Entrada: ' + formatarDataHora(c.criado_em) + '</span>' +
-            acao +
-          '</div>' +
-        '</div>';
-    }).join('');
+    casosCadista = res.data || [];
+    renderCadistaBoard();
   } catch(e) {
-    lista.innerHTML = '';
+    ['a_fazer', 'fazendo', 'finalizado'].forEach(function(st) {
+      var body = document.getElementById('cad-body-' + st);
+      if (body) body.innerHTML = '';
+    });
     msg.textContent = e.message || 'Erro ao carregar seus casos.';
     msg.className = 'msg error';
   }
 }
 
-async function avancarStatusCadista(id, novoStatus, btn) {
+// ── Drag-and-drop (mesmo padrao do kanban em ordens-cam.html: HTML5
+//    nativo, so mouse/desktop) ──────────────────────────────────
+var _cadDragId = null;
+
+function cadDragStart(event, id) {
+  _cadDragId = id;
+  event.dataTransfer.effectAllowed = 'move';
+}
+
+function cadDragOver(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+}
+
+async function cadDrop(event, novoStatus) {
+  event.preventDefault();
+  var id = _cadDragId;
+  _cadDragId = null;
+  if (!id) return;
+  var c = casosCadista.find(function(x){ return x.id === id; });
+  if (!c || c.status === novoStatus) return;
+  mudarStatusCadista(id, novoStatus, c.status);
+}
+
+async function mudarStatusCadista(id, novoStatus, statusAnterior) {
   var raw = localStorage.getItem(SESSAO_KEY);
   var sessao = raw ? JSON.parse(raw) : null;
   if (!sessao || !sessao.token) return;
 
-  if (btn) { btn.disabled = true; btn.textContent = '…'; }
   try {
     var res = await sb.rpc('atualizar_status_caso_cadista', {
       p_sessao: sessao.token,
@@ -187,12 +351,172 @@ async function avancarStatusCadista(id, novoStatus, btn) {
       p_novo_status: novoStatus
     });
     if (res.error) throw res.error;
-    carregarMeusCasosCadista();
+    var c = casosCadista.find(function(x){ return x.id === id; });
+    if (c) c.status = novoStatus;
+    renderCadistaBoard();
+    mostrarUndoToast(id, statusAnterior, novoStatus);
   } catch(e) {
     var msg = document.getElementById('msg-casos');
     msg.textContent = e.message || 'Erro ao atualizar status.';
     msg.className = 'msg error';
-    if (btn) { btn.disabled = false; btn.textContent = novoStatus === 'fazendo' ? 'Iniciar' : 'Finalizar'; }
+  }
+}
+
+// ── Desfazer (aviso temporario pos-arraste, tipo Gmail "Desfazer") ──
+var _undoTimer = null;
+var _undoInfo  = null;
+
+function mostrarUndoToast(id, statusAnterior, novoStatus) {
+  clearTimeout(_undoTimer);
+  _undoInfo = { id: id, statusAnterior: statusAnterior };
+  var toast = document.getElementById('undo-toast');
+  var texto = document.getElementById('undo-toast-text');
+  texto.textContent = 'Movido para ' + (STATUS_LABEL[novoStatus] || novoStatus);
+  toast.style.display = 'flex';
+  _undoTimer = setTimeout(esconderUndoToast, 6000);
+}
+
+function esconderUndoToast() {
+  clearTimeout(_undoTimer);
+  _undoTimer = null;
+  _undoInfo = null;
+  var toast = document.getElementById('undo-toast');
+  if (toast) toast.style.display = 'none';
+}
+
+async function desfazerUltimoMovimento() {
+  if (!_undoInfo) return;
+  var info = _undoInfo;
+  esconderUndoToast();
+
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  if (!sessao || !sessao.token) return;
+
+  try {
+    var res = await sb.rpc('atualizar_status_caso_cadista', {
+      p_sessao: sessao.token,
+      p_caso_id: info.id,
+      p_novo_status: info.statusAnterior
+    });
+    if (res.error) throw res.error;
+    var c = casosCadista.find(function(x){ return x.id === info.id; });
+    if (c) c.status = info.statusAnterior;
+    renderCadistaBoard();
+  } catch(e) {
+    var msg = document.getElementById('msg-casos');
+    msg.textContent = e.message || 'Erro ao desfazer.';
+    msg.className = 'msg error';
+  }
+}
+
+// ── Observação (mesmo padrao do badge de qtd_elementos em ordens-cam.html) ──
+var _obsDropIdCadista = null;
+
+function abrirObsCadista(id, event) {
+  _obsDropIdCadista = id;
+  var c  = casosCadista.find(function(x){ return x.id === id; });
+  var dd = document.getElementById('obs-dropdown-cadista');
+  var ta = document.getElementById('obs-dropdown-cadista-text');
+  ta.value = (c && c.observacao) || '';
+  var rect = event.currentTarget.getBoundingClientRect();
+  dd.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
+  var top = rect.bottom + 4;
+  dd.style.top = (top + 150 > window.innerHeight ? rect.top - 154 : top) + 'px';
+  dd.style.display = '';
+  setTimeout(function() { ta.focus(); }, 0);
+  setTimeout(function() {
+    document.addEventListener('click', fecharObsCadista, { once: true });
+  }, 0);
+}
+
+function fecharObsCadista() {
+  var dd = document.getElementById('obs-dropdown-cadista');
+  if (dd) dd.style.display = 'none';
+  _obsDropIdCadista = null;
+}
+
+async function salvarObsCadista() {
+  if (!_obsDropIdCadista) return;
+  var id = _obsDropIdCadista;
+  var texto = (document.getElementById('obs-dropdown-cadista-text').value || '').trim();
+  fecharObsCadista();
+
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  if (!sessao || !sessao.token) return;
+
+  try {
+    var res = await sb.rpc('atualizar_observacao_caso_cadista', {
+      p_sessao: sessao.token,
+      p_caso_id: id,
+      p_observacao: texto
+    });
+    if (res.error) throw res.error;
+    var c = casosCadista.find(function(x){ return x.id === id; });
+    if (c) c.observacao = texto || null;
+    renderCadistaBoard();
+  } catch(e) {
+    var msg = document.getElementById('msg-casos');
+    msg.textContent = e.message || 'Erro ao salvar observação.';
+    msg.className = 'msg error';
+  }
+}
+
+// ── Financeiro ─────────────────────────────────────────────────
+var MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+var VALOR_POR_ELEMENTO = 15;
+
+function formatarMoeda(v) {
+  return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function renderFinanceiroCadista(linhas) {
+  var wrap = document.getElementById('fin-content');
+  var hoje = new Date();
+  var mesAtual = hoje.getMonth() + 1, anoAtual = hoje.getFullYear();
+  var atual = linhas.filter(function(l) { return l.mes === mesAtual && l.ano === anoAtual; })[0];
+  var historico = linhas.filter(function(l) { return !(l.mes === mesAtual && l.ano === anoAtual); });
+
+  var html = '<p class="fin-mes-atual">Mês atual — ' + MESES[mesAtual - 1] + '/' + anoAtual + '</p>';
+  html += '<div class="fin-stats">' +
+    '<div class="fin-stat"><span class="l">Casos finalizados</span><span class="v">' + (atual ? atual.qtd_casos : 0) + '</span></div>' +
+    '<div class="fin-stat valor"><span class="l">A receber (R$' + VALOR_POR_ELEMENTO + '/elemento)</span><span class="v">' + formatarMoeda(atual ? atual.valor : 0) + '</span></div>' +
+  '</div>';
+
+  html += '<p class="fin-hist-title">Histórico</p>';
+  if (!historico.length) {
+    html += '<p class="casos-empty">Nenhum mês anterior com casos finalizados.</p>';
+  } else {
+    html += '<table class="fin-table"><thead><tr><th>Mês</th><th class="num">Casos</th><th class="num">Elementos</th><th class="num">Valor</th></tr></thead><tbody>';
+    html += historico.map(function(l) {
+      return '<tr>' +
+        '<td>' + MESES[l.mes - 1] + '/' + l.ano + '</td>' +
+        '<td class="num">' + l.qtd_casos + '</td>' +
+        '<td class="num">' + l.qtd_elementos + '</td>' +
+        '<td class="num">' + formatarMoeda(l.valor) + '</td>' +
+      '</tr>';
+    }).join('');
+    html += '</tbody></table>';
+  }
+  wrap.innerHTML = html;
+}
+
+async function carregarFinanceiroCadista() {
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  var wrap = document.getElementById('fin-content');
+  if (!sessao || !sessao.token) {
+    wrap.innerHTML = '<p class="casos-empty">Sessão expirada. Saia e faça login novamente.</p>';
+    return;
+  }
+  wrap.innerHTML = '<p class="casos-empty">Carregando…</p>';
+  try {
+    var res = await sb.rpc('listar_financeiro_cadista', { p_sessao: sessao.token });
+    if (res.error) throw res.error;
+    renderFinanceiroCadista(res.data || []);
+  } catch(e) {
+    wrap.innerHTML = '<p class="casos-empty">' + escHtml(e.message || 'Erro ao carregar financeiro.') + '</p>';
   }
 }
 
@@ -224,11 +548,30 @@ function sair() {
   document.getElementById('view-painel').style.display = 'none';
   document.getElementById('view-login').style.display = 'block';
   document.getElementById('wrap').classList.remove('wide');
+  document.body.classList.remove('painel-ativo');
   document.getElementById('f-usuario').value = '';
   document.getElementById('f-senha').value = '';
+  document.getElementById('admin-banner').style.display = 'none';
+  mostrarAbaCadista('casos');
+  esconderUndoToast();
 }
 
 (function init() {
+  var params = new URLSearchParams(window.location.search);
+  var adminToken = params.get('admin_token');
+  if (adminToken) {
+    var sessaoAdmin = {
+      token: adminToken,
+      cadista_reg: Number(params.get('admin_reg')),
+      nome: params.get('admin_nome') || '',
+      admin: true
+    };
+    localStorage.setItem(SESSAO_KEY, JSON.stringify(sessaoAdmin));
+    history.replaceState(null, '', window.location.pathname);
+    mostrarPainel(sessaoAdmin);
+    return;
+  }
+
   var raw = localStorage.getItem(SESSAO_KEY);
   if (!raw) return;
   try {
