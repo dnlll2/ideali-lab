@@ -45,7 +45,8 @@
   .tab-btn.active{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
   .tab-btn:hover:not(.active){background:#22263a;color:#e2e8f0}
   .casos-empty{font-size:13px;color:#64748b;text-align:center;padding:26px 10px}
-  .caso-card{background:#181b26;border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px 16px;margin-bottom:10px;text-align:left}
+  .caso-card{background:#181b26;border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px 16px;margin-bottom:10px;text-align:left;cursor:pointer;transition:border-color .12s}
+  .caso-card:hover{border-color:#3b82f6}
   .caso-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
   .caso-paciente{font-size:14px;font-weight:600;color:#f1f5f9}
   .caso-tipo{font-size:12px;color:#94a3b8;margin-top:2px}
@@ -56,6 +57,29 @@
   .caso-datas{display:flex;gap:8px 18px;flex-wrap:wrap;font-size:12px;color:#64748b}
   .caso-datas b{color:#cbd5e1;font-weight:600}
   .admin-banner{font-size:12px;font-weight:600;color:#fcd34d;background:#3d2e0e;border:0.5px solid rgba(251,191,36,0.35);border-radius:8px;padding:8px 12px;margin-bottom:14px;text-align:left}
+
+  /* ── Botao "+ Novo Pedido" + modal compartilhado (criar/ver/editar) ── */
+  .novo-pedido-bar{display:flex;justify-content:flex-end;margin-bottom:12px}
+  .btn-novo-pedido{height:38px;padding:0 16px;border-radius:8px;border:none;background:#1d4ed8;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+  .btn-novo-pedido:hover{background:#2563eb}
+  #modal-pedido-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:400;display:none;align-items:center;justify-content:center;padding:16px}
+  #modal-pedido-overlay.open{display:flex}
+  #modal-pedido-card{width:min(640px,100%);max-height:88vh;display:flex;flex-direction:column;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;box-shadow:0 24px 60px -12px rgba(0,0,0,0.6);overflow:hidden}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:0.5px solid rgba(255,255,255,0.1);flex-shrink:0}
+  .modal-head-title{display:flex;flex-direction:column;gap:2px;text-align:left;min-width:0}
+  .modal-head-title h2{font-size:16px;font-weight:600;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .modal-head-title .sub{font-size:12px;color:#64748b}
+  .modal-close{width:30px;height:30px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:inherit}
+  .modal-close:hover{background:#2d3250;color:#e2e8f0}
+  .modal-body{padding:18px 20px;overflow-y:auto}
+  .modal-foot{display:flex;gap:10px;justify-content:flex-end;padding:14px 20px;border-top:0.5px solid rgba(255,255,255,0.1);flex-shrink:0;background:#181b26}
+  .lock-banner{display:flex;gap:8px;background:#0d3d2b;border:0.5px solid rgba(34,197,94,0.3);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12.5px;color:#86efac;line-height:1.5;text-align:left}
+  .attach-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+  .attach-item{display:flex;align-items:center;gap:8px;background:#181b26;border:0.5px solid rgba(255,255,255,0.1);border-radius:7px;padding:8px 10px;font-size:12.5px;color:#94a3b8}
+  .attach-item .name{flex:1;color:#e2e8f0}
+  input:disabled,select:disabled,textarea:disabled{color:#94a3b8;border-color:rgba(255,255,255,0.06);background:#1c1f2c}
+  .odonto-locked .dente{opacity:0.55;cursor:default}
+  @media(max-width:520px){.modal-head-title h2{max-width:180px}}
 
   /* ── Hamburguer + menu lateral (mesmo padrao visual do painel
        interno: shared.css .hamburger / #sidebar) ────────────────── */
@@ -109,6 +133,34 @@
   .fin-badge.aberto{background:#3d2e0e;color:#fbbf24}
   .fin-badge.sem{background:rgba(255,255,255,0.06);color:#64748b}
 
+  /* ── Dashboard Financeiro (aberto pelo menu ☰) ────────────────── */
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+  .kpi{background:#181b26;border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px 12px;text-align:center}
+  .kpi .l{font-size:10.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:6px}
+  .kpi .v{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;display:block;color:#f1f5f9}
+  .kpi.pago .v{color:#4ade80}
+  .kpi.restante .v{color:#4ade80}
+  .month-bar{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px}
+  .month-arrow{width:30px;height:30px;border-radius:7px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;cursor:pointer;font-family:inherit;font-size:13px}
+  .month-arrow:hover:not(:disabled){background:#2d3250;color:#e2e8f0}
+  .month-label{font-size:14px;font-weight:600;color:#f1f5f9;min-width:140px;text-align:center}
+  .panel{background:#181b26;border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:16px 16px;margin-bottom:14px}
+  .panel-title{font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px}
+  .bar-chart{display:flex;flex-direction:column;gap:10px}
+  .bar-row{display:grid;grid-template-columns:150px 1fr 34px;align-items:center;gap:10px}
+  .bar-row .name{font-size:12.5px;color:#e2e8f0}
+  .bar-track{height:14px;background:#22263a;border-radius:4px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:4px}
+  .bar-row .count{font-size:12.5px;color:#94a3b8;text-align:right;font-variant-numeric:tabular-nums}
+  .chart-caption{font-size:11.5px;color:#64748b;margin-top:12px;line-height:1.5;border-top:0.5px solid rgba(255,255,255,0.08);padding-top:10px}
+  .ped-list{display:flex;flex-direction:column;gap:8px}
+  .ped-item{display:flex;justify-content:space-between;gap:12px;background:#22263a;border:0.5px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 12px;font-size:12.5px}
+  .ped-item .desc{color:#e2e8f0;flex:1}
+  .ped-item .meta{color:#64748b;white-space:nowrap;text-align:right}
+  .ped-item .val{color:#f1f5f9;font-weight:600;font-variant-numeric:tabular-nums}
+  .status-chip{font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;background:rgba(59,130,246,0.15);color:#93c5fd;text-transform:uppercase;letter-spacing:0.03em;margin-left:6px}
+  @media(max-width:520px){.kpi-row{grid-template-columns:1fr 1fr}.bar-row{grid-template-columns:110px 1fr 28px}.ped-item{flex-direction:column;gap:4px}.ped-item .meta{text-align:left}}
+
   @media(min-width:860px){
     /* login continua uma caixa centralizada em qualquer largura; so o
        painel logado (body.painel-ativo) vira pagina cheia no desktop */
@@ -154,6 +206,84 @@
   </div>
 </div>
 
+<div id="modal-pedido-overlay">
+  <div id="modal-pedido-card">
+    <div class="modal-head">
+      <div class="modal-head-title">
+        <h2 id="mp-titulo">Novo Pedido</h2>
+        <span class="sub" id="mp-subtitulo">Preencha os dados do caso</span>
+      </div>
+      <button class="modal-close" type="button" onclick="fecharModalPedido()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="mp-lock-banner" class="lock-banner" style="display:none"></div>
+      <div id="msg-caso" class="msg"></div>
+
+      <form class="form-grid" id="form-pedido" onsubmit="return submitModalPedido(event)">
+        <div class="group">
+          <label>Paciente <span class="req">*</span></label>
+          <input type="text" id="c-paciente" required>
+        </div>
+
+        <div class="col-right">
+          <div class="group">
+            <label>Tipo de trabalho <span class="req">*</span></label>
+            <select id="c-tipo" required>
+              <option value="">— Selecione —</option>
+              <option>Coroa</option>
+              <option>Onlay</option>
+              <option>Faceta</option>
+              <option>Prótese fixa / Ponte</option>
+              <option>Implante</option>
+              <option>Outro</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="group">
+          <label>Odontograma — selecione os dentes <span class="req">*</span></label>
+          <div class="odonto" id="odonto"></div>
+          <p id="odonto-sel" style="font-size:12px;color:#64748b;margin-top:6px;text-align:center">Nenhum dente selecionado</p>
+        </div>
+
+        <div class="col-right">
+          <div class="row2">
+            <div class="group">
+              <label>Cor</label>
+              <input type="text" id="c-cor" list="cores-comuns" placeholder="Ex: A2, BL3...">
+              <datalist id="cores-comuns">
+                <option value="A1"><option value="A2"><option value="A3"><option value="A3.5"><option value="A4">
+                <option value="B1"><option value="B2"><option value="B3"><option value="B4">
+                <option value="BL1"><option value="BL2"><option value="BL3"><option value="BL4">
+                <option value="C1"><option value="C2"><option value="C3">
+                <option value="D2"><option value="D3">
+              </datalist>
+            </div>
+            <div class="group" id="mp-anexo-inicial-group">
+              <label>Anexo (Escaneamento)</label>
+              <input type="file" id="c-stl-input" accept=".stl" style="display:none" onchange="handleStlFile(event)">
+              <div class="upload-placeholder" id="c-stl-placeholder" style="cursor:pointer" onclick="document.getElementById('c-stl-input').click()">📎 Toque para escolher o arquivo de escaneamento (opcional)</div>
+            </div>
+          </div>
+
+          <div class="group">
+            <label>Observações</label>
+            <textarea id="c-obs" rows="3" placeholder="Detalhes adicionais do caso..."></textarea>
+          </div>
+        </div>
+      </form>
+
+      <div class="group" id="mp-anexos-existentes-group" style="display:none">
+        <label>Arquivos de escaneamento</label>
+        <div id="mp-anexos-lista" class="attach-list"></div>
+        <input type="file" id="mp-anexo-extra-input" accept=".stl" style="display:none" onchange="handleAnexoExtra(event)">
+        <div class="upload-placeholder" id="mp-anexo-extra-placeholder" style="cursor:pointer" onclick="document.getElementById('mp-anexo-extra-input').click()">📎 Anexar mais um arquivo de escaneamento</div>
+      </div>
+    </div>
+    <div class="modal-foot" id="mp-footer"></div>
+  </div>
+</div>
+
 <div id="excluir-caso-overlay">
   <div id="excluir-caso-card">
     <p class="logo">🗑️</p>
@@ -181,6 +311,7 @@
     <button class="menu-close" onclick="closeMenu()">✕</button>
   </div>
   <nav style="padding:8px 0;flex:1">
+    <div class="menu-item" onclick="closeMenu();mostrarAba('financeiro')">📊 Financeiro</div>
     <div class="menu-item" onclick="closeMenu();sair()">🚪 Sair</div>
   </nav>
 </div>
@@ -224,79 +355,16 @@
       <div id="admin-banner" class="admin-banner" style="display:none">👁️ Modo visualização (admin) — ações aqui (enviar caso, etc.) são reais e afetam o cliente de verdade.</div>
 
       <div class="content-card">
-      <div class="tabs">
-        <button type="button" class="tab-btn active" id="tab-btn-novo" data-tab="novo" onclick="mostrarAba('novo')">Enviar novo caso</button>
-        <button type="button" class="tab-btn" id="tab-btn-casos" data-tab="casos" onclick="mostrarAba('casos')">Meus casos</button>
+      <div class="novo-pedido-bar">
+        <button type="button" class="btn-novo-pedido" onclick="abrirModalPedido('create')">+ Novo Pedido</button>
       </div>
 
       <div class="tabs-desktop">
-        <button type="button" class="tab-btn-d active" data-tab="novo" onclick="mostrarAba('novo')">Novo Pedido</button>
-        <button type="button" class="tab-btn-d" data-tab="andamento" onclick="mostrarAba('andamento')">Pedidos em Andamento <span class="count" id="count-andamento">0</span></button>
+        <button type="button" class="tab-btn-d active" data-tab="andamento" onclick="mostrarAba('andamento')">Pedidos em Andamento <span class="count" id="count-andamento">0</span></button>
         <button type="button" class="tab-btn-d" data-tab="entregues" onclick="mostrarAba('entregues')">Pedidos Entregues <span class="count" id="count-entregues">0</span></button>
-        <button type="button" class="tab-btn-d" data-tab="financeiro" onclick="mostrarAba('financeiro')">Financeiro</button>
       </div>
 
       <div id="msg-casos" class="msg"></div>
-
-      <div id="tab-novo">
-        <div id="msg-caso" class="msg"></div>
-
-        <form class="form-grid" onsubmit="return enviarCaso(event)">
-          <div class="group">
-            <label>Paciente <span class="req">*</span></label>
-            <input type="text" id="c-paciente" required>
-          </div>
-
-          <div class="col-right">
-            <div class="group">
-              <label>Tipo de trabalho <span class="req">*</span></label>
-              <select id="c-tipo" required>
-                <option value="">— Selecione —</option>
-                <option>Coroa</option>
-                <option>Onlay</option>
-                <option>Faceta</option>
-                <option>Prótese fixa / Ponte</option>
-                <option>Implante</option>
-                <option>Outro</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="group">
-            <label>Odontograma — selecione os dentes <span class="req">*</span></label>
-            <div class="odonto" id="odonto"></div>
-            <p id="odonto-sel" style="font-size:12px;color:#64748b;margin-top:6px;text-align:center">Nenhum dente selecionado</p>
-          </div>
-
-          <div class="col-right">
-            <div class="row2">
-              <div class="group">
-                <label>Cor</label>
-                <input type="text" id="c-cor" list="cores-comuns" placeholder="Ex: A2, BL3...">
-                <datalist id="cores-comuns">
-                  <option value="A1"><option value="A2"><option value="A3"><option value="A3.5"><option value="A4">
-                  <option value="B1"><option value="B2"><option value="B3"><option value="B4">
-                  <option value="BL1"><option value="BL2"><option value="BL3"><option value="BL4">
-                  <option value="C1"><option value="C2"><option value="C3">
-                  <option value="D2"><option value="D3">
-                </datalist>
-              </div>
-              <div class="group">
-                <label>Anexo (STL)</label>
-                <input type="file" id="c-stl-input" accept=".stl" style="display:none" onchange="handleStlFile(event)">
-                <div class="upload-placeholder" id="c-stl-placeholder" style="cursor:pointer" onclick="document.getElementById('c-stl-input').click()">📎 Toque para escolher o arquivo STL (opcional)</div>
-              </div>
-            </div>
-
-            <div class="group">
-              <label>Observações</label>
-              <textarea id="c-obs" rows="3" placeholder="Detalhes adicionais do caso..."></textarea>
-            </div>
-
-            <button type="submit" class="btn" id="btn-caso">Enviar caso</button>
-          </div>
-        </form>
-      </div>
 
       <div id="tab-casos" style="display:none">
         <div id="casos-lista"><p class="casos-empty">Carregando…</p></div>
@@ -307,6 +375,12 @@
       </div>
 
       <div id="tab-entregues" style="display:none">
+        <div class="month-bar" id="entregues-month-bar">
+          <button type="button" class="month-arrow" onclick="entreguesMudarMes(-1)">◀</button>
+          <span class="month-label" id="entregues-month-label">Todos os períodos</span>
+          <button type="button" class="month-arrow" onclick="entreguesMudarMes(1)">▶</button>
+          <button type="button" class="btn-ghost" style="width:auto;height:30px;padding:0 12px;font-size:12px;margin-top:0;margin-left:8px" onclick="entreguesToggleTodos()" id="entregues-toggle-btn">Filtrar por mês</button>
+        </div>
         <div id="casos-entregues-lista"><p class="casos-empty">Carregando…</p></div>
       </div>
 
@@ -354,7 +428,11 @@ function mostrarPainel(sessao) {
   document.getElementById('wrap').classList.add('wide');
   document.body.classList.add('painel-ativo');
   document.getElementById('admin-banner').style.display = sessao.admin ? 'block' : 'none';
-  carregarMeusCasos(); // pre-carrega contadores das abas "Em Andamento"/"Entregues" (desktop)
+  // "Novo Pedido" virou botao (nao e mais aba), entao o painel default
+  // muda por largura: desktop cai em "Pedidos em Andamento" (tem as 2
+  // abas desktop); mobile so tem "Meus casos" (lista combinada, sem
+  // barra de abas -- nunca teve andamento/entregues separados no mobile).
+  mostrarAba(window.innerWidth >= 860 ? 'andamento' : 'casos');
   document.getElementById('trocar-senha-overlay').style.display = (sessao.deve_trocar_senha && !sessao.admin) ? 'flex' : 'none';
 }
 
@@ -392,9 +470,13 @@ async function trocarSenhaCliente(event) {
   return false;
 }
 
-// ── Abas (mobile: Enviar novo caso / Meus casos — desktop: Novo
-//    Pedido / Em Andamento / Entregues / Financeiro) ───────────
-var ABAS = ['novo', 'casos', 'andamento', 'entregues', 'financeiro'];
+// ── Abas (mobile: so "Meus casos", lista combinada -- sem barra de
+//    abas, e' o unico painel possivel. desktop: Em Andamento /
+//    Entregues). "Novo Pedido" virou botao+modal (abrirModalPedido),
+//    nao e' mais aba. "financeiro" tambem nao tem botao na barra --
+//    e aberto pelo menu ☰ (mobile e desktop), mas usa o mesmo
+//    mecanismo de show/hide de painel das outras. ──
+var ABAS = ['casos', 'andamento', 'entregues', 'financeiro'];
 
 function mostrarAba(aba) {
   ABAS.forEach(function(t) {
@@ -438,7 +520,7 @@ function renderCasosEm(containerId, casos, textoVazio) {
   lista.innerHTML = casos.map(function(c) {
     var st = STATUS_LABEL[c.status] || c.status;
     return '' +
-      '<div class="caso-card">' +
+      '<div class="caso-card" onclick="abrirModalPedido(\'detalhe\',\'' + c.id + '\')">' +
         '<div class="caso-top">' +
           '<div>' +
             '<div class="caso-paciente">' + escHtml(c.paciente) + '</div>' +
@@ -450,7 +532,7 @@ function renderCasosEm(containerId, casos, textoVazio) {
           '<span>Entrada: <b>' + formatarDataHora(c.criado_em) + '</b></span>' +
           '<span>Previsão de saída: <b>' + formatarData(c.previsao_saida) + '</b></span>' +
         '</div>' +
-        (c.status === 'a_fazer' ? '<button class="caso-del-btn" onclick="abrirExcluirCaso(\'' + c.id + '\')">🗑️ Excluir pedido</button>' : '') +
+        (c.status === 'a_fazer' ? '<button class="caso-del-btn" onclick="event.stopPropagation();abrirExcluirCaso(\'' + c.id + '\')">🗑️ Excluir pedido</button>' : '') +
       '</div>';
   }).join('');
 }
@@ -484,10 +566,11 @@ async function carregarMeusCasos() {
 
     var andamento = casos.filter(function(c) { return c.status === 'a_fazer' || c.status === 'fazendo'; });
     var entregues  = casos.filter(function(c) { return c.status === 'finalizado'; });
+    _casosEntreguesTodos = entregues;
 
     renderCasosEm('casos-lista', casos, 'Você ainda não enviou nenhum caso.');
     renderCasosEm('casos-andamento-lista', andamento, 'Nenhum pedido em andamento.');
-    renderCasosEm('casos-entregues-lista', entregues, 'Nenhum pedido entregue ainda.');
+    renderEntreguesFiltrado();
 
     var countA = document.getElementById('count-andamento');
     var countE = document.getElementById('count-entregues');
@@ -495,6 +578,58 @@ async function carregarMeusCasos() {
     if (countE) countE.textContent = entregues.length;
   } catch(e) {
     mostrarErroCasos(e.message || 'Erro ao carregar seus casos.');
+  }
+}
+
+// ── "Pedidos Entregues": seletor de mes (igual ao do Financeiro) +
+//    opcao "Todos os periodos" (default, pra nao perder a visao
+//    completa que ja existia). Filtra client-side sobre a lista ja
+//    carregada (_casosEntreguesTodos) por criado_em -- listar_meus_casos
+//    nao devolve data de finalizacao, so de entrada. ─────────────────
+var _casosEntreguesTodos = [];
+var entreguesMostrarTodos = true;
+var entreguesFiltroMes = null, entreguesFiltroAno = null;
+
+function entreguesMudarMes(delta) {
+  entreguesMostrarTodos = false;
+  if (entreguesFiltroMes == null) {
+    var hoje = new Date();
+    entreguesFiltroMes = hoje.getMonth() + 1;
+    entreguesFiltroAno = hoje.getFullYear();
+  }
+  entreguesFiltroMes += delta;
+  if (entreguesFiltroMes < 1)  { entreguesFiltroMes = 12; entreguesFiltroAno--; }
+  if (entreguesFiltroMes > 12) { entreguesFiltroMes = 1;  entreguesFiltroAno++; }
+  renderEntreguesFiltrado();
+}
+
+function entreguesToggleTodos() {
+  entreguesMostrarTodos = !entreguesMostrarTodos;
+  if (!entreguesMostrarTodos && entreguesFiltroMes == null) {
+    var hoje = new Date();
+    entreguesFiltroMes = hoje.getMonth() + 1;
+    entreguesFiltroAno = hoje.getFullYear();
+  }
+  renderEntreguesFiltrado();
+}
+
+function renderEntreguesFiltrado() {
+  var lbl = document.getElementById('entregues-month-label');
+  var toggleBtn = document.getElementById('entregues-toggle-btn');
+  if (!lbl || !toggleBtn) return;
+
+  if (entreguesMostrarTodos) {
+    lbl.textContent = 'Todos os períodos';
+    toggleBtn.textContent = 'Filtrar por mês';
+    renderCasosEm('casos-entregues-lista', _casosEntreguesTodos, 'Nenhum pedido entregue ainda.');
+  } else {
+    lbl.textContent = MESES[entreguesFiltroMes - 1] + ' ' + entreguesFiltroAno;
+    toggleBtn.textContent = 'Ver todos os meses';
+    var filtrados = _casosEntreguesTodos.filter(function(c) {
+      var d = new Date(c.criado_em);
+      return (d.getMonth() + 1) === entreguesFiltroMes && d.getFullYear() === entreguesFiltroAno;
+    });
+    renderCasosEm('casos-entregues-lista', filtrados, 'Nenhum pedido entregue em ' + MESES[entreguesFiltroMes - 1] + '/' + entreguesFiltroAno + '.');
   }
 }
 
@@ -546,45 +681,139 @@ function formatarMoeda(v) {
   return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function renderFinanceiro(linhas) {
+// Tipo de trabalho inferido a partir da descricao livre do pedido (a
+// tabela "pedidos" nao tem campo estruturado pra isso -- so descricao
+// texto e material). Ordem importa: "implante"/"UCLA" e checado antes
+// de coroa/ponte porque protese sobre implante costuma citar os dois.
+var TIPO_TRABALHO_CATEGORIAS = [
+  { regex: /implante|ucla/i, nome: 'Prótese sobre implante', cor: '#3987e5' },
+  { regex: /coroa/i,         nome: 'Coroa',                  cor: '#d95926' },
+  { regex: /faceta/i,        nome: 'Faceta',                 cor: '#199e70' },
+  { regex: /ponte/i,         nome: 'Prótese fixa / Ponte',   cor: '#c98500' },
+  { regex: /onlay/i,         nome: 'Onlay',                  cor: '#d55181' }
+];
+var TIPO_TRABALHO_OUTRO = { nome: 'Outro', cor: '#5b6272' };
+
+function classificarTipoTrabalho(descricao) {
+  var d = descricao || '';
+  for (var i = 0; i < TIPO_TRABALHO_CATEGORIAS.length; i++) {
+    if (TIPO_TRABALHO_CATEGORIAS[i].regex.test(d)) return TIPO_TRABALHO_CATEGORIAS[i];
+  }
+  return TIPO_TRABALHO_OUTRO;
+}
+
+var PEDIDO_STATUS_LABEL = { orcamento: 'Orçamento', producao: 'Produção', finalizado: 'Finalizado', entregue: 'Entregue' };
+
+var finMensal = [];   // listar_financeiro_cliente (controle_mensal)
+var finPedidos = [];  // listar_pedidos_cliente (pedidos -- so entra quando ja foi confirmado enviado ao Inove)
+var finViewMes = null, finViewAno = null; // mes/ano do painel mensal (default = mes atual, na 1a abertura)
+
+function finMudarMes(delta) {
+  finViewMes += delta;
+  if (finViewMes < 1)  { finViewMes = 12; finViewAno--; }
+  if (finViewMes > 12) { finViewMes = 1;  finViewAno++; }
+  renderFinanceiroDashboard();
+}
+
+function renderFinanceiroDashboard() {
   var wrap = document.getElementById('fin-content');
+
+  // Resumo geral -- historico completo, nao muda com o seletor de mes.
+  var totalPedidos  = finPedidos.length;
+  var totalFaturado = finMensal.reduce(function(s, l) { return s + Number(l.valor_mes || 0); }, 0);
+  var totalPago     = finMensal.reduce(function(s, l) { return s + Number(l.valor_pago || 0); }, 0);
+  var totalRestante = totalFaturado - totalPago;
+
+  var html = '<div class="kpi-row">' +
+    '<div class="kpi"><span class="l">Pedidos enviados ao Inove</span><span class="v">' + totalPedidos + '</span></div>' +
+    '<div class="kpi"><span class="l">Faturado (histórico)</span><span class="v">' + formatarMoeda(totalFaturado) + '</span></div>' +
+    '<div class="kpi pago"><span class="l">Pago (histórico)</span><span class="v">' + formatarMoeda(totalPago) + '</span></div>' +
+    '<div class="kpi restante"><span class="l">Restante (histórico)</span><span class="v">' + formatarMoeda(totalRestante) + '</span></div>' +
+  '</div>';
+
+  // Seletor de mes -- nao deixa avancar alem do mes atual de verdade.
   var hoje = new Date();
-  var mesAtual = hoje.getMonth() + 1, anoAtual = hoje.getFullYear();
-  var atual = linhas.filter(function(l) { return l.mes === mesAtual && l.ano === anoAtual; })[0];
-  var historico = linhas.filter(function(l) { return !(l.mes === mesAtual && l.ano === anoAtual); });
+  var podeAvancar = (finViewAno < hoje.getFullYear()) || (finViewAno === hoje.getFullYear() && finViewMes < hoje.getMonth() + 1);
+  html += '<div class="month-bar">' +
+    '<button type="button" class="month-arrow" onclick="finMudarMes(-1)">◀</button>' +
+    '<span class="month-label">' + MESES[finViewMes - 1] + ' ' + finViewAno + '</span>' +
+    '<button type="button" class="month-arrow" onclick="finMudarMes(1)"' + (podeAvancar ? '' : ' disabled') + '>▶</button>' +
+  '</div>';
 
-  var html = '<p class="fin-mes-atual">Mês atual — ' + MESES[mesAtual - 1] + '/' + anoAtual + '</p>';
-  if (atual) {
-    html += '<div class="fin-stats">' +
-      '<div class="fin-stat"><span class="l">Valor do mês</span><span class="v">' + formatarMoeda(atual.valor_mes) + '</span></div>' +
-      '<div class="fin-stat pago"><span class="l">Pago</span><span class="v">' + formatarMoeda(atual.valor_pago) + '</span></div>' +
-      '<div class="fin-stat restante' + (atual.quitado ? ' quitado' : '') + '"><span class="l">Restante</span><span class="v">' + formatarMoeda(atual.restante) + '</span></div>' +
-    '</div>';
+  // Painel "Faturamento do mes" -- controle_mensal, mesma logica de sempre.
+  var lancMes = finMensal.filter(function(l) { return l.mes === finViewMes && l.ano === finViewAno; })[0];
+  html += '<div class="panel"><div class="panel-title">Faturamento do mês</div>';
+  html += lancMes
+    ? '<div class="fin-stats" style="margin-bottom:0">' +
+        '<div class="fin-stat"><span class="l">Valor do mês</span><span class="v">' + formatarMoeda(lancMes.valor_mes) + '</span></div>' +
+        '<div class="fin-stat pago"><span class="l">Pago</span><span class="v">' + formatarMoeda(lancMes.valor_pago) + '</span></div>' +
+        '<div class="fin-stat restante' + (lancMes.quitado ? ' quitado' : '') + '"><span class="l">Restante</span><span class="v">' + formatarMoeda(lancMes.restante) + '</span></div>' +
+      '</div>'
+    : '<div class="fin-empty" style="margin-bottom:0">Ainda não há lançamento para este mês. Assim que o laboratório fechar o valor, ele aparece aqui.</div>';
+  html += '</div>';
+
+  // Painel "Tipos de trabalho" -- pedidos, filtrado pelo mes do seletor
+  // (tabela independente de controle_mensal, entao um pode ter dado e o
+  // outro nao no mesmo mes -- por isso ficam em paineis separados).
+  var pedidosMes = finPedidos.filter(function(p) {
+    var d = new Date(p.created_at);
+    return (d.getMonth() + 1) === finViewMes && d.getFullYear() === finViewAno;
+  });
+
+  html += '<div class="panel"><div class="panel-title">Tipos de trabalho — ' + MESES[finViewMes - 1] + '/' + finViewAno + '</div>';
+  if (pedidosMes.length) {
+    var porTipo = {};
+    pedidosMes.forEach(function(p) {
+      var cat = classificarTipoTrabalho(p.descricao);
+      if (!porTipo[cat.nome]) porTipo[cat.nome] = { nome: cat.nome, cor: cat.cor, qtd: 0, ehOutro: cat === TIPO_TRABALHO_OUTRO };
+      porTipo[cat.nome].qtd++;
+    });
+    var lista = Object.keys(porTipo).map(function(k) { return porTipo[k]; });
+    lista.sort(function(a, b) { return a.ehOutro !== b.ehOutro ? (a.ehOutro ? 1 : -1) : b.qtd - a.qtd; });
+    var max = Math.max.apply(null, lista.map(function(l) { return l.qtd; }));
+    html += '<div class="bar-chart">' + lista.map(function(l) {
+      return '<div class="bar-row">' +
+        '<span class="name">' + escHtml(l.nome) + '</span>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + Math.round(l.qtd / max * 100) + '%;background:' + l.cor + '"></div></div>' +
+        '<span class="count">' + l.qtd + '</span>' +
+      '</div>';
+    }).join('') + '</div>';
+    html += '<p class="chart-caption">Categoria inferida a partir da descrição do pedido (texto livre) — pode não refletir o tipo exato em todos os casos.</p>';
   } else {
-    html += '<div class="fin-empty">Ainda não há lançamento para este mês. Assim que o laboratório fechar o valor, ele aparece aqui.</div>';
+    html += '<div class="fin-empty" style="margin-bottom:0">Nenhum pedido enviado ao Inove neste mês.</div>';
+  }
+  html += '</div>';
+
+  if (pedidosMes.length) {
+    html += '<div class="panel"><div class="panel-title">Pedidos do mês (' + pedidosMes.length + ')</div><div class="ped-list">' +
+      pedidosMes.map(function(p) {
+        return '<div class="ped-item">' +
+          '<span class="desc">' + escHtml(p.descricao || '—') + '<span class="status-chip">' + escHtml(PEDIDO_STATUS_LABEL[p.status] || p.status) + '</span></span>' +
+          '<span class="meta">' + formatarData(p.created_at) + '<br><span class="val">' + formatarMoeda(p.valor) + '</span></span>' +
+        '</div>';
+      }).join('') +
+    '</div></div>';
   }
 
-  html += '<p class="fin-hist-title">Histórico</p>';
-  if (!historico.length) {
-    html += '<p class="casos-empty">Nenhum mês anterior lançado.</p>';
-  } else {
-    html += '<table class="fin-table"><thead><tr><th>Mês</th><th class="num">Valor do mês</th><th class="num">Pago</th><th class="num">Restante</th><th>Status</th></tr></thead><tbody>';
-    html += historico.map(function(l) {
-      var badge = l.quitado
-        ? '<span class="fin-badge quitado">Quitado</span>'
-        : (Number(l.valor_mes) > 0
-            ? '<span class="fin-badge aberto">Em aberto</span>'
-            : '<span class="fin-badge sem">Sem lançamento</span>');
-      return '<tr>' +
-        '<td>' + MESES[l.mes - 1] + '/' + l.ano + '</td>' +
-        '<td class="num">' + formatarMoeda(l.valor_mes) + '</td>' +
-        '<td class="num">' + formatarMoeda(l.valor_pago) + '</td>' +
-        '<td class="num">' + formatarMoeda(l.restante) + '</td>' +
-        '<td>' + badge + '</td>' +
-      '</tr>';
-    }).join('');
-    html += '</tbody></table>';
+  // Historico completo (todos os meses lancados), igual ja existia.
+  if (finMensal.length) {
+    html += '<div class="panel"><div class="panel-title">Histórico completo</div>' +
+      '<table class="fin-table"><thead><tr><th>Mês</th><th class="num">Valor do mês</th><th class="num">Pago</th><th class="num">Restante</th><th>Status</th></tr></thead><tbody>' +
+      finMensal.map(function(l) {
+        var badge = l.quitado
+          ? '<span class="fin-badge quitado">Quitado</span>'
+          : (Number(l.valor_mes) > 0 ? '<span class="fin-badge aberto">Em aberto</span>' : '<span class="fin-badge sem">Sem lançamento</span>');
+        return '<tr>' +
+          '<td>' + MESES[l.mes - 1] + '/' + l.ano + '</td>' +
+          '<td class="num">' + formatarMoeda(l.valor_mes) + '</td>' +
+          '<td class="num">' + formatarMoeda(l.valor_pago) + '</td>' +
+          '<td class="num">' + formatarMoeda(l.restante) + '</td>' +
+          '<td>' + badge + '</td>' +
+        '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
   }
+
   wrap.innerHTML = html;
 }
 
@@ -598,9 +827,19 @@ async function carregarFinanceiro() {
   }
   wrap.innerHTML = '<p class="casos-empty">Carregando…</p>';
   try {
-    var res = await sb.rpc('listar_financeiro_cliente', { p_sessao: sessao.token });
-    if (res.error) throw res.error;
-    renderFinanceiro(res.data || []);
+    var resMensal = await sb.rpc('listar_financeiro_cliente', { p_sessao: sessao.token });
+    if (resMensal.error) throw resMensal.error;
+    var resPedidos = await sb.rpc('listar_pedidos_cliente', { p_sessao: sessao.token });
+    if (resPedidos.error) throw resPedidos.error;
+
+    finMensal = resMensal.data || [];
+    finPedidos = resPedidos.data || [];
+    if (finViewMes == null) {
+      var hoje = new Date();
+      finViewMes = hoje.getMonth() + 1;
+      finViewAno = hoje.getFullYear();
+    }
+    renderFinanceiroDashboard();
   } catch(e) {
     wrap.innerHTML = '<p class="casos-empty">' + escHtml(e.message || 'Erro ao carregar financeiro.') + '</p>';
   }
@@ -612,7 +851,7 @@ var stlFile = null;
 function handleStlFile(e) {
   var file = e.target.files[0];
   var el = document.getElementById('c-stl-placeholder');
-  if (!file) { stlFile = null; el.textContent = '📎 Toque para escolher o arquivo STL (opcional)'; return; }
+  if (!file) { stlFile = null; el.textContent = '📎 Toque para escolher o arquivo de escaneamento (opcional)'; return; }
   stlFile = file;
   el.textContent = '📎 ' + file.name;
 }
@@ -663,8 +902,265 @@ function toggleDente(n) {
   if (lbl) lbl.textContent = dentesSelecionados.length ? 'Selecionado: ' + dentesSelecionados.join(', ') : 'Nenhum dente selecionado';
 }
 
-async function enviarCaso(event) {
+function setDentesSelecionados(arr) {
+  dentesSelecionados = (arr || []).slice().sort(function(a,b){ return a-b; });
+  document.querySelectorAll('.dente').forEach(function(b) {
+    b.classList.toggle('on', dentesSelecionados.indexOf(Number(b.getAttribute('data-dente'))) >= 0);
+  });
+  var lbl = document.getElementById('odonto-sel');
+  if (lbl) lbl.textContent = dentesSelecionados.length ? 'Selecionado: ' + dentesSelecionados.join(', ') : 'Nenhum dente selecionado';
+}
+
+// ── Modal "Pedido" compartilhado -- um so modal, 3 modos:
+//    'create'      -- botao "+ Novo Pedido", form em branco
+//    'view'        -- clicou num card com status='a_fazer': campos
+//                      desabilitados + botao "Editar dados" + anexos
+//    'editando'    -- depois de clicar "Editar dados": campos ativos
+//    'view-locked' -- clicou num card com status != 'a_fazer': so
+//                      leitura, banner explicando, sem anexo extra ──
+var modalPedidoMode = null;       // 'create' | 'view' | 'editando' | 'view-locked'
+var modalPedidoCasoId = null;
+var modalPedidoStatus = null;
+var modalPedidoDataAtual = null;  // ultimo obter_caso_cliente (pra "Cancelar" reverter sem refetch)
+
+function setFormPedidoEditavel(editavel) {
+  ['c-paciente', 'c-tipo', 'c-cor', 'c-obs'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.disabled = !editavel;
+  });
+  document.querySelectorAll('.dente').forEach(function(b) { b.disabled = !editavel; });
+  var odonto = document.getElementById('odonto');
+  if (odonto) odonto.classList.toggle('odonto-locked', !editavel);
+}
+
+function renderModalPedidoFooter() {
+  var foot = document.getElementById('mp-footer');
+  if (modalPedidoMode === 'create') {
+    foot.innerHTML = '<button type="button" class="btn-ghost" onclick="fecharModalPedido()">Cancelar</button>' +
+      '<button type="submit" form="form-pedido" class="btn" id="btn-caso">Enviar caso</button>';
+  } else if (modalPedidoMode === 'view') {
+    foot.innerHTML = '<button type="button" class="btn-ghost" onclick="fecharModalPedido()">Fechar</button>' +
+      '<button type="button" class="btn" onclick="ativarEdicaoPedido()">✎ Editar dados</button>';
+  } else if (modalPedidoMode === 'editando') {
+    foot.innerHTML = '<button type="button" class="btn-ghost" onclick="cancelarEdicaoPedido()">Cancelar</button>' +
+      '<button type="submit" form="form-pedido" class="btn" id="mp-btn-salvar">Salvar alterações</button>';
+  } else {
+    foot.innerHTML = '<button type="button" class="btn-ghost" onclick="fecharModalPedido()">Fechar</button>';
+  }
+}
+
+function fecharModalPedido() {
+  document.getElementById('modal-pedido-overlay').classList.remove('open');
+  modalPedidoMode = null;
+  modalPedidoCasoId = null;
+  modalPedidoStatus = null;
+  modalPedidoDataAtual = null;
+}
+
+async function abrirModalPedido(mode, casoId) {
+  document.getElementById('msg-caso').textContent = '';
+  document.getElementById('msg-caso').className = 'msg';
+  document.getElementById('mp-lock-banner').style.display = 'none';
+  document.getElementById('modal-pedido-overlay').classList.add('open');
+
+  if (mode === 'create') {
+    modalPedidoMode = 'create';
+    modalPedidoCasoId = null;
+    document.getElementById('mp-titulo').textContent = 'Novo Pedido';
+    document.getElementById('mp-subtitulo').textContent = 'Preencha os dados do caso';
+    document.getElementById('c-paciente').value = '';
+    document.getElementById('c-tipo').value = '';
+    document.getElementById('c-cor').value = '';
+    document.getElementById('c-obs').value = '';
+    stlFile = null;
+    document.getElementById('c-stl-input').value = '';
+    document.getElementById('c-stl-placeholder').textContent = '📎 Toque para escolher o arquivo de escaneamento (opcional)';
+    setDentesSelecionados([]);
+    setFormPedidoEditavel(true);
+    document.getElementById('mp-anexo-inicial-group').style.display = '';
+    document.getElementById('mp-anexos-existentes-group').style.display = 'none';
+    renderModalPedidoFooter();
+    return;
+  }
+
+  // mode === 'detalhe': busca o caso pra decidir entre 'view' (a_fazer,
+  // editavel) e 'view-locked' (fazendo/finalizado, so leitura).
+  modalPedidoCasoId = casoId;
+  document.getElementById('mp-titulo').textContent = 'Carregando…';
+  document.getElementById('mp-subtitulo').textContent = '';
+  document.getElementById('mp-anexo-inicial-group').style.display = 'none';
+  document.getElementById('mp-anexos-existentes-group').style.display = 'none';
+  setFormPedidoEditavel(false);
+
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  if (!sessao || !sessao.token) { showMsgCaso('Sessão expirada. Saia e faça login novamente.', 'error'); return; }
+
+  try {
+    var res = await sb.rpc('obter_caso_cliente', { p_sessao: sessao.token, p_caso_id: casoId });
+    if (res.error) throw res.error;
+    var c = res.data && res.data[0];
+    if (!c) throw new Error('Pedido não encontrado.');
+
+    modalPedidoDataAtual = c;
+    modalPedidoStatus = c.status;
+
+    document.getElementById('c-paciente').value = c.paciente || '';
+    document.getElementById('c-tipo').value = c.tipo_trabalho || '';
+    document.getElementById('c-cor').value = c.cor || '';
+    document.getElementById('c-obs').value = c.observacoes || '';
+    setDentesSelecionados(c.dentes || []);
+
+    var st = STATUS_LABEL[c.status] || c.status;
+    document.getElementById('mp-titulo').textContent = c.paciente || 'Pedido';
+    document.getElementById('mp-subtitulo').textContent = 'Enviado em ' + formatarData(c.criado_em) + ' — ' + st;
+
+    if (c.status === 'a_fazer') {
+      modalPedidoMode = 'view';
+      document.getElementById('mp-anexos-existentes-group').style.display = '';
+      carregarAnexosExistentes(casoId);
+    } else {
+      modalPedidoMode = 'view-locked';
+      var banner = document.getElementById('mp-lock-banner');
+      banner.style.display = 'flex';
+      banner.textContent = c.status === 'finalizado'
+        ? '🔒 Este pedido já foi finalizado e não pode mais ser editado por aqui. Qualquer ajuste, fale com o laboratório.'
+        : '🔒 Este pedido já entrou em produção e não pode mais ser editado por aqui. Qualquer ajuste, fale com o laboratório.';
+    }
+    renderModalPedidoFooter();
+  } catch(e) {
+    document.getElementById('mp-titulo').textContent = 'Erro';
+    showMsgCaso(e.message || 'Erro ao carregar pedido.', 'error');
+  }
+}
+
+function ativarEdicaoPedido() {
+  modalPedidoMode = 'editando';
+  setFormPedidoEditavel(true);
+  renderModalPedidoFooter();
+}
+
+function cancelarEdicaoPedido() {
+  modalPedidoMode = 'view';
+  var c = modalPedidoDataAtual || {};
+  document.getElementById('c-paciente').value = c.paciente || '';
+  document.getElementById('c-tipo').value = c.tipo_trabalho || '';
+  document.getElementById('c-cor').value = c.cor || '';
+  document.getElementById('c-obs').value = c.observacoes || '';
+  setDentesSelecionados(c.dentes || []);
+  setFormPedidoEditavel(false);
+  document.getElementById('msg-caso').textContent = '';
+  document.getElementById('msg-caso').className = 'msg';
+  renderModalPedidoFooter();
+}
+
+function submitModalPedido(event) {
   event.preventDefault();
+  if (modalPedidoMode === 'create') { enviarCaso(); }
+  else if (modalPedidoMode === 'editando') { salvarEdicaoPedido(); }
+  return false;
+}
+
+async function salvarEdicaoPedido() {
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  if (!sessao || !sessao.token) { showMsgCaso('Sessão expirada. Saia e faça login novamente.', 'error'); return; }
+
+  var paciente = document.getElementById('c-paciente').value.trim();
+  var tipo     = document.getElementById('c-tipo').value;
+  var cor      = document.getElementById('c-cor').value.trim();
+  var obs      = document.getElementById('c-obs').value.trim();
+
+  if (!paciente) { showMsgCaso('Informe o nome do paciente.', 'error'); return; }
+  if (!tipo)     { showMsgCaso('Selecione o tipo de trabalho.', 'error'); return; }
+  if (!dentesSelecionados.length) { showMsgCaso('Selecione ao menos um dente no odontograma.', 'error'); return; }
+
+  var btn = document.getElementById('mp-btn-salvar');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+
+  try {
+    var res = await sb.rpc('editar_caso_cliente', {
+      p_sessao: sessao.token,
+      p_caso_id: modalPedidoCasoId,
+      p_paciente: paciente,
+      p_tipo_trabalho: tipo,
+      p_dentes: dentesSelecionados,
+      p_cor: cor,
+      p_observacoes: obs
+    });
+    if (res.error) throw res.error;
+
+    modalPedidoDataAtual = {
+      id: modalPedidoCasoId, paciente: paciente, tipo_trabalho: tipo,
+      dentes: dentesSelecionados.slice(), cor: cor, observacoes: obs,
+      status: modalPedidoStatus,
+      criado_em: modalPedidoDataAtual ? modalPedidoDataAtual.criado_em : null,
+      previsao_saida: modalPedidoDataAtual ? modalPedidoDataAtual.previsao_saida : null
+    };
+    showMsgCaso('Alterações salvas.', 'success');
+    modalPedidoMode = 'view';
+    setFormPedidoEditavel(false);
+    renderModalPedidoFooter();
+    carregarMeusCasos();
+  } catch(e) {
+    showMsgCaso(e.message || 'Erro ao salvar alterações.', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar alterações'; }
+  }
+}
+
+// ── Anexar mais arquivos num pedido ja existente (so status='a_fazer',
+// mesma trava do editar -- o RPC de baixo nem participa disso, quem
+// trava e' a storage policy: gerar_jwt_upload so exige sessao valida,
+// entao a UI so oferece esse botao quando 'view' ja confirmou a_fazer) ──
+
+async function carregarAnexosExistentes(casoId) {
+  var listaEl = document.getElementById('mp-anexos-lista');
+  listaEl.innerHTML = '<p style="font-size:12px;color:#64748b">Carregando anexos…</p>';
+  try {
+    var raw = localStorage.getItem(SESSAO_KEY);
+    var sessao = raw ? JSON.parse(raw) : null;
+    if (!sessao || !sessao.token) throw new Error('Sessão expirada.');
+
+    var jwtRes = await sb.rpc('gerar_jwt_upload', { p_sessao: sessao.token });
+    if (jwtRes.error) throw jwtRes.error;
+
+    var listClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: 'Bearer ' + jwtRes.data } }
+    });
+    var listRes = await listClient.storage.from('casos').list(sessao.cliente_reg + '/' + casoId);
+    if (listRes.error) throw listRes.error;
+
+    var arquivos = (listRes.data || []).filter(function(f) { return f && f.id; });
+    listaEl.innerHTML = arquivos.length
+      ? arquivos.map(function(f) { return '<div class="attach-item">📎 <span class="name">' + escHtml(f.name) + '</span></div>'; }).join('')
+      : '<p style="font-size:12px;color:#64748b">Nenhum arquivo enviado ainda.</p>';
+  } catch(e) {
+    listaEl.innerHTML = '<p style="font-size:12px;color:#ef4444">Erro ao carregar anexos: ' + escHtml(e.message || String(e)) + '</p>';
+  }
+}
+
+async function handleAnexoExtra(e) {
+  var file = e.target.files[0];
+  if (!file || !modalPedidoCasoId) return;
+  var el = document.getElementById('mp-anexo-extra-placeholder');
+  var textoOriginal = el.textContent;
+  el.textContent = '📎 Enviando ' + file.name + '…';
+  try {
+    var raw = localStorage.getItem(SESSAO_KEY);
+    var sessao = raw ? JSON.parse(raw) : null;
+    if (!sessao || !sessao.token) throw new Error('Sessão expirada.');
+    await enviarStl(sessao.token, sessao.cliente_reg, modalPedidoCasoId, file);
+    document.getElementById('mp-anexo-extra-input').value = '';
+    carregarAnexosExistentes(modalPedidoCasoId);
+  } catch(err) {
+    alert('Erro ao anexar arquivo: ' + (err.message || err));
+  } finally {
+    el.textContent = textoOriginal;
+  }
+}
+
+async function enviarCaso() {
   var raw = localStorage.getItem(SESSAO_KEY);
   var sessao = raw ? JSON.parse(raw) : null;
   if (!sessao || !sessao.token) { showMsgCaso('Sessão expirada. Saia e faça login novamente.', 'error'); return false; }
@@ -710,7 +1206,7 @@ async function enviarCaso(event) {
     dentesSelecionados = [];
     stlFile = null;
     document.getElementById('c-stl-input').value = '';
-    document.getElementById('c-stl-placeholder').textContent = '📎 Toque para escolher o arquivo STL (opcional)';
+    document.getElementById('c-stl-placeholder').textContent = '📎 Toque para escolher o arquivo de escaneamento (opcional)';
     document.querySelectorAll('.dente.on').forEach(function(b){ b.classList.remove('on'); });
     document.getElementById('odonto-sel').textContent = 'Nenhum dente selecionado';
     carregarMeusCasos();
@@ -754,7 +1250,7 @@ function sair() {
   document.getElementById('f-usuario').value = '';
   document.getElementById('f-senha').value = '';
   document.getElementById('admin-banner').style.display = 'none';
-  mostrarAba('novo');
+  fecharModalPedido();
 }
 
 (function init() {
