@@ -68,6 +68,11 @@
   /* ── Troca de senha obrigatoria (primeiro acesso) ─────────────── */
   #trocar-senha-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:400;display:flex;align-items:center;justify-content:center;padding:16px}
   #trocar-senha-card{width:min(360px,100%);background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;padding:26px 24px;text-align:center}
+
+  /* ── Excluir pedido (reautenticacao com senha) ────────────────── */
+  #excluir-caso-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:400;display:none;align-items:center;justify-content:center;padding:16px}
+  #excluir-caso-card{width:min(360px,100%);background:#1a1d27;border:0.5px solid rgba(239,68,68,0.35);border-radius:16px;padding:26px 24px;text-align:center}
+  .caso-del-btn{margin-top:10px;height:30px;padding:0 12px;border-radius:6px;border:0.5px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.08);color:#ef4444;font-size:12px;cursor:pointer;font-family:inherit}
   #menu-drawer{position:fixed;top:0;left:0;height:100vh;width:260px;max-width:80vw;background:#1a1d27;border-right:0.5px solid rgba(255,255,255,0.1);z-index:301;transform:translateX(-100%);transition:transform 0.25s;display:flex;flex-direction:column;text-align:left}
   #menu-drawer.open{transform:translateX(0)}
   .menu-logo{display:flex;align-items:center;justify-content:space-between;padding:20px 18px;border-bottom:0.5px solid rgba(255,255,255,0.08)}
@@ -145,6 +150,23 @@
         <input type="password" id="ts-confirma" required minlength="6" autocomplete="new-password">
       </div>
       <button type="submit" class="btn" id="btn-trocar-senha">Salvar nova senha</button>
+    </form>
+  </div>
+</div>
+
+<div id="excluir-caso-overlay">
+  <div id="excluir-caso-card">
+    <p class="logo">🗑️</p>
+    <h1>Excluir pedido</h1>
+    <p class="sub">Essa ação não pode ser desfeita. Digite sua senha para confirmar.</p>
+    <div id="msg-excluir-caso" class="msg"></div>
+    <form onsubmit="return confirmarExclusaoCaso(event)">
+      <div class="group">
+        <label>Senha</label>
+        <input type="password" id="ec-senha" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn" id="btn-excluir-caso" style="background:#b91c1c">Excluir pedido</button>
+      <button type="button" class="btn-ghost" style="margin-top:8px" onclick="fecharExcluirCaso()">Cancelar</button>
     </form>
   </div>
 </div>
@@ -427,6 +449,7 @@ function renderCasosEm(containerId, casos, textoVazio) {
           '<span>Entrada: <b>' + formatarDataHora(c.criado_em) + '</b></span>' +
           '<span>Previsão de saída: <b>' + formatarData(c.previsao_saida) + '</b></span>' +
         '</div>' +
+        (c.status === 'a_fazer' ? '<button class="caso-del-btn" onclick="abrirExcluirCaso(\'' + c.id + '\')">🗑️ Excluir pedido</button>' : '') +
       '</div>';
   }).join('');
 }
@@ -472,6 +495,47 @@ async function carregarMeusCasos() {
   } catch(e) {
     mostrarErroCasos(e.message || 'Erro ao carregar seus casos.');
   }
+}
+
+// ── Excluir pedido (reautenticacao com senha) ───────────────────
+var _excluirCasoId = null;
+
+function abrirExcluirCaso(id) {
+  _excluirCasoId = id;
+  document.getElementById('ec-senha').value = '';
+  var msg = document.getElementById('msg-excluir-caso');
+  msg.textContent = ''; msg.className = 'msg';
+  document.getElementById('excluir-caso-overlay').style.display = 'flex';
+}
+
+function fecharExcluirCaso() {
+  _excluirCasoId = null;
+  document.getElementById('excluir-caso-overlay').style.display = 'none';
+}
+
+async function confirmarExclusaoCaso(event) {
+  event.preventDefault();
+  if (!_excluirCasoId) return false;
+  var senha = document.getElementById('ec-senha').value;
+  var msg   = document.getElementById('msg-excluir-caso');
+  var btn   = document.getElementById('btn-excluir-caso');
+
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  if (!sessao || !sessao.token) return false;
+
+  btn.disabled = true; btn.textContent = 'Excluindo…';
+  try {
+    var res = await sb.rpc('excluir_caso_cliente', { p_sessao: sessao.token, p_caso_id: _excluirCasoId, p_senha: senha });
+    if (res.error) throw res.error;
+    fecharExcluirCaso();
+    carregarMeusCasos();
+  } catch(e) {
+    msg.textContent = e.message || 'Erro ao excluir pedido.';
+    msg.className = 'msg error';
+  }
+  btn.disabled = false; btn.textContent = 'Excluir pedido';
+  return false;
 }
 
 // ── Financeiro ─────────────────────────────────────────────────

@@ -266,6 +266,7 @@ async function loadOrdensCam() {
   try {
     var res = await sb.from('ordens_exocad').select('*')
       .or('arquivado.is.null,arquivado.eq.false')
+      .eq('excluido', false)
       .order('created_at', { ascending: false });
     if (res.error) throw res.error;
     ordensCam = res.data || [];
@@ -274,7 +275,7 @@ async function loadOrdensCam() {
     try {
       var res2 = await sb.from('ordens_exocad').select('*').order('created_at', { ascending: false });
       if (res2.error) throw res2.error;
-      ordensCam = (res2.data || []).filter(function(o){ return !o.arquivado; });
+      ordensCam = (res2.data || []).filter(function(o){ return !o.arquivado && !o.excluido; });
       renderOrdensCam();
     } catch(e2) {
       showConnError(e2.message || String(e2));
@@ -318,6 +319,7 @@ function camCardHtml(o) {
   var confBtn  = isNovo
     ? '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camConfirmVisto(\''+o.id+'\')" title="Confirmar que voce viu este caso finalizado" style="height:24px;padding:0 8px;border-radius:4px;border:0.5px solid #fbbf24;background:rgba(251,191,36,0.12);color:#fbbf24;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0">🔔 Confirmar</button>'
     : '';
+  var delBtn   = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camExcluirCaso(\''+o.id+'\')" title="Excluir permanentemente" style="height:24px;padding:0 8px;border-radius:4px;border:0.5px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.08);color:#ef4444;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">🗑️</button>';
 
   var scan     = !!o.conferir_scanbody;
   var inove    = !!o.enviado_inove;
@@ -341,7 +343,7 @@ function camCardHtml(o) {
   return '<div class="cam-card'+(isNovo?' cam-card-novo':'')+'" draggable="true" ondragstart="camDragStart(event,\''+o.id+'\')" onclick="openCamDetail(\''+o.id+'\')" style="'+ageStyle+';cursor:pointer">'+
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:5px">'+
       '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(cli)+(o.cliente_reg?cliRegraBadgeHtml(o.cliente_reg):'')+'</p>'+
-      '<div draggable="false" style="display:flex;gap:4px">'+confBtn+advBtn+arqBtn+'</div>'+
+      '<div draggable="false" style="display:flex;gap:4px">'+confBtn+advBtn+arqBtn+delBtn+'</div>'+
     '</div>'+
     '<p style="font-size:12px;color:#94a3b8;margin:0 0 5px;line-height:1.4">'+escHtml(desc)+'</p>'+
     '<p style="font-size:10px;color:#4a5568;margin:0 0 7px">'+(o.created_at?new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—')+'</p>'+
@@ -374,7 +376,10 @@ function camPendCardHtml(o) {
   return '<div class="cam-pend-card" onclick="openCamDetail(\''+o.id+'\')">'+
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px">'+
       '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0;line-height:1.3">'+escHtml(cli)+(o.cliente_reg?cliRegraBadgeHtml(o.cliente_reg):'')+'</p>'+
-      '<button onclick="event.stopPropagation();camAceitarCaso(\''+o.id+'\')" style="height:26px;padding:0 10px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0">✅ Aceitar</button>'+
+      '<div draggable="false" style="display:flex;gap:4px;flex-shrink:0">'+
+        '<button onclick="event.stopPropagation();camExcluirCaso(\''+o.id+'\')" title="Excluir permanentemente" style="height:26px;padding:0 8px;border-radius:6px;border:0.5px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.08);color:#ef4444;font-size:11px;cursor:pointer;font-family:inherit">🗑️</button>'+
+        '<button onclick="event.stopPropagation();camAceitarCaso(\''+o.id+'\')" style="height:26px;padding:0 10px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">✅ Aceitar</button>'+
+      '</div>'+
     '</div>'+
     '<p style="font-size:12px;color:#94a3b8;margin:0 0 5px;line-height:1.4">'+escHtml(desc)+'</p>'+
     '<p style="font-size:10px;color:#4a5568;margin:0">'+(o.created_at?new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—')+'</p>'+
@@ -645,6 +650,16 @@ async function camArchivar(id) {
   } catch(e) { alert('Erro ao arquivar: '+(e.message||e)); }
 }
 
+async function camExcluirCaso(id) {
+  if (!confirm('Tem certeza que deseja excluir este pedido? Essa ação não pode ser desfeita.')) return;
+  try {
+    var res = await sb.from('ordens_exocad').update({ excluido: true }).eq('id', id);
+    if (res.error) throw res.error;
+    ordensCam = ordensCam.filter(function(o){ return o.id !== id; });
+    renderOrdensCam();
+  } catch(e) { alert('Erro ao excluir: '+(e.message||e)); }
+}
+
 // ── Modal: Nova Ordem ─────────────────────────────────────────
 function openNovaCamOrdem() {
   var sel = document.getElementById('cam-form-cliente');
@@ -733,7 +748,7 @@ async function openCamArquivados() {
   panel.style.display   = 'flex';
   body.innerHTML = '<p style="font-size:12px;color:#64748b;text-align:center;padding:16px">Carregando…</p>';
   try {
-    var res = await sb.from('ordens_exocad').select('*').eq('arquivado', true).order('created_at', { ascending: false });
+    var res = await sb.from('ordens_exocad').select('*').eq('arquivado', true).eq('excluido', false).order('created_at', { ascending: false });
     if (res.error) throw res.error;
     var rows = res.data || [];
     if (!rows.length) {
