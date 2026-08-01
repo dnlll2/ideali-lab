@@ -85,6 +85,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .btn-confirmar-inove{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;border:0.5px solid #22c55e;background:#0d3d2b;color:#4ade80;cursor:pointer;font-family:inherit;white-space:nowrap}
 .btn-confirmar-inove:hover{background:#134d34}
 .btn-confirmar-inove:disabled{opacity:0.5;cursor:default}
+.badge-novo-pagamento{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;border:0.5px solid #f59e0b;background:rgba(245,158,11,0.14);color:#fbbf24;white-space:nowrap;margin-top:3px}
 .obs-txt{font-size:12px;color:#94a3b8;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:220px}
 .loading{text-align:center;padding:60px;color:#64748b;font-size:14px}
 .footer{margin-top:1.5rem;text-align:center;font-size:11px;color:#4a5568}
@@ -158,6 +159,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     '.row-novo-pagamento:hover td{background:'+hexToRgba(t.success,0.16)+' !important}',
     '.btn-confirmar-inove{background:'+hexToRgba(t.success,0.15)+' !important;color:'+t.success+' !important;border-color:'+hexToRgba(t.success,0.5)+' !important}',
     '.btn-confirmar-inove:hover{background:'+hexToRgba(t.success,0.28)+' !important}',
+    '.badge-novo-pagamento{background:'+hexToRgba(t.warn,0.16)+' !important;color:'+t.warn+' !important;border-color:'+t.warn+' !important}',
     t.mono ? 'body,input,select,button,table{font-family:"'+(t.monoFamily||'Share Tech Mono')+'","Courier New",monospace !important}' : '',
     t.square ? '*{border-radius:0 !important}\n*{box-shadow:none !important}' : ''
   ].join('\n');
@@ -846,8 +848,11 @@ function renderTable() {
       var confirmarHtml = isNovo
         ? '<button class="btn-confirmar-inove" onclick="confirmarPagamentoInove('+r.c.reg+',this)"><i class="ti ti-check"></i> Confirmado</button>'
         : '';
+      var novoBadgeHtml = isNovo
+        ? '<span class="badge-novo-pagamento">🟡 Novo pagamento — aguardando confirmação</span>'
+        : '';
       return '<tr'+(isNovo?' class="row-novo-pagamento"':'')+'>' +
-        '<td><p class="client-name">'+escHtml(r.c.nome)+'</p></td>' +
+        '<td><p class="client-name">'+escHtml(r.c.nome)+'</p>'+novoBadgeHtml+'</td>' +
         '<td class="'+(vm>0?'valor-mes':'valor-zero')+'">'+fmt(vm)+'</td>' +
         '<td class="'+(vp>0?'valor-pago':'valor-zero')+'">'+fmt(vp)+'</td>' +
         '<td style="color:'+(rest>0?'#ef4444':'#4a5568')+'">'+fmt(rest)+'</td>' +
