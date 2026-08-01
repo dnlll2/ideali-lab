@@ -91,6 +91,7 @@
   <!-- Totais -->
   <div style="margin-top:8px;overflow-x:auto;padding-bottom:2px">
     <div id="totals-row" style="display:flex;gap:8px;min-width:max-content">
+      <div class="counter-card" style="min-width:150px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Total de Vendas</p><p style="font-size:20px;font-weight:500;color:#f1f5f9" id="total-vendas">R$ 0,00</p></div>
       <div class="counter-card" style="min-width:150px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">A Receber (clientes)</p><p style="font-size:20px;font-weight:500;color:#ef4444" id="total-a-receber">R$ 0,00</p></div>
       <div class="counter-card" style="min-width:150px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissão Líquida (já recebida)</p><p style="font-size:20px;font-weight:500;color:#22c55e" id="total-com-liq">R$ 0,00</p></div>
       <div class="counter-card" style="min-width:150px"><p style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Comissão Total (mês)</p><p style="font-size:20px;font-weight:500;color:#fbbf24" id="total-com-bruta">R$ 0,00</p></div>
@@ -351,6 +352,7 @@ function updateCounts() {
   var comTotal      = totVal * COMISSAO;
   var comLiquida     = totPago * COMISSAO;
   var comRestante    = comTotal - comLiquida;
+  document.getElementById('total-vendas').textContent       = fmt(totVal);
   document.getElementById('total-a-receber').textContent    = fmt(totVal - totPago);
   document.getElementById('total-com-liq').textContent      = fmt(comLiquida);
   document.getElementById('total-com-bruta').textContent    = fmt(comTotal);
@@ -725,6 +727,7 @@ function applyStaticThemeColors() {
   var sealedTitle = document.getElementById('sealed-title'); if (sealedTitle) sealedTitle.style.color = t.success;
   ['count-recebido','count-enviado','count-quitado'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.color = t.success; });
   var pend = document.getElementById('count-pendente'); if (pend) pend.style.color = t.danger;
+  var totVendas = document.getElementById('total-vendas'); if (totVendas) totVendas.style.color = t.text;
   var aReceber = document.getElementById('total-a-receber'); if (aReceber) aReceber.style.color = t.danger;
   var comLiq = document.getElementById('total-com-liq'); if (comLiq) comLiq.style.color = t.success;
   var comBruta = document.getElementById('total-com-bruta'); if (comBruta) comBruta.style.color = t.warn;
