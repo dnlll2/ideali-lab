@@ -1,8 +1,9 @@
 -- ============================================================
 -- Ideali Laboratorio - Portal de Clientes
--- Etapa 3: Painel "Meus casos" - lista os casos que o proprio
--- cliente logado enviou pelo portal (origem='portal'), com data
--- de entrada e previsao de saida (7 dias uteis, com regra das 14h).
+-- Etapa 3: Painel "Meus casos" - lista TODOS os casos do cliente
+-- logado em ordens_exocad, independente da origem (portal, whatsapp,
+-- email), com data de entrada e previsao de saida (7 dias uteis,
+-- com regra das 14h).
 --
 -- Rode este arquivo inteiro, uma vez, no SQL Editor do Supabase
 -- (projeto alqhhgysvehtgkwsxeok), depois de ja ter rodado
@@ -63,8 +64,17 @@ begin
   return query
     select
       o.id,
-      coalesce(nullif(substring(o.descricao from 'Paciente: ([^\n]*)'), ''), '—')      as paciente,
-      coalesce(nullif(substring(o.descricao from 'Tipo de trabalho: ([^\n]*)'), ''), '—') as tipo_trabalho,
+      coalesce(
+        nullif(substring(o.descricao from 'Paciente: ([^\n]*)'), ''),
+        nullif((regexp_match(o.descricao, '^Pac\s+(.+?)\s+-\s+'))[1], ''),
+        nullif(trim(o.descricao), ''),
+        '—'
+      ) as paciente,
+      coalesce(
+        nullif(substring(o.descricao from 'Tipo de trabalho: ([^\n]*)'), ''),
+        nullif((regexp_match(o.descricao, '^Pac\s+.+?\s+-\s+(.*)$'))[1], ''),
+        ''
+      ) as tipo_trabalho,
       o.status,
       o.created_at,
       business_days_add(
@@ -77,7 +87,6 @@ begin
       ) as previsao_saida
     from ordens_exocad o
     where o.cliente_reg = v_sessao.reg
-      and o.origem = 'portal'
     order by o.created_at desc;
 end;
 $$;
