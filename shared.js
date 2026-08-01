@@ -268,6 +268,15 @@ var THEMES = {
     hover:'#0000ff', active:'#1818cc', border:'#ffffff',
     text:'#ffffff', muted:'#aaaaaa', dim:'#7777bb',
     accent:'#00ffff', accent2:'#ffff55', success:'#55ff55', warn:'#ffff55', danger:'#ff5555'
+  },
+  vidro: {
+    name:'Vidro', swatch:'linear-gradient(135deg,#e3d6f2,#4f7f8c)', glass:true,
+    customFont:'Manrope', customFontHref:'https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap',
+    bg:'radial-gradient(ellipse 900px 600px at 8% 0%, #e3d6f2 0%, transparent 60%), radial-gradient(ellipse 800px 700px at 100% 15%, #f9ddc9 0%, transparent 55%), radial-gradient(ellipse 900px 800px at 30% 100%, #d7ede2 0%, transparent 55%), #f7f4fb',
+    sbg:'rgba(255,255,255,0.55)', card:'rgba(255,255,255,0.55)', sec:'rgba(255,255,255,0.65)',
+    hover:'rgba(79,127,140,0.12)', active:'rgba(79,127,140,0.18)', border:'rgba(255,255,255,0.7)',
+    text:'#2a2733', muted:'#6e6a7c', dim:'#9994a8',
+    accent:'#4f7f8c', accent2:'#8c7aa8', success:'#6f9e7c', warn:'#c98a45', danger:'#c07272'
   }
 };
 
@@ -356,22 +365,52 @@ function applyTheme(name) {
     '.mob-back{background:'+t.sec+' !important;color:'+t.muted+' !important;border-color:'+t.border+' !important}',
     '.sealed-banner{background:'+t.active+' !important}',
     // Temas "square" (ex: MS-DOS) removem cantos arredondados e sombras pra reforçar a estética de terminal antigo.
-    t.square ? '*{border-radius:0 !important}\n*{box-shadow:none !important}' : ''
+    t.square ? '*{border-radius:0 !important}\n*{box-shadow:none !important}' : '',
+    // Temas "glass" (ex: Vidro) borram o que fica atrás dos painéis translúcidos, pra dar o efeito de vidro fosco.
+    t.glass ? [
+      'body{background-attachment:fixed !important}',
+      '.card,#sidebar,.dash-card,.hm-card,.hm-section,.counter-card,.task-item,.fin-card,.tab-tarefa,#month-dd-list,.mob-back,.hamburger,.sb-close,.sb-icon,input,select{',
+      '  -webkit-backdrop-filter:blur(16px) saturate(1.3) !important;backdrop-filter:blur(16px) saturate(1.3) !important;',
+      '  box-shadow:0 8px 28px rgba(80,60,110,0.14) !important',
+      '}',
+      // shared.css define várias classes com cores fixas do tema Sombra (tabelas, sidebar, badges).
+      // Nos 8 temas escuros isso passa despercebido (cinza claro sobre fundo escuro sempre lê bem);
+      // no Vidro, fundo claro, precisa ser sobrescrito explicitamente pra não ficar ilegível.
+      '.cad-table td,.dash-table td,.imp-preview-table td,.val,.fin-input,.sb-item.sb-main,.month-dd-item{color:'+t.text+' !important}',
+      '.cad-table th,.dash-table th,.imp-preview-table th,.label,.cf-label,.dash-section-title,.home-col-badge,.ia-history-time,.tick-btn,.tick-label,.comp-clip,.comp-lbl{color:'+t.dim+' !important}',
+      '.sb-item,.cad-btn-ghost,.imp-tab-btn,.cam-orig-btn,.ia-history-res,.ia-mic-btn,.comp-menu-item{color:'+t.muted+' !important}',
+      '.cad-table th,.imp-preview-table th{background:'+t.sec+' !important}',
+      '.tick-btn,.comp-clip,.home-col-badge,.cad-btn-ghost,.imp-tab-btn,.cam-orig-btn,.ia-mic-btn{background:'+t.sec+' !important}',
+      // Pega o resto: cores e fundos cinza-escuro do tema Sombra escritos direto no HTML de cada página
+      // (não vêm de classe, então só um seletor por atributo alcança).
+      '[style*="color:#f1f5f9"],[style*="color:#e2e8f0"]{color:'+t.text+' !important}',
+      '[style*="color:#94a3b8"]{color:'+t.muted+' !important}',
+      '[style*="color:#64748b"],[style*="color:#4a5568"]{color:'+t.dim+' !important}',
+      '[style*="background:#0f1117"],[style*="background:#13151f"]{background:'+t.sec+' !important}',
+      '[style*="background:#1a1d27"]{background:'+t.card+' !important}',
+      '[style*="background:#22263a"]{background:'+t.sec+' !important}',
+      '[style*="background:#2d3250"]{background:'+t.hover+' !important}'
+    ].join('\n') : ''
   ].join('\n');
   var el = document.getElementById('theme-style');
   if (!el) { el = document.createElement('style'); el.id = 'theme-style'; document.head.appendChild(el); }
   el.textContent = css;
 
-  // Fonte monoespaçada apenas para temas marcados com mono:true (ex: Matrix, MS-DOS).
-  // Cada tema mono define sua própria fonte via monoFamily/monoHref.
+  // Fonte alternativa por tema: mono (ex: Matrix, MS-DOS) ou uma fonte comum (ex: Manrope no Vidro).
   var fontLinkEl = document.getElementById('theme-font-link');
   if (!fontLinkEl) { fontLinkEl = document.createElement('link'); fontLinkEl.id = 'theme-font-link'; fontLinkEl.rel = 'stylesheet'; document.head.appendChild(fontLinkEl); }
-  if (t.mono) fontLinkEl.href = t.monoHref || 'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap';
   var fontEl = document.getElementById('theme-font-style');
   if (!fontEl) { fontEl = document.createElement('style'); fontEl.id = 'theme-font-style'; document.head.appendChild(fontEl); }
-  fontEl.textContent = t.mono
-    ? 'body,input,select,button,textarea,table{font-family:"'+(t.monoFamily||'Share Tech Mono')+'","Courier New",monospace !important}'
-    : '';
+  if (t.mono) {
+    fontLinkEl.href = t.monoHref || 'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap';
+    fontEl.textContent = 'body,input,select,button,textarea,table{font-family:"'+(t.monoFamily||'Share Tech Mono')+'","Courier New",monospace !important}';
+  } else if (t.customFont) {
+    fontLinkEl.href = t.customFontHref || '';
+    fontEl.textContent = 'body,input,select,button,textarea,table{font-family:"'+t.customFont+'",-apple-system,"Segoe UI",sans-serif !important}';
+  } else {
+    fontLinkEl.href = '';
+    fontEl.textContent = '';
+  }
 
   renderThemePicker();
   notifyThemeChange();
