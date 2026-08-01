@@ -283,7 +283,8 @@
               </div>
               <div class="group">
                 <label>Anexo (STL)</label>
-                <div class="upload-placeholder">📎 Upload de arquivo em breve</div>
+                <input type="file" id="c-stl-input" accept=".stl" style="display:none" onchange="handleStlFile(event)">
+                <div class="upload-placeholder" id="c-stl-placeholder" style="cursor:pointer" onclick="document.getElementById('c-stl-input').click()">📎 Toque para escolher o arquivo STL (opcional)</div>
               </div>
             </div>
 
@@ -605,6 +606,35 @@ async function carregarFinanceiro() {
   }
 }
 
+// ── Anexo STL ────────────────────────────────────────────────
+var stlFile = null;
+
+function handleStlFile(e) {
+  var file = e.target.files[0];
+  var el = document.getElementById('c-stl-placeholder');
+  if (!file) { stlFile = null; el.textContent = '📎 Toque para escolher o arquivo STL (opcional)'; return; }
+  stlFile = file;
+  el.textContent = '📎 ' + file.name;
+}
+
+// Envia o STL direto pro Storage usando o JWT temporario (role anon +
+// claim cliente_reg) gerado por gerar_jwt_upload -- nao usa o cliente
+// `sb` normal porque esse JWT e por-upload, nao a sessao do app.
+async function enviarStl(sessaoToken, clienteReg, casoId, file) {
+  var jwtRes = await sb.rpc('gerar_jwt_upload', { p_sessao: sessaoToken });
+  if (jwtRes.error) throw jwtRes.error;
+  var jwt = jwtRes.data;
+
+  var uploadClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: 'Bearer ' + jwt } }
+  });
+
+  var nomeSeguro = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+  var path = clienteReg + '/' + casoId + '/' + nomeSeguro;
+  var upRes = await uploadClient.storage.from('casos').upload(path, file);
+  if (upRes.error) throw upRes.error;
+}
+
 // ── Odontograma (FDI) ─────────────────────────────────────────
 var dentesSelecionados = [];
 var QUADRANTES = [[18,17,16,15,14,13,12,11],[21,22,23,24,25,26,27,28],
@@ -661,13 +691,26 @@ async function enviarCaso(event) {
       p_observacoes: obs
     });
     if (res.error) throw res.error;
+    var casoId = res.data;
 
-    showMsgCaso('Caso enviado com sucesso! O laboratório já recebeu na fila de produção.', 'success');
+    var avisoUpload = '';
+    if (stlFile) {
+      try {
+        await enviarStl(sessao.token, sessao.cliente_reg, casoId, stlFile);
+      } catch (upErr) {
+        avisoUpload = ' O caso foi enviado, mas o anexo falhou (' + (upErr.message || 'erro desconhecido') + '). Fale com o laboratório.';
+      }
+    }
+
+    showMsgCaso('Caso enviado com sucesso! O laboratório já recebeu na fila de produção.' + avisoUpload, avisoUpload ? 'error' : 'success');
     document.getElementById('c-paciente').value = '';
     document.getElementById('c-tipo').value = '';
     document.getElementById('c-cor').value = '';
     document.getElementById('c-obs').value = '';
     dentesSelecionados = [];
+    stlFile = null;
+    document.getElementById('c-stl-input').value = '';
+    document.getElementById('c-stl-placeholder').textContent = '📎 Toque para escolher o arquivo STL (opcional)';
     document.querySelectorAll('.dente.on').forEach(function(b){ b.classList.remove('on'); });
     document.getElementById('odonto-sel').textContent = 'Nenhum dente selecionado';
     carregarMeusCasos();
