@@ -64,6 +64,10 @@
   .hamburger:hover{background:#2d3250;color:#e2e8f0}
   #menu-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:300;opacity:0;pointer-events:none;transition:opacity 0.2s}
   #menu-overlay.open{opacity:1;pointer-events:all}
+
+  /* ── Troca de senha obrigatoria (primeiro acesso) ─────────────── */
+  #trocar-senha-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:400;display:flex;align-items:center;justify-content:center;padding:16px}
+  #trocar-senha-card{width:min(360px,100%);background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;padding:26px 24px;text-align:center}
   #menu-drawer{position:fixed;top:0;left:0;height:100vh;width:260px;max-width:80vw;background:#1a1d27;border-right:0.5px solid rgba(255,255,255,0.1);z-index:301;transform:translateX(-100%);transition:transform 0.25s;display:flex;flex-direction:column;text-align:left}
   #menu-drawer.open{transform:translateX(0)}
   .menu-logo{display:flex;align-items:center;justify-content:space-between;padding:20px 18px;border-bottom:0.5px solid rgba(255,255,255,0.08)}
@@ -124,6 +128,26 @@
 </style>
 </head>
 <body>
+
+<div id="trocar-senha-overlay" style="display:none">
+  <div id="trocar-senha-card">
+    <p class="logo">🔒</p>
+    <h1>Defina sua nova senha</h1>
+    <p class="sub">Sua senha foi criada pelo laboratório. Por segurança, defina uma senha só sua antes de continuar.</p>
+    <div id="msg-trocar-senha" class="msg"></div>
+    <form onsubmit="return trocarSenhaCliente(event)">
+      <div class="group">
+        <label>Nova senha</label>
+        <input type="password" id="ts-nova" required minlength="6" autocomplete="new-password">
+      </div>
+      <div class="group">
+        <label>Confirmar nova senha</label>
+        <input type="password" id="ts-confirma" required minlength="6" autocomplete="new-password">
+      </div>
+      <button type="submit" class="btn" id="btn-trocar-senha">Salvar nova senha</button>
+    </form>
+  </div>
+</div>
 
 <div id="menu-overlay" onclick="closeMenu()"></div>
 <div id="menu-drawer">
@@ -308,6 +332,41 @@ function mostrarPainel(sessao) {
   document.body.classList.add('painel-ativo');
   document.getElementById('admin-banner').style.display = sessao.admin ? 'block' : 'none';
   carregarMeusCasos(); // pre-carrega contadores das abas "Em Andamento"/"Entregues" (desktop)
+  document.getElementById('trocar-senha-overlay').style.display = (sessao.deve_trocar_senha && !sessao.admin) ? 'flex' : 'none';
+}
+
+async function trocarSenhaCliente(event) {
+  event.preventDefault();
+  var nova     = document.getElementById('ts-nova').value;
+  var confirma = document.getElementById('ts-confirma').value;
+  var msg      = document.getElementById('msg-trocar-senha');
+  var btn      = document.getElementById('btn-trocar-senha');
+
+  if (nova !== confirma) {
+    msg.textContent = 'As senhas não conferem.';
+    msg.className = 'msg error';
+    return false;
+  }
+
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  if (!sessao || !sessao.token) return false;
+
+  btn.disabled = true; btn.textContent = 'Salvando…';
+  try {
+    var res = await sb.rpc('trocar_senha_cliente', { p_sessao: sessao.token, p_senha_nova: nova });
+    if (res.error) throw res.error;
+    sessao.deve_trocar_senha = false;
+    localStorage.setItem(SESSAO_KEY, JSON.stringify(sessao));
+    document.getElementById('trocar-senha-overlay').style.display = 'none';
+    document.getElementById('ts-nova').value = '';
+    document.getElementById('ts-confirma').value = '';
+  } catch(e) {
+    msg.textContent = e.message || 'Erro ao trocar senha.';
+    msg.className = 'msg error';
+    btn.disabled = false; btn.textContent = 'Salvar nova senha';
+  }
+  return false;
 }
 
 // ── Abas (mobile: Enviar novo caso / Meus casos — desktop: Novo
@@ -569,7 +628,7 @@ async function fazerLogin(event) {
     var row = res.data && res.data[0];
     if (!row) throw new Error('Usuário ou senha inválidos');
 
-    var sessao = { token: row.token, cliente_reg: row.cliente_reg, nome: row.nome };
+    var sessao = { token: row.token, cliente_reg: row.cliente_reg, nome: row.nome, deve_trocar_senha: !!row.deve_trocar_senha };
     localStorage.setItem(SESSAO_KEY, JSON.stringify(sessao));
     mostrarPainel(sessao);
   } catch(e) {
