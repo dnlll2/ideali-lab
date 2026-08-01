@@ -570,13 +570,19 @@ async function saveFinanceiro(reg) {
 
   var btns = Array.from(document.querySelectorAll('.save-btn[data-reg="'+reg+'"]'));
   btns.forEach(function(btn) { btn.disabled = true; });
-  var ok = await patchControleMensal(reg, {valor_mes:vM, valor_pago:vP, obs_pagamento:vObs});
+  var campos = {valor_mes:vM, valor_pago:vP, obs_pagamento:vObs};
+  // Pagamento com comprovante ja anexado: acende o aviso "novo, nao confirmado" pra
+  // Elisangela em pagamentos-inove.html (mesmo padrao do visto_pelo_admin no CAM).
+  var temComprovante = (s.comprovantes||[]).length > 0;
+  if (vP > 0 && temComprovante) campos.confirmado_pela_inove = false;
+  var ok = await patchControleMensal(reg, campos);
   if (ok === false) {
     btns.forEach(function(btn) { btn.disabled = false; });
     showConnError('Erro ao salvar financeiro. Verifique o console (F12).');
     return;
   }
   s.valor_mes = vM; s.valor_pago = vP; s.obs_pagamento = vObs;
+  if (campos.confirmado_pela_inove !== undefined) s.confirmado_pela_inove = campos.confirmado_pela_inove;
   dbState[reg] = s;
   updateCounts();
   doFilter();
@@ -688,6 +694,12 @@ async function handleCompFile(e) {
   if (!dbState[reg]) dbState[reg] = {};
   if (!dbState[reg].comprovantes) dbState[reg].comprovantes = [];
   dbState[reg].comprovantes.push({name: path.split('/').pop(), url: publicUrl});
+  // Valor pago ja tinha sido salvo antes do comprovante: acende o aviso agora que as
+  // duas partes do pagamento existem (mesma logica de saveFinanceiro, ordem invertida).
+  if (Number(dbState[reg].valor_pago||0) > 0) {
+    var okConfirm = await patchControleMensal(reg, {confirmado_pela_inove:false});
+    if (okConfirm) dbState[reg].confirmado_pela_inove = false;
+  }
   setSyncStatus('ok');
   doFilter();
   if (selected && selected.reg === reg) renderDetail();
