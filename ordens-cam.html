@@ -40,6 +40,12 @@
   .cam-report-table tbody tr:hover td{background:rgba(255,255,255,0.025)}
   .cam-report-table tbody tr:last-child td{border-bottom:none}
   @media(max-width:767px){.cam-report-totals{grid-template-columns:repeat(2,1fr)}}
+
+  .cam-pendentes{background:#1f1708;border:0.5px solid rgba(251,191,36,0.35);border-radius:12px;margin-bottom:12px;overflow:hidden}
+  .cam-pendentes-head{display:flex;align-items:center;gap:8px;padding:12px 16px;font-size:13px;font-weight:600;color:#fbbf24}
+  .cam-pendentes-body{padding:0 12px 12px;display:flex;flex-direction:column;gap:8px}
+  .cam-pend-card{background:#1a1d27;border:0.5px solid rgba(251,191,36,0.25);border-radius:9px;padding:10px 12px;cursor:pointer}
+  .cam-pend-card:hover{border-color:rgba(251,191,36,0.5)}
 </style>
 </head>
 <body>
@@ -161,6 +167,14 @@
         <button onclick="loadOrdensCam()" style="height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">&#8635; Atualizar</button>
         <button onclick="openNovaCamOrdem()" class="cad-btn-primary"><i class="ti ti-plus" style="font-size:15px"></i> Nova Ordem</button>
       </div>
+    </div>
+
+    <div class="cam-pendentes" id="cam-pendentes-section" style="display:none">
+      <div class="cam-pendentes-head">
+        🆕 Novos pedidos do cliente
+        <span class="badge" id="cam-pendentes-badge" style="background:#78350f;color:#fbbf24">0</span>
+      </div>
+      <div class="cam-pendentes-body" id="cam-pendentes-body"></div>
     </div>
 
     <div class="cam-report" id="cam-report-section">
@@ -340,7 +354,7 @@ function camCardHtml(o) {
 
 function renderOrdensCam() {
   ['a_fazer','fazendo','finalizado'].forEach(function(st) {
-    var list = ordensCam.filter(function(o){ return o.status === st; });
+    var list = ordensCam.filter(function(o){ return o.status === st && o.aceito_pelo_admin !== false; });
     var el   = document.getElementById('cam-body-'+st);
     var ct   = document.getElementById('cam-count-'+st);
     if (el) el.innerHTML = list.length ? list.map(camCardHtml).join('') : '<p style="font-size:12px;color:#4a5568;padding:16px;text-align:center">Nenhuma ordem</p>';
@@ -348,6 +362,44 @@ function renderOrdensCam() {
   });
   renderCamReport();
   renderCamNotifBadge();
+  renderCamPendentes();
+}
+
+// ── Novos pedidos do cliente (aceito_pelo_admin=false) ─────────
+// Ficam fora da coluna "A Fazer" e do Relatorio por Cliente ate o
+// admin aceitar -- ver 013_aceitar_caso_cliente.sql.
+function camPendCardHtml(o) {
+  var cli  = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '—');
+  var desc = (o.descricao||'').length > 140 ? o.descricao.substring(0,140)+'…' : (o.descricao||'—');
+  return '<div class="cam-pend-card" onclick="openCamDetail(\''+o.id+'\')">'+
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px">'+
+      '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0;line-height:1.3">'+escHtml(cli)+(o.cliente_reg?cliRegraBadgeHtml(o.cliente_reg):'')+'</p>'+
+      '<button onclick="event.stopPropagation();camAceitarCaso(\''+o.id+'\')" style="height:26px;padding:0 10px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0">✅ Aceitar</button>'+
+    '</div>'+
+    '<p style="font-size:12px;color:#94a3b8;margin:0 0 5px;line-height:1.4">'+escHtml(desc)+'</p>'+
+    '<p style="font-size:10px;color:#4a5568;margin:0">'+(o.created_at?new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—')+'</p>'+
+  '</div>';
+}
+
+function renderCamPendentes() {
+  var pendentes = ordensCam.filter(function(o){ return o.aceito_pelo_admin === false; });
+  var section = document.getElementById('cam-pendentes-section');
+  var body    = document.getElementById('cam-pendentes-body');
+  var badge   = document.getElementById('cam-pendentes-badge');
+  if (!section || !body) return;
+  section.style.display = pendentes.length ? '' : 'none';
+  body.innerHTML = pendentes.map(camPendCardHtml).join('');
+  if (badge) badge.textContent = pendentes.length;
+}
+
+async function camAceitarCaso(id) {
+  try {
+    var res = await sb.from('ordens_exocad').update({ aceito_pelo_admin: true }).eq('id', id);
+    if (res.error) throw res.error;
+    var o = ordensCam.find(function(x){ return x.id === id; });
+    if (o) o.aceito_pelo_admin = true;
+    renderOrdensCam();
+  } catch(e) { alert('Erro ao aceitar: '+(e.message||e)); }
 }
 
 // ── Notificação: finalizados pelo cadista ainda não confirmados ──
@@ -395,7 +447,7 @@ function camReportClienteNome(o) {
 function renderCamReport() {
   var totals  = { a_fazer:0, fazendo:0, finalizado:0 };
   var byCli   = {};
-  ordensCam.forEach(function(o) {
+  ordensCam.filter(function(o){ return o.aceito_pelo_admin !== false; }).forEach(function(o) {
     var key  = camReportGroupKey(o);
     if (!byCli[key]) {
       byCli[key] = { key:key, nome:camReportClienteNome(o), semCadastro:!o.cliente_reg, a_fazer:0, fazendo:0, finalizado:0 };
