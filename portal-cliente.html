@@ -311,6 +311,7 @@
     <button class="menu-close" onclick="closeMenu()">✕</button>
   </div>
   <nav style="padding:8px 0;flex:1">
+    <div class="menu-item" onclick="closeMenu();mostrarPedidos()">🦷 Meus Pedidos</div>
     <div class="menu-item" onclick="closeMenu();mostrarAba('financeiro')">📊 Financeiro</div>
     <div class="menu-item" onclick="closeMenu();sair()">🚪 Sair</div>
   </nav>
@@ -477,6 +478,14 @@ async function trocarSenhaCliente(event) {
 //    e aberto pelo menu ☰ (mobile e desktop), mas usa o mesmo
 //    mecanismo de show/hide de painel das outras. ──
 var ABAS = ['casos', 'andamento', 'entregues', 'financeiro'];
+
+// Item "Meus Pedidos" do menu ☰ -- unico jeito de sair do Financeiro no
+// mobile (sem isso a tela ficava presa: tabs-desktop nao existe nessa
+// largura e o menu so tinha Financeiro/Sair). Mesma regra de largura
+// usada em mostrarPainel pro painel default.
+function mostrarPedidos() {
+  mostrarAba(window.innerWidth >= 860 ? 'andamento' : 'casos');
+}
 
 function mostrarAba(aba) {
   ABAS.forEach(function(t) {
