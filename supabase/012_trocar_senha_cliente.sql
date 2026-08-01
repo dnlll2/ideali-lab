@@ -17,7 +17,10 @@ alter table clientes_login add column if not exists deve_trocar_senha boolean no
 update clientes_login set deve_trocar_senha = true where cliente_reg = 27;
 
 -- ── cliente_login: mesma funcao de 001/002, so acrescentando
--- deve_trocar_senha no retorno (o front decide se trava a tela) ──
+-- deve_trocar_senha no retorno (o front decide se trava a tela).
+-- Precisa de DROP antes: mudar as colunas de saida (OUT params) de
+-- uma funcao existente nao e permitido via CREATE OR REPLACE.
+drop function if exists cliente_login(text,text);
 
 create or replace function cliente_login(p_usuario text, p_senha text)
 returns table(token text, cliente_reg int, nome text, deve_trocar_senha boolean)
