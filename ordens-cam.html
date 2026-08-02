@@ -814,7 +814,7 @@ function openNovaCamOrdem() {
     var view = document.getElementById('cam-anexo-' + slot.id + '-view');
     if (view) { view.style.display = 'none'; view.href = '#'; }
   });
-  camBuildOdontograma(1);
+  camBuildOdontograma([], 1);
   document.querySelectorAll('.cam-orig-btn').forEach(function(b){ b.classList.remove('active'); });
   var wb = document.getElementById('cam-orig-whatsapp');
   if (wb) wb.classList.add('active');
@@ -825,34 +825,39 @@ function openNovaCamOrdem() {
   camUpdateRegraBanner();
 }
 
-// ── Odontograma (FDI): so serve pra somar a qtd. de elementos --
-//    ordens_exocad nao tem coluna pra guardar quais dentes exatos
-//    foram marcados, entao ao abrir uma ordem existente o odontograma
-//    sempre comeca zerado (mostra "Atual: N" a parte) -- se o admin
-//    nao clicar em nenhum dente, cam-form-qtd mantem o valor original
-//    ao salvar, em vez de zerar. ────────────────────────────────────
+// ── Odontograma (FDI): os dentes marcados ficam salvos de verdade em
+//    ordens_exocad.dentes (024_dentes_ordens_exocad.sql) -- ao reabrir
+//    uma ordem pra editar qualquer outra coisa, o odontograma vem
+//    pre-marcado com os mesmos dentes de antes, em vez de zerar.
+//    qtd_elementos continua sendo o campo "oficial" (usado na
+//    comissao); dentes e so o detalhe de quais exatamente. ─────────
 var _camDentesSelecionados = [];
+var _camQtdOriginal = 1;
 var CAM_QUADRANTES = [[18,17,16,15,14,13,12,11],[21,22,23,24,25,26,27,28],
                       [48,47,46,45,44,43,42,41],[31,32,33,34,35,36,37,38]];
 
-function camBuildOdontograma(qtdAtual) {
+function camBuildOdontograma(dentesAtuais, qtdAtual) {
   var el = document.getElementById('cam-odonto');
   if (!el) return;
-  _camDentesSelecionados = [];
+  _camDentesSelecionados = (dentesAtuais || []).slice().sort(function(a,b){ return a-b; });
+  _camQtdOriginal = qtdAtual || 1;
   function quadHtml(q) {
     return '<div class="odonto-quad">' + q.map(function(n){
-      return '<button type="button" class="dente" data-dente="'+n+'" onclick="camToggleDente('+n+')">'+n+'</button>';
+      var on = _camDentesSelecionados.indexOf(n) >= 0;
+      return '<button type="button" class="dente'+(on?' on':'')+'" data-dente="'+n+'" onclick="camToggleDente('+n+')">'+n+'</button>';
     }).join('') + '</div>';
   }
   el.innerHTML =
     '<div class="odonto-row">' + quadHtml(CAM_QUADRANTES[0]) + '<span class="odonto-gap"></span>' + quadHtml(CAM_QUADRANTES[1]) + '</div>' +
     '<div class="odonto-row">' + quadHtml(CAM_QUADRANTES[2]) + '<span class="odonto-gap"></span>' + quadHtml(CAM_QUADRANTES[3]) + '</div>';
   var atualEl = document.getElementById('cam-odonto-atual');
-  if (atualEl) atualEl.textContent = 'Atual: ' + (qtdAtual || 1) + ' elemento(s). Clique nos dentes pra corrigir.';
+  if (atualEl) atualEl.textContent = 'Atual: ' + _camQtdOriginal + ' elemento(s).';
   var selEl = document.getElementById('cam-odonto-sel');
-  if (selEl) selEl.textContent = 'Nenhum dente selecionado';
+  if (selEl) selEl.textContent = _camDentesSelecionados.length
+    ? _camDentesSelecionados.length + ' selecionado(s): ' + _camDentesSelecionados.join(', ')
+    : 'Nenhum dente selecionado';
   var qtdEl = document.getElementById('cam-form-qtd');
-  if (qtdEl) qtdEl.value = qtdAtual || 1;
+  if (qtdEl) qtdEl.value = _camDentesSelecionados.length || _camQtdOriginal;
 }
 
 function camToggleDente(n) {
@@ -866,7 +871,7 @@ function camToggleDente(n) {
     ? _camDentesSelecionados.length + ' selecionado(s): ' + _camDentesSelecionados.join(', ')
     : 'Nenhum dente selecionado';
   var qtdEl = document.getElementById('cam-form-qtd');
-  if (qtdEl && _camDentesSelecionados.length) qtdEl.value = _camDentesSelecionados.length;
+  if (qtdEl) qtdEl.value = _camDentesSelecionados.length || _camQtdOriginal;
 }
 
 function camSetScanbody(val) {
@@ -945,7 +950,7 @@ async function saveNovaCamOrdem() {
     (obs ? ('\n\nObservacoes: ' + obs) : '');
   desc = cliAnexarRegraPadrao(desc, clienteReg);
 
-  var payload = { descricao: desc, origem: origem, qtd_elementos: qtdElementos, cliente_reg: clienteReg };
+  var payload = { descricao: desc, origem: origem, qtd_elementos: qtdElementos, dentes: _camDentesSelecionados.length ? _camDentesSelecionados.slice() : null, cliente_reg: clienteReg };
   if (!camEditId) payload.status = 'a_fazer';
   var saveBtn = document.getElementById('cam-form-save-btn');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Salvando...'; }
@@ -1144,7 +1149,7 @@ function openEditCamOrdem(id) {
   var obsEl = document.getElementById('cam-form-obs');
   if (obsEl) obsEl.value = parsed.observacoes || '';
 
-  camBuildOdontograma(o.qtd_elementos || 1);
+  camBuildOdontograma(o.dentes || [], o.qtd_elementos || 1);
 
   camSetOrigem(o.origem === 'email' ? 'email' : 'whatsapp');
 
