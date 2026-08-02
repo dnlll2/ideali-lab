@@ -96,6 +96,7 @@
 
   #obs-dropdown-cadista{display:none;position:fixed;z-index:300;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px;width:260px;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
   #obs-dropdown-cadista-text{width:100%;height:80px;resize:vertical;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:12px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit}
+  #anexos-dropdown-cadista{display:none;position:fixed;z-index:300;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px;width:240px;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
 </style>
 </head>
 <body>
@@ -123,6 +124,11 @@
     <button onclick="fecharObsCadista()" style="height:26px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.12);background:transparent;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit">Cancelar</button>
     <button onclick="salvarObsCadista()" style="height:26px;padding:0 12px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Salvar</button>
   </div>
+</div>
+
+<div id="anexos-dropdown-cadista" onclick="event.stopPropagation()">
+  <p style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 6px">📎 Anexos</p>
+  <div id="anexos-dropdown-cadista-body"></div>
 </div>
 
 <div id="undo-toast">
@@ -260,21 +266,42 @@ function escHtml(s) {
 
 var casosCadista = [];
 
+// Mesmo formato montado em ordens-cam.html (saveNovaCamOrdem): paciente e
+// tipo_trabalho ja vem separados pela RPC listar_casos_cadista, aqui so
+// falta extrair Scanbody e Observações de dentro de "descricao".
+function cadParseExtra(descricao) {
+  var d = descricao || '';
+  var mScan      = d.match(/Scanbody: ([^\n]*)/);
+  var mObs       = d.match(/Observacoes: ([\s\S]*?)(?:\n\nRegra do cliente:|$)/);
+  var mLegacyPac = d.match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
+  var estruturado = !!(d.match(/Paciente: /) || d.match(/Tipo de trabalho: /) || mLegacyPac);
+  var observacoes;
+  if (mObs) observacoes = mObs[1].trim();
+  else if (mLegacyPac) observacoes = (mLegacyPac[2] || '').trim();
+  else if (!estruturado) observacoes = d.trim();
+  else observacoes = '';
+  return { scanbody: mScan ? mScan[1] : '', observacoes: observacoes };
+}
+
 function casoCardHtmlCadista(c) {
   var hasObs = !!(c.observacao && c.observacao.trim());
   var btnObs = '<button class="caso-obs-btn' + (hasObs ? ' tem-obs' : '') + '" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();abrirObsCadista(\''+c.id+'\',event)" title="'+(hasObs?escHtml(c.observacao):'Adicionar observação')+'">📝'+(hasObs?' Obs.':'')+'</button>';
+  var btnAnexos = '<button class="caso-obs-btn" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();abrirAnexosCadista(\''+c.id+'\',event)" title="Ver anexos">📎</button>';
+  var extra = cadParseExtra(c.descricao);
+  var scanHtml = extra.scanbody ? '<div class="caso-tipo">Scanbody: ' + escHtml(extra.scanbody) + '</div>' : '';
   return '' +
     '<div class="caso-card" draggable="true" ondragstart="cadDragStart(event,\''+c.id+'\')">' +
       '<div class="caso-top">' +
         '<div>' +
           '<div class="caso-cliente">' + escHtml(c.cliente_nome) + (c.paciente ? ' — ' + escHtml(c.paciente) : '') + '</div>' +
           (c.tipo_trabalho ? '<div class="caso-tipo">' + escHtml(c.tipo_trabalho) + '</div>' : '') +
+          scanHtml +
         '</div>' +
       '</div>' +
-      '<div class="caso-desc">' + escHtml(c.descricao || '—') + '</div>' +
+      '<div class="caso-desc">' + escHtml(extra.observacoes || c.descricao || '—') + '</div>' +
       '<div class="caso-bottom">' +
         '<span class="caso-data">Entrada: ' + formatarDataHora(c.criado_em) + '</span>' +
-        btnObs +
+        '<div style="display:flex;gap:6px">' + btnAnexos + btnObs + '</div>' +
       '</div>' +
     '</div>';
 }
@@ -461,6 +488,62 @@ async function salvarObsCadista() {
     msg.textContent = e.message || 'Erro ao salvar observação.';
     msg.className = 'msg error';
   }
+}
+
+// ── Anexos (mesmo esquema do JWT de upload em portal-cliente.html,
+//    16_upload_stl_jwt.sql -- so que aqui e um JWT de LEITURA emitido
+//    por gerar_jwt_leitura_cadista, 021_scanbody_anexos_cadista.sql,
+//    que so libera a pasta do caso se ele estiver mesmo atribuido ao
+//    cadista logado) ─────────────────────────────────────────────
+var _anexosDropIdCadista = null;
+
+async function abrirAnexosCadista(id, event) {
+  _anexosDropIdCadista = id;
+  var dd   = document.getElementById('anexos-dropdown-cadista');
+  var body = document.getElementById('anexos-dropdown-cadista-body');
+  body.innerHTML = '<p style="font-size:11px;color:#64748b">Carregando…</p>';
+  var rect = event.currentTarget.getBoundingClientRect();
+  dd.style.left = Math.min(rect.left, window.innerWidth - 260) + 'px';
+  var top = rect.bottom + 4;
+  dd.style.top = (top + 160 > window.innerHeight ? rect.top - 164 : top) + 'px';
+  dd.style.display = '';
+  setTimeout(function() {
+    document.addEventListener('click', fecharAnexosCadista, { once: true });
+  }, 0);
+
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  if (!sessao || !sessao.token) { body.innerHTML = '<p style="font-size:11px;color:#ef4444">Sessão expirada.</p>'; return; }
+
+  try {
+    var jwtRes = await sb.rpc('gerar_jwt_leitura_cadista', { p_sessao: sessao.token, p_caso_id: id });
+    if (jwtRes.error) throw jwtRes.error;
+    var row = (jwtRes.data || [])[0];
+    if (!row || !row.token) { body.innerHTML = '<p style="font-size:11px;color:#64748b">Sem pasta de anexos.</p>'; return; }
+
+    var readClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: 'Bearer ' + row.token } }
+    });
+    var listRes = await readClient.storage.from('casos').list(row.pasta);
+    if (listRes.error) throw listRes.error;
+    var arquivos = (listRes.data || []).filter(function(f){ return f.name; });
+    if (!arquivos.length) { body.innerHTML = '<p style="font-size:11px;color:#64748b">Nenhum anexo enviado.</p>'; return; }
+
+    var links = await Promise.all(arquivos.map(async function(f) {
+      var signed = await readClient.storage.from('casos').createSignedUrl(row.pasta + '/' + f.name, 3600);
+      var url = (signed.data && signed.data.signedUrl) || '#';
+      return '<a href="'+url+'" target="_blank" rel="noopener" style="display:block;font-size:11px;color:#93c5fd;text-decoration:none;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,0.06)">📎 '+escHtml(f.name)+'</a>';
+    }));
+    body.innerHTML = links.join('');
+  } catch(e) {
+    body.innerHTML = '<p style="font-size:11px;color:#ef4444">Erro: '+escHtml(e.message||String(e))+'</p>';
+  }
+}
+
+function fecharAnexosCadista() {
+  var dd = document.getElementById('anexos-dropdown-cadista');
+  if (dd) dd.style.display = 'none';
+  _anexosDropIdCadista = null;
 }
 
 // ── Financeiro ─────────────────────────────────────────────────
