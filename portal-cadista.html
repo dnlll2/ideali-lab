@@ -107,6 +107,9 @@
   .dente.on{background:#1d4ed8;border-color:#3b82f6;color:#fff;font-weight:600}
   .odonto-gap{width:8px}
   @media(max-width:420px){.dente{width:23px;height:23px;font-size:9.5px}}
+  .dente-modelo{height:32px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.15);background:#22263a;color:#94a3b8;font-size:11.5px;cursor:pointer;font-family:inherit;transition:all 0.1s}
+  .dente-modelo:hover{border-color:#3b82f6}
+  .dente-modelo.on{background:#1d4ed8;border-color:#3b82f6;color:#fff;font-weight:600}
 </style>
 </head>
 <body>
@@ -534,10 +537,14 @@ function abrirDetalheCadista(id) {
   '</div>';
 
   var qtdHtml = '<div>'+
-    '<p style="font-size:12px;color:#64748b;margin-bottom:2px">Elementos/dentes (usado no cálculo da sua comissão)</p>'+
-    '<p style="font-size:11px;color:#4a5568;margin-bottom:8px">Atualmente: '+(c.qtd_elementos || 1)+' elemento(s). Clique nos dentes pra corrigir.</p>'+
+    '<p style="font-size:12px;color:#64748b;margin-bottom:2px">Elementos/dentes (usado no cálculo da sua comissão -- R$15 cada)</p>'+
+    '<p style="font-size:11px;color:#4a5568;margin-bottom:8px">Atualmente: '+(c.qtd_elementos || 1)+' elemento(s). Clique nos dentes (ou nos modelos) pra corrigir.</p>'+
     '<div class="odonto" id="cad-odonto"></div>'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">'+
+    '<div style="display:flex;gap:8px;margin-top:8px">'+
+      '<button type="button" class="dente-modelo" id="cad-modelo-superior" onclick="cadToggleModelo(\'superior\')" style="flex:1">Modelo Superior</button>'+
+      '<button type="button" class="dente-modelo" id="cad-modelo-inferior" onclick="cadToggleModelo(\'inferior\')" style="flex:1">Modelo Inferior</button>'+
+    '</div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">'+
       '<span id="cad-odonto-sel" style="font-size:11.5px;color:#94a3b8">Nenhum dente selecionado</span>'+
       '<button onclick="cadSalvarQtdDetalhe(\''+id+'\')" style="height:32px;padding:0 14px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0">Salvar quantidade</button>'+
     '</div>'+
@@ -567,14 +574,18 @@ function abrirDetalheCadista(id) {
 //    entao ao salvar so manda a contagem (qtd_elementos). Sempre abre
 //    zerado (nao da pra saber quais dentes originaram a qtd_elementos
 //    salva antes). ──────────────────────────────────────────────────
-var _cadDentesSelecionados = [];
+var _cadDentesSelecionados  = [];
+var _cadModelosSelecionados = [];
 var CAD_QUADRANTES = [[18,17,16,15,14,13,12,11],[21,22,23,24,25,26,27,28],
                       [48,47,46,45,44,43,42,41],[31,32,33,34,35,36,37,38]];
+var CAD_MODELO_LABEL = { superior: 'Modelo Superior', inferior: 'Modelo Inferior' };
 
 function cadBuildOdontograma() {
   var el = document.getElementById('cad-odonto');
   if (!el) return;
-  _cadDentesSelecionados = [];
+  _cadDentesSelecionados  = [];
+  _cadModelosSelecionados = [];
+  document.querySelectorAll('.dente-modelo').forEach(function(b){ b.classList.remove('on'); });
   function quadHtml(q) {
     return '<div class="odonto-quad">' + q.map(function(n){
       return '<button type="button" class="dente" data-dente="'+n+'" onclick="cadToggleDente('+n+')">'+n+'</button>';
@@ -583,6 +594,7 @@ function cadBuildOdontograma() {
   el.innerHTML =
     '<div class="odonto-row">' + quadHtml(CAD_QUADRANTES[0]) + '<span class="odonto-gap"></span>' + quadHtml(CAD_QUADRANTES[1]) + '</div>' +
     '<div class="odonto-row">' + quadHtml(CAD_QUADRANTES[2]) + '<span class="odonto-gap"></span>' + quadHtml(CAD_QUADRANTES[3]) + '</div>';
+  cadAtualizarLabelSelecao();
 }
 
 function cadToggleDente(n) {
@@ -591,10 +603,24 @@ function cadToggleDente(n) {
   _cadDentesSelecionados.sort(function(a,b){ return a-b; });
   var btn = document.querySelector('#cad-odonto .dente[data-dente="'+n+'"]');
   if (btn) btn.classList.toggle('on', _cadDentesSelecionados.indexOf(n) >= 0);
+  cadAtualizarLabelSelecao();
+}
+
+function cadToggleModelo(tipo) {
+  var i = _cadModelosSelecionados.indexOf(tipo);
+  if (i >= 0) _cadModelosSelecionados.splice(i, 1); else _cadModelosSelecionados.push(tipo);
+  var btn = document.getElementById('cad-modelo-' + tipo);
+  if (btn) btn.classList.toggle('on', _cadModelosSelecionados.indexOf(tipo) >= 0);
+  cadAtualizarLabelSelecao();
+}
+
+function cadAtualizarLabelSelecao() {
   var lbl = document.getElementById('cad-odonto-sel');
-  if (lbl) lbl.textContent = _cadDentesSelecionados.length
-    ? _cadDentesSelecionados.length + ' selecionado(s): ' + _cadDentesSelecionados.join(', ')
-    : 'Nenhum dente selecionado';
+  if (!lbl) return;
+  var partes = _cadDentesSelecionados.map(String)
+    .concat(_cadModelosSelecionados.map(function(t){ return CAD_MODELO_LABEL[t]; }));
+  var total = _cadDentesSelecionados.length + _cadModelosSelecionados.length;
+  lbl.textContent = total ? total + ' selecionado(s): ' + partes.join(', ') : 'Nenhum dente/modelo selecionado';
 }
 
 function fecharDetalheCadista() {
@@ -642,8 +668,8 @@ async function cadUploadAnexoCadista(id, slotId, inputEl) {
 }
 
 async function cadSalvarQtdDetalhe(id) {
-  var qtd = _cadDentesSelecionados.length;
-  if (!qtd) { alert('Selecione ao menos um dente no odontograma.'); return; }
+  var qtd = _cadDentesSelecionados.length + _cadModelosSelecionados.length;
+  if (!qtd) { alert('Selecione ao menos um dente ou modelo.'); return; }
   var raw = localStorage.getItem(SESSAO_KEY);
   var sessao = raw ? JSON.parse(raw) : null;
   if (!sessao || !sessao.token) { alert('Sessão expirada.'); return; }
