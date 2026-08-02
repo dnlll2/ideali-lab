@@ -192,6 +192,12 @@
           <div class="cam-upload" id="cam-anexo-scanbody-box" onclick="document.getElementById('cam-anexo-scanbody').click()">📎 Anexar imagem</div>
           <a href="#" id="cam-anexo-scanbody-view" class="cam-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a>
         </div>
+        <div>
+          <p class="label" style="margin-bottom:4px">Anexo Detalhado (.zip)</p>
+          <input type="file" id="cam-anexo-detalhado" accept=".zip" style="display:none" onchange="camAnexoChange(this)">
+          <div class="cam-upload" id="cam-anexo-detalhado-box" onclick="document.getElementById('cam-anexo-detalhado').click()">📎 Anexar arquivo</div>
+          <a href="#" id="cam-anexo-detalhado-view" class="cam-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a>
+        </div>
       </div>
     </div>
 
@@ -776,7 +782,8 @@ var CAM_ANEXO_SLOTS = [
   { id: 'stl',          label: 'STL',                       img: false },
   { id: 'cor',          label: 'Foto da cor',                img: true  },
   { id: 'sorriso',      label: 'Foto do sorriso',            img: true  },
-  { id: 'scanbody',     label: 'Foto do Scanbody (Exocad)',  img: true  }
+  { id: 'scanbody',     label: 'Foto do Scanbody (Exocad)',  img: true  },
+  { id: 'detalhado',    label: 'Anexo Detalhado (.zip)',     img: false }
 ];
 
 function openNovaCamOrdem() {
