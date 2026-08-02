@@ -59,6 +59,9 @@
   @media(max-width:520px){.cam-anexos-grid{grid-template-columns:repeat(2,1fr)}}
   .cam-upload{border:1px dashed rgba(255,255,255,0.2);border-radius:8px;min-height:52px;display:flex;align-items:center;justify-content:center;text-align:center;gap:4px;color:#64748b;font-size:10.5px;cursor:pointer;padding:4px 6px;word-break:break-word;line-height:1.3}
   .cam-upload.has-file{border-style:solid;border-color:rgba(96,165,250,0.45);color:#93c5fd;background:rgba(96,165,250,0.07)}
+  .cam-anexo-view{display:none;margin-top:4px;text-align:center;font-size:10px;color:#63b3ed;text-decoration:none}
+  .cam-anexo-view:hover{text-decoration:underline}
+  #cam-panel .cp-footer{flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -149,31 +152,37 @@
           <p class="label" style="margin-bottom:4px">Escaneamento</p>
           <input type="file" id="cam-anexo-escaneamento" style="display:none" onchange="camAnexoChange(this)">
           <div class="cam-upload" id="cam-anexo-escaneamento-box" onclick="document.getElementById('cam-anexo-escaneamento').click()">📎 Anexar arquivo</div>
+          <a href="#" id="cam-anexo-escaneamento-view" class="cam-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a>
         </div>
         <div>
           <p class="label" style="margin-bottom:4px">HTML</p>
           <input type="file" id="cam-anexo-html" style="display:none" onchange="camAnexoChange(this)">
           <div class="cam-upload" id="cam-anexo-html-box" onclick="document.getElementById('cam-anexo-html').click()">📎 Anexar arquivo</div>
+          <a href="#" id="cam-anexo-html-view" class="cam-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a>
         </div>
         <div>
           <p class="label" style="margin-bottom:4px">STL</p>
           <input type="file" id="cam-anexo-stl" style="display:none" onchange="camAnexoChange(this)">
           <div class="cam-upload" id="cam-anexo-stl-box" onclick="document.getElementById('cam-anexo-stl').click()">📎 Anexar arquivo</div>
+          <a href="#" id="cam-anexo-stl-view" class="cam-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a>
         </div>
         <div>
           <p class="label" style="margin-bottom:4px">Foto da cor</p>
           <input type="file" id="cam-anexo-cor" accept="image/*" style="display:none" onchange="camAnexoChange(this)">
           <div class="cam-upload" id="cam-anexo-cor-box" onclick="document.getElementById('cam-anexo-cor').click()">📎 Anexar imagem</div>
+          <a href="#" id="cam-anexo-cor-view" class="cam-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a>
         </div>
         <div>
           <p class="label" style="margin-bottom:4px">Foto do sorriso</p>
           <input type="file" id="cam-anexo-sorriso" accept="image/*" style="display:none" onchange="camAnexoChange(this)">
           <div class="cam-upload" id="cam-anexo-sorriso-box" onclick="document.getElementById('cam-anexo-sorriso').click()">📎 Anexar imagem</div>
+          <a href="#" id="cam-anexo-sorriso-view" class="cam-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a>
         </div>
         <div>
           <p class="label" style="margin-bottom:4px">Foto do Scanbody (Exocad)</p>
           <input type="file" id="cam-anexo-scanbody" accept="image/*" style="display:none" onchange="camAnexoChange(this)">
           <div class="cam-upload" id="cam-anexo-scanbody-box" onclick="document.getElementById('cam-anexo-scanbody').click()">📎 Anexar imagem</div>
+          <a href="#" id="cam-anexo-scanbody-view" class="cam-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a>
         </div>
       </div>
     </div>
@@ -792,6 +801,8 @@ function openNovaCamOrdem() {
     if (input) input.value = '';
     var box = document.getElementById('cam-anexo-' + slot.id + '-box');
     if (box) { box.textContent = slot.img ? '📎 Anexar imagem' : '📎 Anexar arquivo'; box.classList.remove('has-file'); }
+    var view = document.getElementById('cam-anexo-' + slot.id + '-view');
+    if (view) { view.style.display = 'none'; view.href = '#'; }
   });
   var qtdEl   = document.getElementById('cam-form-qtd');
   if (qtdEl) qtdEl.value = 1;
@@ -997,14 +1008,16 @@ async function camPrefillAnexos(o) {
     if (input) input.value = '';
     var box = document.getElementById('cam-anexo-' + slot.id + '-box');
     if (box) { box.textContent = slot.img ? '📎 Anexar imagem' : '📎 Anexar arquivo'; box.classList.remove('has-file'); }
+    var view = document.getElementById('cam-anexo-' + slot.id + '-view');
+    if (view) { view.style.display = 'none'; view.href = '#'; }
   });
   if (!o.cliente_reg) return;
   var pasta = o.cliente_reg + '/' + o.id;
   try {
     var res = await sb.storage.from('casos').list(pasta);
     if (res.error) throw res.error;
-    (res.data || []).forEach(function(f) {
-      if (!f.name) return;
+    var arquivos = (res.data || []).filter(function(f){ return f.name; });
+    await Promise.all(arquivos.map(async function(f) {
       var slot = CAM_ANEXO_SLOTS.find(function(s){ return f.name.indexOf(s.id + '-') === 0; });
       if (!slot) return;
       var box = document.getElementById('cam-anexo-' + slot.id + '-box');
@@ -1012,7 +1025,13 @@ async function camPrefillAnexos(o) {
         box.textContent = '📎 ' + f.name.slice(slot.id.length + 1);
         box.classList.add('has-file');
       }
-    });
+      var view = document.getElementById('cam-anexo-' + slot.id + '-view');
+      if (view) {
+        var signed = await sb.storage.from('casos').createSignedUrl(pasta + '/' + f.name, 3600);
+        view.href = (signed.data && signed.data.signedUrl) || '#';
+        view.style.display = 'block';
+      }
+    }));
   } catch(e) {
     console.error('[camPrefillAnexos]', e.message || e);
   }

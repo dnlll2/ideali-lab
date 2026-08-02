@@ -131,6 +131,15 @@
   <div id="anexos-dropdown-cadista-body"></div>
 </div>
 
+<div id="cad-detail-overlay" onclick="fecharDetalheCadista()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:310"></div>
+<div id="cad-detail-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:311;width:min(480px,92vw);max-height:85vh;overflow-y:auto;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:0.5px solid rgba(255,255,255,0.08);position:sticky;top:0;background:#1a1d27;z-index:1">
+    <p style="font-size:15px;font-weight:600;color:#f1f5f9;margin:0">Detalhes do Caso</p>
+    <button onclick="fecharDetalheCadista()" style="width:28px;height:28px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+  </div>
+  <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px" id="cad-detail-body"></div>
+</div>
+
 <div id="undo-toast">
   <span id="undo-toast-text"></span>
   <button onclick="desfazerUltimoMovimento()">Desfazer</button>
@@ -290,7 +299,7 @@ function casoCardHtmlCadista(c) {
   var extra = cadParseExtra(c.descricao);
   var scanHtml = extra.scanbody ? '<div class="caso-tipo">Scanbody: ' + escHtml(extra.scanbody) + '</div>' : '';
   return '' +
-    '<div class="caso-card" draggable="true" ondragstart="cadDragStart(event,\''+c.id+'\')">' +
+    '<div class="caso-card" draggable="true" ondragstart="cadDragStart(event,\''+c.id+'\')" onclick="abrirDetalheCadista(\''+c.id+'\')">' +
       '<div class="caso-top">' +
         '<div>' +
           '<div class="caso-cliente">' + escHtml(c.cliente_nome) + (c.paciente ? ' — ' + escHtml(c.paciente) : '') + '</div>' +
@@ -497,6 +506,28 @@ async function salvarObsCadista() {
 //    cadista logado) ─────────────────────────────────────────────
 var _anexosDropIdCadista = null;
 
+async function camListarAnexosCadista(id) {
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  if (!sessao || !sessao.token) throw new Error('Sessão expirada.');
+
+  var jwtRes = await sb.rpc('gerar_jwt_leitura_cadista', { p_sessao: sessao.token, p_caso_id: id });
+  if (jwtRes.error) throw jwtRes.error;
+  var row = (jwtRes.data || [])[0];
+  if (!row || !row.token) return [];
+
+  var readClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: 'Bearer ' + row.token } }
+  });
+  var listRes = await readClient.storage.from('casos').list(row.pasta);
+  if (listRes.error) throw listRes.error;
+  var arquivos = (listRes.data || []).filter(function(f){ return f.name; });
+  return Promise.all(arquivos.map(async function(f) {
+    var signed = await readClient.storage.from('casos').createSignedUrl(row.pasta + '/' + f.name, 3600);
+    return { name: f.name, url: (signed.data && signed.data.signedUrl) || '#' };
+  }));
+}
+
 async function abrirAnexosCadista(id, event) {
   _anexosDropIdCadista = id;
   var dd   = document.getElementById('anexos-dropdown-cadista');
@@ -511,30 +542,11 @@ async function abrirAnexosCadista(id, event) {
     document.addEventListener('click', fecharAnexosCadista, { once: true });
   }, 0);
 
-  var raw = localStorage.getItem(SESSAO_KEY);
-  var sessao = raw ? JSON.parse(raw) : null;
-  if (!sessao || !sessao.token) { body.innerHTML = '<p style="font-size:11px;color:#ef4444">Sessão expirada.</p>'; return; }
-
   try {
-    var jwtRes = await sb.rpc('gerar_jwt_leitura_cadista', { p_sessao: sessao.token, p_caso_id: id });
-    if (jwtRes.error) throw jwtRes.error;
-    var row = (jwtRes.data || [])[0];
-    if (!row || !row.token) { body.innerHTML = '<p style="font-size:11px;color:#64748b">Sem pasta de anexos.</p>'; return; }
-
-    var readClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: 'Bearer ' + row.token } }
-    });
-    var listRes = await readClient.storage.from('casos').list(row.pasta);
-    if (listRes.error) throw listRes.error;
-    var arquivos = (listRes.data || []).filter(function(f){ return f.name; });
-    if (!arquivos.length) { body.innerHTML = '<p style="font-size:11px;color:#64748b">Nenhum anexo enviado.</p>'; return; }
-
-    var links = await Promise.all(arquivos.map(async function(f) {
-      var signed = await readClient.storage.from('casos').createSignedUrl(row.pasta + '/' + f.name, 3600);
-      var url = (signed.data && signed.data.signedUrl) || '#';
-      return '<a href="'+url+'" target="_blank" rel="noopener" style="display:block;font-size:11px;color:#93c5fd;text-decoration:none;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,0.06)">📎 '+escHtml(f.name)+'</a>';
-    }));
-    body.innerHTML = links.join('');
+    var arquivos = await camListarAnexosCadista(id);
+    body.innerHTML = arquivos.length ? arquivos.map(function(f) {
+      return '<a href="'+f.url+'" target="_blank" rel="noopener" style="display:block;font-size:11px;color:#93c5fd;text-decoration:none;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,0.06)">📎 '+escHtml(f.name)+'</a>';
+    }).join('') : '<p style="font-size:11px;color:#64748b">Nenhum anexo enviado.</p>';
   } catch(e) {
     body.innerHTML = '<p style="font-size:11px;color:#ef4444">Erro: '+escHtml(e.message||String(e))+'</p>';
   }
@@ -544,6 +556,56 @@ function fecharAnexosCadista() {
   var dd = document.getElementById('anexos-dropdown-cadista');
   if (dd) dd.style.display = 'none';
   _anexosDropIdCadista = null;
+}
+
+// ── Detalhe do caso (modal aberto ao clicar no card) ────────────
+function abrirDetalheCadista(id) {
+  var c = casosCadista.find(function(x){ return x.id === id; });
+  if (!c) return;
+  var extra = cadParseExtra(c.descricao);
+  var fields = [
+    { label: 'Cliente',               value: c.cliente_nome || '—' },
+    { label: 'Paciente',              value: c.paciente || '—' },
+    { label: 'Tipo de trabalho',      value: c.tipo_trabalho || '—' },
+    { label: 'Scanbody',              value: extra.scanbody || '—' },
+    { label: 'Observações do pedido', value: extra.observacoes || '—' },
+    { label: 'Status',                value: STATUS_LABEL[c.status] || c.status },
+    { label: 'Entrada',               value: formatarDataHora(c.criado_em) }
+  ];
+  var body = document.getElementById('cad-detail-body');
+  if (!body) return;
+  body.innerHTML = fields.map(function(f) {
+    return '<div style="background:#13161f;border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px">'+
+      '<p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 4px">'+f.label+'</p>'+
+      '<p style="font-size:13px;color:#e2e8f0;margin:0;line-height:1.5;white-space:pre-line;word-break:break-word">'+escHtml(f.value)+'</p>'+
+    '</div>';
+  }).join('') + '<div id="cad-detail-anexos"></div>';
+  document.getElementById('cad-detail-overlay').style.display = '';
+  document.getElementById('cad-detail-panel').style.display   = '';
+  camCarregarAnexosDetalheCadista(id);
+}
+
+function fecharDetalheCadista() {
+  document.getElementById('cad-detail-overlay').style.display = 'none';
+  document.getElementById('cad-detail-panel').style.display   = 'none';
+}
+
+async function camCarregarAnexosDetalheCadista(id) {
+  var el = document.getElementById('cad-detail-anexos');
+  if (!el) return;
+  el.innerHTML = '<p style="font-size:11px;color:#64748b;margin-top:4px">Carregando anexos…</p>';
+  try {
+    var arquivos = await camListarAnexosCadista(id);
+    if (!arquivos.length) { el.innerHTML = ''; return; }
+    el.innerHTML = '<p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.07em;margin:4px 0 6px">Anexos</p>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:8px">'+
+      arquivos.map(function(f) {
+        return '<a href="'+f.url+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#93c5fd;text-decoration:none;background:#22263a;border:0.5px solid rgba(255,255,255,0.1);border-radius:6px;padding:5px 10px">📎 '+escHtml(f.name)+'</a>';
+      }).join('') +
+      '</div>';
+  } catch(e) {
+    el.innerHTML = '<p style="font-size:11px;color:#ef4444;margin-top:4px">Erro ao carregar anexos: '+escHtml(e.message||String(e))+'</p>';
+  }
 }
 
 // ── Financeiro ─────────────────────────────────────────────────
