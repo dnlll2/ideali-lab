@@ -276,7 +276,7 @@
             </div>
             <div class="group" id="mp-anexo-inicial-group">
               <label>Anexo (Escaneamento)</label>
-              <input type="file" id="c-stl-input" accept=".stl" style="display:none" onchange="handleStlFile(event)">
+              <input type="file" id="c-stl-input" accept=".stl" multiple style="display:none" onchange="handleStlFile(event)">
               <div class="upload-placeholder" id="c-stl-placeholder" style="cursor:pointer" onclick="document.getElementById('c-stl-input').click()" ondragover="cliAnexoDragOver(event)" ondragleave="cliAnexoDragLeave(event)" ondrop="cliAnexoDrop(event,'c-stl-input')">📎 Toque para escolher o arquivo de escaneamento (opcional)</div>
             </div>
           </div>
@@ -292,7 +292,7 @@
         <label>Anexos do pedido</label>
         <div id="mp-anexos-lista" class="attach-list"></div>
         <div id="mp-anexo-extra-upload">
-          <input type="file" id="mp-anexo-extra-input" accept=".stl" style="display:none" onchange="handleAnexoExtra(event)">
+          <input type="file" id="mp-anexo-extra-input" accept=".stl" multiple style="display:none" onchange="handleAnexoExtra(event)">
           <div class="upload-placeholder" id="mp-anexo-extra-placeholder" style="cursor:pointer" onclick="document.getElementById('mp-anexo-extra-input').click()" ondragover="cliAnexoDragOver(event)" ondragleave="cliAnexoDragLeave(event)" ondrop="cliAnexoDrop(event,'mp-anexo-extra-input')">📎 Anexar mais um arquivo de escaneamento</div>
         </div>
       </div>
@@ -875,7 +875,7 @@ async function carregarFinanceiro() {
 }
 
 // ── Anexo STL ────────────────────────────────────────────────
-var stlFile = null;
+var stlFiles = [];
 
 function cliAnexoDragOver(event) {
   event.preventDefault();
@@ -898,11 +898,11 @@ function cliAnexoDrop(event, inputId) {
 }
 
 function handleStlFile(e) {
-  var file = e.target.files[0];
+  var files = e.target.files;
   var el = document.getElementById('c-stl-placeholder');
-  if (!file) { stlFile = null; el.textContent = '📎 Toque para escolher o arquivo de escaneamento (opcional)'; return; }
-  stlFile = file;
-  el.textContent = '📎 ' + file.name;
+  if (!files || !files.length) { stlFiles = []; el.textContent = '📎 Toque para escolher o arquivo de escaneamento (opcional)'; return; }
+  stlFiles = Array.prototype.slice.call(files);
+  el.textContent = stlFiles.length === 1 ? '📎 ' + stlFiles[0].name : '📎 ' + stlFiles.length + ' arquivos selecionados';
 }
 
 // Envia o STL direto pro Storage usando o JWT temporario (role anon +
@@ -1023,7 +1023,7 @@ async function abrirModalPedido(mode, casoId) {
     document.getElementById('c-tipo').value = '';
     document.getElementById('c-cor').value = '';
     document.getElementById('c-obs').value = '';
-    stlFile = null;
+    stlFiles = [];
     document.getElementById('c-stl-input').value = '';
     document.getElementById('c-stl-placeholder').textContent = '📎 Toque para escolher o arquivo de escaneamento (opcional)';
     setDentesSelecionados([]);
@@ -1236,20 +1236,28 @@ async function carregarAnexosExistentes(casoId) {
 }
 
 async function handleAnexoExtra(e) {
-  var file = e.target.files[0];
-  if (!file || !modalPedidoCasoId) return;
+  var files = e.target.files;
+  if (!files || !files.length || !modalPedidoCasoId) return;
   var el = document.getElementById('mp-anexo-extra-placeholder');
   var textoOriginal = el.textContent;
-  el.textContent = '📎 Enviando ' + file.name + '…';
+  el.textContent = '📎 Enviando ' + files.length + ' arquivo(s)…';
   try {
     var raw = localStorage.getItem(SESSAO_KEY);
     var sessao = raw ? JSON.parse(raw) : null;
     if (!sessao || !sessao.token) throw new Error('Sessão expirada.');
-    await enviarStl(sessao.token, sessao.cliente_reg, modalPedidoCasoId, file);
+    var falhas = [];
+    for (var i = 0; i < files.length; i++) {
+      try {
+        await enviarStl(sessao.token, sessao.cliente_reg, modalPedidoCasoId, files[i]);
+      } catch(errUp) {
+        falhas.push(files[i].name);
+      }
+    }
     document.getElementById('mp-anexo-extra-input').value = '';
     carregarAnexosExistentes(modalPedidoCasoId);
+    if (falhas.length) alert('Falha ao enviar: ' + falhas.join(', '));
   } catch(err) {
-    alert('Erro ao anexar arquivo: ' + (err.message || err));
+    alert('Erro ao anexar arquivo(s): ' + (err.message || err));
   } finally {
     el.textContent = textoOriginal;
   }
@@ -1285,11 +1293,17 @@ async function enviarCaso() {
     var casoId = res.data;
 
     var avisoUpload = '';
-    if (stlFile) {
-      try {
-        await enviarStl(sessao.token, sessao.cliente_reg, casoId, stlFile);
-      } catch (upErr) {
-        avisoUpload = ' O caso foi enviado, mas o anexo falhou (' + (upErr.message || 'erro desconhecido') + '). Fale com o laboratório.';
+    if (stlFiles.length) {
+      var falhas = [];
+      for (var i = 0; i < stlFiles.length; i++) {
+        try {
+          await enviarStl(sessao.token, sessao.cliente_reg, casoId, stlFiles[i]);
+        } catch (upErr) {
+          falhas.push(stlFiles[i].name);
+        }
+      }
+      if (falhas.length) {
+        avisoUpload = ' O caso foi enviado, mas falhou o anexo: ' + falhas.join(', ') + '. Fale com o laboratório.';
       }
     }
 
@@ -1299,7 +1313,7 @@ async function enviarCaso() {
     document.getElementById('c-cor').value = '';
     document.getElementById('c-obs').value = '';
     dentesSelecionados = [];
-    stlFile = null;
+    stlFiles = [];
     document.getElementById('c-stl-input').value = '';
     document.getElementById('c-stl-placeholder').textContent = '📎 Toque para escolher o arquivo de escaneamento (opcional)';
     document.querySelectorAll('.dente.on').forEach(function(b){ b.classList.remove('on'); });
