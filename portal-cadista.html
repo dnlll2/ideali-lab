@@ -99,6 +99,14 @@
   .cadi-upload.has-file{border-style:solid;border-color:rgba(96,165,250,0.45);color:#93c5fd;background:rgba(96,165,250,0.07)}
   .cadi-anexo-view{display:none;margin-top:4px;text-align:center;font-size:10px;color:#63b3ed;text-decoration:none}
   .cadi-anexo-view:hover{text-decoration:underline}
+  .odonto{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
+  .odonto-row{display:flex;gap:4px;justify-content:center}
+  .odonto-quad{display:flex;gap:3px}
+  .dente{width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.15);background:#22263a;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;transition:all 0.1s}
+  .dente:hover{border-color:#3b82f6}
+  .dente.on{background:#1d4ed8;border-color:#3b82f6;color:#fff;font-weight:600}
+  .odonto-gap{width:8px}
+  @media(max-width:420px){.dente{width:23px;height:23px;font-size:9.5px}}
 </style>
 </head>
 <body>
@@ -526,10 +534,12 @@ function abrirDetalheCadista(id) {
   '</div>';
 
   var qtdHtml = '<div>'+
-    '<p style="font-size:12px;color:#64748b;margin-bottom:4px">Qtd. de elementos/dentes (usado no cálculo da sua comissão)</p>'+
-    '<div style="display:flex;gap:8px;align-items:center">'+
-      '<input type="number" id="cad-detail-qtd" min="1" step="1" value="'+(c.qtd_elementos || 1)+'" style="width:90px;height:34px;background:#0f1117;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:0 10px;font-size:13px;color:#e2e8f0;outline:none;font-family:inherit">'+
-      '<button onclick="cadSalvarQtdDetalhe(\''+id+'\')" style="height:34px;padding:0 14px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Salvar quantidade</button>'+
+    '<p style="font-size:12px;color:#64748b;margin-bottom:2px">Elementos/dentes (usado no cálculo da sua comissão)</p>'+
+    '<p style="font-size:11px;color:#4a5568;margin-bottom:8px">Atualmente: '+(c.qtd_elementos || 1)+' elemento(s). Clique nos dentes pra corrigir.</p>'+
+    '<div class="odonto" id="cad-odonto"></div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">'+
+      '<span id="cad-odonto-sel" style="font-size:11.5px;color:#94a3b8">Nenhum dente selecionado</span>'+
+      '<button onclick="cadSalvarQtdDetalhe(\''+id+'\')" style="height:32px;padding:0 14px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0">Salvar quantidade</button>'+
     '</div>'+
   '</div>';
 
@@ -547,7 +557,44 @@ function abrirDetalheCadista(id) {
   body.innerHTML = infoHtml + anexosHtml + qtdHtml + obsHtml;
   document.getElementById('cad-detail-overlay').style.display = '';
   document.getElementById('cad-detail-panel').style.display   = '';
+  cadBuildOdontograma();
   cadPrefillAnexosDetalhe(id);
+}
+
+// ── Odontograma (FDI, mesmo padrao do portal-cliente.html): so serve
+//    pra contar quantos dentes o cadista marcou -- ordens_exocad nao
+//    tem coluna pra guardar quais numeros exatos foram selecionados,
+//    entao ao salvar so manda a contagem (qtd_elementos). Sempre abre
+//    zerado (nao da pra saber quais dentes originaram a qtd_elementos
+//    salva antes). ──────────────────────────────────────────────────
+var _cadDentesSelecionados = [];
+var CAD_QUADRANTES = [[18,17,16,15,14,13,12,11],[21,22,23,24,25,26,27,28],
+                      [48,47,46,45,44,43,42,41],[31,32,33,34,35,36,37,38]];
+
+function cadBuildOdontograma() {
+  var el = document.getElementById('cad-odonto');
+  if (!el) return;
+  _cadDentesSelecionados = [];
+  function quadHtml(q) {
+    return '<div class="odonto-quad">' + q.map(function(n){
+      return '<button type="button" class="dente" data-dente="'+n+'" onclick="cadToggleDente('+n+')">'+n+'</button>';
+    }).join('') + '</div>';
+  }
+  el.innerHTML =
+    '<div class="odonto-row">' + quadHtml(CAD_QUADRANTES[0]) + '<span class="odonto-gap"></span>' + quadHtml(CAD_QUADRANTES[1]) + '</div>' +
+    '<div class="odonto-row">' + quadHtml(CAD_QUADRANTES[2]) + '<span class="odonto-gap"></span>' + quadHtml(CAD_QUADRANTES[3]) + '</div>';
+}
+
+function cadToggleDente(n) {
+  var i = _cadDentesSelecionados.indexOf(n);
+  if (i >= 0) _cadDentesSelecionados.splice(i, 1); else _cadDentesSelecionados.push(n);
+  _cadDentesSelecionados.sort(function(a,b){ return a-b; });
+  var btn = document.querySelector('#cad-odonto .dente[data-dente="'+n+'"]');
+  if (btn) btn.classList.toggle('on', _cadDentesSelecionados.indexOf(n) >= 0);
+  var lbl = document.getElementById('cad-odonto-sel');
+  if (lbl) lbl.textContent = _cadDentesSelecionados.length
+    ? _cadDentesSelecionados.length + ' selecionado(s): ' + _cadDentesSelecionados.join(', ')
+    : 'Nenhum dente selecionado';
 }
 
 function fecharDetalheCadista() {
@@ -595,10 +642,8 @@ async function cadUploadAnexoCadista(id, slotId, inputEl) {
 }
 
 async function cadSalvarQtdDetalhe(id) {
-  var input = document.getElementById('cad-detail-qtd');
-  if (!input) return;
-  var qtd = parseInt(input.value, 10);
-  if (!qtd || qtd < 1) { alert('Quantidade precisa ser pelo menos 1.'); return; }
+  var qtd = _cadDentesSelecionados.length;
+  if (!qtd) { alert('Selecione ao menos um dente no odontograma.'); return; }
   var raw = localStorage.getItem(SESSAO_KEY);
   var sessao = raw ? JSON.parse(raw) : null;
   if (!sessao || !sessao.token) { alert('Sessão expirada.'); return; }
