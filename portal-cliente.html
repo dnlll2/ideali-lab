@@ -545,7 +545,7 @@ function renderCasosEm(containerId, casos, textoVazio) {
   }
   lista.innerHTML = casos.map(function(c) {
     var acabamento = c.status === 'finalizado' && c.enviado_inove;
-    var st = acabamento ? 'Fase de Acabamento' : (STATUS_LABEL[c.status] || c.status);
+    var st = acabamento ? 'Fresagem em Maquiagem' : (STATUS_LABEL[c.status] || c.status);
     var statusClass = acabamento ? 'acabamento' : c.status;
     return '' +
       '<div class="caso-card" onclick="abrirModalPedido(\'detalhe\',\'' + c.id + '\')">' +
@@ -593,8 +593,8 @@ async function carregarMeusCasos() {
     msg.textContent = '';
     msg.className = 'msg';
 
-    var andamento = casos.filter(function(c) { return c.status === 'a_fazer' || c.status === 'fazendo'; });
-    var entregues  = casos.filter(function(c) { return c.status === 'finalizado'; });
+    var andamento = casos.filter(function(c) { return c.status === 'a_fazer' || c.status === 'fazendo' || (c.status === 'finalizado' && c.enviado_inove); });
+    var entregues  = casos.filter(function(c) { return c.status === 'finalizado' && !c.enviado_inove; });
     _casosEntreguesTodos = entregues;
 
     renderCasosEm('casos-lista', casos, 'Você ainda não enviou nenhum caso.');
