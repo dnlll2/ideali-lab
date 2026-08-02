@@ -703,12 +703,13 @@ async function cadUploadAnexoCadista(id, slotId, inputEl) {
     var falhas = [];
     for (var i = 0; i < files.length; i++) {
       var file = files[i];
-      var path = ctx.pasta + '/' + slotId + '-' + file.name;
+      var nomeSeguro = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+      var path = ctx.pasta + '/' + slotId + '-' + nomeSeguro;
       var upRes = await ctx.client.storage.from('casos').upload(path, file);
-      if (upRes.error) falhas.push(file.name);
+      if (upRes.error) falhas.push(file.name + ': ' + (upRes.error.message || upRes.error));
     }
     await cadPrefillAnexosDetalhe(id);
-    if (falhas.length) alert('Falha ao enviar: ' + falhas.join(', '));
+    if (falhas.length) alert('Falha ao enviar: ' + falhas.join('; '));
   } catch(e) {
     alert('Erro ao enviar arquivo(s): ' + (e.message || e));
     cadPrefillAnexosDetalhe(id);

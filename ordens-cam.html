@@ -1025,12 +1025,13 @@ async function camUploadAnexos(clienteReg, ordemId) {
     if (!files || !files.length) continue;
     for (var j = 0; j < files.length; j++) {
       var file = files[j];
-      var path = clienteReg + '/' + ordemId + '/' + slot.id + '-' + file.name;
+      var nomeSeguro = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+      var path = clienteReg + '/' + ordemId + '/' + slot.id + '-' + nomeSeguro;
       try {
         var upRes = await sb.storage.from('casos').upload(path, file);
         if (upRes.error) throw upRes.error;
       } catch(e) {
-        falhas.push(slot.label + ' (' + file.name + ')');
+        falhas.push(slot.label + ' (' + file.name + '): ' + (e.message || e));
       }
     }
   }
