@@ -96,12 +96,16 @@
   @media(max-width:420px){.cadi-anexos-grid{grid-template-columns:repeat(2,1fr)}}
   .cadi-upload{border:1px dashed rgba(255,255,255,0.2);border-radius:8px;min-height:52px;display:flex;align-items:center;justify-content:center;text-align:center;gap:4px;color:#64748b;font-size:10.5px;padding:4px 6px;word-break:break-word;line-height:1.3}
   .cadi-upload.editable{cursor:pointer}
+  .cadi-upload.readonly{cursor:default;opacity:0.55;border-style:dashed}
   .cadi-upload.has-file{border-style:solid;border-color:rgba(96,165,250,0.45);color:#93c5fd;background:rgba(96,165,250,0.07)}
   .cadi-anexo-files{display:flex;flex-direction:column;gap:3px;margin-top:5px}
   .cadi-anexo-empty{font-size:10px;color:#4a5568;margin:0}
-  .cadi-anexo-file{display:block;font-size:10.5px;color:#63b3ed;text-decoration:none;word-break:break-word}
+  .cadi-anexo-file-row{display:flex;align-items:center;gap:5px}
+  .cadi-anexo-file{display:block;font-size:10.5px;color:#63b3ed;text-decoration:none;word-break:break-word;flex:1;min-width:0}
   .cadi-anexo-file:hover{text-decoration:underline}
   .cadi-anexo-file .ver{color:#63b3ed}
+  .cadi-anexo-del{flex-shrink:0;border:none;background:none;color:#ef4444;font-size:11px;cursor:pointer;padding:0;font-family:inherit}
+  .cadi-anexo-del:hover{color:#f87171}
   .odonto{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
   .odonto-row{display:flex;gap:4px;justify-content:center}
   .odonto-quad{display:flex;gap:3px}
@@ -503,7 +507,7 @@ function cadAnexoSlotHtml(id, slot) {
   var trigger = slot.editable
     ? '<input type="file" multiple id="'+inputId+'" style="display:none" onchange="cadUploadAnexoCadista(\''+id+'\',\''+slot.id+'\',this)">'+
       '<div class="cadi-upload editable" onclick="document.getElementById(\''+inputId+'\').click()">📎 Anexar arquivo(s)</div>'
-    : '';
+    : '<div class="cadi-upload readonly">🔒 Somente leitura</div>';
   return '<div>'+
     '<p style="font-size:10px;color:#4a5568;margin-bottom:4px">'+slot.label+'</p>'+
     trigger +
@@ -637,12 +641,32 @@ async function cadPrefillAnexosDetalhe(id) {
       if (!filesEl) return;
       filesEl.innerHTML = matches.length
         ? matches.map(function(f) {
-            return '<a href="'+f.url+'" target="_blank" rel="noopener" class="cadi-anexo-file">📎 '+escHtml(f.name.slice(slot.id.length + 1))+' <span class="ver">👁 Ver</span></a>';
+            var delBtn = slot.editable
+              ? '<button type="button" class="cadi-anexo-del" title="Excluir" onclick="cadExcluirAnexoCadista(\''+id+'\',\''+escJs(f.name)+'\')">🗑</button>'
+              : '';
+            return '<div class="cadi-anexo-file-row"><a href="'+f.url+'" target="_blank" rel="noopener" class="cadi-anexo-file">📎 '+escHtml(f.name.slice(slot.id.length + 1))+' <span class="ver">👁 Ver</span></a>'+delBtn+'</div>';
           }).join('')
         : '<p class="cadi-anexo-empty">— Nenhum arquivo ainda —</p>';
     });
   } catch(e) {
     console.error('[cadPrefillAnexosDetalhe]', e.message || e);
+  }
+}
+
+function escJs(s) {
+  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+async function cadExcluirAnexoCadista(id, fileName) {
+  if (!confirm('Excluir este anexo? Essa acao nao pode ser desfeita.')) return;
+  try {
+    var ctx = await camClienteAnexosCadista(id);
+    if (!ctx) throw new Error('Sem pasta de anexos para este caso.');
+    var res = await ctx.client.storage.from('casos').remove([ctx.pasta + '/' + fileName]);
+    if (res.error) throw res.error;
+    cadPrefillAnexosDetalhe(id);
+  } catch(e) {
+    alert('Erro ao excluir anexo: ' + (e.message || e));
   }
 }
 
