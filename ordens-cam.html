@@ -62,6 +62,14 @@
   .cam-anexo-view{display:none;margin-top:4px;text-align:center;font-size:10px;color:#63b3ed;text-decoration:none}
   .cam-anexo-view:hover{text-decoration:underline}
   #cam-panel .cp-footer{flex-wrap:wrap}
+  .odonto{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
+  .odonto-row{display:flex;gap:4px;justify-content:center}
+  .odonto-quad{display:flex;gap:3px}
+  .dente{width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.15);background:#22263a;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;transition:all 0.1s}
+  .dente:hover{border-color:#3b82f6}
+  .dente.on{background:#1d4ed8;border-color:#3b82f6;color:#fff;font-weight:600}
+  .odonto-gap{width:8px}
+  @media(max-width:520px){.dente{width:24px;height:24px;font-size:10px}}
 </style>
 </head>
 <body>
@@ -187,19 +195,21 @@
       </div>
     </div>
 
-    <div class="cam-row">
-      <div>
-        <p class="label" style="margin-bottom:4px">Qtd. elementos</p>
-        <input type="number" id="cam-form-qtd" min="1" step="1" value="1" style="width:100%;height:36px">
+    <div>
+      <p class="label" style="margin-bottom:4px">Qtd. elementos (clique nos dentes)</p>
+      <p id="cam-odonto-atual" style="font-size:11px;color:#64748b;margin-bottom:6px">Atual: 1 elemento(s)</p>
+      <div class="odonto" id="cam-odonto"></div>
+      <p id="cam-odonto-sel" style="font-size:12px;color:#64748b;margin-top:6px;text-align:center">Nenhum dente selecionado</p>
+      <input type="hidden" id="cam-form-qtd" value="1">
+    </div>
+
+    <div>
+      <p class="label" style="margin-bottom:6px">Origem</p>
+      <div style="display:flex;gap:8px">
+        <button id="cam-orig-whatsapp" class="cam-orig-btn active" onclick="camSetOrigem('whatsapp')">📱 WhatsApp</button>
+        <button id="cam-orig-email"    class="cam-orig-btn"        onclick="camSetOrigem('email')">✉️ Email</button>
       </div>
-      <div>
-        <p class="label" style="margin-bottom:6px">Origem</p>
-        <div style="display:flex;gap:8px">
-          <button id="cam-orig-whatsapp" class="cam-orig-btn active" onclick="camSetOrigem('whatsapp')">📱 WhatsApp</button>
-          <button id="cam-orig-email"    class="cam-orig-btn"        onclick="camSetOrigem('email')">✉️ Email</button>
-        </div>
-        <input type="hidden" id="cam-form-origem" value="whatsapp">
-      </div>
+      <input type="hidden" id="cam-form-origem" value="whatsapp">
     </div>
   </div>
   <div class="cp-footer" style="position:sticky;bottom:0;background:#1a1d27">
@@ -804,8 +814,7 @@ function openNovaCamOrdem() {
     var view = document.getElementById('cam-anexo-' + slot.id + '-view');
     if (view) { view.style.display = 'none'; view.href = '#'; }
   });
-  var qtdEl   = document.getElementById('cam-form-qtd');
-  if (qtdEl) qtdEl.value = 1;
+  camBuildOdontograma(1);
   document.querySelectorAll('.cam-orig-btn').forEach(function(b){ b.classList.remove('active'); });
   var wb = document.getElementById('cam-orig-whatsapp');
   if (wb) wb.classList.add('active');
@@ -814,6 +823,50 @@ function openNovaCamOrdem() {
   document.getElementById('cam-overlay').style.display = '';
   document.getElementById('cam-panel').style.display   = '';
   camUpdateRegraBanner();
+}
+
+// ── Odontograma (FDI): so serve pra somar a qtd. de elementos --
+//    ordens_exocad nao tem coluna pra guardar quais dentes exatos
+//    foram marcados, entao ao abrir uma ordem existente o odontograma
+//    sempre comeca zerado (mostra "Atual: N" a parte) -- se o admin
+//    nao clicar em nenhum dente, cam-form-qtd mantem o valor original
+//    ao salvar, em vez de zerar. ────────────────────────────────────
+var _camDentesSelecionados = [];
+var CAM_QUADRANTES = [[18,17,16,15,14,13,12,11],[21,22,23,24,25,26,27,28],
+                      [48,47,46,45,44,43,42,41],[31,32,33,34,35,36,37,38]];
+
+function camBuildOdontograma(qtdAtual) {
+  var el = document.getElementById('cam-odonto');
+  if (!el) return;
+  _camDentesSelecionados = [];
+  function quadHtml(q) {
+    return '<div class="odonto-quad">' + q.map(function(n){
+      return '<button type="button" class="dente" data-dente="'+n+'" onclick="camToggleDente('+n+')">'+n+'</button>';
+    }).join('') + '</div>';
+  }
+  el.innerHTML =
+    '<div class="odonto-row">' + quadHtml(CAM_QUADRANTES[0]) + '<span class="odonto-gap"></span>' + quadHtml(CAM_QUADRANTES[1]) + '</div>' +
+    '<div class="odonto-row">' + quadHtml(CAM_QUADRANTES[2]) + '<span class="odonto-gap"></span>' + quadHtml(CAM_QUADRANTES[3]) + '</div>';
+  var atualEl = document.getElementById('cam-odonto-atual');
+  if (atualEl) atualEl.textContent = 'Atual: ' + (qtdAtual || 1) + ' elemento(s). Clique nos dentes pra corrigir.';
+  var selEl = document.getElementById('cam-odonto-sel');
+  if (selEl) selEl.textContent = 'Nenhum dente selecionado';
+  var qtdEl = document.getElementById('cam-form-qtd');
+  if (qtdEl) qtdEl.value = qtdAtual || 1;
+}
+
+function camToggleDente(n) {
+  var i = _camDentesSelecionados.indexOf(n);
+  if (i >= 0) _camDentesSelecionados.splice(i, 1); else _camDentesSelecionados.push(n);
+  _camDentesSelecionados.sort(function(a,b){ return a-b; });
+  var btn = document.querySelector('#cam-odonto .dente[data-dente="'+n+'"]');
+  if (btn) btn.classList.toggle('on', _camDentesSelecionados.indexOf(n) >= 0);
+  var lbl = document.getElementById('cam-odonto-sel');
+  if (lbl) lbl.textContent = _camDentesSelecionados.length
+    ? _camDentesSelecionados.length + ' selecionado(s): ' + _camDentesSelecionados.join(', ')
+    : 'Nenhum dente selecionado';
+  var qtdEl = document.getElementById('cam-form-qtd');
+  if (qtdEl && _camDentesSelecionados.length) qtdEl.value = _camDentesSelecionados.length;
 }
 
 function camSetScanbody(val) {
@@ -1091,8 +1144,7 @@ function openEditCamOrdem(id) {
   var obsEl = document.getElementById('cam-form-obs');
   if (obsEl) obsEl.value = parsed.observacoes || '';
 
-  var qtdEl = document.getElementById('cam-form-qtd');
-  if (qtdEl) qtdEl.value = o.qtd_elementos || 1;
+  camBuildOdontograma(o.qtd_elementos || 1);
 
   camSetOrigem(o.origem === 'email' ? 'email' : 'whatsapp');
 
