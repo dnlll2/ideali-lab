@@ -37,7 +37,7 @@ declare
   v_token  text;
 begin
   select * into v_sessao from portal_sessoes
-    where token = p_sessao and tipo = 'cadista' and expira_em > now();
+    where portal_sessoes.token = p_sessao and tipo = 'cadista' and expira_em > now();
   if v_sessao.token is null then
     raise exception 'Sessao expirada ou invalida. Faca login novamente.';
   end if;
