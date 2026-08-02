@@ -69,8 +69,8 @@
 <div id="cam-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:81;width:min(620px,95vw);max-height:90vh;overflow-y:auto;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px">
   <div class="cp-header" style="position:sticky;top:0;background:#1a1d27;z-index:1">
     <div style="flex:1;min-width:0">
-      <p style="font-size:15px;font-weight:600;color:#f1f5f9">Nova Ordem CAM</p>
-      <p style="font-size:11px;color:#64748b;margin-top:2px">Design / arquivo de fresagem</p>
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9" id="cam-panel-title">Nova Ordem CAM</p>
+      <p style="font-size:11px;color:#64748b;margin-top:2px" id="cam-panel-subtitle">Design / arquivo de fresagem</p>
     </div>
     <button class="sb-close" onclick="closeCamPanel()"><i class="ti ti-x"></i></button>
   </div>
@@ -194,6 +194,7 @@
     </div>
   </div>
   <div class="cp-footer" style="position:sticky;bottom:0;background:#1a1d27">
+    <button class="cad-btn-ghost" id="cam-form-copy-btn" style="display:none" onclick="camCopyAll()">📋 Copiar tudo</button>
     <button class="cad-btn-ghost" onclick="closeCamPanel()">Cancelar</button>
     <button class="cad-btn-primary" id="cam-form-save-btn" onclick="saveNovaCamOrdem()"><i class="ti ti-device-floppy" style="font-size:14px"></i> Salvar</button>
   </div>
@@ -207,19 +208,6 @@
     <button class="sb-close" onclick="closeCamArquivados()"><i class="ti ti-x"></i></button>
   </div>
   <div id="cam-arq-body" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:8px"></div>
-</div>
-
-<!-- ── Modal: Detalhe ─────────────────────────────────────────── -->
-<div id="cam-detail-overlay" onclick="closeCamDetail()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:90"></div>
-<div id="cam-detail-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:91;width:min(540px,95vw);max-height:85vh;overflow-y:auto;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px">
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:0.5px solid rgba(255,255,255,0.08);position:sticky;top:0;background:#1a1d27;z-index:1">
-    <p style="font-size:15px;font-weight:600;color:#f1f5f9;margin:0">Detalhes da Ordem</p>
-    <button onclick="closeCamDetail()" style="width:28px;height:28px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
-  </div>
-  <div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px" id="cam-detail-body"></div>
-  <div style="padding:12px 18px;border-top:0.5px solid rgba(255,255,255,0.08);display:flex;justify-content:flex-end">
-    <button onclick="camCopyAll()" style="height:34px;padding:0 16px;border-radius:8px;border:0.5px solid rgba(99,179,237,0.4);background:rgba(99,179,237,0.08);color:#63b3ed;font-size:13px;cursor:pointer;font-family:inherit">📋 Copiar tudo</button>
-  </div>
 </div>
 
 <!-- ── Modal: Ordens do Cliente (via Relatório) ──────────────────── -->
@@ -359,6 +347,7 @@
 var ordensCam  = [];
 var camDragId  = null;
 var camDetailId = null;
+var camEditId   = null;
 var _camReportRows  = [];
 var _camClientTexts = [];
 
@@ -441,7 +430,7 @@ function camCardHtml(o) {
   var qtdElem  = o.qtd_elementos || 1;
   var btnQtd   = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camOpenQtdDropdown(\''+o.id+'\',event)" title="Qtd. elementos (base do pagamento do cadista)" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;background:transparent;border-color:rgba(148,163,184,0.4);color:#94a3b8">🦷 '+qtdElem+'</button>';
 
-  return '<div class="cam-card'+(isNovo?' cam-card-novo':'')+'" draggable="true" ondragstart="camDragStart(event,\''+o.id+'\')" onclick="openCamDetail(\''+o.id+'\')" style="'+ageStyle+';cursor:pointer">'+
+  return '<div class="cam-card'+(isNovo?' cam-card-novo':'')+'" draggable="true" ondragstart="camDragStart(event,\''+o.id+'\')" onclick="openEditCamOrdem(\''+o.id+'\')" style="'+ageStyle+';cursor:pointer">'+
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:5px">'+
       '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(cli)+(o.cliente_reg?cliRegraBadgeHtml(o.cliente_reg):'')+'</p>'+
       '<div draggable="false" style="display:flex;gap:4px">'+confBtn+advBtn+arqBtn+delBtn+'</div>'+
@@ -474,7 +463,7 @@ function renderOrdensCam() {
 function camPendCardHtml(o) {
   var cli  = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '—');
   var desc = (o.descricao||'').length > 140 ? o.descricao.substring(0,140)+'…' : (o.descricao||'—');
-  return '<div class="cam-pend-card" onclick="openCamDetail(\''+o.id+'\')">'+
+  return '<div class="cam-pend-card" onclick="openEditCamOrdem(\''+o.id+'\')">'+
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px">'+
       '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0;line-height:1.3">'+escHtml(cli)+(o.cliente_reg?cliRegraBadgeHtml(o.cliente_reg):'')+'</p>'+
       '<div draggable="false" style="display:flex;gap:4px;flex-shrink:0">'+
@@ -772,6 +761,14 @@ var CAM_ANEXO_SLOTS = [
 ];
 
 function openNovaCamOrdem() {
+  camEditId = null;
+  camDetailId = null;
+  var titleEl = document.getElementById('cam-panel-title');
+  if (titleEl) titleEl.textContent = 'Nova Ordem CAM';
+  var subEl = document.getElementById('cam-panel-subtitle');
+  if (subEl) subEl.textContent = 'Design / arquivo de fresagem';
+  var copyBtn = document.getElementById('cam-form-copy-btn');
+  if (copyBtn) copyBtn.style.display = 'none';
   var sel = document.getElementById('cam-form-cliente');
   if (sel) {
     sel.innerHTML = '<option value="">— Selecione o cliente cadastrado —</option>' +
@@ -849,6 +846,8 @@ function camUpdateRegraBanner() {
 function closeCamPanel() {
   document.getElementById('cam-overlay').style.display = 'none';
   document.getElementById('cam-panel').style.display   = 'none';
+  camEditId   = null;
+  camDetailId = null;
 }
 
 function camSetOrigem(origem) {
@@ -882,18 +881,31 @@ async function saveNovaCamOrdem() {
     (obs ? ('\n\nObservacoes: ' + obs) : '');
   desc = cliAnexarRegraPadrao(desc, clienteReg);
 
-  var payload = { descricao: desc, origem: origem, status: 'a_fazer', qtd_elementos: qtdElementos, cliente_reg: clienteReg };
+  var payload = { descricao: desc, origem: origem, qtd_elementos: qtdElementos, cliente_reg: clienteReg };
+  if (!camEditId) payload.status = 'a_fazer';
   var saveBtn = document.getElementById('cam-form-save-btn');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Salvando...'; }
   try {
-    var res = await sb.from('ordens_exocad').insert([payload]).select();
-    if (res.error) throw res.error;
-    var novaOrdem = res.data[0];
-    var avisoAnexo = await camUploadAnexos(clienteReg, novaOrdem.id);
-    ordensCam.unshift(novaOrdem);
-    renderOrdensCam();
-    closeCamPanel();
-    if (avisoAnexo) alert(avisoAnexo);
+    if (camEditId) {
+      var resUp = await sb.from('ordens_exocad').update(payload).eq('id', camEditId).select();
+      if (resUp.error) throw resUp.error;
+      var ordemAtualizada = resUp.data[0];
+      var avisoAnexoUp = await camUploadAnexos(clienteReg, camEditId);
+      var idx = ordensCam.findIndex(function(x){ return x.id === camEditId; });
+      if (idx > -1) ordensCam[idx] = ordemAtualizada;
+      renderOrdensCam();
+      closeCamPanel();
+      if (avisoAnexoUp) alert(avisoAnexoUp);
+    } else {
+      var res = await sb.from('ordens_exocad').insert([payload]).select();
+      if (res.error) throw res.error;
+      var novaOrdem = res.data[0];
+      var avisoAnexo = await camUploadAnexos(clienteReg, novaOrdem.id);
+      ordensCam.unshift(novaOrdem);
+      renderOrdensCam();
+      closeCamPanel();
+      if (avisoAnexo) alert(avisoAnexo);
+    }
   } catch(e) {
     alert('Erro: '+(e.message||e));
   } finally {
@@ -979,79 +991,97 @@ function camParsePedidoCompleto(descricao) {
   };
 }
 
-async function camLoadAnexosDetalhe(o) {
-  var el = document.getElementById('cam-detail-anexos');
-  if (!el || !o.cliente_reg) return;
+async function camPrefillAnexos(o) {
+  CAM_ANEXO_SLOTS.forEach(function(slot) {
+    var input = document.getElementById('cam-anexo-' + slot.id);
+    if (input) input.value = '';
+    var box = document.getElementById('cam-anexo-' + slot.id + '-box');
+    if (box) { box.textContent = slot.img ? '📎 Anexar imagem' : '📎 Anexar arquivo'; box.classList.remove('has-file'); }
+  });
+  if (!o.cliente_reg) return;
   var pasta = o.cliente_reg + '/' + o.id;
   try {
     var res = await sb.storage.from('casos').list(pasta);
     if (res.error) throw res.error;
-    var arquivos = (res.data || []).filter(function(f){ return f.name; });
-    if (!arquivos.length) return;
-    var linksHtml = await Promise.all(arquivos.map(async function(f) {
-      var full   = pasta + '/' + f.name;
-      var signed = await sb.storage.from('casos').createSignedUrl(full, 3600);
-      var url    = (signed.data && signed.data.signedUrl) || '#';
-      return '<a href="'+url+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#93c5fd;text-decoration:none;background:#22263a;border:0.5px solid rgba(255,255,255,0.1);border-radius:6px;padding:5px 10px">📎 '+escHtml(f.name)+'</a>';
-    }));
-    el.innerHTML = '<p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 6px">Anexos</p>'+
-      '<div style="display:flex;flex-wrap:wrap;gap:8px">'+linksHtml.join('')+'</div>';
+    (res.data || []).forEach(function(f) {
+      if (!f.name) return;
+      var slot = CAM_ANEXO_SLOTS.find(function(s){ return f.name.indexOf(s.id + '-') === 0; });
+      if (!slot) return;
+      var box = document.getElementById('cam-anexo-' + slot.id + '-box');
+      if (box) {
+        box.textContent = '📎 ' + f.name.slice(slot.id.length + 1);
+        box.classList.add('has-file');
+      }
+    });
   } catch(e) {
-    console.error('[camLoadAnexosDetalhe]', e.message || e);
+    console.error('[camPrefillAnexos]', e.message || e);
   }
 }
 
-function openCamDetail(id) {
+function openEditCamOrdem(id) {
   var o = ordensCam.find(function(x){ return x.id === id; });
   if (!o) return;
+  camEditId   = id;
   camDetailId = id;
-  var cli    = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '—');
-  var orig   = o.origem === 'email' ? '✉️ Email' : '📱 WhatsApp';
-  var data   = o.created_at ? new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
-  var parsed = camParsePedidoCompleto(o.descricao);
-  var regra  = o.cliente_reg ? cliRegraPadrao(o.cliente_reg) : '';
-  var fields = [
-    { label: 'Cliente', value: cli }
-  ];
-  if (regra) fields.push({ warn: true, value: '⚠️ REGRA PADRÃO DESTE CLIENTE: ' + regra });
-  fields.push(
-    { label: 'Paciente',        value: parsed.paciente     || '—' },
-    { label: 'Tipo de trabalho',value: parsed.tipoTrabalho || '—' },
-    { label: 'Scanbody',        value: parsed.scanbody     || '—' },
-    { label: 'Observações',     value: parsed.observacoes  || '—' },
-    { label: 'Origem',          value: orig },
-    { label: 'Data de criação', value: data }
-  );
-  var body = document.getElementById('cam-detail-body');
-  if (!body) return;
-  body.innerHTML = fields.map(function(f, i) {
-    if (f.warn) {
-      return '<div style="background:rgba(245,158,11,0.14);border:1px solid rgba(245,158,11,0.55);border-radius:10px;padding:12px 14px">'+
-        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
-          '<p style="flex:1;min-width:0;font-size:13px;font-weight:700;color:#fcd34d;margin:0;line-height:1.5;word-break:break-word" id="cam-det-val-'+i+'">'+escHtml(f.value)+'</p>'+
-          '<button onclick="camCopyField('+i+',this)" style="height:28px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(245,158,11,0.55);background:rgba(245,158,11,0.18);color:#fcd34d;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap">📋 Copiar</button>'+
-        '</div>'+
-      '</div>';
-    }
-    return '<div style="background:#13161f;border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px">'+
-      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
-        '<div style="flex:1;min-width:0">'+
-          '<p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 4px">'+f.label+'</p>'+
-          '<p style="font-size:13px;color:#e2e8f0;margin:0;line-height:1.5;word-break:break-word" id="cam-det-val-'+i+'">'+escHtml(f.value)+'</p>'+
-        '</div>'+
-        '<button onclick="camCopyField('+i+',this)" style="height:28px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap">📋 Copiar</button>'+
-      '</div>'+
-    '</div>';
-  }).join('') + '<div id="cam-detail-anexos"></div>';
-  document.getElementById('cam-detail-overlay').style.display = '';
-  document.getElementById('cam-detail-panel').style.display   = '';
-  camLoadAnexosDetalhe(o);
-}
 
-function closeCamDetail() {
-  document.getElementById('cam-detail-overlay').style.display = 'none';
-  document.getElementById('cam-detail-panel').style.display   = 'none';
-  camDetailId = null;
+  var titleEl = document.getElementById('cam-panel-title');
+  if (titleEl) titleEl.textContent = 'Editar Ordem CAM';
+  var subEl = document.getElementById('cam-panel-subtitle');
+  if (subEl) subEl.textContent = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '');
+  var copyBtn = document.getElementById('cam-form-copy-btn');
+  if (copyBtn) copyBtn.style.display = '';
+
+  var sel = document.getElementById('cam-form-cliente');
+  if (sel) {
+    sel.innerHTML = '<option value="">— Selecione o cliente cadastrado —</option>' +
+      clients.slice().sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); })
+        .map(function(c){ return '<option value="'+c.reg+'">'+escHtml(c.nome)+'</option>'; }).join('');
+    sel.value = o.cliente_reg || '';
+  }
+
+  var parsed = camParsePedidoCompleto(o.descricao);
+
+  var pacEl = document.getElementById('cam-form-paciente');
+  if (pacEl) pacEl.value = parsed.paciente || '';
+
+  var tipoEl = document.getElementById('cam-form-tipo');
+  if (tipoEl) {
+    var temOpcao = Array.prototype.some.call(tipoEl.options, function(op){ return op.value === parsed.tipoTrabalho; });
+    tipoEl.value = temOpcao ? parsed.tipoTrabalho : tipoEl.options[0].value;
+  }
+
+  var scanMatch = (parsed.scanbody || '').match(/^Sim\s*\(Marca:\s*([^,]*),\s*Tipo:\s*([^)]*)\)/);
+  if (scanMatch) {
+    camSetScanbody('sim');
+    var marcaEl = document.getElementById('cam-form-scan-marca');
+    var marca   = scanMatch[1].trim();
+    if (marcaEl) {
+      var temMarca = Array.prototype.some.call(marcaEl.options, function(op){ return op.value === marca; });
+      marcaEl.value = temMarca ? marca : marcaEl.options[0].value;
+    }
+    var scanTipoEl = document.getElementById('cam-form-scan-tipo');
+    if (scanTipoEl) scanTipoEl.value = scanMatch[2].trim() === '—' ? '' : scanMatch[2].trim();
+  } else {
+    camSetScanbody('nao');
+    var marcaEl2 = document.getElementById('cam-form-scan-marca');
+    if (marcaEl2) marcaEl2.selectedIndex = 0;
+    var scanTipoEl2 = document.getElementById('cam-form-scan-tipo');
+    if (scanTipoEl2) scanTipoEl2.value = '';
+  }
+
+  var obsEl = document.getElementById('cam-form-obs');
+  if (obsEl) obsEl.value = parsed.observacoes || '';
+
+  var qtdEl = document.getElementById('cam-form-qtd');
+  if (qtdEl) qtdEl.value = o.qtd_elementos || 1;
+
+  camSetOrigem(o.origem === 'email' ? 'email' : 'whatsapp');
+
+  camPrefillAnexos(o);
+
+  document.getElementById('cam-overlay').style.display = '';
+  document.getElementById('cam-panel').style.display   = '';
+  camUpdateRegraBanner();
 }
 
 function camCopy(text, btn, origLabel) {
@@ -1069,12 +1099,6 @@ function camCopy(text, btn, origLabel) {
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(onOk).catch(fallback);
   } else { fallback(); }
-}
-
-function camCopyField(idx, btn) {
-  var el = document.getElementById('cam-det-val-'+idx);
-  if (!el) return;
-  camCopy(el.textContent, btn, btn.textContent);
 }
 
 function camCopyAll() {
