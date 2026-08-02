@@ -98,6 +98,7 @@
   .cadi-upload.editable{cursor:pointer}
   .cadi-upload.readonly{cursor:default;opacity:0.55;border-style:dashed}
   .cadi-upload.has-file{border-style:solid;border-color:rgba(96,165,250,0.45);color:#93c5fd;background:rgba(96,165,250,0.07)}
+  .cadi-upload.dragover{border-style:solid;border-color:#3b82f6;background:rgba(59,130,246,0.14);color:#93c5fd}
   .cadi-anexo-files{display:flex;flex-direction:column;gap:3px;margin-top:5px}
   .cadi-anexo-empty{font-size:10px;color:#4a5568;margin:0}
   .cadi-anexo-file-row{display:flex;align-items:center;gap:5px}
@@ -506,7 +507,8 @@ function cadAnexoSlotHtml(id, slot) {
   var inputId = 'cad-anexo-' + id + '-' + slot.id + '-input';
   var trigger = slot.editable
     ? '<input type="file" multiple id="'+inputId+'" style="display:none" onchange="cadUploadAnexoCadista(\''+id+'\',\''+slot.id+'\',this)">'+
-      '<div class="cadi-upload editable" onclick="document.getElementById(\''+inputId+'\').click()">📎 Anexar arquivo(s)</div>'
+      '<div class="cadi-upload editable" onclick="document.getElementById(\''+inputId+'\').click()" '+
+        'ondragover="cadAnexoDragOver(event)" ondragleave="cadAnexoDragLeave(event)" ondrop="cadAnexoDrop(event,\''+id+'\',\''+slot.id+'\')">📎 Anexar arquivo(s)</div>'
     : '<div class="cadi-upload readonly">🔒 Somente leitura</div>';
   return '<div>'+
     '<p style="font-size:10px;color:#4a5568;margin-bottom:4px">'+slot.label+'</p>'+
@@ -668,6 +670,26 @@ async function cadExcluirAnexoCadista(id, fileName) {
   } catch(e) {
     alert('Erro ao excluir anexo: ' + (e.message || e));
   }
+}
+
+function cadAnexoDragOver(event) {
+  event.preventDefault();
+  event.currentTarget.classList.add('dragover');
+}
+
+function cadAnexoDragLeave(event) {
+  event.currentTarget.classList.remove('dragover');
+}
+
+function cadAnexoDrop(event, id, slotId) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('dragover');
+  var files = event.dataTransfer && event.dataTransfer.files;
+  if (!files || !files.length) return;
+  var input = document.getElementById('cad-anexo-' + id + '-' + slotId + '-input');
+  if (!input) return;
+  input.files = files;
+  cadUploadAnexoCadista(id, slotId, input);
 }
 
 async function cadUploadAnexoCadista(id, slotId, inputEl) {

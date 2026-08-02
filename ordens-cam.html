@@ -59,6 +59,7 @@
   @media(max-width:520px){.cam-anexos-grid{grid-template-columns:repeat(2,1fr)}}
   .cam-upload{border:1px dashed rgba(255,255,255,0.2);border-radius:8px;min-height:52px;display:flex;align-items:center;justify-content:center;text-align:center;gap:4px;color:#64748b;font-size:10.5px;cursor:pointer;padding:4px 6px;word-break:break-word;line-height:1.3}
   .cam-upload.has-file{border-style:solid;border-color:rgba(96,165,250,0.45);color:#93c5fd;background:rgba(96,165,250,0.07)}
+  .cam-upload.dragover{border-style:solid;border-color:#3b82f6;background:rgba(59,130,246,0.14);color:#93c5fd}
   .cam-anexo-line{display:none;align-items:center;justify-content:center;gap:6px;margin-top:4px}
   .cam-anexo-view{font-size:10px;color:#63b3ed;text-decoration:none}
   .cam-anexo-view:hover{text-decoration:underline}
@@ -162,43 +163,43 @@
         <div>
           <p class="label" style="margin-bottom:4px">Escaneamento</p>
           <input type="file" id="cam-anexo-escaneamento" style="display:none" onchange="camAnexoChange(this)">
-          <div class="cam-upload" id="cam-anexo-escaneamento-box" onclick="document.getElementById('cam-anexo-escaneamento').click()">📎 Anexar arquivo</div>
+          <div class="cam-upload" id="cam-anexo-escaneamento-box" onclick="document.getElementById('cam-anexo-escaneamento').click()" ondragover="camAnexoDragOver(event)" ondragleave="camAnexoDragLeave(event)" ondrop="camAnexoDrop(event,'escaneamento')">📎 Anexar arquivo</div>
           <div class="cam-anexo-line"><a href="#" id="cam-anexo-escaneamento-view" class="cam-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a><button type="button" id="cam-anexo-escaneamento-del" class="cam-anexo-del" onclick="camExcluirAnexoSlot('escaneamento')">🗑</button></div>
         </div>
         <div>
           <p class="label" style="margin-bottom:4px">HTML</p>
           <input type="file" id="cam-anexo-html" style="display:none" onchange="camAnexoChange(this)">
-          <div class="cam-upload" id="cam-anexo-html-box" onclick="document.getElementById('cam-anexo-html').click()">📎 Anexar arquivo</div>
+          <div class="cam-upload" id="cam-anexo-html-box" onclick="document.getElementById('cam-anexo-html').click()" ondragover="camAnexoDragOver(event)" ondragleave="camAnexoDragLeave(event)" ondrop="camAnexoDrop(event,'html')">📎 Anexar arquivo</div>
           <div class="cam-anexo-line"><a href="#" id="cam-anexo-html-view" class="cam-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a><button type="button" id="cam-anexo-html-del" class="cam-anexo-del" onclick="camExcluirAnexoSlot('html')">🗑</button></div>
         </div>
         <div>
           <p class="label" style="margin-bottom:4px">STL</p>
           <input type="file" id="cam-anexo-stl" style="display:none" onchange="camAnexoChange(this)">
-          <div class="cam-upload" id="cam-anexo-stl-box" onclick="document.getElementById('cam-anexo-stl').click()">📎 Anexar arquivo</div>
+          <div class="cam-upload" id="cam-anexo-stl-box" onclick="document.getElementById('cam-anexo-stl').click()" ondragover="camAnexoDragOver(event)" ondragleave="camAnexoDragLeave(event)" ondrop="camAnexoDrop(event,'stl')">📎 Anexar arquivo</div>
           <div class="cam-anexo-line"><a href="#" id="cam-anexo-stl-view" class="cam-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a><button type="button" id="cam-anexo-stl-del" class="cam-anexo-del" onclick="camExcluirAnexoSlot('stl')">🗑</button></div>
         </div>
         <div>
           <p class="label" style="margin-bottom:4px">Foto da cor</p>
           <input type="file" id="cam-anexo-cor" accept="image/*" style="display:none" onchange="camAnexoChange(this)">
-          <div class="cam-upload" id="cam-anexo-cor-box" onclick="document.getElementById('cam-anexo-cor').click()">📎 Anexar imagem</div>
+          <div class="cam-upload" id="cam-anexo-cor-box" onclick="document.getElementById('cam-anexo-cor').click()" ondragover="camAnexoDragOver(event)" ondragleave="camAnexoDragLeave(event)" ondrop="camAnexoDrop(event,'cor')">📎 Anexar imagem</div>
           <div class="cam-anexo-line"><a href="#" id="cam-anexo-cor-view" class="cam-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a><button type="button" id="cam-anexo-cor-del" class="cam-anexo-del" onclick="camExcluirAnexoSlot('cor')">🗑</button></div>
         </div>
         <div>
           <p class="label" style="margin-bottom:4px">Foto do sorriso</p>
           <input type="file" id="cam-anexo-sorriso" accept="image/*" style="display:none" onchange="camAnexoChange(this)">
-          <div class="cam-upload" id="cam-anexo-sorriso-box" onclick="document.getElementById('cam-anexo-sorriso').click()">📎 Anexar imagem</div>
+          <div class="cam-upload" id="cam-anexo-sorriso-box" onclick="document.getElementById('cam-anexo-sorriso').click()" ondragover="camAnexoDragOver(event)" ondragleave="camAnexoDragLeave(event)" ondrop="camAnexoDrop(event,'sorriso')">📎 Anexar imagem</div>
           <div class="cam-anexo-line"><a href="#" id="cam-anexo-sorriso-view" class="cam-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a><button type="button" id="cam-anexo-sorriso-del" class="cam-anexo-del" onclick="camExcluirAnexoSlot('sorriso')">🗑</button></div>
         </div>
         <div>
           <p class="label" style="margin-bottom:4px">Foto do Scanbody (Exocad)</p>
           <input type="file" id="cam-anexo-scanbody" accept="image/*" style="display:none" onchange="camAnexoChange(this)">
-          <div class="cam-upload" id="cam-anexo-scanbody-box" onclick="document.getElementById('cam-anexo-scanbody').click()">📎 Anexar imagem</div>
+          <div class="cam-upload" id="cam-anexo-scanbody-box" onclick="document.getElementById('cam-anexo-scanbody').click()" ondragover="camAnexoDragOver(event)" ondragleave="camAnexoDragLeave(event)" ondrop="camAnexoDrop(event,'scanbody')">📎 Anexar imagem</div>
           <div class="cam-anexo-line"><a href="#" id="cam-anexo-scanbody-view" class="cam-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a><button type="button" id="cam-anexo-scanbody-del" class="cam-anexo-del" onclick="camExcluirAnexoSlot('scanbody')">🗑</button></div>
         </div>
         <div>
           <p class="label" style="margin-bottom:4px">Anexo Detalhado (.zip)</p>
           <input type="file" id="cam-anexo-detalhado" accept=".zip" style="display:none" onchange="camAnexoChange(this)">
-          <div class="cam-upload" id="cam-anexo-detalhado-box" onclick="document.getElementById('cam-anexo-detalhado').click()">📎 Anexar arquivo</div>
+          <div class="cam-upload" id="cam-anexo-detalhado-box" onclick="document.getElementById('cam-anexo-detalhado').click()" ondragover="camAnexoDragOver(event)" ondragleave="camAnexoDragLeave(event)" ondrop="camAnexoDrop(event,'detalhado')">📎 Anexar arquivo</div>
           <div class="cam-anexo-line"><a href="#" id="cam-anexo-detalhado-view" class="cam-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a><button type="button" id="cam-anexo-detalhado-del" class="cam-anexo-del" onclick="camExcluirAnexoSlot('detalhado')">🗑</button></div>
         </div>
       </div>
@@ -906,6 +907,26 @@ function camAnexoChange(inputEl) {
     box.textContent = (slot && slot.img) ? '📎 Anexar imagem' : '📎 Anexar arquivo';
     box.classList.remove('has-file');
   }
+}
+
+function camAnexoDragOver(event) {
+  event.preventDefault();
+  event.currentTarget.classList.add('dragover');
+}
+
+function camAnexoDragLeave(event) {
+  event.currentTarget.classList.remove('dragover');
+}
+
+function camAnexoDrop(event, slotId) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('dragover');
+  var files = event.dataTransfer && event.dataTransfer.files;
+  if (!files || !files.length) return;
+  var input = document.getElementById('cam-anexo-' + slotId);
+  if (!input) return;
+  input.files = files;
+  camAnexoChange(input);
 }
 
 function camUpdateRegraBanner() {

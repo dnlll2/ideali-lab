@@ -41,6 +41,7 @@
   .dente.on{background:#1d4ed8;border-color:#3b82f6;color:#fff;font-weight:600}
   .odonto-gap{width:8px}
   .upload-placeholder{border:1px dashed rgba(255,255,255,0.18);border-radius:8px;padding:14px 12px;text-align:center;font-size:12px;color:#64748b;background:#181b26}
+  .upload-placeholder.dragover{border-style:solid;border-color:#3b82f6;background:rgba(59,130,246,0.14);color:#93c5fd}
   .tabs{display:flex;gap:6px;margin-bottom:18px;text-align:left}
   .tab-btn{flex:1;height:36px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#181b26;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
   .tab-btn.active{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
@@ -276,7 +277,7 @@
             <div class="group" id="mp-anexo-inicial-group">
               <label>Anexo (Escaneamento)</label>
               <input type="file" id="c-stl-input" accept=".stl" style="display:none" onchange="handleStlFile(event)">
-              <div class="upload-placeholder" id="c-stl-placeholder" style="cursor:pointer" onclick="document.getElementById('c-stl-input').click()">📎 Toque para escolher o arquivo de escaneamento (opcional)</div>
+              <div class="upload-placeholder" id="c-stl-placeholder" style="cursor:pointer" onclick="document.getElementById('c-stl-input').click()" ondragover="cliAnexoDragOver(event)" ondragleave="cliAnexoDragLeave(event)" ondrop="cliAnexoDrop(event,'c-stl-input')">📎 Toque para escolher o arquivo de escaneamento (opcional)</div>
             </div>
           </div>
 
@@ -292,7 +293,7 @@
         <div id="mp-anexos-lista" class="attach-list"></div>
         <div id="mp-anexo-extra-upload">
           <input type="file" id="mp-anexo-extra-input" accept=".stl" style="display:none" onchange="handleAnexoExtra(event)">
-          <div class="upload-placeholder" id="mp-anexo-extra-placeholder" style="cursor:pointer" onclick="document.getElementById('mp-anexo-extra-input').click()">📎 Anexar mais um arquivo de escaneamento</div>
+          <div class="upload-placeholder" id="mp-anexo-extra-placeholder" style="cursor:pointer" onclick="document.getElementById('mp-anexo-extra-input').click()" ondragover="cliAnexoDragOver(event)" ondragleave="cliAnexoDragLeave(event)" ondrop="cliAnexoDrop(event,'mp-anexo-extra-input')">📎 Anexar mais um arquivo de escaneamento</div>
         </div>
       </div>
     </div>
@@ -875,6 +876,26 @@ async function carregarFinanceiro() {
 
 // ── Anexo STL ────────────────────────────────────────────────
 var stlFile = null;
+
+function cliAnexoDragOver(event) {
+  event.preventDefault();
+  event.currentTarget.classList.add('dragover');
+}
+
+function cliAnexoDragLeave(event) {
+  event.currentTarget.classList.remove('dragover');
+}
+
+function cliAnexoDrop(event, inputId) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('dragover');
+  var files = event.dataTransfer && event.dataTransfer.files;
+  if (!files || !files.length) return;
+  var input = document.getElementById(inputId);
+  if (!input) return;
+  input.files = files;
+  input.dispatchEvent(new Event('change'));
+}
 
 function handleStlFile(e) {
   var file = e.target.files[0];
