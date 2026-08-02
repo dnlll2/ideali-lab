@@ -54,6 +54,8 @@
   .status-a_fazer{background:#1d3a6e;color:#93c5fd}
   .status-fazendo{background:#3d2e0e;color:#fbbf24}
   .status-finalizado{background:#0d3d2b;color:#4ade80}
+  .status-acabamento{background:#2e1d6e;color:#c4b5fd}
+  .caso-cadista{font-size:11.5px;color:#94a3b8;margin-top:2px}
   .caso-datas{display:flex;gap:8px 18px;flex-wrap:wrap;font-size:12px;color:#64748b}
   .caso-datas b{color:#cbd5e1;font-weight:600}
   .admin-banner{font-size:12px;font-weight:600;color:#fcd34d;background:#3d2e0e;border:0.5px solid rgba(251,191,36,0.35);border-radius:8px;padding:8px 12px;margin-bottom:14px;text-align:left}
@@ -527,15 +529,18 @@ function renderCasosEm(containerId, casos, textoVazio) {
     return;
   }
   lista.innerHTML = casos.map(function(c) {
-    var st = STATUS_LABEL[c.status] || c.status;
+    var acabamento = c.status === 'finalizado' && c.enviado_inove;
+    var st = acabamento ? 'Fase de Acabamento' : (STATUS_LABEL[c.status] || c.status);
+    var statusClass = acabamento ? 'acabamento' : c.status;
     return '' +
       '<div class="caso-card" onclick="abrirModalPedido(\'detalhe\',\'' + c.id + '\')">' +
         '<div class="caso-top">' +
           '<div>' +
             '<div class="caso-paciente">' + escHtml(c.paciente) + '</div>' +
             '<div class="caso-tipo">' + escHtml(c.tipo_trabalho) + '</div>' +
+            (c.cadista_nome ? '<div class="caso-cadista">🎯 Trabalho com ' + escHtml(c.cadista_nome) + '</div>' : '') +
           '</div>' +
-          '<span class="status-badge status-' + escHtml(c.status) + '">' + escHtml(st) + '</span>' +
+          '<span class="status-badge status-' + escHtml(statusClass) + '">' + escHtml(st) + '</span>' +
         '</div>' +
         '<div class="caso-datas">' +
           '<span>Entrada: <b>' + formatarDataHora(c.criado_em) + '</b></span>' +
