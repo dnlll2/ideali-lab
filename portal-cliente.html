@@ -80,6 +80,15 @@
   .attach-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
   .attach-item{display:flex;align-items:center;gap:8px;background:#181b26;border:0.5px solid rgba(255,255,255,0.1);border-radius:7px;padding:8px 10px;font-size:12.5px;color:#94a3b8}
   .attach-item .name{flex:1;color:#e2e8f0}
+  .anexos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:8px}
+  @media(max-width:480px){.anexos-grid{grid-template-columns:repeat(2,1fr)}}
+  .anexo-slot{border:1px dashed rgba(255,255,255,0.18);border-radius:8px;padding:10px 8px;text-align:center;background:#181b26}
+  .anexo-slot.has-file{border-style:solid;border-color:rgba(96,165,250,0.45);background:rgba(96,165,250,0.07)}
+  .anexo-slot .lbl{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px}
+  .anexo-slot .name{font-size:11px;color:#94a3b8;word-break:break-word;line-height:1.3}
+  .anexo-slot.has-file .name{color:#93c5fd}
+  .anexo-slot a.ver{display:block;margin-top:5px;font-size:10.5px;color:#63b3ed;text-decoration:none}
+  .anexo-slot a.ver:hover{text-decoration:underline}
   input:disabled,select:disabled,textarea:disabled{color:#94a3b8;border-color:rgba(255,255,255,0.06);background:#1c1f2c}
   .odonto-locked .dente{opacity:0.55;cursor:default}
   @media(max-width:520px){.modal-head-title h2{max-width:180px}}
@@ -888,7 +897,7 @@ async function enviarStl(sessaoToken, clienteReg, casoId, file) {
   });
 
   var nomeSeguro = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
-  var path = clienteReg + '/' + casoId + '/' + nomeSeguro;
+  var path = clienteReg + '/' + casoId + '/escaneamento-' + nomeSeguro;
   var upRes = await uploadClient.storage.from('casos').upload(path, file);
   if (upRes.error) throw upRes.error;
 }
@@ -1137,6 +1146,18 @@ async function salvarEdicaoPedido() {
 // trava e' a storage policy: gerar_jwt_upload so exige sessao valida,
 // entao a UI so oferece esse botao quando 'view' ja confirmou a_fazer) ──
 
+// Mesmos 6 campos de ordens-cam.html/portal-cadista.html (slot-filename
+// dentro da pasta do caso). Arquivos sem esse prefixo (upload antigo, de
+// antes dessa convencao) caem em "Outros anexos" no fim da lista.
+var CLI_ANEXO_SLOTS = [
+  { id: 'escaneamento', label: 'Escaneamento' },
+  { id: 'html',         label: 'HTML' },
+  { id: 'stl',          label: 'STL' },
+  { id: 'cor',          label: 'Foto da cor' },
+  { id: 'sorriso',      label: 'Foto do sorriso' },
+  { id: 'scanbody',     label: 'Foto do Scanbody (Exocad)' }
+];
+
 async function carregarAnexosExistentes(casoId) {
   var listaEl = document.getElementById('mp-anexos-lista');
   listaEl.innerHTML = '<p style="font-size:12px;color:#64748b">Carregando anexos…</p>';
@@ -1156,16 +1177,37 @@ async function carregarAnexosExistentes(casoId) {
     if (listRes.error) throw listRes.error;
 
     var arquivos = (listRes.data || []).filter(function(f) { return f && f.id; });
-    if (!arquivos.length) {
-      listaEl.innerHTML = '<p style="font-size:12px;color:#64748b">Nenhum arquivo enviado ainda.</p>';
-      return;
+
+    async function assinar(nomeArquivo) {
+      var signed = await listClient.storage.from('casos').createSignedUrl(pasta + '/' + nomeArquivo, 3600);
+      return (signed.data && signed.data.signedUrl) || '#';
     }
-    var linksHtml = await Promise.all(arquivos.map(async function(f) {
-      var signed = await listClient.storage.from('casos').createSignedUrl(pasta + '/' + f.name, 3600);
-      var url = (signed.data && signed.data.signedUrl) || '#';
-      return '<a class="attach-item" href="' + url + '" target="_blank" rel="noopener" style="text-decoration:none">📎 <span class="name">' + escHtml(f.name) + '</span> <span style="color:#63b3ed">👁 Ver</span></a>';
+
+    var slotsHtml = await Promise.all(CLI_ANEXO_SLOTS.map(async function(slot) {
+      var f = arquivos.find(function(a){ return a.name.indexOf(slot.id + '-') === 0; });
+      if (!f) {
+        return '<div class="anexo-slot"><p class="lbl">' + escHtml(slot.label) + '</p><p class="name">— Não enviado —</p></div>';
+      }
+      var url = await assinar(f.name);
+      return '<div class="anexo-slot has-file"><p class="lbl">' + escHtml(slot.label) + '</p>' +
+        '<p class="name">📎 ' + escHtml(f.name.slice(slot.id.length + 1)) + '</p>' +
+        '<a class="ver" href="' + url + '" target="_blank" rel="noopener">👁 Ver / baixar</a></div>';
     }));
-    listaEl.innerHTML = linksHtml.join('');
+
+    var outros = arquivos.filter(function(f) {
+      return !CLI_ANEXO_SLOTS.some(function(slot){ return f.name.indexOf(slot.id + '-') === 0; });
+    });
+    var outrosHtml = '';
+    if (outros.length) {
+      var outrosLinks = await Promise.all(outros.map(async function(f) {
+        var url = await assinar(f.name);
+        return '<a class="attach-item" href="' + url + '" target="_blank" rel="noopener" style="text-decoration:none">📎 <span class="name">' + escHtml(f.name) + '</span> <span style="color:#63b3ed">👁 Ver / baixar</span></a>';
+      }));
+      outrosHtml = '<p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 6px">Outros anexos</p>' +
+        '<div class="attach-list">' + outrosLinks.join('') + '</div>';
+    }
+
+    listaEl.innerHTML = '<div class="anexos-grid">' + slotsHtml.join('') + '</div>' + outrosHtml;
   } catch(e) {
     listaEl.innerHTML = '<p style="font-size:12px;color:#ef4444">Erro ao carregar anexos: ' + escHtml(e.message || String(e)) + '</p>';
   }
