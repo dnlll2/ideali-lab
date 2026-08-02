@@ -37,8 +37,6 @@
   .caso-data{font-size:12px;color:#64748b}
   .admin-banner{font-size:12px;font-weight:600;color:#fcd34d;background:#3d2e0e;border:0.5px solid rgba(251,191,36,0.35);border-radius:8px;padding:8px 12px;margin-bottom:14px;text-align:left}
   .caso-desc{font-size:12px;color:#94a3b8;margin:6px 0 10px;line-height:1.5;white-space:pre-line;word-break:break-word}
-  .caso-obs-btn{height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid rgba(45,212,191,0.4);background:transparent;color:#94a3b8;transition:all 0.15s}
-  .caso-obs-btn.tem-obs{background:#0f766e;border-color:#2dd4bf;color:#fff}
 
   /* ── Kanban (mesmo padrao visual/interacao do ordens-cam.html):
        drag-and-drop nativo HTML5 -- so mouse/desktop, sem suporte a
@@ -94,9 +92,13 @@
     #view-painel .panel-head .sub{font-size:14px}
   }
 
-  #obs-dropdown-cadista{display:none;position:fixed;z-index:300;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px;width:260px;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
-  #obs-dropdown-cadista-text{width:100%;height:80px;resize:vertical;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:12px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit}
-  #anexos-dropdown-cadista{display:none;position:fixed;z-index:300;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px;width:240px;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
+  .cadi-anexos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:420px){.cadi-anexos-grid{grid-template-columns:repeat(2,1fr)}}
+  .cadi-upload{border:1px dashed rgba(255,255,255,0.2);border-radius:8px;min-height:52px;display:flex;align-items:center;justify-content:center;text-align:center;gap:4px;color:#64748b;font-size:10.5px;padding:4px 6px;word-break:break-word;line-height:1.3}
+  .cadi-upload.editable{cursor:pointer}
+  .cadi-upload.has-file{border-style:solid;border-color:rgba(96,165,250,0.45);color:#93c5fd;background:rgba(96,165,250,0.07)}
+  .cadi-anexo-view{display:none;margin-top:4px;text-align:center;font-size:10px;color:#63b3ed;text-decoration:none}
+  .cadi-anexo-view:hover{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -117,22 +119,8 @@
   </nav>
 </div>
 
-<div id="obs-dropdown-cadista" onclick="event.stopPropagation()">
-  <p style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 6px">📝 Observação</p>
-  <textarea id="obs-dropdown-cadista-text" placeholder="Ex: aguardando confirmação de cor com o dentista..."></textarea>
-  <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px">
-    <button onclick="fecharObsCadista()" style="height:26px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.12);background:transparent;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit">Cancelar</button>
-    <button onclick="salvarObsCadista()" style="height:26px;padding:0 12px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Salvar</button>
-  </div>
-</div>
-
-<div id="anexos-dropdown-cadista" onclick="event.stopPropagation()">
-  <p style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 6px">📎 Anexos</p>
-  <div id="anexos-dropdown-cadista-body"></div>
-</div>
-
 <div id="cad-detail-overlay" onclick="fecharDetalheCadista()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:310"></div>
-<div id="cad-detail-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:311;width:min(480px,92vw);max-height:85vh;overflow-y:auto;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px">
+<div id="cad-detail-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:311;width:min(560px,95vw);max-height:88vh;overflow-y:auto;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:0.5px solid rgba(255,255,255,0.08);position:sticky;top:0;background:#1a1d27;z-index:1">
     <p style="font-size:15px;font-weight:600;color:#f1f5f9;margin:0">Detalhes do Caso</p>
     <button onclick="fecharDetalheCadista()" style="width:28px;height:28px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
@@ -294,8 +282,6 @@ function cadParseExtra(descricao) {
 
 function casoCardHtmlCadista(c) {
   var hasObs = !!(c.observacao && c.observacao.trim());
-  var btnObs = '<button class="caso-obs-btn' + (hasObs ? ' tem-obs' : '') + '" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();abrirObsCadista(\''+c.id+'\',event)" title="'+(hasObs?escHtml(c.observacao):'Adicionar observação')+'">📝'+(hasObs?' Obs.':'')+'</button>';
-  var btnAnexos = '<button class="caso-obs-btn" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();abrirAnexosCadista(\''+c.id+'\',event)" title="Ver anexos">📎</button>';
   var extra = cadParseExtra(c.descricao);
   var scanHtml = extra.scanbody ? '<div class="caso-tipo">Scanbody: ' + escHtml(extra.scanbody) + '</div>' : '';
   return '' +
@@ -306,11 +292,11 @@ function casoCardHtmlCadista(c) {
           (c.tipo_trabalho ? '<div class="caso-tipo">' + escHtml(c.tipo_trabalho) + '</div>' : '') +
           scanHtml +
         '</div>' +
+        (hasObs ? '<span title="Tem observação" style="font-size:13px;flex-shrink:0">📝</span>' : '') +
       '</div>' +
       '<div class="caso-desc">' + escHtml(extra.observacoes || c.descricao || '—') + '</div>' +
       '<div class="caso-bottom">' +
         '<span class="caso-data">Entrada: ' + formatarDataHora(c.criado_em) + '</span>' +
-        '<div style="display:flex;gap:6px">' + btnAnexos + btnObs + '</div>' +
       '</div>' +
     '</div>';
 }
@@ -446,42 +432,167 @@ async function desfazerUltimoMovimento() {
   }
 }
 
-// ── Observação (mesmo padrao do badge de qtd_elementos em ordens-cam.html) ──
-var _obsDropIdCadista = null;
-
-function abrirObsCadista(id, event) {
-  _obsDropIdCadista = id;
-  var c  = casosCadista.find(function(x){ return x.id === id; });
-  var dd = document.getElementById('obs-dropdown-cadista');
-  var ta = document.getElementById('obs-dropdown-cadista-text');
-  ta.value = (c && c.observacao) || '';
-  var rect = event.currentTarget.getBoundingClientRect();
-  dd.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
-  var top = rect.bottom + 4;
-  dd.style.top = (top + 150 > window.innerHeight ? rect.top - 154 : top) + 'px';
-  dd.style.display = '';
-  setTimeout(function() { ta.focus(); }, 0);
-  setTimeout(function() {
-    document.addEventListener('click', fecharObsCadista, { once: true });
-  }, 0);
-}
-
-function fecharObsCadista() {
-  var dd = document.getElementById('obs-dropdown-cadista');
-  if (dd) dd.style.display = 'none';
-  _obsDropIdCadista = null;
-}
-
-async function salvarObsCadista() {
-  if (!_obsDropIdCadista) return;
-  var id = _obsDropIdCadista;
-  var texto = (document.getElementById('obs-dropdown-cadista-text').value || '').trim();
-  fecharObsCadista();
-
+// ── Anexos (mesmo esquema do JWT de upload em portal-cliente.html,
+//    16_upload_stl_jwt.sql -- a policy de INSERT so confere bucket +
+//    claim cliente_reg batendo com a 1a pasta do path, entao o mesmo
+//    JWT emitido por gerar_jwt_leitura_cadista (021, role anon +
+//    claim cliente_reg DAQUELE caso) ja serve tanto pra ler quanto
+//    pra o cadista subir os proprios entregaveis -- sem precisar de
+//    nenhuma function nova) ────────────────────────────────────────
+async function camClienteAnexosCadista(id) {
   var raw = localStorage.getItem(SESSAO_KEY);
   var sessao = raw ? JSON.parse(raw) : null;
-  if (!sessao || !sessao.token) return;
+  if (!sessao || !sessao.token) throw new Error('Sessão expirada.');
 
+  var jwtRes = await sb.rpc('gerar_jwt_leitura_cadista', { p_sessao: sessao.token, p_caso_id: id });
+  if (jwtRes.error) throw jwtRes.error;
+  var row = (jwtRes.data || [])[0];
+  if (!row || !row.token) return null;
+
+  var client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: 'Bearer ' + row.token } }
+  });
+  return { client: client, pasta: row.pasta };
+}
+
+async function camListarAnexosCadista(id) {
+  var ctx = await camClienteAnexosCadista(id);
+  if (!ctx) return [];
+  var listRes = await ctx.client.storage.from('casos').list(ctx.pasta);
+  if (listRes.error) throw listRes.error;
+  var arquivos = (listRes.data || []).filter(function(f){ return f.name; });
+  return Promise.all(arquivos.map(async function(f) {
+    var signed = await ctx.client.storage.from('casos').createSignedUrl(ctx.pasta + '/' + f.name, 3600);
+    return { name: f.name, url: (signed.data && signed.data.signedUrl) || '#' };
+  }));
+}
+
+// ── Detalhe do caso (modal aberto ao clicar no card): mesmo layout
+//    de anexos do ordens-cam.html, so que o cadista so pode anexar
+//    STL, HTML e Foto do Scanbody -- os outros 3 (entrada enviada
+//    pelo laboratorio) ficam so pra visualizar -- e editar a propria
+//    observacao. Nada mais e editavel aqui. ───────────────────────
+var CAD_ANEXO_SLOTS = [
+  { id: 'escaneamento', label: 'Escaneamento',              editable: false },
+  { id: 'html',         label: 'HTML',                      editable: true  },
+  { id: 'stl',          label: 'STL',                       editable: true  },
+  { id: 'cor',          label: 'Foto da cor',                editable: false },
+  { id: 'sorriso',      label: 'Foto do sorriso',            editable: false },
+  { id: 'scanbody',     label: 'Foto do Scanbody (Exocad)',  editable: true  }
+];
+
+function cadAnexoSlotHtml(id, slot) {
+  var boxId   = 'cad-anexo-' + id + '-' + slot.id + '-box';
+  var viewId  = 'cad-anexo-' + id + '-' + slot.id + '-view';
+  var inputId = 'cad-anexo-' + id + '-' + slot.id + '-input';
+  if (!slot.editable) {
+    return '<div>'+
+      '<p style="font-size:10px;color:#4a5568;margin-bottom:4px">'+slot.label+'</p>'+
+      '<div class="cadi-upload" id="'+boxId+'">— Não enviado —</div>'+
+      '<a href="#" id="'+viewId+'" class="cadi-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a>'+
+    '</div>';
+  }
+  return '<div>'+
+    '<p style="font-size:10px;color:#4a5568;margin-bottom:4px">'+slot.label+'</p>'+
+    '<input type="file" id="'+inputId+'" style="display:none" onchange="cadUploadAnexoCadista(\''+id+'\',\''+slot.id+'\',this)">'+
+    '<div class="cadi-upload editable" id="'+boxId+'" onclick="document.getElementById(\''+inputId+'\').click()">📎 Anexar arquivo</div>'+
+    '<a href="#" id="'+viewId+'" class="cadi-anexo-view" target="_blank" rel="noopener">👁 Ver arquivo</a>'+
+  '</div>';
+}
+
+function abrirDetalheCadista(id) {
+  var c = casosCadista.find(function(x){ return x.id === id; });
+  if (!c) return;
+  var extra = cadParseExtra(c.descricao);
+  var infoFields = [
+    { label: 'Cliente',               value: c.cliente_nome || '—' },
+    { label: 'Paciente',              value: c.paciente || '—' },
+    { label: 'Tipo de trabalho',      value: c.tipo_trabalho || '—' },
+    { label: 'Scanbody',              value: extra.scanbody || '—' },
+    { label: 'Observações do pedido', value: extra.observacoes || '—' },
+    { label: 'Status',                value: STATUS_LABEL[c.status] || c.status },
+    { label: 'Entrada',               value: formatarDataHora(c.criado_em) }
+  ];
+  var infoHtml = infoFields.map(function(f) {
+    return '<div style="background:#13161f;border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px">'+
+      '<p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 4px">'+f.label+'</p>'+
+      '<p style="font-size:13px;color:#e2e8f0;margin:0;line-height:1.5;white-space:pre-line;word-break:break-word">'+escHtml(f.value)+'</p>'+
+    '</div>';
+  }).join('');
+
+  var anexosHtml = '<div>'+
+    '<p style="font-size:12px;color:#64748b;margin-bottom:6px">Anexos</p>'+
+    '<div class="cadi-anexos-grid">' + CAD_ANEXO_SLOTS.map(function(slot){ return cadAnexoSlotHtml(id, slot); }).join('') + '</div>'+
+  '</div>';
+
+  var obsHtml = '<div>'+
+    '<p style="font-size:12px;color:#64748b;margin-bottom:4px">Sua observação (visível só pra você e o laboratório)</p>'+
+    '<textarea id="cad-detail-obs-text" rows="3" placeholder="Ex: aguardando confirmação de cor com o dentista..." '+
+      'style="width:100%;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:13px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit;resize:vertical">'+escHtml(c.observacao || '')+'</textarea>'+
+    '<div style="display:flex;justify-content:flex-end;margin-top:6px">'+
+      '<button onclick="cadSalvarObsDetalhe(\''+id+'\')" style="height:30px;padding:0 14px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Salvar observação</button>'+
+    '</div>'+
+  '</div>';
+
+  var body = document.getElementById('cad-detail-body');
+  if (!body) return;
+  body.innerHTML = infoHtml + anexosHtml + obsHtml;
+  document.getElementById('cad-detail-overlay').style.display = '';
+  document.getElementById('cad-detail-panel').style.display   = '';
+  cadPrefillAnexosDetalhe(id);
+}
+
+function fecharDetalheCadista() {
+  document.getElementById('cad-detail-overlay').style.display = 'none';
+  document.getElementById('cad-detail-panel').style.display   = 'none';
+}
+
+async function cadPrefillAnexosDetalhe(id) {
+  try {
+    var arquivos = await camListarAnexosCadista(id);
+    CAD_ANEXO_SLOTS.forEach(function(slot) {
+      var f = arquivos.find(function(a){ return a.name.indexOf(slot.id + '-') === 0; });
+      if (!f) return;
+      var box  = document.getElementById('cad-anexo-' + id + '-' + slot.id + '-box');
+      var view = document.getElementById('cad-anexo-' + id + '-' + slot.id + '-view');
+      if (box) { box.textContent = '📎 ' + f.name.slice(slot.id.length + 1); box.classList.add('has-file'); }
+      if (view) { view.href = f.url; view.style.display = 'block'; }
+    });
+  } catch(e) {
+    console.error('[cadPrefillAnexosDetalhe]', e.message || e);
+  }
+}
+
+async function cadUploadAnexoCadista(id, slotId, inputEl) {
+  var file = inputEl.files && inputEl.files[0];
+  if (!file) return;
+  var box = document.getElementById('cad-anexo-' + id + '-' + slotId + '-box');
+  if (box) box.textContent = 'Enviando…';
+  try {
+    var ctx = await camClienteAnexosCadista(id);
+    if (!ctx) throw new Error('Sem pasta de anexos para este caso.');
+    var path = ctx.pasta + '/' + slotId + '-' + file.name;
+    var upRes = await ctx.client.storage.from('casos').upload(path, file);
+    if (upRes.error) throw upRes.error;
+    var signed = await ctx.client.storage.from('casos').createSignedUrl(path, 3600);
+    if (box) { box.textContent = '📎 ' + file.name; box.classList.add('has-file'); }
+    var view = document.getElementById('cad-anexo-' + id + '-' + slotId + '-view');
+    if (view) { view.href = (signed.data && signed.data.signedUrl) || '#'; view.style.display = 'block'; }
+  } catch(e) {
+    if (box) box.textContent = '📎 Anexar arquivo';
+    alert('Erro ao enviar arquivo: ' + (e.message || e));
+  } finally {
+    inputEl.value = '';
+  }
+}
+
+async function cadSalvarObsDetalhe(id) {
+  var ta = document.getElementById('cad-detail-obs-text');
+  if (!ta) return;
+  var texto = (ta.value || '').trim();
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  if (!sessao || !sessao.token) { alert('Sessão expirada.'); return; }
   try {
     var res = await sb.rpc('atualizar_observacao_caso_cadista', {
       p_sessao: sessao.token,
@@ -493,118 +604,7 @@ async function salvarObsCadista() {
     if (c) c.observacao = texto || null;
     renderCadistaBoard();
   } catch(e) {
-    var msg = document.getElementById('msg-casos');
-    msg.textContent = e.message || 'Erro ao salvar observação.';
-    msg.className = 'msg error';
-  }
-}
-
-// ── Anexos (mesmo esquema do JWT de upload em portal-cliente.html,
-//    16_upload_stl_jwt.sql -- so que aqui e um JWT de LEITURA emitido
-//    por gerar_jwt_leitura_cadista, 021_scanbody_anexos_cadista.sql,
-//    que so libera a pasta do caso se ele estiver mesmo atribuido ao
-//    cadista logado) ─────────────────────────────────────────────
-var _anexosDropIdCadista = null;
-
-async function camListarAnexosCadista(id) {
-  var raw = localStorage.getItem(SESSAO_KEY);
-  var sessao = raw ? JSON.parse(raw) : null;
-  if (!sessao || !sessao.token) throw new Error('Sessão expirada.');
-
-  var jwtRes = await sb.rpc('gerar_jwt_leitura_cadista', { p_sessao: sessao.token, p_caso_id: id });
-  if (jwtRes.error) throw jwtRes.error;
-  var row = (jwtRes.data || [])[0];
-  if (!row || !row.token) return [];
-
-  var readClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: 'Bearer ' + row.token } }
-  });
-  var listRes = await readClient.storage.from('casos').list(row.pasta);
-  if (listRes.error) throw listRes.error;
-  var arquivos = (listRes.data || []).filter(function(f){ return f.name; });
-  return Promise.all(arquivos.map(async function(f) {
-    var signed = await readClient.storage.from('casos').createSignedUrl(row.pasta + '/' + f.name, 3600);
-    return { name: f.name, url: (signed.data && signed.data.signedUrl) || '#' };
-  }));
-}
-
-async function abrirAnexosCadista(id, event) {
-  _anexosDropIdCadista = id;
-  var dd   = document.getElementById('anexos-dropdown-cadista');
-  var body = document.getElementById('anexos-dropdown-cadista-body');
-  body.innerHTML = '<p style="font-size:11px;color:#64748b">Carregando…</p>';
-  var rect = event.currentTarget.getBoundingClientRect();
-  dd.style.left = Math.min(rect.left, window.innerWidth - 260) + 'px';
-  var top = rect.bottom + 4;
-  dd.style.top = (top + 160 > window.innerHeight ? rect.top - 164 : top) + 'px';
-  dd.style.display = '';
-  setTimeout(function() {
-    document.addEventListener('click', fecharAnexosCadista, { once: true });
-  }, 0);
-
-  try {
-    var arquivos = await camListarAnexosCadista(id);
-    body.innerHTML = arquivos.length ? arquivos.map(function(f) {
-      return '<a href="'+f.url+'" target="_blank" rel="noopener" style="display:block;font-size:11px;color:#93c5fd;text-decoration:none;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,0.06)">📎 '+escHtml(f.name)+'</a>';
-    }).join('') : '<p style="font-size:11px;color:#64748b">Nenhum anexo enviado.</p>';
-  } catch(e) {
-    body.innerHTML = '<p style="font-size:11px;color:#ef4444">Erro: '+escHtml(e.message||String(e))+'</p>';
-  }
-}
-
-function fecharAnexosCadista() {
-  var dd = document.getElementById('anexos-dropdown-cadista');
-  if (dd) dd.style.display = 'none';
-  _anexosDropIdCadista = null;
-}
-
-// ── Detalhe do caso (modal aberto ao clicar no card) ────────────
-function abrirDetalheCadista(id) {
-  var c = casosCadista.find(function(x){ return x.id === id; });
-  if (!c) return;
-  var extra = cadParseExtra(c.descricao);
-  var fields = [
-    { label: 'Cliente',               value: c.cliente_nome || '—' },
-    { label: 'Paciente',              value: c.paciente || '—' },
-    { label: 'Tipo de trabalho',      value: c.tipo_trabalho || '—' },
-    { label: 'Scanbody',              value: extra.scanbody || '—' },
-    { label: 'Observações do pedido', value: extra.observacoes || '—' },
-    { label: 'Status',                value: STATUS_LABEL[c.status] || c.status },
-    { label: 'Entrada',               value: formatarDataHora(c.criado_em) }
-  ];
-  var body = document.getElementById('cad-detail-body');
-  if (!body) return;
-  body.innerHTML = fields.map(function(f) {
-    return '<div style="background:#13161f;border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px">'+
-      '<p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 4px">'+f.label+'</p>'+
-      '<p style="font-size:13px;color:#e2e8f0;margin:0;line-height:1.5;white-space:pre-line;word-break:break-word">'+escHtml(f.value)+'</p>'+
-    '</div>';
-  }).join('') + '<div id="cad-detail-anexos"></div>';
-  document.getElementById('cad-detail-overlay').style.display = '';
-  document.getElementById('cad-detail-panel').style.display   = '';
-  camCarregarAnexosDetalheCadista(id);
-}
-
-function fecharDetalheCadista() {
-  document.getElementById('cad-detail-overlay').style.display = 'none';
-  document.getElementById('cad-detail-panel').style.display   = 'none';
-}
-
-async function camCarregarAnexosDetalheCadista(id) {
-  var el = document.getElementById('cad-detail-anexos');
-  if (!el) return;
-  el.innerHTML = '<p style="font-size:11px;color:#64748b;margin-top:4px">Carregando anexos…</p>';
-  try {
-    var arquivos = await camListarAnexosCadista(id);
-    if (!arquivos.length) { el.innerHTML = ''; return; }
-    el.innerHTML = '<p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.07em;margin:4px 0 6px">Anexos</p>'+
-      '<div style="display:flex;flex-wrap:wrap;gap:8px">'+
-      arquivos.map(function(f) {
-        return '<a href="'+f.url+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#93c5fd;text-decoration:none;background:#22263a;border:0.5px solid rgba(255,255,255,0.1);border-radius:6px;padding:5px 10px">📎 '+escHtml(f.name)+'</a>';
-      }).join('') +
-      '</div>';
-  } catch(e) {
-    el.innerHTML = '<p style="font-size:11px;color:#ef4444;margin-top:4px">Erro ao carregar anexos: '+escHtml(e.message||String(e))+'</p>';
+    alert('Erro ao salvar observação: ' + (e.message || e));
   }
 }
 
