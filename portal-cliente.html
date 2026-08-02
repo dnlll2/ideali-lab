@@ -276,10 +276,12 @@
       </form>
 
       <div class="group" id="mp-anexos-existentes-group" style="display:none">
-        <label>Arquivos de escaneamento</label>
+        <label>Anexos do pedido</label>
         <div id="mp-anexos-lista" class="attach-list"></div>
-        <input type="file" id="mp-anexo-extra-input" accept=".stl" style="display:none" onchange="handleAnexoExtra(event)">
-        <div class="upload-placeholder" id="mp-anexo-extra-placeholder" style="cursor:pointer" onclick="document.getElementById('mp-anexo-extra-input').click()">📎 Anexar mais um arquivo de escaneamento</div>
+        <div id="mp-anexo-extra-upload">
+          <input type="file" id="mp-anexo-extra-input" accept=".stl" style="display:none" onchange="handleAnexoExtra(event)">
+          <div class="upload-placeholder" id="mp-anexo-extra-placeholder" style="cursor:pointer" onclick="document.getElementById('mp-anexo-extra-input').click()">📎 Anexar mais um arquivo de escaneamento</div>
+        </div>
       </div>
     </div>
     <div class="modal-foot" id="mp-footer"></div>
@@ -1029,10 +1031,12 @@ async function abrirModalPedido(mode, casoId) {
     document.getElementById('mp-titulo').textContent = c.paciente || 'Pedido';
     document.getElementById('mp-subtitulo').textContent = 'Enviado em ' + formatarData(c.criado_em) + ' — ' + st;
 
+    document.getElementById('mp-anexos-existentes-group').style.display = '';
+    document.getElementById('mp-anexo-extra-upload').style.display = (c.status === 'a_fazer') ? '' : 'none';
+    carregarAnexosExistentes(casoId);
+
     if (c.status === 'a_fazer') {
       modalPedidoMode = 'view';
-      document.getElementById('mp-anexos-existentes-group').style.display = '';
-      carregarAnexosExistentes(casoId);
     } else {
       modalPedidoMode = 'view-locked';
       var banner = document.getElementById('mp-lock-banner');
@@ -1142,13 +1146,21 @@ async function carregarAnexosExistentes(casoId) {
     var listClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: 'Bearer ' + jwtRes.data } }
     });
-    var listRes = await listClient.storage.from('casos').list(sessao.cliente_reg + '/' + casoId);
+    var pasta = sessao.cliente_reg + '/' + casoId;
+    var listRes = await listClient.storage.from('casos').list(pasta);
     if (listRes.error) throw listRes.error;
 
     var arquivos = (listRes.data || []).filter(function(f) { return f && f.id; });
-    listaEl.innerHTML = arquivos.length
-      ? arquivos.map(function(f) { return '<div class="attach-item">📎 <span class="name">' + escHtml(f.name) + '</span></div>'; }).join('')
-      : '<p style="font-size:12px;color:#64748b">Nenhum arquivo enviado ainda.</p>';
+    if (!arquivos.length) {
+      listaEl.innerHTML = '<p style="font-size:12px;color:#64748b">Nenhum arquivo enviado ainda.</p>';
+      return;
+    }
+    var linksHtml = await Promise.all(arquivos.map(async function(f) {
+      var signed = await listClient.storage.from('casos').createSignedUrl(pasta + '/' + f.name, 3600);
+      var url = (signed.data && signed.data.signedUrl) || '#';
+      return '<a class="attach-item" href="' + url + '" target="_blank" rel="noopener" style="text-decoration:none">📎 <span class="name">' + escHtml(f.name) + '</span> <span style="color:#63b3ed">👁 Ver</span></a>';
+    }));
+    listaEl.innerHTML = linksHtml.join('');
   } catch(e) {
     listaEl.innerHTML = '<p style="font-size:12px;color:#ef4444">Erro ao carregar anexos: ' + escHtml(e.message || String(e)) + '</p>';
   }
