@@ -1480,9 +1480,37 @@ function showConnError(msg) {
   if (msg2) msg2.textContent  = msg;
 }
 
+// Clientes cadastrados direto no banco (SQL, ou aprovados via
+// cadastro.html) nao entravam automaticamente no array hardcoded
+// `clients` de shared.js -- so apareciam aqui depois de alguem editar
+// shared.js na mao e publicar. Isso completa `clients` com qualquer
+// reg que exista em cadastro_clientes e ainda nao esteja no array (so
+// adiciona os que faltam, nunca sobrescreve um ja existente, pra nao
+// perder dado mais completo que so exista no hardcoded). ───────────
+async function syncClientsFromDb() {
+  try {
+    var res = await sb.from('cadastro_clientes')
+      .select('reg,nome,cpf,cro,end_str,bairro,cidade,uf,cep,tel,obs,regra_padrao');
+    if (res.error) throw res.error;
+    (res.data || []).forEach(function(row) {
+      if (clients.some(function(c){ return c.reg === row.reg; })) return;
+      var novo = {
+        reg: row.reg, nome: row.nome, cpf: row.cpf || '', cro: row.cro || '',
+        end: row.end_str || '', bairro: row.bairro || '', cidade: row.cidade || '',
+        uf: row.uf || '', cep: row.cep || '', tel: row.tel || '', obs: row.obs || ''
+      };
+      if (row.regra_padrao) novo.regraPadrao = row.regra_padrao;
+      clients.push(novo);
+    });
+  } catch(e) {
+    console.error('[syncClientsFromDb]', e.message || e);
+  }
+}
+
 async function init() {
   camInitReportToggle();
   try {
+    await syncClientsFromDb();
     await loadCadistasReais();
     await loadOrdensCam();
   } catch(e) {
