@@ -16,6 +16,7 @@
   .sub{font-size:13px;color:#64748b;margin-bottom:22px}
   .group{margin-bottom:14px;text-align:left}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row2 .group:only-child{grid-column:1 / -1}
   label{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:5px}
   input,select,textarea{width:100%;background:#22263a;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:0 12px;font-size:14px;color:#e2e8f0;outline:none;font-family:inherit}
   input,select{height:42px}
@@ -183,6 +184,8 @@
     #casos-lista,#casos-andamento-lista,#casos-entregues-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
     #casos-lista .caso-card,#casos-andamento-lista .caso-card,#casos-entregues-lista .caso-card{margin-bottom:0}
     .form-grid{display:grid;grid-template-columns:1.1fr 0.9fr;column-gap:28px;align-items:start}
+    .form-grid > *{min-width:0}
+    .form-grid .group-full{grid-column:1 / -1}
   }
 </style>
 </head>
@@ -242,7 +245,7 @@
           </div>
         </div>
 
-        <div class="group">
+        <div class="group group-full">
           <label>Odontograma — selecione os dentes <span class="req">*</span></label>
           <div class="odonto" id="odonto"></div>
           <p id="odonto-sel" style="font-size:12px;color:#64748b;margin-top:6px;text-align:center">Nenhum dente selecionado</p>
@@ -967,6 +970,7 @@ function renderModalPedidoFooter() {
 
 function fecharModalPedido() {
   document.getElementById('modal-pedido-overlay').classList.remove('open');
+  document.body.style.overflow = '';
   modalPedidoMode = null;
   modalPedidoCasoId = null;
   modalPedidoStatus = null;
@@ -978,6 +982,7 @@ async function abrirModalPedido(mode, casoId) {
   document.getElementById('msg-caso').className = 'msg';
   document.getElementById('mp-lock-banner').style.display = 'none';
   document.getElementById('modal-pedido-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
 
   if (mode === 'create') {
     modalPedidoMode = 'create';
