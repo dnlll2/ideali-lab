@@ -544,9 +544,26 @@ function renderCasosEm(containerId, casos, textoVazio) {
     return;
   }
   lista.innerHTML = casos.map(function(c) {
-    var acabamento = c.status === 'finalizado' && c.enviado_inove;
-    var st = acabamento ? 'Fresagem em Maquiagem' : (STATUS_LABEL[c.status] || c.status);
-    var statusClass = acabamento ? 'acabamento' : c.status;
+    // Rotulo pro cliente: "Fresagem em Maquiagem" so quando o pedido
+    // ja foi de fato enviado pra Inove (enviado_inove) -- nunca antes
+    // disso, mesmo se ja estiver "finalizado" internamente. Enquanto
+    // nao vai pra producao (status != finalizado), A Fazer/Fazendo
+    // seguem se ja tem cadista atribuido ou nao, nao o status interno
+    // do kanban do cadista.
+    var st, statusClass;
+    if (c.status === 'finalizado' && c.enviado_inove) {
+      st = 'Fresagem em Maquiagem';
+      statusClass = 'acabamento';
+    } else if (c.status === 'finalizado') {
+      st = 'Finalizado';
+      statusClass = 'finalizado';
+    } else if (c.cadista_nome) {
+      st = 'Fazendo';
+      statusClass = 'fazendo';
+    } else {
+      st = 'A Fazer';
+      statusClass = 'a_fazer';
+    }
     return '' +
       '<div class="caso-card" onclick="abrirModalPedido(\'detalhe\',\'' + c.id + '\')">' +
         '<div class="caso-top">' +
