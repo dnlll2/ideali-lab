@@ -963,15 +963,11 @@ async function confirmarPagamentoInove(reg, btn) {
 
 // Acha o mes mais recente (ate o mes calendario atual) com dado real em controle_mensal
 // (valor_mes > 0). Se o mes atual ja tiver dado, fica nele; so cai pro anterior se estiver vazio.
+// Sempre abre no mes-calendario atual, mesmo que ainda nao tenha nenhum valor_mes
+// lancado nele -- mes atual "zerado" e um estado valido (nada finalizado/faturado
+// ainda), nao motivo pra pular pro mes anterior.
 async function findDefaultMonth() {
-  var res = await sb.from('controle_mensal').select('mes,ano,valor_mes').gt('valor_mes', 0);
-  if (res.error || !res.data || !res.data.length) return { m: currentMonth, y: currentYear };
-  var rows = res.data.filter(function(r) {
-    return r.ano < currentYear || (r.ano === currentYear && r.mes <= currentMonth);
-  });
-  if (!rows.length) return { m: currentMonth, y: currentYear };
-  rows.sort(function(a, b) { return (b.ano - a.ano) || (b.mes - a.mes); });
-  return { m: rows[0].mes, y: rows[0].ano };
+  return { m: currentMonth, y: currentYear };
 }
 
 async function init() {
