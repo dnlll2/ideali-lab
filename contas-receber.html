@@ -118,6 +118,7 @@ async function loadMonthData(m, y) {
     var folder = y + '_' + m;
     var dbRes = await sb.from('controle_mensal').select('*').eq('mes',m).eq('ano',y);
     var storRes = await sb.storage.from('comprovantes').list(folder);
+    var aportesRes = await sb.from('pagamento_aportes').select('*').eq('mes',m).eq('ano',y).order('data_pagamento');
     if (dbRes.error) throw dbRes.error;
     var rows = dbRes.data || [];
     var compMap = {};
@@ -132,16 +133,26 @@ async function loadMonthData(m, y) {
       });
       Object.keys(compMap).forEach(function(k){compMap[k].sort(function(a,b){return a.name<b.name?-1:1;});});
     }
+    var aportesMap = {};
+    if (aportesRes.error) {
+      console.error('loadMonthData (aportes):', aportesRes.error);
+    } else {
+      (aportesRes.data||[]).forEach(function(a) {
+        if (!aportesMap[a.cliente_reg]) aportesMap[a.cliente_reg] = [];
+        aportesMap[a.cliente_reg].push(a);
+      });
+    }
     var state = {};
     clients.forEach(function(c) {
-      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,obs_pagamento:'',comprovantes:compMap[c.reg]||[]};
+      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,obs_pagamento:'',comprovantes:compMap[c.reg]||[],aportes:aportesMap[c.reg]||[]};
     });
     rows.forEach(function(r) {
       state[r.cliente_reg] = {
         recebido:!!r.recebido, enviado:!!r.enviado, quitado:!!r.quitado,
         valor_mes:Number(r.valor_mes)||0, valor_pago:Number(r.valor_pago)||0,
         obs_pagamento:r.obs_pagamento||'',
-        comprovantes:compMap[r.cliente_reg]||[]
+        comprovantes:compMap[r.cliente_reg]||[],
+        aportes:aportesMap[r.cliente_reg]||[]
       };
     });
     return state;
@@ -335,15 +346,19 @@ document.addEventListener('click', function(e) {
 
 // ── Counts ────────────────────────────────────────────────────
 function updateCounts() {
-  var rec=0,env=0,qui=0,pen=0,totVal=0,totPago=0;
+  var rec=0,env=0,qui=0,pen=0,totVal=0,totPago=0,totRestante=0;
   clients.forEach(function(c) {
     var v = dbState[c.reg] || {};
     if (v.recebido) rec++;
     if (v.enviado)  env++;
     if (v.quitado)  qui++;
     if (!v.recebido && !v.enviado && !v.quitado) pen++;
-    totVal  += Number(v.valor_mes  || 0);
-    totPago += Number(v.valor_pago || 0);
+    var vm = Number(v.valor_mes||0), vp = Number(v.valor_pago||0);
+    totVal  += vm;
+    totPago += vp;
+    // Cliente que pagou mais do que faturou no mes (ex: quitando saldo de mes anterior)
+    // nao gera "restante" negativo -- trata como 0, tanto no card quanto na comissao a receber.
+    totRestante += Math.max(0, vm - vp);
   });
   document.getElementById('count-recebido').textContent = rec;
   document.getElementById('count-enviado').textContent  = env;
@@ -351,9 +366,9 @@ function updateCounts() {
   document.getElementById('count-pendente').textContent = pen;
   var comTotal      = totVal * COMISSAO;
   var comLiquida     = totPago * COMISSAO;
-  var comRestante    = comTotal - comLiquida;
+  var comRestante    = totRestante * COMISSAO;
   document.getElementById('total-vendas').textContent       = fmt(totVal);
-  document.getElementById('total-a-receber').textContent    = fmt(totVal - totPago);
+  document.getElementById('total-a-receber').textContent    = fmt(totRestante);
   document.getElementById('total-com-liq').textContent      = fmt(comLiquida);
   document.getElementById('total-com-bruta').textContent    = fmt(comTotal);
   document.getElementById('total-com-restante').textContent = fmt(comRestante);
@@ -419,7 +434,8 @@ function renderDetail() {
   var hasEnd  = c.end || c.bairro || c.cidade;
   var ro      = !isCurrentMonth() && !historicoEditMode;
   var valorMes = Number(cv.valor_mes||0), valorPago = Number(cv.valor_pago||0);
-  var restante = valorMes - valorPago, comissao = valorMes * COMISSAO;
+  // Cliente que pagou mais do que faturou no mes nao gera restante negativo -- vira 0.
+  var restante = Math.max(0, valorMes - valorPago), comissao = valorMes * COMISSAO;
 
   var badge = cv.quitado
     ? '<span class="badge" style="background:'+hexToRgba(T().success,0.18)+';color:'+T().success+';border:0.5px solid '+T().success+'"><i class="ti ti-check" style="font-size:11px"></i> Quitado</span>'
@@ -457,7 +473,11 @@ function renderDetail() {
         '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px"><i class="ti ti-currency-dollar" style="font-size:13px;vertical-align:-1px"></i> Valores</p>'+
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'+
           '<div><p class="label" style="margin-bottom:5px">Valor do mês (R$)</p><input class="fin-input" type="number" id="fin-valor-'+c.reg+'" value="'+(Number(cv.valor_mes)||0)+'" placeholder="0,00" min="0" step="0.01" oninput="calcPreview('+c.reg+')"></div>'+
-          '<div><p class="label" style="margin-bottom:5px">Valor pago (R$)</p><input class="fin-input" type="number" id="fin-pago-'+c.reg+'" value="'+(Number(cv.valor_pago)||0)+'" placeholder="0,00" min="0" step="0.01" oninput="calcPreview('+c.reg+')"></div>'+
+          '<div><p class="label" style="margin-bottom:5px">Valor pago (R$)</p>'+
+            ((cv.aportes||[]).length
+              ? '<div class="fin-input" style="display:flex;align-items:center;color:'+T().success+';font-weight:600;background:#161822" title="Somado automaticamente pelo histórico de pagamentos abaixo">'+fmt(cv.valor_pago)+'</div>'
+              : '<input class="fin-input" type="number" id="fin-pago-'+c.reg+'" value="'+(Number(cv.valor_pago)||0)+'" placeholder="0,00" min="0" step="0.01" oninput="calcPreview('+c.reg+')">')+
+          '</div>'+
         '</div>'+
         '<div style="display:flex;gap:8px;align-items:center">'+
           '<div style="flex:1;background:#0f1117;border-radius:8px;padding:8px"><p class="label">Restante</p><p style="font-size:14px;font-weight:500;color:'+T().danger+'" id="prev-restante-'+c.reg+'">'+fmt(restante)+'</p></div>'+
@@ -470,6 +490,8 @@ function renderDetail() {
           '<textarea id="fin-obs-'+c.reg+'" style="width:100%;height:54px;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 10px;font-size:13px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit;resize:none" placeholder="Ex: Aguardando, vai pagar dia X">'+escHtml(cv.obs_pagamento||'')+'</textarea>'+
         '</div>'+
       '</div>';
+
+  var aportesSection = (!ro || (cv.aportes||[]).length) ? renderAportesSection(c.reg, cv, ro) : '';
 
   var rows = '';
   if (c.cpf)    rows += '<div class="detail-row"><i class="ti ti-id-badge" style="font-size:16px;color:#4a5568;margin-top:1px;flex-shrink:0"></i><div><p class="label">CPF / CNPJ</p><p class="val">' + c.cpf + '</p></div></div>';
@@ -496,15 +518,20 @@ function renderDetail() {
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' + dt('recebido','ti-download','Extrato recebido') + dt('enviado','ti-upload','Extrato enviado') + dt('quitado','ti-circle-check','Quitado') +
     (function(){var cl=cv.comprovantes||[];var n=cl.length;return '<button class="comp-clip'+(n?' has-comp':'')+'" style="width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:13px;height:30px" onclick="toggleCompMenu('+c.reg+',event)"><i class="ti ti-paperclip" style="font-size:14px"></i> '+(n?'<span style="color:'+T().success+'">'+n+' comprovante'+(n>1?'s':'')+'</span>':'Comprovante')+'</button>';})() + '</div>' +
     finSection +
+    aportesSection +
     '<div>' + rows + '</div>';
 }
 
 function calcPreview(reg) {
   var vM = parseFloat(document.getElementById('fin-valor-'+reg).value) || 0;
-  var vP = parseFloat(document.getElementById('fin-pago-'+reg).value)  || 0;
+  // Sem input #fin-pago-<reg> = valor pago vem do historico de aportes (ver renderAportesSection).
+  var elPago = document.getElementById('fin-pago-'+reg);
+  var vP = elPago ? (parseFloat(elPago.value) || 0) : Number((dbState[reg]||{}).valor_pago||0);
   var elR = document.getElementById('prev-restante-'+reg);
   var elC = document.getElementById('prev-comissao-'+reg);
-  if (elR) { elR.textContent = fmt(vM-vP); elR.style.color = vM-vP>0 ? T().danger : T().success; }
+  // Cliente que pagou mais do que faturou no mes nao gera restante negativo -- vira 0.
+  var rest = Math.max(0, vM - vP);
+  if (elR) { elR.textContent = fmt(rest); elR.style.color = rest>0 ? T().danger : T().success; }
   if (elC) elC.textContent = fmt(vM * COMISSAO);
 }
 
@@ -562,7 +589,9 @@ async function saveFinanceiro(reg) {
   var elPago  = document.getElementById('fin-pago-'+reg);
   var elObs   = document.getElementById('fin-obs-'+reg);
   var vM   = parseFloat(elValor ? elValor.value : '') || 0;
-  var vP   = parseFloat(elPago  ? elPago.value  : '') || 0;
+  // Sem input #fin-pago-<reg> = valor pago já é somado pelo histórico de aportes
+  // (ver renderAportesSection) -- nesse caso não reenvia 0 por cima do que já existe.
+  var vP   = elPago ? (parseFloat(elPago.value) || 0) : Number((s.valor_pago)||0);
   var vObs = elObs ? elObs.value.trim() : '';
 
   var atual = await fetchCurrentRow(reg);
@@ -601,10 +630,168 @@ async function clearFinanceiro(reg) {
   var atual = await fetchCurrentRow(reg);
   if (!confirmReducaoValor(atual, {valor_mes:0, valor_pago:0})) return;
   var s = dbState[reg] || {};
-  s.valor_mes = 0; s.valor_pago = 0;
+  var aportes = s.aportes || [];
+  // Zerar limpa o histórico de aportes também -- senão ele ficaria com lançamentos
+  // que não batem mais com valor_pago=0, e o próximo aporte novo somaria errado.
+  for (var i = 0; i < aportes.length; i++) {
+    if (aportes[i].comprovante_path) await sb.storage.from('comprovantes').remove([aportes[i].comprovante_path]);
+  }
+  if (aportes.length) await sb.from('pagamento_aportes').delete().eq('cliente_reg',reg).eq('mes',viewMonth).eq('ano',viewYear);
+  s.valor_mes = 0; s.valor_pago = 0; s.aportes = [];
   dbState[reg] = s;
   updateCounts(); renderDetail();
   await patchControleMensal(reg, {valor_mes:0, valor_pago:0});
+}
+
+// ── Histórico de pagamentos (aportes) ────────────────────────────
+// Cada pagamento lançado aqui vira 1 linha em pagamento_aportes com data,
+// valor e comprovante próprios -- valor_pago em controle_mensal passa a ser
+// a soma dessas linhas (ver adicionarAporte/excluirAporte), em vez de um
+// número digitado à mão, pra cliente que paga picado até quitar o mês.
+function renderAportesSection(reg, cv, ro) {
+  var list = (cv.aportes||[]).slice().sort(function(a,b){ return new Date(a.data_pagamento) - new Date(b.data_pagamento); });
+  var itensHtml = list.length
+    ? list.map(function(a) {
+        var dataFmt = new Date(a.data_pagamento+'T00:00:00').toLocaleDateString('pt-BR');
+        var compHtml = a.comprovante_url
+          ? '<a href="'+a.comprovante_url+'" target="_blank" rel="noopener" style="color:'+T().accent+';font-size:11px;text-decoration:none"><i class="ti ti-paperclip"></i> Ver comprovante</a>'
+          : '<span style="font-size:11px;color:#4a5568">'+(a.legado?'Lançamento anterior (sem comprovante)':'Sem comprovante')+'</span>';
+        var delBtn = ro ? '' : '<button onclick="excluirAporte('+reg+',\''+a.id+'\')" title="Excluir" style="width:24px;height:24px;border-radius:6px;border:0.5px solid '+hexToRgba(T().danger,0.4)+';background:transparent;color:'+T().danger+';display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0"><i class="ti ti-trash" style="font-size:12px"></i></button>';
+        return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid rgba(255,255,255,0.06)">'+
+          '<div style="flex:1;min-width:0"><p style="font-size:13px;color:'+T().text+'">'+dataFmt+' <span style="color:'+T().success+';font-weight:600">'+fmt(a.valor)+'</span></p>'+compHtml+'</div>'+
+          delBtn+
+        '</div>';
+      }).join('')
+    : '<p style="font-size:12px;color:#4a5568;padding:6px 0">Nenhum pagamento lançado no histórico ainda.</p>';
+
+  var addFormHtml = ro ? '' :
+    '<div id="aporte-form-'+reg+'" style="display:none;margin-top:10px;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.08)">'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'+
+        '<div><p class="label" style="margin-bottom:5px">Data</p><input class="fin-input" type="date" id="aporte-data-'+reg+'" value="'+new Date().toISOString().slice(0,10)+'"></div>'+
+        '<div><p class="label" style="margin-bottom:5px">Valor (R$)</p><input class="fin-input" type="number" id="aporte-valor-'+reg+'" placeholder="0,00" min="0.01" step="0.01"></div>'+
+      '</div>'+
+      '<div style="margin-bottom:8px"><p class="label" style="margin-bottom:5px">Comprovante (obrigatório)</p><input class="fin-input" style="padding:4px" type="file" id="aporte-file-'+reg+'" accept="image/*,application/pdf"></div>'+
+      '<div style="display:flex;gap:8px;justify-content:flex-end">'+
+        '<button onclick="cancelarAporte('+reg+')" style="height:32px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:transparent;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">Cancelar</button>'+
+        '<button class="save-btn" id="aporte-save-'+reg+'" onclick="adicionarAporte('+reg+')">Salvar pagamento</button>'+
+      '</div>'+
+    '</div>';
+
+  return '<div class="fin-card" style="margin-bottom:14px">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'+
+      '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em"><i class="ti ti-history" style="font-size:13px;vertical-align:-1px"></i> Histórico de pagamentos</p>'+
+      (ro ? '' : '<button onclick="toggleAporteForm('+reg+')" style="height:26px;padding:0 10px;border-radius:7px;border:0.5px solid '+hexToRgba(T().success,0.4)+';background:'+hexToRgba(T().success,0.1)+';color:'+T().success+';font-size:12px;cursor:pointer;font-family:inherit">+ Adicionar pagamento</button>')+
+    '</div>'+
+    itensHtml + addFormHtml +
+  '</div>';
+}
+
+function toggleAporteForm(reg) {
+  var el = document.getElementById('aporte-form-'+reg);
+  if (el) el.style.display = (el.style.display === 'none') ? '' : 'none';
+}
+
+function cancelarAporte(reg) {
+  var el = document.getElementById('aporte-form-'+reg);
+  if (el) el.style.display = 'none';
+}
+
+async function adicionarAporte(reg) {
+  if (!isCurrentMonth() && !historicoEditMode) return;
+  var elData  = document.getElementById('aporte-data-'+reg);
+  var elValor = document.getElementById('aporte-valor-'+reg);
+  var elFile  = document.getElementById('aporte-file-'+reg);
+  var data  = elData ? elData.value : '';
+  var valor = parseFloat(elValor ? elValor.value : '') || 0;
+  var file  = elFile && elFile.files ? elFile.files[0] : null;
+
+  if (valor <= 0) { alert('Informe um valor maior que zero.'); return; }
+  if (!data)      { alert('Informe a data do pagamento.'); return; }
+  if (!file)      { alert('Anexe o comprovante deste pagamento.'); return; }
+
+  var s = dbState[reg] || {};
+  if (!s.aportes) s.aportes = [];
+  var btn = document.getElementById('aporte-save-'+reg);
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+
+  try {
+    // Primeira vez que um aporte de verdade é lançado nesse cliente/mês: se já
+    // havia um valor_pago lançado do jeito antigo (sem histórico), vira o primeiro
+    // item do histórico antes de somar o novo pagamento por cima -- senão a soma
+    // dos aportes substituiria (e perderia) esse valor.
+    if (!s.aportes.length && Number(s.valor_pago||0) > 0) {
+      var msg = 'Este mês já tem ' + fmt(s.valor_pago) + ' pago (lançado sem histórico detalhado).\n\n' +
+        'Ao continuar, esse valor vira o primeiro lançamento do histórico (sem comprovante), e o novo pagamento é somado a ele.\n\nContinuar?';
+      if (!confirm(msg)) { if (btn) { btn.disabled = false; btn.textContent = 'Salvar pagamento'; } return; }
+      var seedRes = await sb.from('pagamento_aportes').insert({
+        cliente_reg: reg, mes: viewMonth, ano: viewYear,
+        valor: s.valor_pago, data_pagamento: data, legado: true,
+        obs: 'Lançamento anterior ao histórico detalhado (migrado automaticamente)'
+      }).select();
+      if (seedRes.error) throw seedRes.error;
+      s.aportes.push(seedRes.data[0]);
+    }
+
+    var ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    var path = 'aportes/' + viewYear + '_' + viewMonth + '/reg' + reg + '_' + Date.now() + '.' + ext;
+    var upRes = await sb.storage.from('comprovantes').upload(path, file, {cacheControl:'3600', upsert:true});
+    if (upRes.error) throw upRes.error;
+    var publicUrl = sb.storage.from('comprovantes').getPublicUrl(path).data.publicUrl;
+
+    var insRes = await sb.from('pagamento_aportes').insert({
+      cliente_reg: reg, mes: viewMonth, ano: viewYear,
+      valor: valor, data_pagamento: data,
+      comprovante_path: path, comprovante_url: publicUrl
+    }).select();
+    if (insRes.error) throw insRes.error;
+    s.aportes.push(insRes.data[0]);
+
+    var soma = s.aportes.reduce(function(sum,a){ return sum + Number(a.valor||0); }, 0);
+    s.valor_pago = soma;
+    s.confirmado_pela_inove = false;
+    dbState[reg] = s;
+
+    var ok = await patchControleMensal(reg, {valor_pago: soma, confirmado_pela_inove: false});
+    if (ok === false) showConnError('Pagamento salvo, mas houve erro ao atualizar o total. Recarregue a página.');
+
+    updateCounts(); doFilter();
+    if (selected && selected.reg === reg) renderDetail();
+  } catch (e) {
+    console.error('adicionarAporte:', e);
+    alert('Erro ao lançar pagamento: ' + (e.message || e));
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar pagamento'; }
+  }
+}
+
+async function excluirAporte(reg, aporteId) {
+  var s = dbState[reg] || {};
+  var aporte = (s.aportes||[]).find(function(a){ return a.id === aporteId; });
+  if (!aporte) return;
+  var dataFmt = new Date(aporte.data_pagamento+'T00:00:00').toLocaleDateString('pt-BR');
+  if (!confirm('Excluir o pagamento de ' + fmt(aporte.valor) + ' de ' + dataFmt + '?')) return;
+
+  try {
+    if (aporte.comprovante_path) {
+      var rmRes = await sb.storage.from('comprovantes').remove([aporte.comprovante_path]);
+      if (rmRes.error) console.error('excluirAporte (storage):', rmRes.error);
+    }
+    var delRes = await sb.from('pagamento_aportes').delete().eq('id', aporteId);
+    if (delRes.error) throw delRes.error;
+
+    s.aportes = (s.aportes||[]).filter(function(a){ return a.id !== aporteId; });
+    var soma = s.aportes.reduce(function(sum,a){ return sum + Number(a.valor||0); }, 0);
+    s.valor_pago = soma;
+    dbState[reg] = s;
+
+    var ok = await patchControleMensal(reg, {valor_pago: soma});
+    if (ok === false) showConnError('Erro ao atualizar o total após excluir. Recarregue a página.');
+
+    updateCounts(); doFilter();
+    if (selected && selected.reg === reg) renderDetail();
+  } catch (e) {
+    console.error('excluirAporte:', e);
+    alert('Erro ao excluir pagamento: ' + (e.message || e));
+  }
 }
 
 // ── Comprovantes ──────────────────────────────────────────────
