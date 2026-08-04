@@ -264,6 +264,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="sum-card sum-card-highlight"><div class="lbl">Comissão a Receber</div><div class="val" id="sum-comissao-restante">R$ 0,00</div></div>
     <div class="sum-card sum-card-futura"><div class="lbl">Comissão a Receber (Futura)</div><div class="val" id="sum-comissao-futura">R$ 0,00</div><div class="lbl-sub">⏳ quando o cliente pagar — não disponível pra saque agora</div></div>
     <div class="sum-card sum-card-highlight"><div class="lbl">Pago (sacado neste mês)</div><div class="val" id="sum-comissao-pago" style="color:#22c55e">R$ 0,00</div></div>
+    <div class="sum-card sum-card-highlight"><div class="lbl">Total pendente (ajuste + futura)</div><div class="val" id="sum-comissao-total-pendente" style="color:#fb923c">R$ 0,00</div><div class="lbl-sub">Bruta − Pago: o que falta chegar, de saques ajustados a menor + comissão futura</div></div>
   </div>
   <div id="comissao-acoes" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:1rem"></div>
 
@@ -784,14 +785,24 @@ function renderComissaoTab() {
     if (vm > vp) futuraBase += (vm - vp);
   });
   var pago = comissaoHistorico.reduce(function(s, h) { return s + Number(h.valor_total || 0); }, 0);
+  var comLiquida = totRecebido * COMISSAO;
+  var comFutura  = futuraBase * COMISSAO;
+  // "Comissão a Receber" (restante) fica 0 sempre que um saque foi ajustado pra
+  // menos do que o calculado (credito total, por escolha) -- então o que
+  // realmente falta chegar por causa desses ajustes some do card de cima.
+  // Total pendente reaparece isso: liquida-pago cobre tanto ajuste de saque
+  // quanto pendente normal (raramente >0 aqui, ja que o saque da credito
+  // total), somado a comissao futura (dinheiro que o cliente ainda nao pagou).
+  var totalPendente = (comLiquida - pago) + comFutura;
 
   document.getElementById('sum-comissao-vendido').textContent  = fmt(totVendido);
   document.getElementById('sum-comissao-recebido').textContent = fmt(totRecebido);
   document.getElementById('sum-comissao-bruta').textContent    = fmt(totVendido  * COMISSAO);
-  document.getElementById('sum-comissao-liquida').textContent  = fmt(totRecebido * COMISSAO);
+  document.getElementById('sum-comissao-liquida').textContent  = fmt(comLiquida);
   document.getElementById('sum-comissao-restante').textContent = fmt(restante);
-  document.getElementById('sum-comissao-futura').textContent   = fmt(futuraBase * COMISSAO);
+  document.getElementById('sum-comissao-futura').textContent   = fmt(comFutura);
   document.getElementById('sum-comissao-pago').textContent     = fmt(pago);
+  document.getElementById('sum-comissao-total-pendente').textContent = fmt(totalPendente);
 
   var acoes = document.getElementById('comissao-acoes');
   if (acoes) {
