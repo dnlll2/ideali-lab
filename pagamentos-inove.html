@@ -302,9 +302,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div id="comissao-modal-empty" style="display:none;text-align:center;color:#4a5568;padding:1.5rem;font-size:13px">Nenhuma comissão pendente neste mês — tudo que já foi pago já foi sacado antes.</div>
     <div class="comissao-total-row">
-      <span style="color:#94a3b8;font-size:13px;font-weight:500">Total a sacar agora</span>
-      <span id="comissao-modal-total" style="color:#4ade80">R$ 0,00</span>
+      <span style="color:#94a3b8;font-size:13px;font-weight:500">Total calculado (15%)</span>
+      <span id="comissao-modal-total" style="color:#94a3b8">R$ 0,00</span>
     </div>
+    <div class="comissao-total-row" style="margin-top:-6px">
+      <span style="color:#94a3b8;font-size:13px;font-weight:500">Valor a registrar como pago</span>
+      <input type="number" id="comissao-modal-total-input" min="0" step="0.01" oninput="checkComissaoAjuste()" style="width:150px;height:34px;border:0.5px solid rgba(255,255,255,0.15);border-radius:8px;padding:0 10px;font-size:15px;font-weight:600;background:#0f1117;color:#4ade80;text-align:right;font-family:inherit">
+    </div>
+    <p id="comissao-modal-ajuste-note" style="display:none;font-size:11px;color:#fbbf24;text-align:right;margin-top:2px"><i class="ti ti-alert-triangle" style="font-size:11px"></i> Diferente do calculado — fica registrado como ajuste manual</p>
   </div>
   <div class="modal-footer">
     <button class="btn-secondary" onclick="fecharModalComissao()">Cancelar</button>
@@ -632,6 +637,8 @@ function setStatusFilter(f) {
 // a função pagar_comissao no banco. O cálculo de verdade e a gravação acontecem lá dentro
 // numa única transação, então o preview aqui pode ficar levemente desatualizado (ex: outra
 // aba mexeu no valor_pago) sem risco: o banco recalcula tudo de novo no momento do commit.
+var comissaoModalCalculado = 0;
+
 function abrirModalComissao() {
   var linhas = clients
     .map(function(c) { return { c:c, base: baseComissaoPendente(dbState[c.reg]||{}), com: comissaoPendente(dbState[c.reg]||{}) }; })
@@ -644,9 +651,14 @@ function abrirModalComissao() {
   var tbody     = document.getElementById('comissao-modal-rows');
   var emptyEl   = document.getElementById('comissao-modal-empty');
   var totalEl   = document.getElementById('comissao-modal-total');
+  var totalInput = document.getElementById('comissao-modal-total-input');
   var btnConfirmar = document.getElementById('btn-confirmar-saque');
   var total = linhas.reduce(function(s,r){ return s + r.com; }, 0);
+  comissaoModalCalculado = total;
   if (totalEl) totalEl.textContent = fmt(total);
+  if (totalInput) totalInput.value = total.toFixed(2);
+  var noteEl = document.getElementById('comissao-modal-ajuste-note');
+  if (noteEl) noteEl.style.display = 'none';
 
   if (!linhas.length) {
     if (tbody)   tbody.innerHTML = '';
@@ -662,6 +674,17 @@ function abrirModalComissao() {
 
   document.getElementById('comissao-modal-overlay').style.display = 'block';
   document.getElementById('comissao-modal').style.display = 'block';
+}
+
+// Avisa quando o valor editado difere do calculado (15%) -- não bloqueia,
+// só sinaliza que vai ficar registrado como ajuste manual.
+function checkComissaoAjuste() {
+  var input = document.getElementById('comissao-modal-total-input');
+  var noteEl = document.getElementById('comissao-modal-ajuste-note');
+  if (!input || !noteEl) return;
+  var v = parseFloat(input.value);
+  var diff = isNaN(v) ? true : Math.abs(v - comissaoModalCalculado) > 0.001;
+  noteEl.style.display = diff ? '' : 'none';
 }
 
 function fecharModalComissao() {
@@ -703,11 +726,15 @@ function fecharModalAportes() {
 }
 
 async function confirmarPagamentoComissao() {
+  var input = document.getElementById('comissao-modal-total-input');
+  var valorEditado = input ? parseFloat(input.value) : NaN;
+  if (isNaN(valorEditado) || valorEditado < 0) { alert('Informe um valor válido (0 ou mais) pra registrar como pago.'); return; }
+
   var btn = document.getElementById('btn-confirmar-saque');
   var origHtml = btn ? btn.innerHTML : '';
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i> Processando…'; }
   try {
-    var res = await sb.rpc('pagar_comissao', { p_mes: viewMonth, p_ano: viewYear });
+    var res = await sb.rpc('pagar_comissao', { p_mes: viewMonth, p_ano: viewYear, p_valor_total: valorEditado });
     if (res.error) throw res.error;
     var data = res.data;
     fecharModalComissao();
@@ -716,6 +743,8 @@ async function confirmarPagamentoComissao() {
     renderComissaoTab();
     if (!data || data.ok === false) {
       alert('Nada a sacar: essa comissão já foi paga antes, ou não há valor pago pendente neste mês.');
+    } else if (Math.abs(Number(data.valor_total) - Number(data.valor_calculado)) > 0.001) {
+      alert('Comissão registrada como paga: ' + fmt(data.valor_total) + ' (calculado era ' + fmt(data.valor_calculado) + ', ajuste manual salvo).');
     } else {
       alert('Comissão de ' + fmt(data.valor_total) + ' registrada como paga.');
     }
@@ -780,7 +809,11 @@ function renderComissaoTab() {
       wrap.style.display = '';
       tbody.innerHTML = comissaoHistorico.slice().reverse().map(function(h) {
         var quando = new Date(h.data_pagamento).toLocaleString('pt-BR');
-        return '<tr><td>'+quando+'</td><td class="valor-pago">'+fmt(h.valor_total)+'</td>' +
+        var ajustado = h.valor_calculado != null && Math.abs(Number(h.valor_total) - Number(h.valor_calculado)) > 0.001;
+        var ajusteTag = ajustado
+          ? ' <span title="Calculado: '+fmt(h.valor_calculado)+'" style="font-size:10px;color:#fbbf24;border:0.5px solid rgba(251,191,36,0.4);border-radius:5px;padding:1px 6px;white-space:nowrap">ajustado</span>'
+          : '';
+        return '<tr><td>'+quando+'</td><td class="valor-pago">'+fmt(h.valor_total)+ajusteTag+'</td>' +
           '<td><button class="btn-secondary" style="height:28px;padding:0 12px;font-size:12px" onclick="gerarRelatorioComissaoPaga(\''+h.id+'\')"><i class="ti ti-file-check"></i> Ver relatório</button></td></tr>';
       }).join('');
     }
@@ -819,6 +852,14 @@ function gerarRelatorioComissaoPaga(id) {
     doc.setTextColor(20);
     doc.text('Saque ' + (idx + 1) + ' — ' + new Date(h.data_pagamento).toLocaleString('pt-BR'), 14, y);
     y += 4;
+    var ajustado = h.valor_calculado != null && Math.abs(Number(h.valor_total) - Number(h.valor_calculado)) > 0.001;
+    if (ajustado) {
+      doc.setFontSize(9);
+      doc.setTextColor(180, 130, 20);
+      doc.text('Valor ajustado manualmente — calculado (15%) era ' + fmt(h.valor_calculado), 14, y);
+      y += 5;
+      doc.setTextColor(20);
+    }
     var detalhes = Array.isArray(h.detalhes_json) ? h.detalhes_json : [];
     doc.autoTable({
       startY: y,
@@ -826,7 +867,7 @@ function gerarRelatorioComissaoPaga(id) {
       body: detalhes.map(function(d) {
         return [nomeCliente(d.cliente_reg), fmt(d.valor_base_comissao), fmt(d.comissao)];
       }),
-      foot: [['Total do saque', '', fmt(h.valor_total)]],
+      foot: [['Total do saque' + (ajustado ? ' (ajustado)' : ''), '', fmt(h.valor_total)]],
       headStyles: { fillColor: [26, 29, 39] },
       footStyles: { fillColor: [26, 29, 39], fontStyle: 'bold' },
       styles: { fontSize: 10, cellPadding: 4 },
