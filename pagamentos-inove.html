@@ -312,6 +312,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<div class="modal-overlay" id="aportes-modal-overlay" onclick="fecharModalAportes()"></div>
+<div class="modal" id="aportes-modal">
+  <div class="modal-header">
+    <div>
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9">Histórico de Pagamentos</p>
+      <p style="font-size:12px;color:#64748b" id="aportes-modal-cliente">—</p>
+    </div>
+    <button class="modal-close" onclick="fecharModalAportes()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="modal-body">
+    <div style="overflow-x:auto">
+      <table class="comissao-table">
+        <thead><tr><th>Data</th><th>Valor</th><th>Acumulado</th><th>Comprovante</th></tr></thead>
+        <tbody id="aportes-modal-rows"></tbody>
+      </table>
+    </div>
+    <div class="comissao-total-row">
+      <span style="color:#94a3b8;font-size:13px;font-weight:500">Total pago (histórico)</span>
+      <span id="aportes-modal-total" style="color:#4ade80">R$ 0,00</span>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-secondary" onclick="fecharModalAportes()">Fechar</button>
+  </div>
+</div>
+
 <script>
 // Espelho minimo de clients (reg+nome) — página standalone, sem shared.js.
 // Sincronize manualmente se clientes forem adicionados/renomeados em shared.js.
@@ -450,6 +476,7 @@ async function loadMonthData() {
   var folder = viewYear + '_' + viewMonth;
   var dbRes = await sb.from('controle_mensal').select('*').eq('mes', viewMonth).eq('ano', viewYear);
   var storRes = await sb.storage.from('comprovantes').list(folder);
+  var aportesRes = await sb.from('pagamento_aportes').select('*').eq('mes', viewMonth).eq('ano', viewYear).order('data_pagamento');
   var compMap = {};
   if (!storRes.error && storRes.data) {
     storRes.data.forEach(function(f) {
@@ -461,9 +488,16 @@ async function loadMonthData() {
       }
     });
   }
+  var aportesMap = {};
+  if (!aportesRes.error && aportesRes.data) {
+    aportesRes.data.forEach(function(a) {
+      if (!aportesMap[a.cliente_reg]) aportesMap[a.cliente_reg] = [];
+      aportesMap[a.cliente_reg].push(a);
+    });
+  }
   var state = {};
   clients.forEach(function(c) {
-    state[c.reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, valor_pago_comissionado:0, obs_pagamento:'', confirmado_pela_inove:true, comprovantes: compMap[c.reg]||[] };
+    state[c.reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, valor_pago_comissionado:0, obs_pagamento:'', confirmado_pela_inove:true, comprovantes: compMap[c.reg]||[], aportes: aportesMap[c.reg]||[] };
   });
   if (!dbRes.error) {
     (dbRes.data||[]).forEach(function(r) {
@@ -473,7 +507,8 @@ async function loadMonthData() {
         valor_pago_comissionado: Number(r.valor_pago_comissionado)||0,
         obs_pagamento: r.obs_pagamento||'',
         confirmado_pela_inove: r.confirmado_pela_inove !== false,
-        comprovantes: compMap[r.cliente_reg]||[]
+        comprovantes: compMap[r.cliente_reg]||[],
+        aportes: aportesMap[r.cliente_reg]||[]
       };
     });
   }
@@ -632,6 +667,39 @@ function abrirModalComissao() {
 function fecharModalComissao() {
   document.getElementById('comissao-modal-overlay').style.display = 'none';
   document.getElementById('comissao-modal').style.display = 'none';
+}
+
+// Histórico de pagamentos (aportes) de um cliente no mês selecionado -- mostra
+// data, valor e comprovante de cada pagamento lançado, até o mês bater com o
+// valor devido (cliente que paga picado).
+function abrirHistoricoAportes(reg) {
+  var s = dbState[reg] || {};
+  var lista = (s.aportes || []).slice().sort(function(a,b) { return new Date(a.data_pagamento) - new Date(b.data_pagamento); });
+
+  var clEl = document.getElementById('aportes-modal-cliente');
+  if (clEl) clEl.textContent = nomeCliente(reg) + ' · ' + MESES[viewMonth] + ' ' + viewYear;
+
+  var acumulado = 0;
+  var tbody = document.getElementById('aportes-modal-rows');
+  if (tbody) tbody.innerHTML = lista.map(function(a) {
+    acumulado += Number(a.valor||0);
+    var dataFmt = new Date(a.data_pagamento+'T00:00:00').toLocaleDateString('pt-BR');
+    var compHtml = a.comprovante_url
+      ? '<a class="comp-link" href="'+a.comprovante_url+'" target="_blank" rel="noopener"><i class="ti ti-paperclip"></i> Ver</a>'
+      : '<span class="no-comp">'+(a.legado ? 'lançamento anterior' : 'sem comprovante')+'</span>';
+    return '<tr><td>'+dataFmt+'</td><td style="color:#4ade80;font-weight:600">'+fmt(a.valor)+'</td><td style="color:#94a3b8">'+fmt(acumulado)+'</td><td>'+compHtml+'</td></tr>';
+  }).join('');
+
+  var totalEl = document.getElementById('aportes-modal-total');
+  if (totalEl) totalEl.textContent = fmt(acumulado);
+
+  document.getElementById('aportes-modal-overlay').style.display = 'block';
+  document.getElementById('aportes-modal').style.display = 'block';
+}
+
+function fecharModalAportes() {
+  document.getElementById('aportes-modal-overlay').style.display = 'none';
+  document.getElementById('aportes-modal').style.display = 'none';
 }
 
 async function confirmarPagamentoComissao() {
@@ -810,12 +878,15 @@ function renderTable() {
     .filter(function(r) { return statusFilter === 'todos' || statusOf(r.s).key === statusFilter; })
     .sort(function(a,b){ return b.s.valor_mes - a.s.valor_mes; });
 
-  var totMes=0, totPago=0, clientesComPendencia=0, clientesQuePagaram=0;
+  var totMes=0, totPago=0, totRestante=0, clientesComPendencia=0, clientesQuePagaram=0;
   clients.forEach(function(c) {
     var s = dbState[c.reg] || {};
     var vm = Number(s.valor_mes||0), vp = Number(s.valor_pago||0);
     totMes  += vm;
     totPago += vp;
+    // Cliente que pagou mais do que faturou no mes (ex: quitando saldo de mes anterior)
+    // nao gera saldo negativo -- trata como 0.
+    totRestante += Math.max(0, vm - vp);
     if (vm > 0) {
       clientesComPendencia++;
       if (vp > 0) clientesQuePagaram++;
@@ -823,7 +894,7 @@ function renderTable() {
   });
   document.getElementById('sum-total').textContent = fmt(totMes);
   document.getElementById('sum-pago').textContent  = fmt(totPago);
-  document.getElementById('sum-saldo').textContent = fmt(totMes - totPago);
+  document.getElementById('sum-saldo').textContent = fmt(totRestante);
   var pctPago = totMes > 0 ? Math.round((totPago / totMes) * 100) : 0;
   document.getElementById('sum-pct-pago').textContent = pctPago + '% pago';
   document.getElementById('sum-clientes-pagos').textContent = clientesQuePagaram + ' de ' + clientesComPendencia + ' clientes pagaram';
@@ -834,17 +905,23 @@ function renderTable() {
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#4a5568;padding:2rem">'+emptyMsg+'</td></tr>';
   } else {
     tbody.innerHTML = rows.map(function(r) {
-      var vm = Number(r.s.valor_mes||0), vp = Number(r.s.valor_pago||0), rest = vm - vp;
+      var vm = Number(r.s.valor_mes||0), vp = Number(r.s.valor_pago||0);
+      // Cliente que pagou mais do que faturou no mes nao gera restante negativo -- vira 0.
+      var rest = Math.max(0, vm - vp);
       var st = statusOf(r.s);
       var comps = r.s.comprovantes || [];
       var compsHtml = comps.length
         ? comps.map(function(f) { return '<a class="comp-link" href="'+f.url+'" target="_blank" rel="noopener"><i class="ti ti-paperclip"></i> '+ (f.name.length > 18 ? f.name.substring(0,15)+'…' : f.name) +'</a>'; }).join(' ')
         : '<span class="no-comp">—</span>';
+      var aportes = r.s.aportes || [];
+      if (aportes.length) {
+        compsHtml += ' <button class="comp-link" style="border:none;cursor:pointer;font-family:inherit" onclick="abrirHistoricoAportes('+r.c.reg+')"><i class="ti ti-history"></i> Histórico ('+aportes.length+')</button>';
+      }
       var obsHtml = r.s.obs_pagamento
         ? '<span class="obs-txt">'+escHtml(r.s.obs_pagamento)+'</span>'
         : '<span class="no-comp">—</span>';
-      // Pagamento novo: valor pago + comprovante ja anexados, e a Elisangela ainda nao confirmou.
-      var isNovo = vp > 0 && comps.length > 0 && r.s.confirmado_pela_inove === false;
+      // Pagamento novo: valor pago + comprovante ja anexados (direto ou via aporte), e a Elisangela ainda nao confirmou.
+      var isNovo = vp > 0 && (comps.length > 0 || aportes.length > 0) && r.s.confirmado_pela_inove === false;
       var confirmarHtml = isNovo
         ? '<button class="btn-confirmar-inove" onclick="confirmarPagamentoInove('+r.c.reg+',this)"><i class="ti ti-check"></i> Confirmado</button>'
         : '';
