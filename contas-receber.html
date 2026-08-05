@@ -164,15 +164,6 @@ async function loadMonthData(m, y) {
   }
 }
 
-function mesTemDados(state) {
-  var keys = Object.keys(state);
-  for (var i = 0; i < keys.length; i++) {
-    var s = state[keys[i]];
-    if (s.valor_mes > 0 || s.recebido || s.enviado || s.quitado) return true;
-  }
-  return false;
-}
-
 // Busca o registro atual DIRETO DO SERVIDOR (nunca confia em dbState local pra decidir
 // se uma gravacao esta reduzindo um valor — foi exatamente dbState desatualizado que
 // causou perda de dado real: um clique em tick reenviava valor_mes/valor_pago da memoria
@@ -943,18 +934,10 @@ function onThemeChange() {
 
 async function init() {
   applyStaticThemeColors();
+  // Sempre abre no mes-calendario atual, mesmo que ainda nao tenha nenhum
+  // valor_mes lancado nele -- mes atual "zerado" e um estado valido, nao
+  // motivo pra pular pro mes anterior (mesmo padrao de pagamentos-inove.html).
   dbState = await loadMonthData(currentMonth, currentYear);
-  if (!mesTemDados(dbState)) {
-    var prevM = currentMonth === 0 ? 11 : currentMonth - 1;
-    var prevY = currentMonth === 0 ? currentYear - 1 : currentYear;
-    var prevData = await loadMonthData(prevM, prevY);
-    if (mesTemDados(prevData)) {
-      viewMonth = prevM; viewYear = prevY;
-      localStorage.setItem('ideali-viewMonth', viewMonth);
-      localStorage.setItem('ideali-viewYear', viewYear);
-      dbState = prevData;
-    }
-  }
   renderMonthTabs();
   updateCounts();
   doFilter();

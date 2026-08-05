@@ -752,12 +752,12 @@ var PEDIDO_STATUS_LABEL = { orcamento: 'Orçamento', producao: 'Produção', fin
 
 var finMensal = [];   // listar_financeiro_cliente (controle_mensal)
 var finPedidos = [];  // listar_pedidos_cliente (pedidos -- so entra quando ja foi confirmado enviado ao Inove)
-var finViewMes = null, finViewAno = null; // mes/ano do painel mensal (default = mes atual, na 1a abertura)
+var finViewMes = null, finViewAno = null; // mes/ano do painel mensal, 0-indexado (Jan=0) igual controle_mensal.mes -- default = mes atual, na 1a abertura
 
 function finMudarMes(delta) {
   finViewMes += delta;
-  if (finViewMes < 1)  { finViewMes = 12; finViewAno--; }
-  if (finViewMes > 12) { finViewMes = 1;  finViewAno++; }
+  if (finViewMes < 0)  { finViewMes = 11; finViewAno--; }
+  if (finViewMes > 11) { finViewMes = 0;  finViewAno++; }
   renderFinanceiroDashboard();
 }
 
@@ -779,10 +779,10 @@ function renderFinanceiroDashboard() {
 
   // Seletor de mes -- nao deixa avancar alem do mes atual de verdade.
   var hoje = new Date();
-  var podeAvancar = (finViewAno < hoje.getFullYear()) || (finViewAno === hoje.getFullYear() && finViewMes < hoje.getMonth() + 1);
+  var podeAvancar = (finViewAno < hoje.getFullYear()) || (finViewAno === hoje.getFullYear() && finViewMes < hoje.getMonth());
   html += '<div class="month-bar">' +
     '<button type="button" class="month-arrow" onclick="finMudarMes(-1)">◀</button>' +
-    '<span class="month-label">' + MESES[finViewMes - 1] + ' ' + finViewAno + '</span>' +
+    '<span class="month-label">' + MESES[finViewMes] + ' ' + finViewAno + '</span>' +
     '<button type="button" class="month-arrow" onclick="finMudarMes(1)"' + (podeAvancar ? '' : ' disabled') + '>▶</button>' +
   '</div>';
 
@@ -803,10 +803,10 @@ function renderFinanceiroDashboard() {
   // outro nao no mesmo mes -- por isso ficam em paineis separados).
   var pedidosMes = finPedidos.filter(function(p) {
     var d = new Date(p.created_at);
-    return (d.getMonth() + 1) === finViewMes && d.getFullYear() === finViewAno;
+    return d.getMonth() === finViewMes && d.getFullYear() === finViewAno;
   });
 
-  html += '<div class="panel"><div class="panel-title">Tipos de trabalho — ' + MESES[finViewMes - 1] + '/' + finViewAno + '</div>';
+  html += '<div class="panel"><div class="panel-title">Tipos de trabalho — ' + MESES[finViewMes] + '/' + finViewAno + '</div>';
   if (pedidosMes.length) {
     var porTipo = {};
     pedidosMes.forEach(function(p) {
@@ -850,7 +850,7 @@ function renderFinanceiroDashboard() {
           ? '<span class="fin-badge quitado">Quitado</span>'
           : (Number(l.valor_mes) > 0 ? '<span class="fin-badge aberto">Em aberto</span>' : '<span class="fin-badge sem">Sem lançamento</span>');
         return '<tr>' +
-          '<td>' + MESES[l.mes - 1] + '/' + l.ano + '</td>' +
+          '<td>' + MESES[l.mes] + '/' + l.ano + '</td>' +
           '<td class="num">' + formatarMoeda(l.valor_mes) + '</td>' +
           '<td class="num">' + formatarMoeda(l.valor_pago) + '</td>' +
           '<td class="num">' + formatarMoeda(l.restante) + '</td>' +
@@ -882,7 +882,7 @@ async function carregarFinanceiro() {
     finPedidos = resPedidos.data || [];
     if (finViewMes == null) {
       var hoje = new Date();
-      finViewMes = hoje.getMonth() + 1;
+      finViewMes = hoje.getMonth();
       finViewAno = hoje.getFullYear();
     }
     renderFinanceiroDashboard();
