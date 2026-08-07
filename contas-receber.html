@@ -444,7 +444,7 @@ function compClipBtn(reg) {
 function extratoBtn(reg) {
   var s = dbState[reg] || {};
   var has = !!s.extrato_url;
-  return '<div class="comp-clip-col" style="position:relative"><button class="comp-clip' + (has?' has-comp':'') + '" style="position:relative" onclick="toggleExtratoMenu(' + reg + ',event)" title="' + (has?'Extrato do mês anexado - clique para ver/substituir':'Anexar extrato do mês (PDF da Inove)') + '"><i class="ti ti-file-text"></i></button><span class="comp-lbl' + (has?' has-comp':'') + '">extrato</span></div>';
+  return '<div class="comp-clip-col" style="position:relative"><button class="comp-clip' + (has?' has-extrato':'') + '" style="position:relative" onclick="toggleExtratoMenu(' + reg + ',event)" title="' + (has?'Extrato do mês anexado - clique para ver/substituir':'Anexar extrato do mês (PDF da Inove)') + '"><i class="ti ti-file-text"></i></button><span class="comp-lbl' + (has?' has-extrato':'') + '">extrato</span></div>';
 }
 
 function renderList(data) {
@@ -565,7 +565,7 @@ function renderDetail() {
     roNote +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' + dt('recebido','ti-download','Extrato recebido') + dt('enviado','ti-upload','Extrato enviado') + dt('quitado','ti-circle-check','Quitado') +
     (function(){var cl=cv.comprovantes||[];var n=cl.length;return '<button class="comp-clip'+(n?' has-comp':'')+'" style="width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:13px;height:30px" onclick="toggleCompMenu('+c.reg+',event)"><i class="ti ti-paperclip" style="font-size:14px"></i> '+(n?'<span style="color:'+T().success+'">'+n+' comprovante'+(n>1?'s':'')+'</span>':'Comprovante')+'</button>';})() +
-    (function(){var has=!!cv.extrato_url;return '<button class="comp-clip'+(has?' has-comp':'')+'" style="width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:13px;height:30px" onclick="toggleExtratoMenu('+c.reg+',event)"><i class="ti ti-file-text" style="font-size:14px"></i> '+(has?'<span style="color:'+T().success+'">Extrato do mês</span>':'Extrato do mês')+'</button>';})() + '</div>' +
+    (function(){var has=!!cv.extrato_url;return '<button class="comp-clip'+(has?' has-extrato':'')+'" style="width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:13px;height:30px" onclick="toggleExtratoMenu('+c.reg+',event)"><i class="ti ti-file-text" style="font-size:14px"></i> '+(has?'<span style="color:'+T().warn+'">Extrato do mês</span>':'Extrato do mês')+'</button>';})() + '</div>' +
     finSection +
     aportesSection +
     '<div>' + rows + '</div>';
