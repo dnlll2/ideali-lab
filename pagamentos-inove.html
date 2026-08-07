@@ -507,7 +507,7 @@ async function loadMonthData() {
   }
   var state = {};
   clients.forEach(function(c) {
-    state[c.reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, valor_pago_comissionado:0, obs_pagamento:'', confirmado_pela_inove:true, comprovantes: compMap[c.reg]||[], aportes: aportesMap[c.reg]||[] };
+    state[c.reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, valor_pago_comissionado:0, obs_pagamento:'', confirmado_pela_inove:true, extrato_url:null, comprovantes: compMap[c.reg]||[], aportes: aportesMap[c.reg]||[] };
   });
   if (!dbRes.error) {
     (dbRes.data||[]).forEach(function(r) {
@@ -517,6 +517,7 @@ async function loadMonthData() {
         valor_pago_comissionado: Number(r.valor_pago_comissionado)||0,
         obs_pagamento: r.obs_pagamento||'',
         confirmado_pela_inove: r.confirmado_pela_inove !== false,
+        extrato_url: r.extrato_url||null,
         comprovantes: compMap[r.cliente_reg]||[],
         aportes: aportesMap[r.cliente_reg]||[]
       };
@@ -969,6 +970,9 @@ function renderTable() {
       var compsHtml = comps.length
         ? comps.map(function(f) { return '<a class="comp-link" href="'+f.url+'" target="_blank" rel="noopener"><i class="ti ti-paperclip"></i> '+ (f.name.length > 18 ? f.name.substring(0,15)+'…' : f.name) +'</a>'; }).join(' ')
         : '<span class="no-comp">—</span>';
+      if (r.s.extrato_url) {
+        compsHtml += ' <a class="comp-link" href="'+r.s.extrato_url+'" target="_blank" rel="noopener" title="Extrato do mês (Inove)"><i class="ti ti-file-text"></i> Extrato</a>';
+      }
       var aportes = r.s.aportes || [];
       if (aportes.length) {
         compsHtml += ' <button class="btn-historico" onclick="abrirHistoricoAportes('+r.c.reg+')"><i class="ti ti-history"></i> Histórico ('+aportes.length+')</button>';
