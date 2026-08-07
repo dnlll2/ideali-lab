@@ -30,6 +30,7 @@
 <div id="shared-shell"></div>
 
 <input type="file" id="comp-file-input" accept="image/*,application/pdf" style="display:none" onchange="handleCompFile(event)">
+<input type="file" id="extrato-file-input" accept="application/pdf" style="display:none" onchange="handleExtratoFile(event)">
 
 <div class="modal-overlay" id="aportes-modal-overlay" onclick="fecharModalAportes()"></div>
 <div class="modal" id="aportes-modal">
@@ -153,6 +154,8 @@ var monthDDOpen = false;
 var tarefasAbertas = {};
 var _compMenuReg = null;
 var _compUploadReg = null;
+var _extratoMenuReg = null;
+var _extratoUploadReg = null;
 
 // ── Data Loading ──────────────────────────────────────────────
 async function loadMonthData(m, y) {
@@ -187,13 +190,14 @@ async function loadMonthData(m, y) {
     }
     var state = {};
     clients.forEach(function(c) {
-      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,obs_pagamento:'',comprovantes:compMap[c.reg]||[],aportes:aportesMap[c.reg]||[]};
+      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,obs_pagamento:'',extrato_url:null,extrato_path:null,comprovantes:compMap[c.reg]||[],aportes:aportesMap[c.reg]||[]};
     });
     rows.forEach(function(r) {
       state[r.cliente_reg] = {
         recebido:!!r.recebido, enviado:!!r.enviado, quitado:!!r.quitado,
         valor_mes:Number(r.valor_mes)||0, valor_pago:Number(r.valor_pago)||0,
         obs_pagamento:r.obs_pagamento||'',
+        extrato_url:r.extrato_url||null, extrato_path:r.extrato_path||null,
         comprovantes:compMap[r.cliente_reg]||[],
         aportes:aportesMap[r.cliente_reg]||[]
       };
@@ -376,6 +380,8 @@ document.addEventListener('click', function(e) {
   if (monthDDOpen && btn && list && !btn.contains(e.target) && !list.contains(e.target)) closeMonthDD();
   var cm = document.getElementById('comp-menu-popup');
   if (cm && !cm.contains(e.target)) closeCompMenu();
+  var em = document.getElementById('extrato-menu-popup');
+  if (em && !em.contains(e.target)) closeExtratoMenu();
 });
 
 // ── Counts ────────────────────────────────────────────────────
@@ -433,6 +439,14 @@ function compClipBtn(reg) {
   return '<div class="comp-clip-col" style="position:relative"><button class="comp-clip' + (n?' has-comp':'') + '" style="position:relative" onclick="toggleCompMenu(' + reg + ',event)" title="' + (n?n+' comprovante'+(n>1?'s':'')+'  - clique para ver/adicionar':'Anexar comprovante') + '"><i class="ti ti-paperclip"></i>' + badge + '</button><span class="comp-lbl' + (n?' has-comp':'') + '">' + (n?n+'comp.':'clipe') + '</span></div>';
 }
 
+// Extrato do mes (PDF unico que a Inove manda) -- diferente do comprovante de
+// pagamento: 1 por cliente/mes, guardado direto em controle_mensal.extrato_url.
+function extratoBtn(reg) {
+  var s = dbState[reg] || {};
+  var has = !!s.extrato_url;
+  return '<div class="comp-clip-col" style="position:relative"><button class="comp-clip' + (has?' has-comp':'') + '" style="position:relative" onclick="toggleExtratoMenu(' + reg + ',event)" title="' + (has?'Extrato do mês anexado - clique para ver/substituir':'Anexar extrato do mês (PDF da Inove)') + '"><i class="ti ti-file-text"></i></button><span class="comp-lbl' + (has?' has-comp':'') + '">extrato</span></div>';
+}
+
 function renderList(data) {
   var panel = document.getElementById('list-panel');
   var noRes = document.getElementById('no-results');
@@ -455,7 +469,7 @@ function renderList(data) {
       '<div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:4px"><p style="font-size:12px;font-weight:500;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">' + c.nome + '</p>' +
       (tarefasAbertas[c.reg] ? '<i class="ti ti-alert-triangle" style="font-size:12px;color:'+T().warn+';flex-shrink:0" title="' + tarefasAbertas[c.reg] + ' tarefa(s) em aberto"></i>' : '') + '</div>' +
       '<p style="font-size:11px;color:#64748b">' + cidadeUF + '</p>' + valorLine + '</div>' +
-      '<div style="display:flex;gap:5px;align-items:center">' + tickBtn(c.reg,'recebido','ti-download','receb.') + tickBtn(c.reg,'enviado','ti-upload','enviado') + tickBtn(c.reg,'quitado','ti-circle-check','quitado') + compClipBtn(c.reg) + '</div></div>';
+      '<div style="display:flex;gap:5px;align-items:center">' + tickBtn(c.reg,'recebido','ti-download','receb.') + tickBtn(c.reg,'enviado','ti-upload','enviado') + tickBtn(c.reg,'quitado','ti-circle-check','quitado') + compClipBtn(c.reg) + extratoBtn(c.reg) + '</div></div>';
   }).join('');
 }
 
@@ -550,7 +564,8 @@ function renderDetail() {
     tarefasBanner +
     roNote +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' + dt('recebido','ti-download','Extrato recebido') + dt('enviado','ti-upload','Extrato enviado') + dt('quitado','ti-circle-check','Quitado') +
-    (function(){var cl=cv.comprovantes||[];var n=cl.length;return '<button class="comp-clip'+(n?' has-comp':'')+'" style="width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:13px;height:30px" onclick="toggleCompMenu('+c.reg+',event)"><i class="ti ti-paperclip" style="font-size:14px"></i> '+(n?'<span style="color:'+T().success+'">'+n+' comprovante'+(n>1?'s':'')+'</span>':'Comprovante')+'</button>';})() + '</div>' +
+    (function(){var cl=cv.comprovantes||[];var n=cl.length;return '<button class="comp-clip'+(n?' has-comp':'')+'" style="width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:13px;height:30px" onclick="toggleCompMenu('+c.reg+',event)"><i class="ti ti-paperclip" style="font-size:14px"></i> '+(n?'<span style="color:'+T().success+'">'+n+' comprovante'+(n>1?'s':'')+'</span>':'Comprovante')+'</button>';})() +
+    (function(){var has=!!cv.extrato_url;return '<button class="comp-clip'+(has?' has-comp':'')+'" style="width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:13px;height:30px" onclick="toggleExtratoMenu('+c.reg+',event)"><i class="ti ti-file-text" style="font-size:14px"></i> '+(has?'<span style="color:'+T().success+'">Extrato do mês</span>':'Extrato do mês')+'</button>';})() + '</div>' +
     finSection +
     aportesSection +
     '<div>' + rows + '</div>';
@@ -955,6 +970,91 @@ async function handleCompFile(e) {
     var okConfirm = await patchControleMensal(reg, {confirmado_pela_inove:false});
     if (okConfirm) dbState[reg].confirmado_pela_inove = false;
   }
+  setSyncStatus('ok');
+  doFilter();
+  if (selected && selected.reg === reg) renderDetail();
+}
+
+// ── Extrato do mes (PDF unico da Inove, 1 por cliente/mes) ──────
+function toggleExtratoMenu(reg, e) {
+  e.stopPropagation();
+  var existing = document.getElementById('extrato-menu-popup');
+  if (existing) { existing.remove(); if (_extratoMenuReg === reg) { _extratoMenuReg = null; return; } }
+  _extratoMenuReg = reg;
+  var s = dbState[reg] || {};
+  var menu = document.createElement('div');
+  menu.id = 'extrato-menu-popup';
+  menu.className = 'comp-menu-popup';
+  var html = '';
+  if (s.extrato_url) {
+    html += '<button class="comp-menu-item" onclick="viewExtrato(\'' + s.extrato_url.replace(/'/g,'%27') + '\',event)"><i class="ti ti-eye" style="font-size:13px;color:' + T().accent + '"></i> Ver extrato</button>';
+    html += '<button class="comp-menu-item" onclick="triggerExtratoUpload(' + reg + ',event)"><i class="ti ti-upload" style="font-size:13px;color:' + T().success + '"></i> Substituir</button>';
+    html += '<button class="comp-menu-item" style="color:' + T().danger + '" onclick="deleteExtrato(' + reg + ',event)"><i class="ti ti-trash" style="font-size:13px;color:' + T().danger + '"></i> Apagar</button>';
+  } else {
+    html += '<button class="comp-menu-item" onclick="triggerExtratoUpload(' + reg + ',event)"><i class="ti ti-upload" style="font-size:13px;color:' + T().success + '"></i> Anexar extrato do mês</button>';
+  }
+  menu.innerHTML = html;
+  document.body.appendChild(menu);
+  var rect = e.target.closest('button').getBoundingClientRect();
+  var top = rect.bottom + 4;
+  var left = rect.right - menu.offsetWidth;
+  if (left < 8) left = 8;
+  if (top + 120 > window.innerHeight) top = rect.top - menu.offsetHeight - 4;
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+}
+
+function closeExtratoMenu() {
+  var m = document.getElementById('extrato-menu-popup');
+  if (m) m.remove();
+  _extratoMenuReg = null;
+}
+
+function viewExtrato(url, e) {
+  if (e) e.stopPropagation();
+  closeExtratoMenu();
+  window.open(url, '_blank');
+}
+
+function triggerExtratoUpload(reg, e) {
+  if (e) e.stopPropagation();
+  closeExtratoMenu();
+  _extratoUploadReg = reg;
+  var inp = document.getElementById('extrato-file-input');
+  inp.value = '';
+  inp.click();
+}
+
+async function deleteExtrato(reg, e) {
+  if (e) e.stopPropagation();
+  closeExtratoMenu();
+  if (!confirm('Apagar o extrato do mês deste cliente?')) return;
+  setSyncStatus('syncing');
+  var s = dbState[reg] || {};
+  if (s.extrato_path) await sb.storage.from('extratos').remove([s.extrato_path]);
+  var ok = await patchControleMensal(reg, {extrato_url:null, extrato_path:null});
+  if (!ok) { alert('Erro ao apagar o extrato.'); return; }
+  if (dbState[reg]) { dbState[reg].extrato_url = null; dbState[reg].extrato_path = null; }
+  setSyncStatus('ok');
+  doFilter();
+  if (selected && selected.reg === reg) renderDetail();
+}
+
+async function handleExtratoFile(e) {
+  var file = e.target.files[0];
+  if (!file || !_extratoUploadReg) return;
+  var reg = _extratoUploadReg;
+  setSyncStatus('syncing');
+  var folder = viewYear + '_' + viewMonth;
+  var path = folder + '/reg' + reg + '.pdf';
+  var upRes = await sb.storage.from('extratos').upload(path, file, {cacheControl:'3600', upsert:true});
+  if (upRes.error) { setSyncStatus('error'); alert('Erro ao enviar arquivo: ' + (upRes.error.message || 'desconhecido')); return; }
+  var publicUrl = sb.storage.from('extratos').getPublicUrl(path).data.publicUrl;
+  var ok = await patchControleMensal(reg, {extrato_url:publicUrl, extrato_path:path});
+  if (!ok) { alert('Erro ao salvar o extrato.'); return; }
+  if (!dbState[reg]) dbState[reg] = {};
+  dbState[reg].extrato_url = publicUrl;
+  dbState[reg].extrato_path = path;
   setSyncStatus('ok');
   doFilter();
   if (selected && selected.reg === reg) renderDetail();
