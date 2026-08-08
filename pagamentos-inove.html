@@ -1100,8 +1100,14 @@ function toIsoDate(d) { return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2
 function fmtDataBr(iso) { var p = iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
 function fmtDataBrCurta(iso) { var p = iso.split('-'); return p[2]+'/'+p[1]; }
 
+// "mes"/"ano" em controle_mensal e pagamento_aportes sao o mes de competencia
+// (faturamento) -- o vencimento de verdade cai no 5o dia util do mes SEGUINTE
+// (cliente fatura julho, paga nos primeiros dias uteis de agosto). Por isso o
+// calculo automatico usa viewMonth+1, nao o proprio viewMonth.
 async function loadVencimento() {
-  var autoIso = toIsoDate(quintoDiaUtil(viewYear, viewMonth));
+  var nextMonth = viewMonth + 1, nextYear = viewYear;
+  if (nextMonth > 11) { nextMonth = 0; nextYear++; }
+  var autoIso = toIsoDate(quintoDiaUtil(nextYear, nextMonth));
   var res = await sb.from('vencimento_mensal').select('*').eq('mes', viewMonth).eq('ano', viewYear).maybeSingle();
   if (!res.error && res.data) {
     vencimentoAtual = { iso: res.data.data_vencimento, autoIso: autoIso, manual: true };
@@ -1132,7 +1138,7 @@ function abrirVencModal() {
   if (!vencimentoAtual) return;
   document.getElementById('venc-modal-titulo-mes').textContent = MESES[viewMonth] + ' ' + viewYear;
   document.getElementById('venc-modal-input').value = vencimentoAtual.iso;
-  document.getElementById('venc-modal-hint').innerHTML = 'Automático (5º dia útil): <b style="color:#94a3b8">' + fmtDataBr(vencimentoAtual.autoIso) + '</b>. Mude só se precisar (feriado municipal, acordo com o cliente etc).';
+  document.getElementById('venc-modal-hint').innerHTML = 'Automático (5º dia útil do mês seguinte, já que ' + MESES[viewMonth] + ' é o mês de competência): <b style="color:#94a3b8">' + fmtDataBr(vencimentoAtual.autoIso) + '</b>. Mude só se precisar (feriado municipal, acordo com o cliente etc).';
   document.getElementById('venc-modal-overlay').style.display = 'block';
   document.getElementById('venc-modal').style.display = 'block';
 }
