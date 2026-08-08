@@ -151,6 +151,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     '.valor-pago{color:'+t.success+' !important}',
     '.comp-link{background:'+hexToRgba(t.accent,0.12)+' !important;color:'+t.accent+' !important}',
     '.comp-link:hover{background:'+hexToRgba(t.accent,0.22)+' !important}',
+    '.comp-link.extrato-link{background:'+hexToRgba(t.warn,0.14)+' !important;color:'+t.warn+' !important}',
+    '.comp-link.extrato-link:hover{background:'+hexToRgba(t.warn,0.24)+' !important}',
     '.month-dd-btn.cur{border-color:'+t.accent+' !important;background:'+hexToRgba(t.accent,0.15)+' !important;color:'+t.accent+' !important}',
     '.month-dd-item.sel{background:'+hexToRgba(t.accent,0.15)+' !important;color:'+t.accent+' !important}',
     '.month-dd-item.fech{color:'+t.success+' !important}',
@@ -972,12 +974,12 @@ function renderTable() {
       var compsHtml = comps.length
         ? comps.map(function(f) { return '<a class="comp-link" href="'+f.url+'" target="_blank" rel="noopener"><i class="ti ti-paperclip"></i> '+ (f.name.length > 18 ? f.name.substring(0,15)+'…' : f.name) +'</a>'; }).join(' ')
         : '<span class="no-comp">—</span>';
-      if (r.s.extrato_url) {
-        compsHtml += ' <a class="comp-link extrato-link" href="'+r.s.extrato_url+'" target="_blank" rel="noopener" title="Extrato do mês (Inove)"><i class="ti ti-file-text"></i> Extrato</a>';
-      }
       var aportes = r.s.aportes || [];
       if (aportes.length) {
         compsHtml += ' <button class="btn-historico" onclick="abrirHistoricoAportes('+r.c.reg+')"><i class="ti ti-history"></i> Histórico ('+aportes.length+')</button>';
+      }
+      if (r.s.extrato_url) {
+        compsHtml += ' <a class="comp-link extrato-link" href="'+r.s.extrato_url+'" target="_blank" rel="noopener" title="Extrato do mês (Inove)"><i class="ti ti-file-text"></i> Extrato</a>';
       }
       var obsHtml = r.s.obs_pagamento
         ? '<span class="obs-txt">'+escHtml(r.s.obs_pagamento)+'</span>'
