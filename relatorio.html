@@ -188,7 +188,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     cosmos:     { bg:'#04081a', card:'#081428', border:'rgba(0,180,216,0.14)',  text:'#c0e8f8', accent:'#00b4d8', success:'#48cae4', warn:'#90e0ef', danger:'#ef476f', mono:false },
     codigo:     { bg:'#1e1e1e', card:'#252526', border:'rgba(255,255,255,0.1)', text:'#d4d4d4', accent:'#007acc', success:'#4ec9b0', warn:'#dcdcaa', danger:'#f44747', mono:false },
     matrix:     { bg:'#000000', card:'#020f04', border:'rgba(0,255,65,0.22)',   text:'#d4ffdc', accent:'#00ff41', success:'#39ff6a', warn:'#ffd60a', danger:'#ff3b3b', mono:true, monoFamily:'Share Tech Mono', monoHref:'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap' },
-    msdos:      { bg:'#0000aa', card:'#0000aa', border:'#ffffff', text:'#ffffff', accent:'#00ffff', success:'#55ff55', warn:'#ffff55', danger:'#ff5555', mono:true, square:true, monoFamily:'VT323', monoHref:'https://fonts.googleapis.com/css2?family=VT323&display=swap' }
+    msdos:      { bg:'#0000aa', card:'#0000aa', border:'#ffffff', text:'#ffffff', accent:'#00ffff', success:'#55ff55', warn:'#ffff55', danger:'#ff5555', mono:true, square:true, monoFamily:'VT323', monoHref:'https://fonts.googleapis.com/css2?family=VT323&display=swap' },
+    // As 4 variantes do Vidro (glass:true), mesma paleta/gradiente de shared.js. O blur
+    // dos paineis e adicionado no bloco condicional abaixo, ja que esta pagina e standalone
+    // (nao carrega shared.js pra herdar o blur central).
+    vidro:       { bg:'radial-gradient(ellipse 900px 600px at 8% 0%, #e3d6f2 0%, transparent 60%), radial-gradient(ellipse 800px 700px at 100% 15%, #f9ddc9 0%, transparent 55%), radial-gradient(ellipse 900px 800px at 30% 100%, #d7ede2 0%, transparent 55%), #f7f4fb', card:'rgba(255,255,255,0.55)', border:'rgba(255,255,255,0.7)', text:'#2a2733', accent:'#4f7f8c', success:'#6f9e7c', warn:'#c98a45', danger:'#c07272', mono:false, glass:true },
+    'vidro-azul':  { bg:'radial-gradient(ellipse 1000px 700px at 6% -5%, #b8cee6 0%, transparent 62%), radial-gradient(ellipse 900px 800px at 100% 20%, #a8d9c8 0%, transparent 58%), radial-gradient(ellipse 1000px 900px at 35% 110%, #9fd0c2 0%, transparent 58%), #dfeaf0', card:'rgba(255,255,255,0.55)', border:'rgba(255,255,255,0.7)', text:'#2a2733', accent:'#4f7f8c', success:'#6f9e7c', warn:'#c98a45', danger:'#c07272', mono:false, glass:true },
+    'vidro-noite': { bg:'radial-gradient(ellipse 1100px 750px at 6% -10%, #2f6fa8 0%, transparent 58%), radial-gradient(ellipse 950px 850px at 100% 15%, #1f8f8a 0%, transparent 56%), radial-gradient(ellipse 1050px 950px at 35% 110%, #167a6e 0%, transparent 56%), #123a52', card:'rgba(255,255,255,0.55)', border:'rgba(255,255,255,0.7)', text:'#2a2733', bodyText:'#eaf5f2', accent:'#4f7f8c', success:'#6f9e7c', warn:'#c98a45', danger:'#c07272', mono:false, glass:true },
+    'vidro-escuro': { bg:'radial-gradient(ellipse 1000px 700px at 6% -10%, rgba(90,70,130,0.35) 0%, transparent 60%), radial-gradient(ellipse 900px 800px at 100% 15%, rgba(40,95,100,0.32) 0%, transparent 58%), radial-gradient(ellipse 1000px 900px at 35% 110%, rgba(35,65,58,0.32) 0%, transparent 58%), #121118', card:'rgba(28,26,38,0.55)', border:'rgba(255,255,255,0.10)', text:'#eae7f2', accent:'#7fb0bb', success:'#8fc79a', warn:'#e0b96a', danger:'#e2917f', mono:false, glass:true }
   };
   function hexToRgba(hex, alpha) {
     hex = String(hex||'').replace('#','');
@@ -196,10 +203,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     var r=parseInt(hex.substr(0,2),16)||0, g=parseInt(hex.substr(2,2),16)||0, b=parseInt(hex.substr(4,2),16)||0;
     return 'rgba('+r+','+g+','+b+','+alpha+')';
   }
-  var name = localStorage.getItem('ideali-theme') || 'sombra';
-  var t = THEME_COLORS[name] || THEME_COLORS.sombra;
+  var name = localStorage.getItem('ideali-theme') || 'vidro-escuro';
+  var t = THEME_COLORS[name] || THEME_COLORS['vidro-escuro'];
   var css = [
-    'body{background:'+t.bg+' !important;color:'+t.text+' !important}',
+    'body{background:'+t.bg+' !important;color:'+(t.bodyText||t.text)+' !important}',
     '.badge-ro{background:'+hexToRgba(t.accent,0.16)+' !important;color:'+t.accent+' !important;border-color:'+hexToRgba(t.accent,0.35)+' !important}',
     '.fat-card{background:'+t.card+' !important;border-color:'+hexToRgba(t.accent,0.35)+' !important}',
     '.sum-card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
@@ -219,7 +226,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     '.error-box i,.error-box p{color:'+t.danger+' !important}',
     '#obs-modal{background:'+t.card+' !important;border-color:'+t.border+' !important}',
     t.mono ? 'body,input,select,button,table{font-family:"'+(t.monoFamily||'Share Tech Mono')+'","Courier New",monospace !important}' : '',
-    t.square ? '*{border-radius:0 !important}\n*{box-shadow:none !important}' : ''
+    t.square ? '*{border-radius:0 !important}\n*{box-shadow:none !important}' : '',
+    // Glass: vidro fosco de verdade nos paineis -- pagina standalone, sem shared.js pra
+    // herdar o blur central.
+    t.glass ? [
+      'body{background-attachment:fixed !important}',
+      '.fat-card,.sum-card,.table-wrap,.rel-table th,#obs-modal{',
+      '  -webkit-backdrop-filter:blur(16px) saturate(1.3) !important;backdrop-filter:blur(16px) saturate(1.3) !important;',
+      '  box-shadow:0 2px 6px rgba(60,40,90,0.10),0 14px 34px rgba(60,40,90,0.20) !important',
+      '}'
+    ].join('\n') : ''
   ].join('\n');
   var styleEl = document.createElement('style');
   styleEl.textContent = css;
