@@ -7,16 +7,19 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
   <link rel="stylesheet" href="shared.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
   <script src="shared.js"></script>
 </head>
 <body>
 <div id="shared-shell"></div>
 
 <input type="file" id="comp-file-input" accept="image/*,application/pdf" style="display:none" onchange="handleCompFile(event)">
+<input type="file" id="extrato-file-input" accept="application/pdf" style="display:none" onchange="handleExtratoFile(event)">
 
 <div class="app-header">
   <div style="display:flex;align-items:center;gap:10px">
     <button onclick="openSidebar()" style="width:36px;height:36px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">&#9776;</button>
+    <img src="assets/logo.png" alt="" style="height:34px;width:34px;object-fit:contain;flex-shrink:0">
     <div>
       <p style="font-size:17px;font-weight:500;color:#f1f5f9">Contas a Receber</p>
     </div>
@@ -109,6 +112,12 @@ var monthDDOpen = false;
 var tarefasAbertas = {};
 var _compMenuReg = null;
 var _compUploadReg = null;
+var _extratoMenuReg = null;
+var _extratoUploadReg = null;
+
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+}
 
 // ── Data Loading ──────────────────────────────────────────────
 async function loadMonthData(m, y) {
@@ -117,6 +126,7 @@ async function loadMonthData(m, y) {
     var folder = y + '_' + m;
     var dbRes = await sb.from('controle_mensal').select('*').eq('mes',m).eq('ano',y);
     var storRes = await sb.storage.from('comprovantes').list(folder);
+    var extRes  = await sb.storage.from('extratos').list(folder);
     if (dbRes.error) throw dbRes.error;
     var rows = dbRes.data || [];
     var compMap = {};
@@ -131,16 +141,29 @@ async function loadMonthData(m, y) {
       });
       Object.keys(compMap).forEach(function(k){compMap[k].sort(function(a,b){return a.name<b.name?-1:1;});});
     }
+    var extMap = {};
+    if (!extRes.error && extRes.data) {
+      extRes.data.forEach(function(f) {
+        var match = f.name.match(/^reg(\d+)_/);
+        if (match) {
+          var reg = parseInt(match[1]);
+          if (!extMap[reg]) extMap[reg] = [];
+          extMap[reg].push({name:f.name, url:sb.storage.from('extratos').getPublicUrl(folder+'/'+f.name).data.publicUrl});
+        }
+      });
+      Object.keys(extMap).forEach(function(k){extMap[k].sort(function(a,b){return a.name<b.name?-1:1;});});
+    }
     var state = {};
     clients.forEach(function(c) {
-      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,obs_pagamento:'',comprovantes:compMap[c.reg]||[]};
+      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,obs_pagamento:'',comprovantes:compMap[c.reg]||[],extratos:extMap[c.reg]||[]};
     });
     rows.forEach(function(r) {
       state[r.cliente_reg] = {
         recebido:!!r.recebido, enviado:!!r.enviado, quitado:!!r.quitado,
         valor_mes:Number(r.valor_mes)||0, valor_pago:Number(r.valor_pago)||0,
         obs_pagamento:r.obs_pagamento||'',
-        comprovantes:compMap[r.cliente_reg]||[]
+        comprovantes:compMap[r.cliente_reg]||[],
+        extratos:extMap[r.cliente_reg]||[]
       };
     });
     return state;
@@ -492,7 +515,8 @@ function renderDetail() {
     tarefasBanner +
     roNote +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid rgba(255,255,255,0.06)">' + dt('recebido','ti-download','Extrato recebido') + dt('enviado','ti-upload','Extrato enviado') + dt('quitado','ti-circle-check','Quitado') +
-    (function(){var cl=cv.comprovantes||[];var n=cl.length;return '<button class="comp-clip'+(n?' has-comp':'')+'" style="width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:13px;height:30px" onclick="toggleCompMenu('+c.reg+',event)"><i class="ti ti-paperclip" style="font-size:14px"></i> '+(n?'<span style="color:'+T().success+'">'+n+' comprovante'+(n>1?'s':'')+'</span>':'Comprovante')+'</button>';})() + '</div>' +
+    (function(){var cl=cv.comprovantes||[];var n=cl.length;return '<button class="comp-clip'+(n?' has-comp':'')+'" style="width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:13px;height:30px" onclick="toggleCompMenu('+c.reg+',event)"><i class="ti ti-paperclip" style="font-size:14px"></i> '+(n?'<span style="color:'+T().success+'">'+n+' comprovante'+(n>1?'s':'')+'</span>':'Comprovante')+'</button>';})() +
+    (function(){var el=cv.extratos||[];var n=el.length;return '<button class="comp-clip" style="width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:13px;height:30px'+(n?';background:#1d3a6e;border-color:#3b82f6':'')+'" onclick="toggleExtratoMenu('+c.reg+',event)"><i class="ti ti-file-text" style="font-size:14px"></i> '+(n?'<span style="color:'+T().accent+'">'+n+' extrato'+(n>1?'s':'')+'</span>':'Extrato PDF')+'</button>';})() + '</div>' +
     finSection +
     '<div>' + rows + '</div>';
 }
@@ -689,6 +713,369 @@ async function handleCompFile(e) {
   setSyncStatus('ok');
   doFilter();
   if (selected && selected.reg === reg) renderDetail();
+}
+
+// ── Extratos (leitura automática de PDF + conferência) ─────────
+function toggleExtratoMenu(reg, e) {
+  e.stopPropagation();
+  var existing = document.getElementById('extrato-menu-popup');
+  if (existing) { existing.remove(); if (_extratoMenuReg === reg) { _extratoMenuReg = null; return; } }
+  _extratoMenuReg = reg;
+  var s = dbState[reg] || {};
+  var list = s.extratos || [];
+  var menu = document.createElement('div');
+  menu.id = 'extrato-menu-popup';
+  menu.className = 'comp-menu-popup';
+  var html = '';
+  if (list.length) {
+    list.forEach(function(item, idx) {
+      var label = 'Extrato ' + (idx + 1);
+      var safeName = item.name.replace(/'/g,'%27');
+      html += '<div style="display:flex;align-items:center;gap:2px;padding:2px 4px">' +
+        '<button class="comp-menu-item" style="flex:1" onclick="viewExtrato(\'' + item.url.replace(/'/g,'%27') + '\',event)"><i class="ti ti-eye" style="font-size:13px;color:' + T().accent + '"></i> ' + label + '</button>' +
+        '<button class="comp-menu-item" style="padding:8px 8px;color:' + T().danger + '" onclick="deleteExtrato(' + reg + ',\'' + safeName + '\',event)" title="Apagar"><i class="ti ti-trash" style="font-size:13px;color:' + T().danger + '"></i></button>' +
+        '</div>';
+    });
+    html += '<div style="height:0.5px;background:rgba(255,255,255,0.08);margin:3px 0"></div>';
+  }
+  html += '<button class="comp-menu-item" onclick="triggerExtratoUpload(' + reg + ',event)"><i class="ti ti-upload" style="font-size:13px;color:' + T().success + '"></i> ' + (list.length ? 'Adicionar extrato' : 'Anexar extrato (PDF)') + '</button>';
+  menu.innerHTML = html;
+  document.body.appendChild(menu);
+  var rect = e.target.closest('button').getBoundingClientRect();
+  var top = rect.bottom + 4;
+  var left = rect.right - menu.offsetWidth;
+  if (left < 8) left = 8;
+  if (top + 120 > window.innerHeight) top = rect.top - menu.offsetHeight - 4;
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+}
+
+function closeExtratoMenu() {
+  var m = document.getElementById('extrato-menu-popup');
+  if (m) m.remove();
+  _extratoMenuReg = null;
+}
+
+function viewExtrato(url, e) {
+  if (e) e.stopPropagation();
+  closeExtratoMenu();
+  window.open(url, '_blank');
+}
+
+function triggerExtratoUpload(reg, e) {
+  if (e) e.stopPropagation();
+  closeExtratoMenu();
+  _extratoUploadReg = reg;
+  var inp = document.getElementById('extrato-file-input');
+  inp.value = '';
+  inp.click();
+}
+
+async function deleteExtrato(reg, filename, e) {
+  if (e) e.stopPropagation();
+  closeExtratoMenu();
+  if (!confirm('Apagar este extrato?')) return;
+  setSyncStatus('syncing');
+  var folder = viewYear + '_' + viewMonth;
+  var path = folder + '/' + decodeURIComponent(filename);
+  var res = await sb.storage.from('extratos').remove([path]);
+  if (res.error) { setSyncStatus('error'); alert('Erro ao apagar: ' + (res.error.message || 'desconhecido')); return; }
+  if (!dbState[reg]) dbState[reg] = {};
+  if (!dbState[reg].extratos) dbState[reg].extratos = [];
+  dbState[reg].extratos = dbState[reg].extratos.filter(function(item) { return item.name !== decodeURIComponent(filename); });
+  setSyncStatus('ok');
+  doFilter();
+  if (selected && selected.reg === reg) renderDetail();
+}
+
+// Le todas as paginas do PDF com pdf.js e concatena o texto, quebrando
+// linha quando o proprio pdf.js marca fim de linha (item.hasEOL) -- e o
+// que permite o parser abaixo ler rotulo e valor "linha por linha", do
+// jeito que o extrato individual do Inove 3D realmente vem formatado.
+async function lerTextoPDF(file) {
+  var buf = await file.arrayBuffer();
+  var pdf = await pdfjsLib.getDocument({data: buf}).promise;
+  var texto = '';
+  for (var i = 1; i <= pdf.numPages; i++) {
+    var page = await pdf.getPage(i);
+    var content = await page.getTextContent();
+    content.items.forEach(function(item) {
+      texto += item.str + (item.hasEOL ? '\n' : ' ');
+    });
+    texto += '\n';
+  }
+  return texto;
+}
+
+// Extrai o primeiro numero em formato BR (1.234,56) de um trecho de texto,
+// aceitando "R$" opcional e sinal de menos (o extrato do Inove mostra
+// debitos como valor negativo -- aqui sempre devolvemos a magnitude,
+// que e como valor_mes/valor_pago sao guardados no sistema).
+function extrairPrimeiroValor(trecho) {
+  var m = trecho.match(/-?\s*R?\$?\s*\d{1,3}(?:\.\d{3})*,\d{2}/);
+  if (!m) return null;
+  var raw = m[0].replace(/[R$\s]/g,'');
+  var neg = raw.indexOf('-') === 0;
+  var n = parseFloat(raw.replace('-','').replace(/\./g,'').replace(',','.'));
+  if (isNaN(n)) return null;
+  return Math.abs(n);
+}
+
+// Parser do "Extrato Individual" do Inove 3D. Calibrado com PDFs reais
+// (pasta Desktop/99, extratos de julho/2026) -- formato confirmado:
+//   "Total de Servicos:   -4.746,00"
+//   "Saldo Anterior:   -1.835,00"
+//   "24/07/2026   Pagamento Efetuado!   1.035,00   -4.450,00"
+//   "Pix   24/07/2026   1.035,00"                                <- metodo fica na linha seguinte
+//   "24/07/2026   Desconto Aplicado!   630,00   -3.820,00"       <- acordo, NAO e pagamento
+//   "Acordo   24/07/2026   ..."
+function parseExtratoInove(texto) {
+  var linhas = texto.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+  var totalServicos = null, saldoAnterior = null;
+  var pagamentosPix = [], descontosAcordo = [];
+  var clienteNoPDF = null, periodoIni = null, periodoFim = null;
+
+  var mPeriodo = texto.match(/(\d{2})\/(\d{2})\/(\d{4})\s*a\s*(\d{2})\/(\d{2})\/(\d{4})/);
+  if (mPeriodo) { periodoIni = mPeriodo[1]+'/'+mPeriodo[2]+'/'+mPeriodo[3]; periodoFim = mPeriodo[4]+'/'+mPeriodo[5]+'/'+mPeriodo[6]; }
+
+  var mCliente = texto.match(/Cliente:\s*(.+?)\s*\[\d+\]/i);
+  if (mCliente) clienteNoPDF = mCliente[1].trim();
+
+  linhas.forEach(function(linha, i) {
+    if (totalServicos === null && /Total\s+de\s+Servi[cç]os\s*:/i.test(linha)) {
+      totalServicos = extrairPrimeiroValor(linha.replace(/.*Total\s+de\s+Servi[cç]os\s*:/i, ''));
+    }
+    if (saldoAnterior === null && /Saldo\s+Anterior\s*:/i.test(linha)) {
+      saldoAnterior = extrairPrimeiroValor(linha.replace(/.*Saldo\s+Anterior\s*:/i, ''));
+    }
+    if (/Pagamento\s+Efetuado!/i.test(linha)) {
+      var v = extrairPrimeiroValor(linha.replace(/.*Pagamento\s+Efetuado!/i, ''));
+      var prox = linhas[i+1] || '';
+      if (v !== null && /^Pix\b/i.test(prox)) pagamentosPix.push(v);
+    }
+    if (/Desconto\s+Aplicado!/i.test(linha)) {
+      var v2 = extrairPrimeiroValor(linha.replace(/.*Desconto\s+Aplicado!/i, ''));
+      if (v2 !== null) descontosAcordo.push(v2);
+    }
+  });
+
+  var somar = function(arr){ return arr.reduce(function(a,b){return a+b;}, 0); };
+  var camposFaltando = [];
+  if (totalServicos === null) camposFaltando.push('Total de Serviços');
+
+  return {
+    totalServicos: totalServicos,
+    saldoAnterior: saldoAnterior,
+    pagamentoPix: pagamentosPix.length ? somar(pagamentosPix) : null,
+    pagamentoPixCount: pagamentosPix.length,
+    descontoAcordo: descontosAcordo.length ? somar(descontosAcordo) : null,
+    descontoAcordoCount: descontosAcordo.length,
+    clienteNoPDF: clienteNoPDF,
+    periodoIni: periodoIni,
+    periodoFim: periodoFim,
+    camposFaltando: camposFaltando
+  };
+}
+
+async function handleExtratoFile(e) {
+  var file = e.target.files[0];
+  var reg = _extratoUploadReg;
+  e.target.value = '';
+  if (!file || !reg) return;
+  try {
+    setSyncStatus('syncing');
+    var texto = await lerTextoPDF(file);
+    var parsed = parseExtratoInove(texto);
+    var atual = await fetchCurrentRow(reg) || {valor_mes:0, valor_pago:0};
+    setSyncStatus('ok');
+    abrirModalConferenciaExtrato(reg, file, parsed, atual);
+  } catch (err) {
+    console.error('handleExtratoFile:', err);
+    setSyncStatus('error');
+    var atual2 = await fetchCurrentRow(reg) || {valor_mes:0, valor_pago:0};
+    abrirModalConferenciaExtrato(reg, file, {
+      totalServicos:null, saldoAnterior:null,
+      pagamentoPix:null, pagamentoPixCount:0,
+      descontoAcordo:null, descontoAcordoCount:0,
+      clienteNoPDF:null, periodoIni:null, periodoFim:null,
+      camposFaltando:['Total de Serviços'], erroLeitura: err.message || 'Erro desconhecido ao ler o PDF'
+    }, atual2);
+  }
+}
+
+function fmtOrTraco(v) { return (v===null || v===undefined) ? '—' : fmt(v); }
+
+function extratoInfoRow(icon, label, val, kind) {
+  var color = kind==='warn' ? T().warn : kind==='success' ? T().success : kind==='danger' ? T().danger : '#94a3b8';
+  return '<div style="display:flex;align-items:center;gap:10px;background:#22263a;border-radius:9px;padding:10px 12px;margin-bottom:8px">' +
+    '<i class="ti ' + icon + '" style="font-size:17px;color:' + color + ';flex-shrink:0"></i>' +
+    '<div style="flex:1;min-width:0"><p style="margin:0;font-size:11px;color:#64748b">' + label + '</p>' +
+    '<p style="margin:1px 0 0;font-size:14px;font-weight:600;color:#f1f5f9">' + val + '</p></div></div>';
+}
+
+function extratoStatusChip(kind, texto) {
+  var bg = kind==='match' ? '#0f2418' : kind==='diverge' ? '#3d1d1d' : '#22263a';
+  var fg = kind==='match' ? '#4ade80' : kind==='diverge' ? '#f87171' : '#94a3b8';
+  return '<span style="display:inline-flex;align-items:center;font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:20px;background:'+bg+';color:'+fg+';white-space:nowrap">' + texto + '</span>';
+}
+
+function fecharModalConferencia() {
+  var el = document.getElementById('extrato-overlay');
+  if (el) el.remove();
+}
+
+function abrirModalConferenciaExtrato(reg, file, parsed, atual) {
+  fecharModalConferencia();
+  var cli = clients.find(function(c){return c.reg===reg;}) || {nome:'Cliente ' + reg};
+  var atualValorMes  = Number(atual.valor_mes)  || 0;
+  var atualValorPago = Number(atual.valor_pago) || 0;
+  var bloqueado = parsed.camposFaltando.length > 0;
+  var diverge = !bloqueado && Math.abs(parsed.totalServicos - atualValorMes) > 0.004;
+
+  var linhasInfo = extratoInfoRow('ti-file-invoice', 'Total de Serviços (período)', fmtOrTraco(parsed.totalServicos), null);
+  if (parsed.saldoAnterior !== null) linhasInfo += extratoInfoRow('ti-alert-triangle', 'Saldo Anterior encontrado — não entra no valor deste mês', fmt(parsed.saldoAnterior), 'warn');
+  if (parsed.pagamentoPixCount > 0) linhasInfo += extratoInfoRow('ti-circle-check', 'Pagamento' + (parsed.pagamentoPixCount>1?'s':'') + ' Pix confirmado' + (parsed.pagamentoPixCount>1?'s':'') + ' no período', fmt(parsed.pagamentoPix), 'success');
+  if (parsed.descontoAcordoCount > 0) linhasInfo += extratoInfoRow('ti-discount-2', 'Desconto/Acordo no período (não é pagamento)', fmt(parsed.descontoAcordo), 'warn');
+
+  var avisoCliente = '';
+  if (parsed.clienteNoPDF) {
+    var nomeBate = cli.nome && parsed.clienteNoPDF.toLowerCase().indexOf(cli.nome.toLowerCase().split(' ')[0]) >= 0;
+    avisoCliente = '<p style="margin:0 0 12px;font-size:11.5px;color:' + (nomeBate ? '#64748b' : T().warn) + '">' +
+      (nomeBate ? '' : '⚠ ') + 'Cliente identificado no PDF: <strong style="color:' + (nomeBate?'#94a3b8':T().warn) + '">' + parsed.clienteNoPDF + '</strong>' +
+      (nomeBate ? '' : ' — confira se é o mesmo cliente selecionado (' + cli.nome + ')') + '</p>';
+  }
+  var avisoPeriodo = '';
+  if (parsed.periodoFim) {
+    var partesFim = parsed.periodoFim.split('/');
+    var mesPdf = parseInt(partesFim[1],10) - 1, anoPdf = parseInt(partesFim[2],10);
+    var periodoBate = (mesPdf === viewMonth && anoPdf === viewYear);
+    avisoPeriodo = '<p style="margin:0 0 12px;font-size:11.5px;color:' + (periodoBate ? '#64748b' : T().warn) + '">' +
+      (periodoBate ? '' : '⚠ ') + 'Período do PDF: <strong style="color:' + (periodoBate?'#94a3b8':T().warn) + '">' + parsed.periodoIni + ' a ' + parsed.periodoFim + '</strong>' +
+      (periodoBate ? '' : ' — diferente do mês selecionado (' + MESES[viewMonth] + ' ' + viewYear + ')') + '</p>';
+  }
+
+  var tabela = '<table style="width:100%;border-collapse:collapse;margin-top:6px">' +
+    '<thead><tr>' +
+    '<th style="text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;font-weight:600;padding:0 10px 8px">Campo</th>' +
+    '<th style="text-align:right;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;font-weight:600;padding:0 10px 8px">Lançado</th>' +
+    '<th style="text-align:right;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;font-weight:600;padding:0 10px 8px">PDF</th>' +
+    '<th style="text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;font-weight:600;padding:0 10px 8px">Status</th>' +
+    '</tr></thead><tbody>' +
+    '<tr>' +
+      '<td style="padding:11px 10px;border-top:0.5px solid rgba(255,255,255,0.06);color:#94a3b8;font-weight:500">Valor do mês</td>' +
+      '<td style="padding:11px 10px;border-top:0.5px solid rgba(255,255,255,0.06);text-align:right;font-variant-numeric:tabular-nums">' + fmt(atualValorMes) + '</td>' +
+      '<td style="padding:11px 10px;border-top:0.5px solid rgba(255,255,255,0.06);text-align:right;font-variant-numeric:tabular-nums">' + fmtOrTraco(parsed.totalServicos) + '</td>' +
+      '<td style="padding:11px 10px;border-top:0.5px solid rgba(255,255,255,0.06)">' + (bloqueado ? extratoStatusChip('neutral','Não identificado') : diverge ? extratoStatusChip('diverge','Diverge · ' + (parsed.totalServicos>atualValorMes?'+':'') + fmt(parsed.totalServicos-atualValorMes)) : extratoStatusChip('match','Bate certinho')) + '</td>' +
+    '</tr>' +
+    '<tr>' +
+      '<td style="padding:11px 10px;border-top:0.5px solid rgba(255,255,255,0.06);color:#94a3b8;font-weight:500">Valor pago</td>' +
+      '<td style="padding:11px 10px;border-top:0.5px solid rgba(255,255,255,0.06);text-align:right;font-variant-numeric:tabular-nums">' + fmt(atualValorPago) + '</td>' +
+      '<td style="padding:11px 10px;border-top:0.5px solid rgba(255,255,255,0.06);text-align:right;font-variant-numeric:tabular-nums">' + fmtOrTraco(parsed.pagamentoPix) + '</td>' +
+      '<td style="padding:11px 10px;border-top:0.5px solid rgba(255,255,255,0.06)">' + extratoStatusChip('neutral','Informativo · não é gravado aqui') + '</td>' +
+    '</tr>' +
+    '</tbody></table>';
+
+  var alerta;
+  if (bloqueado) {
+    alerta = '<div style="margin-top:16px;border-radius:10px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;background:#3d1d1d;border:0.5px solid rgba(239,68,68,0.35)">' +
+      '<i class="ti ti-alert-triangle" style="font-size:18px;color:' + T().danger + ';flex-shrink:0;margin-top:1px"></i>' +
+      '<p style="margin:0;font-size:12.5px;line-height:1.5;color:#fca5a5"><strong style="display:block;font-size:13px;margin-bottom:2px;color:#f87171">Não consegui ler o "Total de Serviços" neste PDF.</strong>' +
+      (parsed.erroLeitura ? ('Erro: ' + parsed.erroLeitura + '. ') : 'O layout deste arquivo pode ser diferente do esperado. ') +
+      'O valor do mês não será alterado automaticamente — anexe o arquivo e lance o valor manualmente no campo "Valor do mês".</p></div>';
+  } else if (diverge) {
+    alerta = '<div style="margin-top:16px;border-radius:10px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;background:#3d1d1d;border:0.5px solid rgba(239,68,68,0.35)">' +
+      '<i class="ti ti-alert-triangle" style="font-size:18px;color:' + T().danger + ';flex-shrink:0;margin-top:1px"></i>' +
+      '<p style="margin:0;font-size:12.5px;line-height:1.5;color:#fca5a5"><strong style="display:block;font-size:13px;margin-bottom:2px;color:#f87171">Valor do mês diverge em ' + fmt(Math.abs(parsed.totalServicos-atualValorMes)) + '.</strong>' +
+      'O extrato mostra ' + fmt(parsed.totalServicos) + ' mas o sistema tem ' + fmt(atualValorMes) + ' lançado para este cliente em ' + MESES[viewMonth] + '.' +
+      (parsed.pagamentoPixCount ? ' O pagamento Pix encontrado é só informativo aqui — confira se já está refletido no valor pago.' : '') + '</p></div>';
+  } else {
+    alerta = '<div style="margin-top:16px;border-radius:10px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;background:#0f2418;border:0.5px solid rgba(34,197,94,0.3)">' +
+      '<i class="ti ti-circle-check" style="font-size:18px;color:' + T().success + ';flex-shrink:0;margin-top:1px"></i>' +
+      '<p style="margin:0;font-size:12.5px;line-height:1.5;color:#86efac"><strong style="display:block;font-size:13px;margin-bottom:2px;color:#4ade80">Extrato confere com o que já está lançado.</strong>Pode anexar e seguir normalmente.</p></div>';
+  }
+
+  var botoes = '<button class="cad-btn-ghost" onclick="fecharModalConferencia()">Cancelar</button>';
+  if (bloqueado) {
+    botoes += '<button class="cad-btn-ghost" style="border-color:' + hexToRgba(T().warn,0.4) + ';color:' + T().warn + '" onclick="confirmarExtrato(' + reg + ',null)">Anexar mesmo assim (sem alterar valor)</button>';
+  } else if (diverge) {
+    botoes += '<button class="cad-btn-ghost" style="border-color:' + hexToRgba(T().warn,0.4) + ';color:' + T().warn + '" onclick="confirmarExtrato(' + reg + ',null)">Manter valor atual (' + fmt(atualValorMes) + ')</button>';
+    botoes += '<button class="cad-btn-primary" onclick="confirmarExtrato(' + reg + ',' + parsed.totalServicos + ')">Usar valor do PDF (' + fmt(parsed.totalServicos) + ')</button>';
+  } else {
+    botoes += '<button class="cad-btn-primary" onclick="confirmarExtrato(' + reg + ',null)">Confirmar e anexar</button>';
+  }
+
+  var overlay = document.createElement('div');
+  overlay.id = 'extrato-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:700;display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.onclick = function(ev) { if (ev.target === overlay) fecharModalConferencia(); };
+  overlay.innerHTML =
+    '<div style="max-width:600px;width:100%;max-height:calc(100vh - 32px);overflow-y:auto;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.12);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,0.5)" onclick="event.stopPropagation()">' +
+      '<div style="padding:18px 22px;border-bottom:0.5px solid rgba(255,255,255,0.06);display:flex;align-items:flex-start;gap:12px">' +
+        '<div style="width:38px;height:38px;border-radius:9px;background:#22263a;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#94a3b8"><i class="ti ti-file-text" style="font-size:19px"></i></div>' +
+        '<div><h1 style="margin:0;font-size:15px;font-weight:600;color:#f1f5f9">Conferência do extrato — ' + cli.nome + '</h1>' +
+        '<p style="margin:3px 0 0;font-size:12px;color:#64748b">Registro ' + reg + ' · ' + MESES[viewMonth] + ' ' + viewYear + '</p>' +
+        '<p style="margin:6px 0 0;font-size:11px;color:#94a3b8;font-family:ui-monospace,Consolas,monospace"><i class="ti ti-paperclip" style="font-size:11px"></i> ' + escHtml(file.name) + '</p></div>' +
+      '</div>' +
+      '<div style="padding:20px 22px">' +
+        avisoCliente + avisoPeriodo +
+        '<p style="font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin:0 0 10px;font-weight:600">Lido do PDF</p>' +
+        linhasInfo +
+        '<p style="font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin:20px 0 10px;font-weight:600">Comparação com o já lançado no sistema</p>' +
+        tabela +
+        alerta +
+      '</div>' +
+      '<div style="padding:16px 22px;border-top:0.5px solid rgba(255,255,255,0.06);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">' + botoes + '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  overlay.__file = file;
+}
+
+async function confirmarExtrato(reg, novoValorMes) {
+  var overlay = document.getElementById('extrato-overlay');
+  var file = overlay ? overlay.__file : null;
+  if (!file) { fecharModalConferencia(); return; }
+  var btns = overlay.querySelectorAll('button');
+  btns.forEach(function(b){ b.disabled = true; });
+
+  if (novoValorMes !== null && novoValorMes !== undefined) {
+    var atual = await fetchCurrentRow(reg);
+    if (!confirmReducaoValor(atual, {valor_mes: novoValorMes})) {
+      btns.forEach(function(b){ b.disabled = false; });
+      return;
+    }
+  }
+
+  setSyncStatus('syncing');
+  var folder = viewYear + '_' + viewMonth;
+  var path = folder + '/reg' + reg + '_' + Date.now() + '.pdf';
+  var upRes = await sb.storage.from('extratos').upload(path, file, {cacheControl:'3600', upsert:true});
+  if (upRes.error) {
+    setSyncStatus('error');
+    alert('Erro ao enviar o PDF: ' + (upRes.error.message || 'desconhecido') + (upRes.error.message && upRes.error.message.indexOf('not found')>=0 ? '\n\nO bucket "extratos" ainda não existe no Supabase Storage — rode a migração 013_bucket_extratos.sql.' : ''));
+    btns.forEach(function(b){ b.disabled = false; });
+    return;
+  }
+  var publicUrl = sb.storage.from('extratos').getPublicUrl(path).data.publicUrl;
+  if (!dbState[reg]) dbState[reg] = {};
+  if (!dbState[reg].extratos) dbState[reg].extratos = [];
+  dbState[reg].extratos.push({name: path.split('/').pop(), url: publicUrl});
+
+  if (novoValorMes !== null && novoValorMes !== undefined) {
+    var ok = await patchControleMensal(reg, {valor_mes: novoValorMes});
+    if (ok === false) {
+      setSyncStatus('error');
+      alert('Extrato anexado, mas houve erro ao gravar o novo valor do mês. Ajuste manualmente no campo "Valor do mês".');
+    } else {
+      dbState[reg].valor_mes = novoValorMes;
+    }
+  } else {
+    setSyncStatus('ok');
+  }
+
+  updateCounts();
+  doFilter();
+  if (selected && selected.reg === reg) renderDetail();
+  fecharModalConferencia();
 }
 
 // ── Shell ─────────────────────────────────────────────────────
