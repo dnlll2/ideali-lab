@@ -3,12 +3,29 @@
   Carregado via fetch() e injetado em #shared-shell por _base.html
   ================================================================ -->
 
+<!-- Filtros SVG do efeito de vidro embaçado (.header-glass / .header-glass-flush
+     em shared.css) -- ficam aqui pra existir em toda pagina que carrega o
+     shared-shell, mesmo que o header em si esteja em outro lugar do DOM. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="glassDistort" x="-50%" y="-50%" width="200%" height="200%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.006 0.009" numOctaves="2" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="18" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="glassGrain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="2" seed="3" stitchTiles="stitch" result="n"/>
+      <feGaussianBlur in="n" stdDeviation="9" result="nb"/>
+      <feColorMatrix in="nb" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.35 0"/>
+    </filter>
+  </defs>
+</svg>
+
 <!-- Overlay que fecha o sidebar ao clicar fora -->
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
 <!-- ── Sidebar ──────────────────────────────────────────────── -->
 <div id="sidebar">
-  <div class="sb-logo">
+  <div class="sb-logo header-glass-flush">
     <div style="display:flex;align-items:center;gap:12px">
       <img src="assets/logo.png" alt="" style="height:56px;width:56px;object-fit:contain;flex-shrink:0">
       <div>

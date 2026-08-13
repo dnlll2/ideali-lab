@@ -5,6 +5,53 @@
 
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;padding:0.5rem;min-height:100vh}
+
+/* ── Cabeçalho de vidro embaçado (paleta extraída do logo) ───────
+   .header-glass = cabeçalhos "flutuantes" (app-header, home-topbar):
+   card completo, com borda/raio/sombra próprios.
+   .header-glass-flush = topo de sidebar/menu-drawer: já tem padding e
+   border-bottom próprios, então recebe só o fundo/desfoque, sem raio
+   nem borda (ficaria estranho contra o canto quadrado do painel).
+   Os filtros #glassDistort/#glassGrain (SVG, feTurbulence) precisam
+   estar em algum lugar do documento — vêm via sidebar.html ou embutidos
+   direto na página nas telas standalone (portal-cliente/cadista etc). */
+.header-glass,.header-glass-flush{
+  position:relative;
+  background:
+    linear-gradient(118deg,
+      rgba(30,90,168,0.30) 0%,
+      rgba(47,143,174,0.24) 42%,
+      rgba(77,208,168,0.26) 78%,
+      rgba(143,230,196,0.16) 100%);
+  backdrop-filter:blur(16px) saturate(1.3);
+  -webkit-backdrop-filter:blur(16px) saturate(1.3);
+  overflow:hidden;
+}
+.header-glass{
+  border-radius:16px;
+  padding:16px 20px;
+  border:1px solid rgba(255,255,255,0.10);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.07),0 8px 28px rgba(0,0,0,0.30);
+}
+.header-glass::before,.header-glass-flush::before{
+  content:'';
+  position:absolute;inset:-35%;
+  background:
+    radial-gradient(ellipse 55% 70% at 6% -20%, rgba(30,90,168,0.68), transparent 62%),
+    radial-gradient(ellipse 50% 80% at 100% 130%, rgba(77,208,168,0.58), transparent 64%),
+    radial-gradient(ellipse 40% 50% at 60% -10%, rgba(143,230,196,0.42), transparent 62%);
+  filter:url(#glassDistort) blur(42px);
+  pointer-events:none;
+}
+.header-glass::after,.header-glass-flush::after{
+  content:'';
+  position:absolute;inset:0;
+  filter:url(#glassGrain);
+  opacity:0.18;
+  mix-blend-mode:soft-light;
+  pointer-events:none;
+}
+.header-glass>*,.header-glass-flush>*{position:relative;z-index:1}
 .card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;padding:1rem 1.25rem}
 .row-item{padding:9px 10px;border-bottom:0.5px solid rgba(255,255,255,0.06);cursor:pointer;border-radius:8px;transition:background 0.1s;display:flex;align-items:center;gap:8px}
 .row-item:hover{background:#22263a}
