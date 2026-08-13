@@ -210,79 +210,46 @@ function cliAnexarRegraPadrao(descricao, reg) {
   setInterval(atualiza, 1000);
 })();
 
-// ── Temas ─────────────────────────────────────────────────────
+// ── Tema ──────────────────────────────────────────────────────
+// 3 variantes do Vidro (mesma familia -- cards/sidebar/inputs em vidro
+// translucido branco, mesmas cores de acento), diferindo so no fundo
+// da pagina: claro (padrao) -> azulado -> escuro (tom do cabecalho,
+// paleta do logo). bodyText e a cor do texto solto direto no body,
+// fora de qualquer card -- separado de "text" (usado dentro dos
+// cards/tabelas, que continuam claros mesmo no Vidro Noite porque o
+// card em si continua um vidro branco por cima do fundo escuro).
 var THEMES = {
-  sombra: {
-    name:'Sombra', swatch:'#3b82f6',
-    bg:'#0f1117', sbg:'#13151f', card:'#1a1d27', sec:'#22263a',
-    hover:'#2d3250', active:'#1a2a40', border:'rgba(255,255,255,0.08)',
-    text:'#e2e8f0', muted:'#94a3b8', dim:'#64748b',
-    accent:'#3b82f6', accent2:'#a78bfa', success:'#22c55e', warn:'#fbbf24', danger:'#ef4444'
-  },
-  terminal: {
-    name:'Terminal', swatch:'#00ff41',
-    bg:'#010b01', sbg:'#010601', card:'#081408', sec:'#0b1e0b',
-    hover:'#102810', active:'#0a200a', border:'rgba(0,255,65,0.12)',
-    text:'#a8ffb8', muted:'#4db860', dim:'#2a6e3a',
-    accent:'#00ff41', accent2:'#00e6c3', success:'#00cc33', warn:'#c8ff00', danger:'#ff3333'
-  },
-  forja: {
-    name:'Forja', swatch:'#d4a017',
-    bg:'#120e06', sbg:'#0e0a04', card:'#1c1508', sec:'#261c0a',
-    hover:'#30220c', active:'#281a08', border:'rgba(180,130,20,0.18)',
-    text:'#ead6a0', muted:'#a08050', dim:'#6b5535',
-    accent:'#d4a017', accent2:'#e8935a', success:'#78b040', warn:'#e8b420', danger:'#c0392b'
-  },
-  trincheira: {
-    name:'Trincheira', swatch:'#7a9a3c',
-    bg:'#09100a', sbg:'#060d07', card:'#111a0f', sec:'#182015',
-    hover:'#1e2a1a', active:'#182415', border:'rgba(100,130,60,0.18)',
-    text:'#c0c8b0', muted:'#7a8c68', dim:'#4e5a42',
-    accent:'#7a9a3c', accent2:'#a8b878', success:'#6b8c42', warn:'#b8a040', danger:'#9c3a2a'
-  },
-  cosmos: {
-    name:'Cosmos', swatch:'#00b4d8',
-    bg:'#04081a', sbg:'#020612', card:'#081428', sec:'#0c1c38',
-    hover:'#102240', active:'#0c1e3a', border:'rgba(0,180,216,0.14)',
-    text:'#c0e8f8', muted:'#5aaccc', dim:'#2e7a9a',
-    accent:'#00b4d8', accent2:'#7c83fd', success:'#48cae4', warn:'#90e0ef', danger:'#ef476f'
-  },
-  codigo: {
-    name:'Código', swatch:'#007acc',
-    bg:'#1e1e1e', sbg:'#252526', card:'#252526', sec:'#2d2d30',
-    hover:'#37373d', active:'#094771', border:'rgba(255,255,255,0.1)',
-    text:'#d4d4d4', muted:'#888888', dim:'#6a6a6a',
-    accent:'#007acc', accent2:'#c586c0', success:'#4ec9b0', warn:'#dcdcaa', danger:'#f44747'
-  },
-  matrix: {
-    name:'Matrix', swatch:'#00ff41', mono:true,
-    monoFamily:'Share Tech Mono', monoHref:'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap',
-    bg:'#000000', sbg:'#000000', card:'#020f04', sec:'#041a06',
-    hover:'#0b2a0e', active:'#0a2409', border:'rgba(0,255,65,0.22)',
-    text:'#d4ffdc', muted:'#52d17a', dim:'#1f7a3d',
-    accent:'#00ff41', accent2:'#00e6a8', success:'#39ff6a', warn:'#ffd60a', danger:'#ff3b3b'
-  },
-  msdos: {
-    name:'MS-DOS', swatch:'#0000aa', mono:true, square:true,
-    monoFamily:'VT323', monoHref:'https://fonts.googleapis.com/css2?family=VT323&display=swap',
-    bg:'#0000aa', sbg:'#0000aa', card:'#0000aa', sec:'#000088',
-    hover:'#0000ff', active:'#1818cc', border:'#ffffff',
-    text:'#ffffff', muted:'#aaaaaa', dim:'#7777bb',
-    accent:'#00ffff', accent2:'#ffff55', success:'#55ff55', warn:'#ffff55', danger:'#ff5555'
-  },
   vidro: {
     name:'Vidro', swatch:'linear-gradient(135deg,#e3d6f2,#4f7f8c)', glass:true,
     customFont:'Manrope', customFontHref:'https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap',
     bg:'radial-gradient(ellipse 900px 600px at 8% 0%, #e3d6f2 0%, transparent 60%), radial-gradient(ellipse 800px 700px at 100% 15%, #f9ddc9 0%, transparent 55%), radial-gradient(ellipse 900px 800px at 30% 100%, #d7ede2 0%, transparent 55%), #f7f4fb',
     sbg:'rgba(255,255,255,0.55)', card:'rgba(255,255,255,0.55)', sec:'rgba(255,255,255,0.65)',
     hover:'rgba(79,127,140,0.12)', active:'rgba(79,127,140,0.18)', border:'rgba(255,255,255,0.7)',
-    text:'#2a2733', muted:'#6e6a7c', dim:'#9994a8',
+    text:'#2a2733', muted:'#6e6a7c', dim:'#9994a8', bodyText:'#2a2733',
+    accent:'#4f7f8c', accent2:'#8c7aa8', success:'#6f9e7c', warn:'#c98a45', danger:'#c07272'
+  },
+  'vidro-azul': {
+    name:'Vidro Azul', swatch:'linear-gradient(135deg,#b8cee6,#9fd0c2)', glass:true,
+    customFont:'Manrope', customFontHref:'https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap',
+    bg:'radial-gradient(ellipse 1000px 700px at 6% -5%, #b8cee6 0%, transparent 62%), radial-gradient(ellipse 900px 800px at 100% 20%, #a8d9c8 0%, transparent 58%), radial-gradient(ellipse 1000px 900px at 35% 110%, #9fd0c2 0%, transparent 58%), #dfeaf0',
+    sbg:'rgba(255,255,255,0.55)', card:'rgba(255,255,255,0.55)', sec:'rgba(255,255,255,0.65)',
+    hover:'rgba(79,127,140,0.12)', active:'rgba(79,127,140,0.18)', border:'rgba(255,255,255,0.7)',
+    text:'#2a2733', muted:'#6e6a7c', dim:'#9994a8', bodyText:'#2a2733',
+    accent:'#4f7f8c', accent2:'#8c7aa8', success:'#6f9e7c', warn:'#c98a45', danger:'#c07272'
+  },
+  'vidro-noite': {
+    name:'Vidro Noite', swatch:'linear-gradient(135deg,#2f6fa8,#167a6e)', glass:true,
+    customFont:'Manrope', customFontHref:'https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap',
+    bg:'radial-gradient(ellipse 1100px 750px at 6% -10%, #2f6fa8 0%, transparent 58%), radial-gradient(ellipse 950px 850px at 100% 15%, #1f8f8a 0%, transparent 56%), radial-gradient(ellipse 1050px 950px at 35% 110%, #167a6e 0%, transparent 56%), #123a52',
+    sbg:'rgba(255,255,255,0.55)', card:'rgba(255,255,255,0.55)', sec:'rgba(255,255,255,0.65)',
+    hover:'rgba(79,127,140,0.12)', active:'rgba(79,127,140,0.18)', border:'rgba(255,255,255,0.7)',
+    text:'#2a2733', muted:'#6e6a7c', dim:'#9994a8', bodyText:'#eaf5f2',
     accent:'#4f7f8c', accent2:'#8c7aa8', success:'#6f9e7c', warn:'#c98a45', danger:'#c07272'
   }
 };
 
 // ── Cores dinâmicas por tema (cards e gráficos) ────────────────
-function T() { return THEMES[currentTheme] || THEMES.sombra; }
+function T() { return THEMES[currentTheme] || THEMES.vidro; }
 
 function hexToRgba(hex, alpha) {
   hex = String(hex||'').replace('#','');
@@ -311,14 +278,15 @@ function notifyThemeChange() {
   if (typeof onThemeChange === 'function') { try { onThemeChange(); } catch(e){ console.error('[onThemeChange]', e); } }
 }
 
-var currentTheme = localStorage.getItem('ideali-theme') || 'sombra';
+var currentTheme = localStorage.getItem('ideali-theme') || 'vidro';
+if (!THEMES[currentTheme]) currentTheme = 'vidro';
 
 function applyTheme(name) {
   var t = THEMES[name]; if (!t) return;
   currentTheme = name;
   localStorage.setItem('ideali-theme', name);
   var css = [
-    'body{background:'+t.bg+' !important;color:'+t.text+' !important}',
+    'body{background:'+t.bg+' !important;color:'+(t.bodyText||t.text)+' !important}',
     '.card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
     '#sidebar{background:'+t.sbg+' !important;border-color:'+t.border+' !important}',
     '.sb-logo{border-color:'+t.border+' !important}',
@@ -372,7 +340,7 @@ function applyTheme(name) {
       'body{background-attachment:fixed !important}',
       '.card,#sidebar,.dash-card,.hm-card,.hm-section,.counter-card,.task-item,.fin-card,.tab-tarefa,#month-dd-list,.mob-back,.hamburger,.sb-close,.sb-icon,input,select{',
       '  -webkit-backdrop-filter:blur(16px) saturate(1.3) !important;backdrop-filter:blur(16px) saturate(1.3) !important;',
-      '  box-shadow:0 8px 28px rgba(80,60,110,0.14) !important',
+      '  box-shadow:0 2px 6px rgba(60,40,90,0.10),0 14px 34px rgba(60,40,90,0.20) !important',
       '}',
       // shared.css define várias classes com cores fixas do tema Sombra (tabelas, sidebar, badges).
       // Nos 8 temas escuros isso passa despercebido (cinza claro sobre fundo escuro sempre lê bem);
@@ -382,12 +350,26 @@ function applyTheme(name) {
       '.sb-item,.cad-btn-ghost,.imp-tab-btn,.cam-orig-btn,.ia-history-res,.ia-mic-btn,.comp-menu-item{color:'+t.muted+' !important}',
       '.cad-table th,.imp-preview-table th{background:'+t.sec+' !important}',
       '.tick-btn,.comp-clip,.home-col-badge,.cad-btn-ghost,.imp-tab-btn,.cam-orig-btn,.ia-mic-btn{background:'+t.sec+' !important}',
+      // ordens-cam.html (kanban de producao) -- classes proprias da pagina, fora
+      // da lista acima porque nao sao compartilhadas com mais ninguem.
+      '.cam-col,.cam-report,.cam-report-scroll,.cam-report-table th,.cam-scan-box,.cam-scan-toggle button,.dente{background:'+t.sec+' !important}',
+      '.cam-card,.cam-report-stat,.cam-pend-card{background:'+t.card+' !important}',
+      '.cam-report-chevron,.cam-report-stat .l,.cam-report-table th,.cam-upload{color:'+t.dim+' !important}',
+      '.cam-report-table td{color:'+t.text+' !important}',
+      '.cam-scan-toggle button,.dente{color:'+t.muted+' !important}',
+      // pagamentos-inove.html -- idem, classes proprias da pagina.
+      '.nav-btn,.modal-close,.btn-secondary,.status-p,.status-filter-btn,.view-tab-btn,.venc-modal-body input[type=date],.rank-collapse-btn,.pont-collapse-btn{background:'+t.sec+' !important}',
+      '.modal,.modal-header,.sum-card,.table-wrap,.rel-table th,.pend-card,.rank-card,.pont-col{background:'+t.card+' !important}',
+      '.nav-btn:hover,.modal-close:hover,.status-filter-btn:hover,.rank-collapse-btn:hover,.pont-collapse-btn:hover{background:'+t.hover+' !important}',
+      '.header-left h1,.sum-card .val,.rel-table td,.client-name,.pend-card-nome,.venc-modal-body input[type=date],.venc-btn-auto:hover,.rank-section-title h3,.rank-name,.pont-section-title h3,.pont-name{color:'+t.text+' !important}',
+      '.header-left p,.comissao-table th,.sum-card .lbl,.sum-card-futura .lbl-sub,.rel-table th,.status-p,.valor-zero,.no-comp,.loading,.footer,.venc-modal-body label,.venc-modal-hint,.rank-place,.rank-sub,.pont-rank,.pont-date,.pont-empty{color:'+t.dim+' !important}',
+      '.nav-btn,.btn-secondary,.sum-card-futura .val,.status-filter-btn,.obs-txt,.view-tab-btn,.venc-btn-auto,.rank-collapse-btn,.pont-collapse-btn,.rank-collapsed-strip,.pont-collapsed-strip{color:'+t.muted+' !important}',
       // Pega o resto: cores e fundos cinza-escuro do tema Sombra escritos direto no HTML de cada página
       // (não vêm de classe, então só um seletor por atributo alcança).
       '[style*="color:#f1f5f9"],[style*="color:#e2e8f0"]{color:'+t.text+' !important}',
       '[style*="color:#94a3b8"]{color:'+t.muted+' !important}',
       '[style*="color:#64748b"],[style*="color:#4a5568"]{color:'+t.dim+' !important}',
-      '[style*="background:#0f1117"],[style*="background:#13151f"]{background:'+t.sec+' !important}',
+      '[style*="background:#0f1117"],[style*="background:#13151f"],[style*="background:#13161f"]{background:'+t.sec+' !important}',
       '[style*="background:#1a1d27"]{background:'+t.card+' !important}',
       '[style*="background:#22263a"]{background:'+t.sec+' !important}',
       '[style*="background:#2d3250"]{background:'+t.hover+' !important}'

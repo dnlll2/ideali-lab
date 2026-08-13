@@ -74,7 +74,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .page{max-width:100%;margin:0}
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:12px}
 /* Vidro embaçado (paleta do logo) -- pagina standalone, sem shared.css */
-.header-glass{position:relative;border-radius:16px;padding:16px 20px;border:1px solid rgba(255,255,255,0.10);background:linear-gradient(118deg,rgba(30,90,168,0.30) 0%,rgba(47,143,174,0.24) 42%,rgba(77,208,168,0.26) 78%,rgba(143,230,196,0.16) 100%);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,0.07),0 8px 28px rgba(0,0,0,0.30)}
+.header-glass{position:relative;margin-left:8px;margin-right:8px;border-radius:16px;padding:16px 20px;border:1px solid rgba(255,255,255,0.10);background:linear-gradient(118deg,rgba(30,90,168,0.30) 0%,rgba(47,143,174,0.24) 42%,rgba(77,208,168,0.26) 78%,rgba(143,230,196,0.16) 100%);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,0.07),0 8px 28px rgba(0,0,0,0.30)}
 .header-glass::before{content:'';position:absolute;inset:-35%;background:radial-gradient(ellipse 55% 70% at 6% -20%, rgba(30,90,168,0.68), transparent 62%),radial-gradient(ellipse 50% 80% at 100% 130%, rgba(77,208,168,0.58), transparent 64%),radial-gradient(ellipse 40% 50% at 60% -10%, rgba(143,230,196,0.42), transparent 62%);filter:url(#glassDistort) blur(42px);pointer-events:none}
 .header-glass::after{content:'';position:absolute;inset:0;filter:url(#glassGrain);opacity:0.18;mix-blend-mode:soft-light;pointer-events:none}
 .header-glass>*{position:relative;z-index:1}
