@@ -37,10 +37,6 @@
   .caso-data{font-size:12px;color:#64748b}
   .admin-banner{font-size:12px;font-weight:600;color:#fcd34d;background:#3d2e0e;border:0.5px solid rgba(251,191,36,0.35);border-radius:8px;padding:8px 12px;margin-bottom:14px;text-align:left}
   .caso-desc{font-size:12px;color:#94a3b8;margin:6px 0 10px;line-height:1.5;white-space:pre-line;word-break:break-word}
-  .caso-obs-btn{height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid rgba(45,212,191,0.4);background:transparent;color:#94a3b8;transition:all 0.15s}
-  .caso-obs-btn.tem-obs{background:#0f766e;border-color:#2dd4bf;color:#fff}
-  .caso-aprov-btn{height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid rgba(167,139,250,0.4);background:transparent;color:#94a3b8;transition:all 0.15s}
-  .caso-aprov-btn.ativo{background:#7c3aed;border-color:#a78bfa;color:#fff}
 
   /* ── Kanban (mesmo padrao visual/interacao do ordens-cam.html):
        drag-and-drop nativo HTML5 -- so mouse/desktop, sem suporte a
@@ -96,8 +92,32 @@
     #view-painel .panel-head .sub{font-size:14px}
   }
 
-  #obs-dropdown-cadista{display:none;position:fixed;z-index:300;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px;width:260px;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
-  #obs-dropdown-cadista-text{width:100%;height:80px;resize:vertical;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:12px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit}
+  .cadi-anexos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:420px){.cadi-anexos-grid{grid-template-columns:repeat(2,1fr)}}
+  .cadi-upload{border:1px dashed rgba(255,255,255,0.2);border-radius:8px;min-height:52px;display:flex;align-items:center;justify-content:center;text-align:center;gap:4px;color:#64748b;font-size:10.5px;padding:4px 6px;word-break:break-word;line-height:1.3}
+  .cadi-upload.editable{cursor:pointer}
+  .cadi-upload.readonly{cursor:default;opacity:0.55;border-style:dashed}
+  .cadi-upload.has-file{border-style:solid;border-color:rgba(96,165,250,0.45);color:#93c5fd;background:rgba(96,165,250,0.07)}
+  .cadi-upload.dragover{border-style:solid;border-color:#3b82f6;background:rgba(59,130,246,0.14);color:#93c5fd}
+  .cadi-anexo-files{display:flex;flex-direction:column;gap:3px;margin-top:5px}
+  .cadi-anexo-empty{font-size:10px;color:#4a5568;margin:0}
+  .cadi-anexo-file-row{display:flex;align-items:center;gap:5px}
+  .cadi-anexo-file{display:block;font-size:10.5px;color:#63b3ed;text-decoration:none;word-break:break-word;flex:1;min-width:0}
+  .cadi-anexo-file:hover{text-decoration:underline}
+  .cadi-anexo-file .ver{color:#63b3ed}
+  .cadi-anexo-del{flex-shrink:0;border:none;background:none;color:#ef4444;font-size:11px;cursor:pointer;padding:0;font-family:inherit}
+  .cadi-anexo-del:hover{color:#f87171}
+  .odonto{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
+  .odonto-row{display:flex;gap:4px;justify-content:center}
+  .odonto-quad{display:flex;gap:3px}
+  .dente{width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.15);background:#22263a;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;transition:all 0.1s}
+  .dente:hover{border-color:#3b82f6}
+  .dente.on{background:#1d4ed8;border-color:#3b82f6;color:#fff;font-weight:600}
+  .odonto-gap{width:8px}
+  @media(max-width:420px){.dente{width:23px;height:23px;font-size:9.5px}}
+  .dente-modelo{height:32px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.15);background:#22263a;color:#94a3b8;font-size:11.5px;cursor:pointer;font-family:inherit;transition:all 0.1s}
+  .dente-modelo:hover{border-color:#3b82f6}
+  .dente-modelo.on{background:#1d4ed8;border-color:#3b82f6;color:#fff;font-weight:600}
 </style>
 </head>
 <body>
@@ -121,13 +141,13 @@
   </nav>
 </div>
 
-<div id="obs-dropdown-cadista" onclick="event.stopPropagation()">
-  <p style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 6px">📝 Observação</p>
-  <textarea id="obs-dropdown-cadista-text" placeholder="Ex: aguardando confirmação de cor com o dentista..."></textarea>
-  <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px">
-    <button onclick="fecharObsCadista()" style="height:26px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.12);background:transparent;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit">Cancelar</button>
-    <button onclick="salvarObsCadista()" style="height:26px;padding:0 12px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Salvar</button>
+<div id="cad-detail-overlay" onclick="fecharDetalheCadista()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:310"></div>
+<div id="cad-detail-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:311;width:min(560px,95vw);max-height:88vh;overflow-y:auto;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:0.5px solid rgba(255,255,255,0.08);position:sticky;top:0;background:#1a1d27;z-index:1">
+    <p style="font-size:15px;font-weight:600;color:#f1f5f9;margin:0">Detalhes do Caso</p>
+    <button onclick="fecharDetalheCadista()" style="width:28px;height:28px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
   </div>
+  <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px" id="cad-detail-body"></div>
 </div>
 
 <div id="undo-toast">
@@ -265,23 +285,40 @@ function escHtml(s) {
 
 var casosCadista = [];
 
+// Mesmo formato montado em ordens-cam.html (saveNovaCamOrdem): paciente e
+// tipo_trabalho ja vem separados pela RPC listar_casos_cadista, aqui so
+// falta extrair Scanbody e Observações de dentro de "descricao".
+function cadParseExtra(descricao) {
+  var d = descricao || '';
+  var mScan      = d.match(/Scanbody: ([^\n]*)/);
+  var mObs       = d.match(/Observacoes: ([\s\S]*?)(?:\n\nRegra do cliente:|$)/);
+  var mLegacyPac = d.match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
+  var estruturado = !!(d.match(/Paciente: /) || d.match(/Tipo de trabalho: /) || mLegacyPac);
+  var observacoes;
+  if (mObs) observacoes = mObs[1].trim();
+  else if (mLegacyPac) observacoes = (mLegacyPac[2] || '').trim();
+  else if (!estruturado) observacoes = d.trim();
+  else observacoes = '';
+  return { scanbody: mScan ? mScan[1] : '', observacoes: observacoes };
+}
+
 function casoCardHtmlCadista(c) {
   var hasObs = !!(c.observacao && c.observacao.trim());
-  var btnObs = '<button class="caso-obs-btn' + (hasObs ? ' tem-obs' : '') + '" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();abrirObsCadista(\''+c.id+'\',event)" title="'+(hasObs?escHtml(c.observacao):'Adicionar observação')+'">📝'+(hasObs?' Obs.':'')+'</button>';
-  var aprov = !!c.aprovacao;
-  var btnAprov = '<button class="caso-aprov-btn' + (aprov ? ' ativo' : '') + '" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();toggleAprovacaoCadista(\''+c.id+'\')" title="Aguardando aprovação">' + (aprov ? '✔ ' : '') + '⏳ Aprovação</button>';
+  var extra = cadParseExtra(c.descricao);
+  var scanHtml = extra.scanbody ? '<div class="caso-tipo">Scanbody: ' + escHtml(extra.scanbody) + '</div>' : '';
   return '' +
-    '<div class="caso-card" draggable="true" ondragstart="cadDragStart(event,\''+c.id+'\')">' +
+    '<div class="caso-card" draggable="true" ondragstart="cadDragStart(event,\''+c.id+'\')" onclick="abrirDetalheCadista(\''+c.id+'\')">' +
       '<div class="caso-top">' +
         '<div>' +
           '<div class="caso-cliente">' + escHtml(c.cliente_nome) + (c.paciente ? ' — ' + escHtml(c.paciente) : '') + '</div>' +
           (c.tipo_trabalho ? '<div class="caso-tipo">' + escHtml(c.tipo_trabalho) + '</div>' : '') +
+          scanHtml +
         '</div>' +
+        (hasObs ? '<span title="Tem observação" style="font-size:13px;flex-shrink:0">📝</span>' : '') +
       '</div>' +
-      '<div class="caso-desc">' + escHtml(c.descricao || '—') + '</div>' +
+      '<div class="caso-desc">' + escHtml(extra.observacoes || c.descricao || '—') + '</div>' +
       '<div class="caso-bottom">' +
         '<span class="caso-data">Entrada: ' + formatarDataHora(c.criado_em) + '</span>' +
-        '<div style="display:flex;gap:6px;align-items:center">' + btnAprov + btnObs + '</div>' +
       '</div>' +
     '</div>';
 }
@@ -417,70 +454,300 @@ async function desfazerUltimoMovimento() {
   }
 }
 
-// ── Aguardando aprovação (mesma coluna booleana "aprovacao" que
-//    ordens-cam.html ja usa; ortogonal ao status, liga/desliga em
-//    qualquer coluna do kanban) ──────────────────────────────────
-async function toggleAprovacaoCadista(id) {
-  var c = casosCadista.find(function(x){ return x.id === id; });
-  if (!c) return;
-  var novoValor = !c.aprovacao;
-
+// ── Anexos (mesmo esquema do JWT de upload em portal-cliente.html,
+//    16_upload_stl_jwt.sql -- a policy de INSERT so confere bucket +
+//    claim cliente_reg batendo com a 1a pasta do path, entao o mesmo
+//    JWT emitido por gerar_jwt_leitura_cadista (021, role anon +
+//    claim cliente_reg DAQUELE caso) ja serve tanto pra ler quanto
+//    pra o cadista subir os proprios entregaveis -- sem precisar de
+//    nenhuma function nova) ────────────────────────────────────────
+async function camClienteAnexosCadista(id) {
   var raw = localStorage.getItem(SESSAO_KEY);
   var sessao = raw ? JSON.parse(raw) : null;
-  if (!sessao || !sessao.token) return;
+  if (!sessao || !sessao.token) throw new Error('Sessão expirada.');
 
+  var jwtRes = await sb.rpc('gerar_jwt_leitura_cadista', { p_sessao: sessao.token, p_caso_id: id });
+  if (jwtRes.error) throw jwtRes.error;
+  var row = (jwtRes.data || [])[0];
+  if (!row || !row.token) return null;
+
+  var client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: 'Bearer ' + row.token } }
+  });
+  return { client: client, pasta: row.pasta };
+}
+
+async function camListarAnexosCadista(id) {
+  var ctx = await camClienteAnexosCadista(id);
+  if (!ctx) return [];
+  var listRes = await ctx.client.storage.from('casos').list(ctx.pasta);
+  if (listRes.error) throw listRes.error;
+  var arquivos = (listRes.data || []).filter(function(f){ return f.name; });
+  return Promise.all(arquivos.map(async function(f) {
+    var signed = await ctx.client.storage.from('casos').createSignedUrl(ctx.pasta + '/' + f.name, 3600);
+    return { name: f.name, url: (signed.data && signed.data.signedUrl) || '#' };
+  }));
+}
+
+// ── Detalhe do caso (modal aberto ao clicar no card): mesmo layout
+//    de anexos do ordens-cam.html, so que o cadista so pode anexar
+//    STL, HTML, Foto do Scanbody e o Detalhado (zip) -- os outros 3
+//    (entrada enviada pelo laboratorio) ficam so pra visualizar -- e
+//    editar a propria observacao. Nada mais e editavel aqui. Slots
+//    editaveis aceitam varios arquivos de uma vez (input multiple). ─
+var CAD_ANEXO_SLOTS = [
+  { id: 'escaneamento', label: 'Escaneamento',              editable: false },
+  { id: 'html',         label: 'HTML',                      editable: true  },
+  { id: 'stl',          label: 'STL',                       editable: true  },
+  { id: 'cor',          label: 'Foto da cor',                editable: false },
+  { id: 'sorriso',      label: 'Foto do sorriso',            editable: false },
+  { id: 'scanbody',     label: 'Foto do Scanbody (Exocad)',  editable: true  },
+  { id: 'detalhado',    label: 'Anexo Detalhado (.zip)',     editable: true  }
+];
+
+function cadAnexoSlotHtml(id, slot) {
+  var filesId = 'cad-anexo-' + id + '-' + slot.id + '-files';
+  var inputId = 'cad-anexo-' + id + '-' + slot.id + '-input';
+  var trigger = slot.editable
+    ? '<input type="file" multiple id="'+inputId+'" style="display:none" onchange="cadUploadAnexoCadista(\''+id+'\',\''+slot.id+'\',this)">'+
+      '<div class="cadi-upload editable" onclick="document.getElementById(\''+inputId+'\').click()" '+
+        'ondragover="cadAnexoDragOver(event)" ondragleave="cadAnexoDragLeave(event)" ondrop="cadAnexoDrop(event,\''+id+'\',\''+slot.id+'\')">📎 Anexar arquivo(s)</div>'
+    : '<div class="cadi-upload readonly">🔒 Somente leitura</div>';
+  return '<div>'+
+    '<p style="font-size:10px;color:#4a5568;margin-bottom:4px">'+slot.label+'</p>'+
+    trigger +
+    '<div id="'+filesId+'" class="cadi-anexo-files"></div>'+
+  '</div>';
+}
+
+function abrirDetalheCadista(id) {
+  var c = casosCadista.find(function(x){ return x.id === id; });
+  if (!c) return;
+  var extra = cadParseExtra(c.descricao);
+  var infoFields = [
+    { label: 'Cliente',               value: c.cliente_nome || '—' },
+    { label: 'Paciente',              value: c.paciente || '—' },
+    { label: 'Tipo de trabalho',      value: c.tipo_trabalho || '—' },
+    { label: 'Scanbody',              value: extra.scanbody || '—' },
+    { label: 'Observações do pedido', value: extra.observacoes || '—' },
+    { label: 'Status',                value: STATUS_LABEL[c.status] || c.status },
+    { label: 'Entrada',               value: formatarDataHora(c.criado_em) }
+  ];
+  var infoHtml = infoFields.map(function(f) {
+    return '<div style="background:#13161f;border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px">'+
+      '<p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 4px">'+f.label+'</p>'+
+      '<p style="font-size:13px;color:#e2e8f0;margin:0;line-height:1.5;white-space:pre-line;word-break:break-word">'+escHtml(f.value)+'</p>'+
+    '</div>';
+  }).join('');
+
+  var anexosHtml = '<div>'+
+    '<p style="font-size:12px;color:#64748b;margin-bottom:6px">Anexos</p>'+
+    '<div class="cadi-anexos-grid">' + CAD_ANEXO_SLOTS.map(function(slot){ return cadAnexoSlotHtml(id, slot); }).join('') + '</div>'+
+  '</div>';
+
+  var qtdHtml = '<div>'+
+    '<p style="font-size:12px;color:#64748b;margin-bottom:2px">Elementos/dentes (usado no cálculo da sua comissão -- R$15 cada)</p>'+
+    '<p style="font-size:11px;color:#4a5568;margin-bottom:8px">Atualmente: '+(c.qtd_elementos || 1)+' elemento(s). Clique nos dentes (ou nos modelos) pra corrigir.</p>'+
+    '<div class="odonto" id="cad-odonto"></div>'+
+    '<div style="display:flex;gap:8px;margin-top:8px">'+
+      '<button type="button" class="dente-modelo" id="cad-modelo-superior" onclick="cadToggleModelo(\'superior\')" style="flex:1">Modelo Superior</button>'+
+      '<button type="button" class="dente-modelo" id="cad-modelo-inferior" onclick="cadToggleModelo(\'inferior\')" style="flex:1">Modelo Inferior</button>'+
+    '</div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">'+
+      '<span id="cad-odonto-sel" style="font-size:11.5px;color:#94a3b8">Nenhum dente selecionado</span>'+
+      '<button onclick="cadSalvarQtdDetalhe(\''+id+'\')" style="height:32px;padding:0 14px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0">Salvar quantidade</button>'+
+    '</div>'+
+  '</div>';
+
+  var obsHtml = '<div>'+
+    '<p style="font-size:12px;color:#64748b;margin-bottom:4px">Sua observação (visível só pra você e o laboratório)</p>'+
+    '<textarea id="cad-detail-obs-text" rows="3" placeholder="Ex: aguardando confirmação de cor com o dentista..." '+
+      'style="width:100%;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:13px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit;resize:vertical">'+escHtml(c.observacao || '')+'</textarea>'+
+    '<div style="display:flex;justify-content:flex-end;margin-top:6px">'+
+      '<button onclick="cadSalvarObsDetalhe(\''+id+'\')" style="height:30px;padding:0 14px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Salvar observação</button>'+
+    '</div>'+
+  '</div>';
+
+  var body = document.getElementById('cad-detail-body');
+  if (!body) return;
+  body.innerHTML = infoHtml + anexosHtml + qtdHtml + obsHtml;
+  document.getElementById('cad-detail-overlay').style.display = '';
+  document.getElementById('cad-detail-panel').style.display   = '';
+  cadBuildOdontograma();
+  cadPrefillAnexosDetalhe(id);
+}
+
+// ── Odontograma (FDI, mesmo padrao do portal-cliente.html): so serve
+//    pra contar quantos dentes o cadista marcou -- ordens_exocad nao
+//    tem coluna pra guardar quais numeros exatos foram selecionados,
+//    entao ao salvar so manda a contagem (qtd_elementos). Sempre abre
+//    zerado (nao da pra saber quais dentes originaram a qtd_elementos
+//    salva antes). ──────────────────────────────────────────────────
+var _cadDentesSelecionados  = [];
+var _cadModelosSelecionados = [];
+var CAD_QUADRANTES = [[18,17,16,15,14,13,12,11],[21,22,23,24,25,26,27,28],
+                      [48,47,46,45,44,43,42,41],[31,32,33,34,35,36,37,38]];
+var CAD_MODELO_LABEL = { superior: 'Modelo Superior', inferior: 'Modelo Inferior' };
+
+function cadBuildOdontograma() {
+  var el = document.getElementById('cad-odonto');
+  if (!el) return;
+  _cadDentesSelecionados  = [];
+  _cadModelosSelecionados = [];
+  document.querySelectorAll('.dente-modelo').forEach(function(b){ b.classList.remove('on'); });
+  function quadHtml(q) {
+    return '<div class="odonto-quad">' + q.map(function(n){
+      return '<button type="button" class="dente" data-dente="'+n+'" onclick="cadToggleDente('+n+')">'+n+'</button>';
+    }).join('') + '</div>';
+  }
+  el.innerHTML =
+    '<div class="odonto-row">' + quadHtml(CAD_QUADRANTES[0]) + '<span class="odonto-gap"></span>' + quadHtml(CAD_QUADRANTES[1]) + '</div>' +
+    '<div class="odonto-row">' + quadHtml(CAD_QUADRANTES[2]) + '<span class="odonto-gap"></span>' + quadHtml(CAD_QUADRANTES[3]) + '</div>';
+  cadAtualizarLabelSelecao();
+}
+
+function cadToggleDente(n) {
+  var i = _cadDentesSelecionados.indexOf(n);
+  if (i >= 0) _cadDentesSelecionados.splice(i, 1); else _cadDentesSelecionados.push(n);
+  _cadDentesSelecionados.sort(function(a,b){ return a-b; });
+  var btn = document.querySelector('#cad-odonto .dente[data-dente="'+n+'"]');
+  if (btn) btn.classList.toggle('on', _cadDentesSelecionados.indexOf(n) >= 0);
+  cadAtualizarLabelSelecao();
+}
+
+function cadToggleModelo(tipo) {
+  var i = _cadModelosSelecionados.indexOf(tipo);
+  if (i >= 0) _cadModelosSelecionados.splice(i, 1); else _cadModelosSelecionados.push(tipo);
+  var btn = document.getElementById('cad-modelo-' + tipo);
+  if (btn) btn.classList.toggle('on', _cadModelosSelecionados.indexOf(tipo) >= 0);
+  cadAtualizarLabelSelecao();
+}
+
+function cadAtualizarLabelSelecao() {
+  var lbl = document.getElementById('cad-odonto-sel');
+  if (!lbl) return;
+  var partes = _cadDentesSelecionados.map(String)
+    .concat(_cadModelosSelecionados.map(function(t){ return CAD_MODELO_LABEL[t]; }));
+  var total = _cadDentesSelecionados.length + _cadModelosSelecionados.length;
+  lbl.textContent = total ? total + ' selecionado(s): ' + partes.join(', ') : 'Nenhum dente/modelo selecionado';
+}
+
+function fecharDetalheCadista() {
+  document.getElementById('cad-detail-overlay').style.display = 'none';
+  document.getElementById('cad-detail-panel').style.display   = 'none';
+}
+
+async function cadPrefillAnexosDetalhe(id) {
   try {
-    var res = await sb.rpc('atualizar_aprovacao_caso_cadista', {
-      p_sessao: sessao.token,
-      p_caso_id: id,
-      p_aprovacao: novoValor
+    var arquivos = await camListarAnexosCadista(id);
+    CAD_ANEXO_SLOTS.forEach(function(slot) {
+      var matches = arquivos.filter(function(a){ return a.name.indexOf(slot.id + '-') === 0; });
+      var filesEl = document.getElementById('cad-anexo-' + id + '-' + slot.id + '-files');
+      if (!filesEl) return;
+      filesEl.innerHTML = matches.length
+        ? matches.map(function(f) {
+            var delBtn = slot.editable
+              ? '<button type="button" class="cadi-anexo-del" title="Excluir" onclick="cadExcluirAnexoCadista(\''+id+'\',\''+escJs(f.name)+'\')">🗑</button>'
+              : '';
+            return '<div class="cadi-anexo-file-row"><a href="'+f.url+'" target="_blank" rel="noopener" class="cadi-anexo-file">📎 '+escHtml(f.name.slice(slot.id.length + 1))+' <span class="ver">👁 Ver</span></a>'+delBtn+'</div>';
+          }).join('')
+        : '<p class="cadi-anexo-empty">— Nenhum arquivo ainda —</p>';
     });
-    if (res.error) throw res.error;
-    c.aprovacao = novoValor;
-    renderCadistaBoard();
   } catch(e) {
-    var msg = document.getElementById('msg-casos');
-    msg.textContent = e.message || 'Erro ao atualizar aprovação.';
-    msg.className = 'msg error';
+    console.error('[cadPrefillAnexosDetalhe]', e.message || e);
   }
 }
 
-// ── Observação (mesmo padrao do badge de qtd_elementos em ordens-cam.html) ──
-var _obsDropIdCadista = null;
-
-function abrirObsCadista(id, event) {
-  _obsDropIdCadista = id;
-  var c  = casosCadista.find(function(x){ return x.id === id; });
-  var dd = document.getElementById('obs-dropdown-cadista');
-  var ta = document.getElementById('obs-dropdown-cadista-text');
-  ta.value = (c && c.observacao) || '';
-  var rect = event.currentTarget.getBoundingClientRect();
-  dd.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
-  var top = rect.bottom + 4;
-  dd.style.top = (top + 150 > window.innerHeight ? rect.top - 154 : top) + 'px';
-  dd.style.display = 'block';
-  setTimeout(function() { ta.focus(); }, 0);
-  setTimeout(function() {
-    document.addEventListener('click', fecharObsCadista, { once: true });
-  }, 0);
+function escJs(s) {
+  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
-function fecharObsCadista() {
-  var dd = document.getElementById('obs-dropdown-cadista');
-  if (dd) dd.style.display = 'none';
-  _obsDropIdCadista = null;
+async function cadExcluirAnexoCadista(id, fileName) {
+  if (!confirm('Excluir este anexo? Essa acao nao pode ser desfeita.')) return;
+  try {
+    var ctx = await camClienteAnexosCadista(id);
+    if (!ctx) throw new Error('Sem pasta de anexos para este caso.');
+    var res = await ctx.client.storage.from('casos').remove([ctx.pasta + '/' + fileName]);
+    if (res.error) throw res.error;
+    cadPrefillAnexosDetalhe(id);
+  } catch(e) {
+    alert('Erro ao excluir anexo: ' + (e.message || e));
+  }
 }
 
-async function salvarObsCadista() {
-  if (!_obsDropIdCadista) return;
-  var id = _obsDropIdCadista;
-  var texto = (document.getElementById('obs-dropdown-cadista-text').value || '').trim();
-  fecharObsCadista();
+function cadAnexoDragOver(event) {
+  event.preventDefault();
+  event.currentTarget.classList.add('dragover');
+}
 
+function cadAnexoDragLeave(event) {
+  event.currentTarget.classList.remove('dragover');
+}
+
+function cadAnexoDrop(event, id, slotId) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('dragover');
+  var files = event.dataTransfer && event.dataTransfer.files;
+  if (!files || !files.length) return;
+  var input = document.getElementById('cad-anexo-' + id + '-' + slotId + '-input');
+  if (!input) return;
+  input.files = files;
+  cadUploadAnexoCadista(id, slotId, input);
+}
+
+async function cadUploadAnexoCadista(id, slotId, inputEl) {
+  var files = inputEl.files;
+  if (!files || !files.length) return;
+  var filesEl = document.getElementById('cad-anexo-' + id + '-' + slotId + '-files');
+  if (filesEl) filesEl.innerHTML = '<p class="cadi-anexo-empty">Enviando ' + files.length + ' arquivo(s)…</p>';
+  try {
+    var ctx = await camClienteAnexosCadista(id);
+    if (!ctx) throw new Error('Sem pasta de anexos para este caso.');
+    var falhas = [];
+    for (var i = 0; i < files.length; i++) {
+      var file = files[i];
+      var nomeSeguro = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+      var path = ctx.pasta + '/' + slotId + '-' + nomeSeguro;
+      var upRes = await ctx.client.storage.from('casos').upload(path, file);
+      if (upRes.error) falhas.push(file.name + ': ' + (upRes.error.message || upRes.error));
+    }
+    await cadPrefillAnexosDetalhe(id);
+    if (falhas.length) alert('Falha ao enviar: ' + falhas.join('; '));
+  } catch(e) {
+    alert('Erro ao enviar arquivo(s): ' + (e.message || e));
+    cadPrefillAnexosDetalhe(id);
+  } finally {
+    inputEl.value = '';
+  }
+}
+
+async function cadSalvarQtdDetalhe(id) {
+  var qtd = _cadDentesSelecionados.length + _cadModelosSelecionados.length;
+  if (!qtd) { alert('Selecione ao menos um dente ou modelo.'); return; }
   var raw = localStorage.getItem(SESSAO_KEY);
   var sessao = raw ? JSON.parse(raw) : null;
-  if (!sessao || !sessao.token) return;
+  if (!sessao || !sessao.token) { alert('Sessão expirada.'); return; }
+  try {
+    var res = await sb.rpc('atualizar_qtd_elementos_caso_cadista', {
+      p_sessao: sessao.token,
+      p_caso_id: id,
+      p_qtd_elementos: qtd
+    });
+    if (res.error) throw res.error;
+    var c = casosCadista.find(function(x){ return x.id === id; });
+    if (c) c.qtd_elementos = qtd;
+  } catch(e) {
+    alert('Erro ao salvar quantidade: ' + (e.message || e));
+  }
+}
 
+async function cadSalvarObsDetalhe(id) {
+  var ta = document.getElementById('cad-detail-obs-text');
+  if (!ta) return;
+  var texto = (ta.value || '').trim();
+  var raw = localStorage.getItem(SESSAO_KEY);
+  var sessao = raw ? JSON.parse(raw) : null;
+  if (!sessao || !sessao.token) { alert('Sessão expirada.'); return; }
   try {
     var res = await sb.rpc('atualizar_observacao_caso_cadista', {
       p_sessao: sessao.token,
@@ -492,9 +759,7 @@ async function salvarObsCadista() {
     if (c) c.observacao = texto || null;
     renderCadistaBoard();
   } catch(e) {
-    var msg = document.getElementById('msg-casos');
-    msg.textContent = e.message || 'Erro ao salvar observação.';
-    msg.className = 'msg error';
+    alert('Erro ao salvar observação: ' + (e.message || e));
   }
 }
 

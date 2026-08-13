@@ -79,7 +79,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .valor-zero{color:#4a5568}
 .comp-link{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#60a5fa;text-decoration:none;padding:2px 8px;border-radius:5px;background:rgba(96,165,250,0.1);white-space:nowrap}
 .comp-link:hover{background:rgba(96,165,250,0.2)}
+.comp-link.extrato-link{color:#f59e0b;background:rgba(245,158,11,0.12)}
+.comp-link.extrato-link:hover{background:rgba(245,158,11,0.22)}
 .no-comp{font-size:11px;color:#4a5568}
+.btn-historico{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#4ade80;text-decoration:none;padding:3px 9px;border-radius:6px;border:0.5px solid rgba(34,197,94,0.5);background:rgba(34,197,94,0.14);white-space:nowrap;cursor:pointer;font-family:inherit}
+.btn-historico:hover{background:rgba(34,197,94,0.24)}
+.row-novo-pagamento td{background:rgba(34,197,94,0.1)}
+.row-novo-pagamento:hover td{background:rgba(34,197,94,0.16)}
+.btn-confirmar-inove{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;border:0.5px solid #22c55e;background:#0d3d2b;color:#4ade80;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn-confirmar-inove:hover{background:#134d34}
+.btn-confirmar-inove:disabled{opacity:0.5;cursor:default}
+.badge-novo-pagamento{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;border:0.5px solid #f59e0b;background:rgba(245,158,11,0.14);color:#fbbf24;white-space:nowrap;margin-top:3px}
 .obs-txt{font-size:12px;color:#94a3b8;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:220px}
 .loading{text-align:center;padding:60px;color:#64748b;font-size:14px}
 .footer{margin-top:1.5rem;text-align:center;font-size:11px;color:#4a5568}
@@ -97,6 +107,69 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .summary-row{grid-template-columns:1fr 1fr}
   .rel-table th:nth-child(5),.rel-table td:nth-child(5){display:none}
   .header{gap:10px}
+}
+
+/* ── Vencimento badge + edição ─────────────────────────────── */
+.badge-vencimento{display:inline-flex;align-items:center;gap:7px;font-size:11px;padding:3px 6px 3px 10px;border-radius:6px;background:rgba(251,191,36,0.14);color:#fbbf24;border:0.5px solid rgba(251,191,36,0.4);font-weight:500}
+.badge-vencimento.manual{background:rgba(96,165,250,0.14);color:#60a5fa;border-color:rgba(96,165,250,0.4)}
+.venc-manual-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;opacity:0.85}
+.venc-edit-btn{flex:0 0 auto;width:18px;height:18px;border-radius:5px;border:none;background:rgba(255,255,255,0.12);color:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.venc-edit-btn:hover{background:rgba(255,255,255,0.22)}
+.venc-modal-body{padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.venc-modal-body label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em}
+.venc-modal-body input[type=date]{background:#0f1117;border:0.5px solid rgba(255,255,255,0.15);border-radius:8px;padding:8px 10px;color:#e2e8f0;font-size:13px;font-family:inherit}
+.venc-modal-hint{font-size:11px;color:#4a5568;line-height:1.5}
+.venc-btn-auto{background:none;border:none;cursor:pointer;text-decoration:underline;color:#94a3b8;font-size:12px;font-family:inherit}
+.venc-btn-auto:hover{color:#e2e8f0}
+
+/* ── Ranking do mês (top 3 por valor faturado) ─────────────── */
+.rank-section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.rank-section-title h3{font-size:13px;font-weight:600;color:#e2e8f0;display:flex;align-items:center;gap:7px}
+.rank-section-title .metric-pill{font-size:10px;font-weight:700;color:#fbbf24;background:rgba(251,191,36,0.1);border:0.5px solid rgba(251,191,36,0.3);border-radius:5px;padding:2px 8px;text-transform:uppercase;letter-spacing:0.05em}
+.rank-collapse-btn,.pont-collapse-btn{flex:0 0 auto;width:26px;height:26px;border-radius:7px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform 0.18s,background 0.15s;font-family:inherit}
+.rank-collapse-btn:hover,.pont-collapse-btn:hover{background:#2d3250;color:#e2e8f0}
+.rank-collapse-btn.collapsed,.pont-collapse-btn.collapsed{transform:rotate(-90deg)}
+.rank-podium-wrap,.pont-cols-wrap{overflow:hidden;transition:grid-template-rows 0.2s ease;display:grid;grid-template-rows:1fr}
+.rank-podium-wrap.collapsed,.pont-cols-wrap.collapsed{grid-template-rows:0fr}
+.rank-podium-wrap>div,.pont-cols-wrap>div{overflow:hidden;min-height:0}
+.rank-collapsed-strip,.pont-collapsed-strip{display:none;align-items:center;gap:14px;font-size:12px;color:#94a3b8;padding:2px 0}
+.rank-collapsed-strip.show,.pont-collapsed-strip.show{display:flex}
+.rank-collapsed-strip b{color:#fbbf24;font-variant-numeric:tabular-nums}
+.rank-podium{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.rank-card{position:relative;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px 16px 14px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.rank-card.r1{border-color:rgba(234,179,8,0.35);background:linear-gradient(180deg,rgba(234,179,8,0.08),#1a1d27 60%)}
+.rank-top{display:flex;align-items:center;gap:8px}
+.rank-medal{font-size:20px;line-height:1}
+.rank-place{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.07em}
+.rank-name{font-size:14px;font-weight:600;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank-val{font-size:19px;font-weight:700;color:#fbbf24;font-variant-numeric:tabular-nums}
+.rank-sub{font-size:11px;color:#64748b}
+
+/* ── Pontualidade (bons pagadores x atrasados) ─────────────── */
+.pont-section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.pont-section-title h3{font-size:13px;font-weight:600;color:#e2e8f0}
+.pont-collapsed-strip .g{color:#4ade80}
+.pont-collapsed-strip .l{color:#f87171}
+.pont-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.pont-col{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px}
+.pont-col h4{font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:7px;margin-bottom:10px}
+.pont-col.good h4{color:#4ade80}
+.pont-col.late h4{color:#f87171}
+.pont-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid rgba(255,255,255,0.05)}
+.pont-row:last-child{border-bottom:none}
+.pont-rank{flex:0 0 auto;font-size:11px;font-weight:700;color:#64748b;width:16px}
+.pont-medal{flex:0 0 auto;font-size:16px;width:20px;text-align:center}
+.pont-info{flex:1;min-width:0}
+.pont-name{font-size:12.5px;color:#e2e8f0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pont-date{font-size:10.5px;color:#64748b}
+.pont-delta{flex:0 0 auto;font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;white-space:nowrap}
+.pont-delta.good{color:#4ade80;background:rgba(34,197,94,0.12)}
+.pont-delta.late{color:#f87171;background:rgba(239,68,68,0.12)}
+.pont-empty{font-size:12px;color:#4a5568;text-align:center;padding:14px 0}
+
+@media(max-width:767px){
+  .rank-podium{grid-template-columns:1fr}
+  .pont-cols{grid-template-columns:1fr}
 }
 </style>
 <script>
@@ -141,6 +214,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     '.valor-pago{color:'+t.success+' !important}',
     '.comp-link{background:'+hexToRgba(t.accent,0.12)+' !important;color:'+t.accent+' !important}',
     '.comp-link:hover{background:'+hexToRgba(t.accent,0.22)+' !important}',
+    '.comp-link.extrato-link{background:'+hexToRgba(t.warn,0.14)+' !important;color:'+t.warn+' !important}',
+    '.comp-link.extrato-link:hover{background:'+hexToRgba(t.warn,0.24)+' !important}',
     '.month-dd-btn.cur{border-color:'+t.accent+' !important;background:'+hexToRgba(t.accent,0.15)+' !important;color:'+t.accent+' !important}',
     '.month-dd-item.sel{background:'+hexToRgba(t.accent,0.15)+' !important;color:'+t.accent+' !important}',
     '.month-dd-item.fech{color:'+t.success+' !important}',
@@ -149,6 +224,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     '.pend-card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
     '.pend-card-btn{background:'+hexToRgba(t.success,0.12)+' !important;color:'+t.success+' !important;border-color:'+hexToRgba(t.success,0.4)+' !important}',
     '.pend-card-btn:hover{background:'+hexToRgba(t.success,0.22)+' !important}',
+    '.row-novo-pagamento td{background:'+hexToRgba(t.success,0.1)+' !important}',
+    '.row-novo-pagamento:hover td{background:'+hexToRgba(t.success,0.16)+' !important}',
+    '.btn-confirmar-inove{background:'+hexToRgba(t.success,0.15)+' !important;color:'+t.success+' !important;border-color:'+hexToRgba(t.success,0.5)+' !important}',
+    '.btn-confirmar-inove:hover{background:'+hexToRgba(t.success,0.28)+' !important}',
+    '.btn-historico{background:'+hexToRgba(t.success,0.14)+' !important;color:'+t.success+' !important;border-color:'+hexToRgba(t.success,0.5)+' !important}',
+    '.btn-historico:hover{background:'+hexToRgba(t.success,0.24)+' !important}',
+    '.badge-novo-pagamento{background:'+hexToRgba(t.warn,0.16)+' !important;color:'+t.warn+' !important;border-color:'+t.warn+' !important}',
     t.mono ? 'body,input,select,button,table{font-family:"'+(t.monoFamily||'Share Tech Mono')+'","Courier New",monospace !important}' : '',
     t.square ? '*{border-radius:0 !important}\n*{box-shadow:none !important}' : ''
   ].join('\n');
@@ -174,7 +256,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <img src="assets/logo.png" alt="" style="height:34px;width:34px;object-fit:contain;flex-shrink:0">
     <div class="header-left">
       <h1>💰 Pagamentos — Inove</h1>
-      <p>Situação financeira por cliente e por mês <span class="badge-ro"><i class="ti ti-eye"></i> Somente leitura</span></p>
+      <p>Situação financeira por cliente e por mês <span class="badge-ro"><i class="ti ti-eye"></i> Somente leitura</span>
+        <span class="badge-vencimento" id="venc-badge"><i class="ti ti-calendar-event"></i> Vencimento: <span id="venc-badge-data">—</span><button class="venc-edit-btn" id="venc-edit-btn" onclick="abrirVencModal()" title="Editar vencimento deste mês"><i class="ti ti-pencil" style="font-size:10px"></i></button></span>
+      </p>
     </div>
   </div>
   <div class="month-nav">
@@ -205,6 +289,37 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="sum-card"><div class="lbl">Clientes que pagaram</div><div class="val" id="sum-clientes-pagos" style="font-size:16px">0 de 0</div></div>
   </div>
 
+  <div style="margin-bottom:1.1rem">
+    <div class="rank-section-title">
+      <h3>🏆 Ranking do mês <span class="metric-pill">por valor faturado</span></h3>
+      <button class="rank-collapse-btn" id="rank-collapse-btn" onclick="toggleRankPodium()" title="Minimizar/expandir" aria-expanded="true"><i class="ti ti-chevron-down"></i></button>
+    </div>
+    <div class="rank-collapsed-strip" id="rank-collapsed-strip"></div>
+    <div class="rank-podium-wrap" id="rank-podium-wrap"><div>
+      <div class="rank-podium" id="rank-podium"></div>
+    </div></div>
+  </div>
+
+  <div style="margin-bottom:1.1rem">
+    <div class="pont-section-title">
+      <h3 id="pont-section-heading">Pontualidade</h3>
+      <button class="pont-collapse-btn" id="pont-collapse-btn" onclick="togglePontCols()" title="Minimizar/expandir" aria-expanded="true"><i class="ti ti-chevron-down"></i></button>
+    </div>
+    <div class="pont-collapsed-strip" id="pont-collapsed-strip"></div>
+    <div class="pont-cols-wrap" id="pont-cols-wrap"><div>
+      <div class="pont-cols">
+        <div class="pont-col good">
+          <h4>🏆 Bons Pagadores</h4>
+          <div id="pont-good-rows"></div>
+        </div>
+        <div class="pont-col late">
+          <h4>🐌 Atrasados</h4>
+          <div id="pont-late-rows"></div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
   <div class="status-filter-row" id="status-filter-row">
     <button class="status-filter-btn active" data-filter="todos" onclick="setStatusFilter('todos')">Todos</button>
     <button class="status-filter-btn" data-filter="quitado" onclick="setStatusFilter('quitado')">Quitado</button>
@@ -225,6 +340,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <th>Status</th>
           <th>Comprovantes</th>
           <th>Observações</th>
+          <th></th>
         </tr></thead>
         <tbody id="rows-body"></tbody>
       </table>
@@ -253,6 +369,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="sum-card sum-card-highlight"><div class="lbl">Comissão a Receber</div><div class="val" id="sum-comissao-restante">R$ 0,00</div></div>
     <div class="sum-card sum-card-futura"><div class="lbl">Comissão a Receber (Futura)</div><div class="val" id="sum-comissao-futura">R$ 0,00</div><div class="lbl-sub">⏳ quando o cliente pagar — não disponível pra saque agora</div></div>
     <div class="sum-card sum-card-highlight"><div class="lbl">Pago (sacado neste mês)</div><div class="val" id="sum-comissao-pago" style="color:#22c55e">R$ 0,00</div></div>
+    <div class="sum-card sum-card-highlight"><div class="lbl">Total pendente (ajuste + futura)</div><div class="val" id="sum-comissao-total-pendente" style="color:#fb923c">R$ 0,00</div><div class="lbl-sub">Bruta − Pago: o que falta chegar, de saques ajustados a menor + comissão futura</div></div>
   </div>
   <div id="comissao-acoes" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:1rem"></div>
 
@@ -291,13 +408,67 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div id="comissao-modal-empty" style="display:none;text-align:center;color:#4a5568;padding:1.5rem;font-size:13px">Nenhuma comissão pendente neste mês — tudo que já foi pago já foi sacado antes.</div>
     <div class="comissao-total-row">
-      <span style="color:#94a3b8;font-size:13px;font-weight:500">Total a sacar agora</span>
-      <span id="comissao-modal-total" style="color:#4ade80">R$ 0,00</span>
+      <span style="color:#94a3b8;font-size:13px;font-weight:500">Total calculado (15%)</span>
+      <span id="comissao-modal-total" style="color:#94a3b8">R$ 0,00</span>
     </div>
+    <div class="comissao-total-row" style="margin-top:-6px">
+      <span style="color:#94a3b8;font-size:13px;font-weight:500">Valor a registrar como pago</span>
+      <input type="number" id="comissao-modal-total-input" min="0" step="0.01" oninput="checkComissaoAjuste()" style="width:150px;height:34px;border:0.5px solid rgba(255,255,255,0.15);border-radius:8px;padding:0 10px;font-size:15px;font-weight:600;background:#0f1117;color:#4ade80;text-align:right;font-family:inherit">
+    </div>
+    <p id="comissao-modal-ajuste-note" style="display:none;font-size:11px;color:#fbbf24;text-align:right;margin-top:2px"><i class="ti ti-alert-triangle" style="font-size:11px"></i> Diferente do calculado — fica registrado como ajuste manual</p>
   </div>
   <div class="modal-footer">
     <button class="btn-secondary" onclick="fecharModalComissao()">Cancelar</button>
     <button class="btn-confirmar-saque" id="btn-confirmar-saque" onclick="confirmarPagamentoComissao()"><i class="ti ti-check"></i> Confirmar saque</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="aportes-modal-overlay" onclick="fecharModalAportes()"></div>
+<div class="modal" id="aportes-modal">
+  <div class="modal-header">
+    <div>
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9">Histórico de Pagamentos</p>
+      <p style="font-size:12px;color:#64748b" id="aportes-modal-cliente">—</p>
+    </div>
+    <button class="modal-close" onclick="fecharModalAportes()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="modal-body">
+    <div style="overflow-x:auto">
+      <table class="comissao-table">
+        <thead><tr><th>Data</th><th>Valor</th><th>Acumulado</th><th>Comprovante</th></tr></thead>
+        <tbody id="aportes-modal-rows"></tbody>
+      </table>
+    </div>
+    <div class="comissao-total-row">
+      <span style="color:#94a3b8;font-size:13px;font-weight:500">Total pago (histórico)</span>
+      <span id="aportes-modal-total" style="color:#4ade80">R$ 0,00</span>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-secondary" onclick="fecharModalAportes()">Fechar</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="venc-modal-overlay" onclick="fecharVencModal()"></div>
+<div class="modal" id="venc-modal" style="width:min(420px,92vw)">
+  <div class="modal-header">
+    <div>
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9">Editar vencimento</p>
+      <p style="font-size:12px;color:#64748b" id="venc-modal-titulo-mes">—</p>
+    </div>
+    <button class="modal-close" onclick="fecharVencModal()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="venc-modal-body">
+    <label>Data de vencimento</label>
+    <input type="date" id="venc-modal-input">
+    <p class="venc-modal-hint" id="venc-modal-hint"></p>
+  </div>
+  <div class="modal-footer" style="justify-content:space-between">
+    <button class="venc-btn-auto" onclick="usarVencAutomatico()">Usar automático</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn-secondary" onclick="fecharVencModal()">Cancelar</button>
+      <button class="btn-confirmar-saque" id="venc-modal-salvar-btn" onclick="salvarVencimento()"><i class="ti ti-check"></i> Salvar</button>
+    </div>
   </div>
 </div>
 
@@ -404,8 +575,11 @@ async function switchMonth(m, y) {
   closeMonthDD();
   viewMonth = m; viewYear = y;
   renderMonthDD();
-  await Promise.all([loadMonthData(), loadExtratosPendentes(), loadComissaoHistorico()]);
+  await Promise.all([loadMonthData(), loadExtratosPendentes(), loadComissaoHistorico(), loadVencimento()]);
   renderTable();
+  renderVencimentoBadge();
+  renderRankingValores();
+  renderPontualidade();
   renderExtratos();
   renderComissaoTab();
 }
@@ -439,6 +613,7 @@ async function loadMonthData() {
   var folder = viewYear + '_' + viewMonth;
   var dbRes = await sb.from('controle_mensal').select('*').eq('mes', viewMonth).eq('ano', viewYear);
   var storRes = await sb.storage.from('comprovantes').list(folder);
+  var aportesRes = await sb.from('pagamento_aportes').select('*').eq('mes', viewMonth).eq('ano', viewYear).order('data_pagamento');
   var compMap = {};
   if (!storRes.error && storRes.data) {
     storRes.data.forEach(function(f) {
@@ -450,9 +625,16 @@ async function loadMonthData() {
       }
     });
   }
+  var aportesMap = {};
+  if (!aportesRes.error && aportesRes.data) {
+    aportesRes.data.forEach(function(a) {
+      if (!aportesMap[a.cliente_reg]) aportesMap[a.cliente_reg] = [];
+      aportesMap[a.cliente_reg].push(a);
+    });
+  }
   var state = {};
   clients.forEach(function(c) {
-    state[c.reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, valor_pago_comissionado:0, obs_pagamento:'', comprovantes: compMap[c.reg]||[] };
+    state[c.reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, valor_pago_comissionado:0, obs_pagamento:'', confirmado_pela_inove:true, extrato_url:null, comprovantes: compMap[c.reg]||[], aportes: aportesMap[c.reg]||[] };
   });
   if (!dbRes.error) {
     (dbRes.data||[]).forEach(function(r) {
@@ -461,7 +643,10 @@ async function loadMonthData() {
         valor_mes: Number(r.valor_mes)||0, valor_pago: Number(r.valor_pago)||0,
         valor_pago_comissionado: Number(r.valor_pago_comissionado)||0,
         obs_pagamento: r.obs_pagamento||'',
-        comprovantes: compMap[r.cliente_reg]||[]
+        confirmado_pela_inove: r.confirmado_pela_inove !== false,
+        extrato_url: r.extrato_url||null,
+        comprovantes: compMap[r.cliente_reg]||[],
+        aportes: aportesMap[r.cliente_reg]||[]
       };
     });
   }
@@ -585,6 +770,8 @@ function setStatusFilter(f) {
 // a função pagar_comissao no banco. O cálculo de verdade e a gravação acontecem lá dentro
 // numa única transação, então o preview aqui pode ficar levemente desatualizado (ex: outra
 // aba mexeu no valor_pago) sem risco: o banco recalcula tudo de novo no momento do commit.
+var comissaoModalCalculado = 0;
+
 function abrirModalComissao() {
   var linhas = clients
     .map(function(c) { return { c:c, base: baseComissaoPendente(dbState[c.reg]||{}), com: comissaoPendente(dbState[c.reg]||{}) }; })
@@ -597,9 +784,14 @@ function abrirModalComissao() {
   var tbody     = document.getElementById('comissao-modal-rows');
   var emptyEl   = document.getElementById('comissao-modal-empty');
   var totalEl   = document.getElementById('comissao-modal-total');
+  var totalInput = document.getElementById('comissao-modal-total-input');
   var btnConfirmar = document.getElementById('btn-confirmar-saque');
   var total = linhas.reduce(function(s,r){ return s + r.com; }, 0);
+  comissaoModalCalculado = total;
   if (totalEl) totalEl.textContent = fmt(total);
+  if (totalInput) totalInput.value = total.toFixed(2);
+  var noteEl = document.getElementById('comissao-modal-ajuste-note');
+  if (noteEl) noteEl.style.display = 'none';
 
   if (!linhas.length) {
     if (tbody)   tbody.innerHTML = '';
@@ -617,17 +809,65 @@ function abrirModalComissao() {
   document.getElementById('comissao-modal').style.display = 'block';
 }
 
+// Avisa quando o valor editado difere do calculado (15%) -- não bloqueia,
+// só sinaliza que vai ficar registrado como ajuste manual.
+function checkComissaoAjuste() {
+  var input = document.getElementById('comissao-modal-total-input');
+  var noteEl = document.getElementById('comissao-modal-ajuste-note');
+  if (!input || !noteEl) return;
+  var v = parseFloat(input.value);
+  var diff = isNaN(v) ? true : Math.abs(v - comissaoModalCalculado) > 0.001;
+  noteEl.style.display = diff ? '' : 'none';
+}
+
 function fecharModalComissao() {
   document.getElementById('comissao-modal-overlay').style.display = 'none';
   document.getElementById('comissao-modal').style.display = 'none';
 }
 
+// Histórico de pagamentos (aportes) de um cliente no mês selecionado -- mostra
+// data, valor e comprovante de cada pagamento lançado, até o mês bater com o
+// valor devido (cliente que paga picado).
+function abrirHistoricoAportes(reg) {
+  var s = dbState[reg] || {};
+  var lista = (s.aportes || []).slice().sort(function(a,b) { return new Date(a.data_pagamento) - new Date(b.data_pagamento); });
+
+  var clEl = document.getElementById('aportes-modal-cliente');
+  if (clEl) clEl.textContent = nomeCliente(reg) + ' · ' + MESES[viewMonth] + ' ' + viewYear;
+
+  var acumulado = 0;
+  var tbody = document.getElementById('aportes-modal-rows');
+  if (tbody) tbody.innerHTML = lista.map(function(a) {
+    acumulado += Number(a.valor||0);
+    var dataFmt = new Date(a.data_pagamento+'T00:00:00').toLocaleDateString('pt-BR');
+    var compHtml = a.comprovante_url
+      ? '<a class="comp-link" href="'+a.comprovante_url+'" target="_blank" rel="noopener"><i class="ti ti-paperclip"></i> Ver</a>'
+      : '<span class="no-comp">'+(a.legado ? 'lançamento anterior' : 'sem comprovante')+'</span>';
+    return '<tr><td>'+dataFmt+'</td><td style="color:#4ade80;font-weight:600">'+fmt(a.valor)+'</td><td style="color:#94a3b8">'+fmt(acumulado)+'</td><td>'+compHtml+'</td></tr>';
+  }).join('');
+
+  var totalEl = document.getElementById('aportes-modal-total');
+  if (totalEl) totalEl.textContent = fmt(acumulado);
+
+  document.getElementById('aportes-modal-overlay').style.display = 'block';
+  document.getElementById('aportes-modal').style.display = 'block';
+}
+
+function fecharModalAportes() {
+  document.getElementById('aportes-modal-overlay').style.display = 'none';
+  document.getElementById('aportes-modal').style.display = 'none';
+}
+
 async function confirmarPagamentoComissao() {
+  var input = document.getElementById('comissao-modal-total-input');
+  var valorEditado = input ? parseFloat(input.value) : NaN;
+  if (isNaN(valorEditado) || valorEditado < 0) { alert('Informe um valor válido (0 ou mais) pra registrar como pago.'); return; }
+
   var btn = document.getElementById('btn-confirmar-saque');
   var origHtml = btn ? btn.innerHTML : '';
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i> Processando…'; }
   try {
-    var res = await sb.rpc('pagar_comissao', { p_mes: viewMonth, p_ano: viewYear });
+    var res = await sb.rpc('pagar_comissao', { p_mes: viewMonth, p_ano: viewYear, p_valor_total: valorEditado });
     if (res.error) throw res.error;
     var data = res.data;
     fecharModalComissao();
@@ -636,6 +876,8 @@ async function confirmarPagamentoComissao() {
     renderComissaoTab();
     if (!data || data.ok === false) {
       alert('Nada a sacar: essa comissão já foi paga antes, ou não há valor pago pendente neste mês.');
+    } else if (Math.abs(Number(data.valor_total) - Number(data.valor_calculado)) > 0.001) {
+      alert('Comissão registrada como paga: ' + fmt(data.valor_total) + ' (calculado era ' + fmt(data.valor_calculado) + ', ajuste manual salvo).');
     } else {
       alert('Comissão de ' + fmt(data.valor_total) + ' registrada como paga.');
     }
@@ -675,14 +917,24 @@ function renderComissaoTab() {
     if (vm > vp) futuraBase += (vm - vp);
   });
   var pago = comissaoHistorico.reduce(function(s, h) { return s + Number(h.valor_total || 0); }, 0);
+  var comLiquida = totRecebido * COMISSAO;
+  var comFutura  = futuraBase * COMISSAO;
+  // "Comissão a Receber" (restante) fica 0 sempre que um saque foi ajustado pra
+  // menos do que o calculado (credito total, por escolha) -- então o que
+  // realmente falta chegar por causa desses ajustes some do card de cima.
+  // Total pendente reaparece isso: liquida-pago cobre tanto ajuste de saque
+  // quanto pendente normal (raramente >0 aqui, ja que o saque da credito
+  // total), somado a comissao futura (dinheiro que o cliente ainda nao pagou).
+  var totalPendente = (comLiquida - pago) + comFutura;
 
   document.getElementById('sum-comissao-vendido').textContent  = fmt(totVendido);
   document.getElementById('sum-comissao-recebido').textContent = fmt(totRecebido);
   document.getElementById('sum-comissao-bruta').textContent    = fmt(totVendido  * COMISSAO);
-  document.getElementById('sum-comissao-liquida').textContent  = fmt(totRecebido * COMISSAO);
+  document.getElementById('sum-comissao-liquida').textContent  = fmt(comLiquida);
   document.getElementById('sum-comissao-restante').textContent = fmt(restante);
-  document.getElementById('sum-comissao-futura').textContent   = fmt(futuraBase * COMISSAO);
+  document.getElementById('sum-comissao-futura').textContent   = fmt(comFutura);
   document.getElementById('sum-comissao-pago').textContent     = fmt(pago);
+  document.getElementById('sum-comissao-total-pendente').textContent = fmt(totalPendente);
 
   var acoes = document.getElementById('comissao-acoes');
   if (acoes) {
@@ -700,7 +952,11 @@ function renderComissaoTab() {
       wrap.style.display = '';
       tbody.innerHTML = comissaoHistorico.slice().reverse().map(function(h) {
         var quando = new Date(h.data_pagamento).toLocaleString('pt-BR');
-        return '<tr><td>'+quando+'</td><td class="valor-pago">'+fmt(h.valor_total)+'</td>' +
+        var ajustado = h.valor_calculado != null && Math.abs(Number(h.valor_total) - Number(h.valor_calculado)) > 0.001;
+        var ajusteTag = ajustado
+          ? ' <span title="Calculado: '+fmt(h.valor_calculado)+'" style="font-size:10px;color:#fbbf24;border:0.5px solid rgba(251,191,36,0.4);border-radius:5px;padding:1px 6px;white-space:nowrap">ajustado</span>'
+          : '';
+        return '<tr><td>'+quando+'</td><td class="valor-pago">'+fmt(h.valor_total)+ajusteTag+'</td>' +
           '<td><button class="btn-secondary" style="height:28px;padding:0 12px;font-size:12px" onclick="gerarRelatorioComissaoPaga(\''+h.id+'\')"><i class="ti ti-file-check"></i> Ver relatório</button></td></tr>';
       }).join('');
     }
@@ -739,6 +995,14 @@ function gerarRelatorioComissaoPaga(id) {
     doc.setTextColor(20);
     doc.text('Saque ' + (idx + 1) + ' — ' + new Date(h.data_pagamento).toLocaleString('pt-BR'), 14, y);
     y += 4;
+    var ajustado = h.valor_calculado != null && Math.abs(Number(h.valor_total) - Number(h.valor_calculado)) > 0.001;
+    if (ajustado) {
+      doc.setFontSize(9);
+      doc.setTextColor(180, 130, 20);
+      doc.text('Valor ajustado manualmente — calculado (15%) era ' + fmt(h.valor_calculado), 14, y);
+      y += 5;
+      doc.setTextColor(20);
+    }
     var detalhes = Array.isArray(h.detalhes_json) ? h.detalhes_json : [];
     doc.autoTable({
       startY: y,
@@ -746,7 +1010,7 @@ function gerarRelatorioComissaoPaga(id) {
       body: detalhes.map(function(d) {
         return [nomeCliente(d.cliente_reg), fmt(d.valor_base_comissao), fmt(d.comissao)];
       }),
-      foot: [['Total do saque', '', fmt(h.valor_total)]],
+      foot: [['Total do saque' + (ajustado ? ' (ajustado)' : ''), '', fmt(h.valor_total)]],
       headStyles: { fillColor: [26, 29, 39] },
       footStyles: { fillColor: [26, 29, 39], fontStyle: 'bold' },
       styles: { fontSize: 10, cellPadding: 4 },
@@ -791,6 +1055,257 @@ async function excluirComissaoPaga() {
   }
 }
 
+// ── Vencimento mensal (automático + override manual) ──────────
+// Automático: 5o dia util do mes (pula sab/dom + feriados nacionais fixos e
+// moveis, estes calculados a partir da Pascoa). Override: linha opcional em
+// vencimento_mensal (mes,ano) -- so existe quando alguem edita manualmente;
+// mes sem override usa sempre o calculo automatico.
+var vencimentoAtual = null; // {iso, autoIso, manual}
+
+function pascoa(ano) {
+  var a = ano % 19, b = Math.floor(ano/100), c = ano % 100;
+  var d = Math.floor(b/4), e = b % 4, f = Math.floor((b+8)/25);
+  var g = Math.floor((b-f+1)/3), h = (19*a+b-d-g+15) % 30;
+  var i = Math.floor(c/4), k = c % 4, l = (32+2*e+2*i-h-k) % 7;
+  var m = Math.floor((a+11*h+22*l)/451);
+  var mes = Math.floor((h+l-7*m+114)/31), dia = ((h+l-7*m+114) % 31) + 1;
+  return new Date(ano, mes-1, dia);
+}
+function addDays(date, days) {
+  var d = new Date(date);
+  d.setDate(d.getDate()+days);
+  return d;
+}
+function feriadosNacionais(ano) {
+  var fixos = [[0,1],[3,21],[4,1],[8,7],[9,12],[10,2],[10,15],[11,25]]
+    .map(function(p){ return new Date(ano, p[0], p[1]); });
+  var pasc = pascoa(ano);
+  var moveis = [addDays(pasc,-47), addDays(pasc,-2), addDays(pasc,60)];
+  return fixos.concat(moveis).map(function(d){ return d.toDateString(); });
+}
+function ehDiaUtil(date, feriadosSet) {
+  var dow = date.getDay();
+  if (dow===0 || dow===6) return false;
+  return feriadosSet.indexOf(date.toDateString()) === -1;
+}
+function quintoDiaUtil(ano, mes) {
+  var feriados = feriadosNacionais(ano);
+  var d = new Date(ano, mes, 1), count = 0;
+  while (true) {
+    if (ehDiaUtil(d, feriados)) { count++; if (count===5) return d; }
+    d = addDays(d, 1);
+  }
+}
+function pad2(n) { return n < 10 ? '0'+n : ''+n; }
+function toIsoDate(d) { return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function fmtDataBr(iso) { var p = iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+function fmtDataBrCurta(iso) { var p = iso.split('-'); return p[2]+'/'+p[1]; }
+
+// "mes"/"ano" em controle_mensal e pagamento_aportes sao o mes de competencia
+// (faturamento) -- o vencimento de verdade cai no 5o dia util do mes SEGUINTE
+// (cliente fatura julho, paga nos primeiros dias uteis de agosto). Por isso o
+// calculo automatico usa viewMonth+1, nao o proprio viewMonth.
+async function loadVencimento() {
+  var nextMonth = viewMonth + 1, nextYear = viewYear;
+  if (nextMonth > 11) { nextMonth = 0; nextYear++; }
+  var autoIso = toIsoDate(quintoDiaUtil(nextYear, nextMonth));
+  var res = await sb.from('vencimento_mensal').select('*').eq('mes', viewMonth).eq('ano', viewYear).maybeSingle();
+  if (!res.error && res.data) {
+    vencimentoAtual = { iso: res.data.data_vencimento, autoIso: autoIso, manual: true };
+  } else {
+    vencimentoAtual = { iso: autoIso, autoIso: autoIso, manual: false };
+  }
+}
+
+function renderVencimentoBadge() {
+  if (!vencimentoAtual) return;
+  var dataEl = document.getElementById('venc-badge-data');
+  var badge = document.getElementById('venc-badge');
+  if (dataEl) dataEl.textContent = fmtDataBr(vencimentoAtual.iso);
+  if (badge) badge.classList.toggle('manual', vencimentoAtual.manual);
+  var tag = document.getElementById('venc-manual-tag');
+  if (vencimentoAtual.manual && !tag && badge) {
+    tag = document.createElement('span');
+    tag.id = 'venc-manual-tag';
+    tag.className = 'venc-manual-tag';
+    tag.textContent = 'ajustado';
+    badge.insertBefore(tag, document.getElementById('venc-edit-btn'));
+  } else if (!vencimentoAtual.manual && tag) {
+    tag.remove();
+  }
+}
+
+function abrirVencModal() {
+  if (!vencimentoAtual) return;
+  document.getElementById('venc-modal-titulo-mes').textContent = MESES[viewMonth] + ' ' + viewYear;
+  document.getElementById('venc-modal-input').value = vencimentoAtual.iso;
+  document.getElementById('venc-modal-hint').innerHTML = 'Automático (5º dia útil do mês seguinte, já que ' + MESES[viewMonth] + ' é o mês de competência): <b style="color:#94a3b8">' + fmtDataBr(vencimentoAtual.autoIso) + '</b>. Mude só se precisar (feriado municipal, acordo com o cliente etc).';
+  document.getElementById('venc-modal-overlay').style.display = 'block';
+  document.getElementById('venc-modal').style.display = 'block';
+}
+function fecharVencModal() {
+  document.getElementById('venc-modal-overlay').style.display = 'none';
+  document.getElementById('venc-modal').style.display = 'none';
+}
+function usarVencAutomatico() {
+  if (vencimentoAtual) document.getElementById('venc-modal-input').value = vencimentoAtual.autoIso;
+}
+async function salvarVencimento() {
+  var val = document.getElementById('venc-modal-input').value;
+  if (!val) { alert('Informe uma data válida.'); return; }
+  var btn = document.getElementById('venc-modal-salvar-btn');
+  var origHtml = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Salvando…'; }
+  try {
+    if (val === vencimentoAtual.autoIso) {
+      var del = await sb.from('vencimento_mensal').delete().eq('mes', viewMonth).eq('ano', viewYear);
+      if (del.error) throw del.error;
+      vencimentoAtual = { iso: val, autoIso: vencimentoAtual.autoIso, manual: false };
+    } else {
+      var up = await sb.from('vencimento_mensal').upsert(
+        { mes: viewMonth, ano: viewYear, data_vencimento: val, updated_at: new Date().toISOString() },
+        { onConflict: 'mes,ano' }
+      );
+      if (up.error) throw up.error;
+      vencimentoAtual = { iso: val, autoIso: vencimentoAtual.autoIso, manual: true };
+    }
+    renderVencimentoBadge();
+    renderPontualidade();
+    fecharVencModal();
+  } catch (e) {
+    console.error('salvarVencimento:', e);
+    alert('Erro ao salvar vencimento: ' + (e.message || e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
+  }
+}
+
+// ── Ranking do mês (top 3 por valor faturado) ──────────────────
+var rankCollapsed = localStorage.getItem('ideali-rank-collapsed') === '1';
+
+function applyRankCollapsedState() {
+  var wrapEl = document.getElementById('rank-podium-wrap');
+  var btn = document.getElementById('rank-collapse-btn');
+  var strip = document.getElementById('rank-collapsed-strip');
+  if (wrapEl) wrapEl.classList.toggle('collapsed', rankCollapsed);
+  if (btn) { btn.classList.toggle('collapsed', rankCollapsed); btn.setAttribute('aria-expanded', String(!rankCollapsed)); }
+  if (strip) strip.classList.toggle('show', rankCollapsed);
+}
+function toggleRankPodium() {
+  rankCollapsed = !rankCollapsed;
+  localStorage.setItem('ideali-rank-collapsed', rankCollapsed ? '1' : '0');
+  applyRankCollapsedState();
+}
+
+function renderRankingValores() {
+  var top = clients
+    .map(function(c) { return { c:c, s: dbState[c.reg] || {} }; })
+    .filter(function(r) { return Number(r.s.valor_mes||0) > 0; })
+    .sort(function(a,b) { return Number(b.s.valor_mes||0) - Number(a.s.valor_mes||0); })
+    .slice(0, 3);
+
+  var medals = ['🥇','🥈','🥉'], places = ['1º lugar','2º lugar','3º lugar'];
+  var wrap = document.getElementById('rank-podium');
+  if (wrap) {
+    wrap.innerHTML = top.length ? top.map(function(r, idx) {
+      var vm = Number(r.s.valor_mes||0), vp = Number(r.s.valor_pago||0);
+      var st = statusOf(r.s);
+      return '<div class="rank-card r'+(idx+1)+'">' +
+        '<div class="rank-top"><span class="rank-medal">'+medals[idx]+'</span><span class="rank-place">'+places[idx]+'</span></div>' +
+        '<div class="rank-name">'+escHtml(r.c.nome)+'</div>' +
+        '<div class="rank-val">'+fmt(vm)+'</div>' +
+        '<div class="rank-sub">'+fmt(vp)+' pago · '+st.lbl.toLowerCase()+'</div>' +
+      '</div>';
+    }).join('') : '<p style="font-size:12px;color:#4a5568;grid-column:1/-1;text-align:center;padding:1rem 0">Nenhum cliente faturado neste mês ainda.</p>';
+  }
+
+  var strip = document.getElementById('rank-collapsed-strip');
+  if (strip) {
+    strip.innerHTML = top.length
+      ? '🥇 ' + escHtml(top[0].c.nome) + ' <b>' + fmt(Number(top[0].s.valor_mes||0)) + '</b>' + (top.length>1 ? ' · +'+(top.length-1)+' no top 3' : '')
+      : 'Nenhum cliente faturado neste mês ainda.';
+  }
+}
+
+// ── Pontualidade (bons pagadores x atrasados vs. vencimento) ──
+// Conta a data do ultimo aporte NAO legado de cada cliente ja quitado no mes
+// (legado = data de migracao, nao a data real do pagamento -- entraria
+// injustamente como atraso). Cliente parcial ou sem aporte real com data
+// fica de fora dos dois rankings (sem dado confiavel pra comparar).
+var pontCollapsed = localStorage.getItem('ideali-pont-collapsed') === '1';
+
+function applyPontCollapsedState() {
+  var wrapEl = document.getElementById('pont-cols-wrap');
+  var btn = document.getElementById('pont-collapse-btn');
+  var strip = document.getElementById('pont-collapsed-strip');
+  if (wrapEl) wrapEl.classList.toggle('collapsed', pontCollapsed);
+  if (btn) { btn.classList.toggle('collapsed', pontCollapsed); btn.setAttribute('aria-expanded', String(!pontCollapsed)); }
+  if (strip) strip.classList.toggle('show', pontCollapsed);
+}
+function togglePontCols() {
+  pontCollapsed = !pontCollapsed;
+  localStorage.setItem('ideali-pont-collapsed', pontCollapsed ? '1' : '0');
+  applyPontCollapsedState();
+}
+
+function computePontualidade() {
+  if (!vencimentoAtual) return { bons: [], atrasados: [] };
+  var vencDate = new Date(vencimentoAtual.iso + 'T00:00:00');
+  var bons = [], atrasados = [];
+  clients.forEach(function(c) {
+    var s = dbState[c.reg];
+    if (!s) return;
+    var vm = Number(s.valor_mes||0), vp = Number(s.valor_pago||0);
+    if (vm <= 0 || vp < vm) return;
+    var reais = (s.aportes||[]).filter(function(a){ return !a.legado; });
+    if (!reais.length) return;
+    var ultimo = reais.reduce(function(m, a) { return new Date(a.data_pagamento) > new Date(m.data_pagamento) ? a : m; });
+    var dataPag = new Date(ultimo.data_pagamento + 'T00:00:00');
+    var diffDias = Math.round((dataPag - vencDate) / 86400000);
+    var item = { c:c, dataIso: ultimo.data_pagamento, diffDias: diffDias };
+    if (diffDias <= 0) bons.push(item); else atrasados.push(item);
+  });
+  bons.sort(function(a,b){ return a.diffDias - b.diffDias; });
+  atrasados.sort(function(a,b){ return b.diffDias - a.diffDias; });
+  return { bons: bons, atrasados: atrasados };
+}
+
+function renderPontualidade() {
+  var heading = document.getElementById('pont-section-heading');
+  if (heading && vencimentoAtual) heading.textContent = 'Pontualidade — vencimento ' + fmtDataBr(vencimentoAtual.iso);
+
+  var data = computePontualidade();
+  var medals = ['🥇','🥈','🥉'];
+
+  var goodEl = document.getElementById('pont-good-rows');
+  if (goodEl) {
+    goodEl.innerHTML = data.bons.length ? data.bons.map(function(item, idx) {
+      var medal = idx < 3 ? '<span class="pont-medal">'+medals[idx]+'</span>' : '<span class="pont-medal" style="opacity:0"></span>';
+      var deltaLbl = item.diffDias === 0 ? 'no dia' : (Math.abs(item.diffDias) + ' dia' + (Math.abs(item.diffDias)>1?'s':'') + ' antes');
+      return '<div class="pont-row"><span class="pont-rank">'+(idx+1)+'</span>'+medal+
+        '<div class="pont-info"><div class="pont-name">'+escHtml(item.c.nome)+'</div><div class="pont-date">pago em '+fmtDataBrCurta(item.dataIso)+'</div></div>' +
+        '<span class="pont-delta good">'+deltaLbl+'</span></div>';
+    }).join('') : '<div class="pont-empty">Nenhum cliente quitado antes ou no vencimento ainda.</div>';
+  }
+
+  var lateEl = document.getElementById('pont-late-rows');
+  if (lateEl) {
+    lateEl.innerHTML = data.atrasados.length ? data.atrasados.map(function(item, idx) {
+      var deltaLbl = item.diffDias + ' dia' + (item.diffDias>1?'s':'') + ' de atraso';
+      return '<div class="pont-row"><span class="pont-rank">'+(idx+1)+'</span>'+
+        '<div class="pont-info"><div class="pont-name">'+escHtml(item.c.nome)+'</div><div class="pont-date">pago em '+fmtDataBrCurta(item.dataIso)+'</div></div>' +
+        '<span class="pont-delta late">'+deltaLbl+'</span></div>';
+    }).join('') : '<div class="pont-empty">Nenhum atraso neste mês. 🎉</div>';
+  }
+
+  var strip = document.getElementById('pont-collapsed-strip');
+  if (strip) {
+    var pior = data.atrasados.length ? (data.atrasados[0].diffDias + ' dias (' + escHtml(data.atrasados[0].c.nome) + ')') : null;
+    strip.innerHTML = '<span class="g">🏆 '+data.bons.length+' bons pagadores</span><span class="l">🐌 '+data.atrasados.length+' atrasados</span>' +
+      (pior ? '<span style="color:#64748b">· pior atraso: '+pior+'</span>' : '');
+  }
+}
+
 function renderTable() {
   var rows = clients
     .map(function(c) { return { c:c, s: dbState[c.reg] || {valor_mes:0,valor_pago:0,comprovantes:[]} }; })
@@ -798,12 +1313,15 @@ function renderTable() {
     .filter(function(r) { return statusFilter === 'todos' || statusOf(r.s).key === statusFilter; })
     .sort(function(a,b){ return b.s.valor_mes - a.s.valor_mes; });
 
-  var totMes=0, totPago=0, clientesComPendencia=0, clientesQuePagaram=0;
+  var totMes=0, totPago=0, totRestante=0, clientesComPendencia=0, clientesQuePagaram=0;
   clients.forEach(function(c) {
     var s = dbState[c.reg] || {};
     var vm = Number(s.valor_mes||0), vp = Number(s.valor_pago||0);
     totMes  += vm;
     totPago += vp;
+    // Cliente que pagou mais do que faturou no mes (ex: quitando saldo de mes anterior)
+    // nao gera saldo negativo -- trata como 0.
+    totRestante += Math.max(0, vm - vp);
     if (vm > 0) {
       clientesComPendencia++;
       if (vp > 0) clientesQuePagaram++;
@@ -811,7 +1329,7 @@ function renderTable() {
   });
   document.getElementById('sum-total').textContent = fmt(totMes);
   document.getElementById('sum-pago').textContent  = fmt(totPago);
-  document.getElementById('sum-saldo').textContent = fmt(totMes - totPago);
+  document.getElementById('sum-saldo').textContent = fmt(totRestante);
   var pctPago = totMes > 0 ? Math.round((totPago / totMes) * 100) : 0;
   document.getElementById('sum-pct-pago').textContent = pctPago + '% pago';
   document.getElementById('sum-clientes-pagos').textContent = clientesQuePagaram + ' de ' + clientesComPendencia + ' clientes pagaram';
@@ -819,50 +1337,88 @@ function renderTable() {
   var tbody = document.getElementById('rows-body');
   if (!rows.length) {
     var emptyMsg = statusFilter === 'todos' ? 'Nenhum lançamento neste mês.' : 'Nenhum cliente com esse status neste mês.';
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#4a5568;padding:2rem">'+emptyMsg+'</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#4a5568;padding:2rem">'+emptyMsg+'</td></tr>';
   } else {
     tbody.innerHTML = rows.map(function(r) {
-      var vm = Number(r.s.valor_mes||0), vp = Number(r.s.valor_pago||0), rest = vm - vp;
+      var vm = Number(r.s.valor_mes||0), vp = Number(r.s.valor_pago||0);
+      // Cliente que pagou mais do que faturou no mes nao gera restante negativo -- vira 0.
+      var rest = Math.max(0, vm - vp);
       var st = statusOf(r.s);
       var comps = r.s.comprovantes || [];
       var compsHtml = comps.length
         ? comps.map(function(f) { return '<a class="comp-link" href="'+f.url+'" target="_blank" rel="noopener"><i class="ti ti-paperclip"></i> '+ (f.name.length > 18 ? f.name.substring(0,15)+'…' : f.name) +'</a>'; }).join(' ')
         : '<span class="no-comp">—</span>';
+      var aportes = r.s.aportes || [];
+      if (aportes.length) {
+        compsHtml += ' <button class="btn-historico" onclick="abrirHistoricoAportes('+r.c.reg+')"><i class="ti ti-history"></i> Histórico ('+aportes.length+')</button>';
+      }
+      if (r.s.extrato_url) {
+        compsHtml += ' <a class="comp-link extrato-link" href="'+r.s.extrato_url+'" target="_blank" rel="noopener" title="Extrato do mês (Inove)"><i class="ti ti-file-text"></i> Extrato</a>';
+      }
       var obsHtml = r.s.obs_pagamento
         ? '<span class="obs-txt">'+escHtml(r.s.obs_pagamento)+'</span>'
         : '<span class="no-comp">—</span>';
-      return '<tr>' +
-        '<td><p class="client-name">'+escHtml(r.c.nome)+'</p></td>' +
+      // Pagamento novo: valor pago + comprovante ja anexados (direto ou via aporte), e a Elisangela ainda nao confirmou.
+      var isNovo = vp > 0 && (comps.length > 0 || aportes.length > 0) && r.s.confirmado_pela_inove === false;
+      var confirmarHtml = isNovo
+        ? '<button class="btn-confirmar-inove" onclick="confirmarPagamentoInove('+r.c.reg+',this)"><i class="ti ti-check"></i> Confirmado</button>'
+        : '';
+      var novoBadgeHtml = isNovo
+        ? '<span class="badge-novo-pagamento">🟡 Novo pagamento — aguardando confirmação</span>'
+        : '';
+      return '<tr'+(isNovo?' class="row-novo-pagamento"':'')+'>' +
+        '<td><p class="client-name">'+escHtml(r.c.nome)+'</p>'+novoBadgeHtml+'</td>' +
         '<td class="'+(vm>0?'valor-mes':'valor-zero')+'">'+fmt(vm)+'</td>' +
         '<td class="'+(vp>0?'valor-pago':'valor-zero')+'">'+fmt(vp)+'</td>' +
         '<td style="color:'+(rest>0?'#ef4444':'#4a5568')+'">'+fmt(rest)+'</td>' +
         '<td><span class="status-badge '+st.cls+'">'+st.lbl+'</span></td>' +
         '<td>'+compsHtml+'</td>' +
         '<td>'+obsHtml+'</td>' +
+        '<td>'+confirmarHtml+'</td>' +
       '</tr>';
     }).join('');
   }
 }
 
+async function confirmarPagamentoInove(reg, btn) {
+  if (!reg) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+  try {
+    var existing = await sb.from('controle_mensal').select('id')
+      .eq('cliente_reg', reg).eq('mes', viewMonth).eq('ano', viewYear);
+    if (existing.error) throw existing.error;
+    if (!existing.data || !existing.data.length) return;
+    var upd = await sb.from('controle_mensal').update({ confirmado_pela_inove: true }).eq('id', existing.data[0].id);
+    if (upd.error) throw upd.error;
+    if (dbState[reg]) dbState[reg].confirmado_pela_inove = true;
+    renderTable();
+  } catch (e) {
+    console.error('confirmarPagamentoInove:', e);
+    alert('Erro ao confirmar pagamento: ' + (e.message || e));
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i> Confirmado'; }
+  }
+}
+
 // Acha o mes mais recente (ate o mes calendario atual) com dado real em controle_mensal
 // (valor_mes > 0). Se o mes atual ja tiver dado, fica nele; so cai pro anterior se estiver vazio.
+// Sempre abre no mes-calendario atual, mesmo que ainda nao tenha nenhum valor_mes
+// lancado nele -- mes atual "zerado" e um estado valido (nada finalizado/faturado
+// ainda), nao motivo pra pular pro mes anterior.
 async function findDefaultMonth() {
-  var res = await sb.from('controle_mensal').select('mes,ano,valor_mes').gt('valor_mes', 0);
-  if (res.error || !res.data || !res.data.length) return { m: currentMonth, y: currentYear };
-  var rows = res.data.filter(function(r) {
-    return r.ano < currentYear || (r.ano === currentYear && r.mes <= currentMonth);
-  });
-  if (!rows.length) return { m: currentMonth, y: currentYear };
-  rows.sort(function(a, b) { return (b.ano - a.ano) || (b.mes - a.mes); });
-  return { m: rows[0].mes, y: rows[0].ano };
+  return { m: currentMonth, y: currentYear };
 }
 
 async function init() {
   var def = await findDefaultMonth();
   viewMonth = def.m; viewYear = def.y;
   renderMonthDD();
-  await Promise.all([loadMonthData(), loadExtratosPendentes(), loadComissaoHistorico()]);
+  await Promise.all([loadMonthData(), loadExtratosPendentes(), loadComissaoHistorico(), loadVencimento()]);
   renderTable();
+  renderVencimentoBadge();
+  renderRankingValores();
+  renderPontualidade();
+  applyRankCollapsedState();
+  applyPontCollapsedState();
   renderExtratos();
   renderComissaoTab();
   document.getElementById('loading').style.display = 'none';
