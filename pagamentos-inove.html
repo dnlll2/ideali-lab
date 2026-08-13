@@ -185,7 +185,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     cosmos:     { bg:'#04081a', card:'#081428', border:'rgba(0,180,216,0.14)',  text:'#c0e8f8', accent:'#00b4d8', accent2:'#7c83fd', success:'#48cae4', warn:'#90e0ef', danger:'#ef476f', mono:false },
     codigo:     { bg:'#1e1e1e', card:'#252526', border:'rgba(255,255,255,0.1)', text:'#d4d4d4', accent:'#007acc', accent2:'#c586c0', success:'#4ec9b0', warn:'#dcdcaa', danger:'#f44747', mono:false },
     matrix:     { bg:'#000000', card:'#020f04', border:'rgba(0,255,65,0.22)',   text:'#d4ffdc', accent:'#00ff41', accent2:'#00e6a8', success:'#39ff6a', warn:'#ffd60a', danger:'#ff3b3b', mono:true, monoFamily:'Share Tech Mono', monoHref:'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap' },
-    msdos:      { bg:'#0000aa', card:'#0000aa', border:'#ffffff', text:'#ffffff', accent:'#00ffff', accent2:'#ffff55', success:'#55ff55', warn:'#ffff55', danger:'#ff5555', mono:true, square:true, monoFamily:'VT323', monoHref:'https://fonts.googleapis.com/css2?family=VT323&display=swap' }
+    msdos:      { bg:'#0000aa', card:'#0000aa', border:'#ffffff', text:'#ffffff', accent:'#00ffff', accent2:'#ffff55', success:'#55ff55', warn:'#ffff55', danger:'#ff5555', mono:true, square:true, monoFamily:'VT323', monoHref:'https://fonts.googleapis.com/css2?family=VT323&display=swap' },
+    // As 4 variantes do Vidro (glass:true) nao tem bg fixo aqui de proposito -- shared.js
+    // ja aplica o gradiente do body e o fundo translucido+blur de .sum-card/.table-wrap/
+    // .pend-card (glass override central). Esse espelho so entra pra colorir os elementos
+    // proprios da pagina (badges/status/botoes) que shared.js nao conhece. accentText e o
+    // texto usado em cima do accent solido (.active) -- branco nas 3 variantes claras,
+    // escuro no Vidro Escuro (accent mais claro la, pra manter contraste no card escuro).
+    vidro:       { card:'rgba(255,255,255,0.55)', border:'rgba(255,255,255,0.7)', text:'#2a2733', accent:'#4f7f8c', accent2:'#8c7aa8', success:'#6f9e7c', warn:'#c98a45', danger:'#c07272', mono:false, glass:true, accentText:'#fff' },
+    'vidro-azul':  { card:'rgba(255,255,255,0.55)', border:'rgba(255,255,255,0.7)', text:'#2a2733', accent:'#4f7f8c', accent2:'#8c7aa8', success:'#6f9e7c', warn:'#c98a45', danger:'#c07272', mono:false, glass:true, accentText:'#fff' },
+    'vidro-noite': { card:'rgba(255,255,255,0.55)', border:'rgba(255,255,255,0.7)', text:'#2a2733', accent:'#4f7f8c', accent2:'#8c7aa8', success:'#6f9e7c', warn:'#c98a45', danger:'#c07272', mono:false, glass:true, accentText:'#fff' },
+    'vidro-escuro': { card:'rgba(28,26,38,0.55)', border:'rgba(255,255,255,0.10)', text:'#eae7f2', accent:'#7fb0bb', accent2:'#b7a3dc', success:'#8fc79a', warn:'#e0b96a', danger:'#e2917f', mono:false, glass:true, accentText:'#152025' }
   };
   function hexToRgba(hex, alpha) {
     hex = String(hex||'').replace('#','');
@@ -193,22 +203,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     var r=parseInt(hex.substr(0,2),16)||0, g=parseInt(hex.substr(2,2),16)||0, b=parseInt(hex.substr(4,2),16)||0;
     return 'rgba('+r+','+g+','+b+','+alpha+')';
   }
-  var name = localStorage.getItem('ideali-theme') || 'sombra';
-  var t = THEME_COLORS[name] || THEME_COLORS.sombra;
+  var name = localStorage.getItem('ideali-theme') || 'vidro-escuro';
+  var t = THEME_COLORS[name] || THEME_COLORS['vidro-escuro'];
   window.__T = t; window.__hexToRgba = hexToRgba;
   var css = [
-    'body{background:'+t.bg+' !important;color:'+t.text+' !important}',
+    // Nos temas Vidro, body/.sum-card/.table-wrap/.rel-table th/.pend-card ja saem
+    // corretos (gradiente + vidro translucido com blur) do override central em shared.js --
+    // reescrever aqui com t.bg/t.card (que nesses 3 temas nem existem) so pisaria em cima.
+    t.glass ? '' : 'body{background:'+t.bg+' !important;color:'+t.text+' !important}',
     '.badge-ro{background:'+hexToRgba(t.accent,0.16)+' !important;color:'+t.accent+' !important;border-color:'+hexToRgba(t.accent,0.35)+' !important}',
-    '.sum-card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    t.glass ? '' : '.sum-card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
     '.sum-card .val{color:'+t.text+' !important}',
     '.sum-card-highlight{background:'+hexToRgba(t.accent2,0.1)+' !important;border-color:'+hexToRgba(t.accent2,0.4)+' !important}',
     '.sum-card-highlight .val{color:'+t.accent2+' !important}',
-    '.table-wrap,.rel-table th{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    t.glass ? '' : '.table-wrap,.rel-table th{background:'+t.card+' !important;border-color:'+t.border+' !important}',
     '.status-q,.status-e{background:'+hexToRgba(t.success,0.15)+' !important;color:'+t.success+' !important;border-color:'+t.success+' !important}',
     '.status-r{background:'+hexToRgba(t.accent,0.18)+' !important;color:'+t.accent+' !important;border-color:'+hexToRgba(t.accent,0.5)+' !important}',
     '.status-parcial{background:'+hexToRgba(t.warn,0.15)+' !important;color:'+t.warn+' !important;border-color:'+t.warn+' !important}',
     '.status-nada{background:'+hexToRgba(t.danger,0.15)+' !important;color:'+t.danger+' !important;border-color:'+t.danger+' !important}',
-    '.status-filter-btn.active{background:'+t.accent+' !important;color:'+t.text+' !important;border-color:'+t.accent+' !important}',
+    '.status-filter-btn.active{background:'+t.accent+' !important;color:'+(t.accentText||(t.glass?'#fff':t.text))+' !important;border-color:'+t.accent+' !important}',
     '.status-filter-btn:not(.active):hover{background:'+hexToRgba(t.accent,0.12)+' !important;color:'+t.text+' !important}',
     '.valor-mes{color:'+t.warn+' !important}',
     '.valor-pago{color:'+t.success+' !important}',
@@ -219,9 +232,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     '.month-dd-btn.cur{border-color:'+t.accent+' !important;background:'+hexToRgba(t.accent,0.15)+' !important;color:'+t.accent+' !important}',
     '.month-dd-item.sel{background:'+hexToRgba(t.accent,0.15)+' !important;color:'+t.accent+' !important}',
     '.month-dd-item.fech{color:'+t.success+' !important}',
-    '.view-tab-btn.active{background:'+t.accent+' !important;color:'+t.text+' !important;border-color:'+t.accent+' !important}',
+    '.view-tab-btn.active{background:'+t.accent+' !important;color:'+(t.accentText||(t.glass?'#fff':t.text))+' !important;border-color:'+t.accent+' !important}',
     '.view-tab-btn:not(.active):hover{background:'+hexToRgba(t.accent,0.12)+' !important;color:'+t.text+' !important}',
-    '.pend-card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+    t.glass ? '' : '.pend-card{background:'+t.card+' !important;border-color:'+t.border+' !important}',
     '.pend-card-btn{background:'+hexToRgba(t.success,0.12)+' !important;color:'+t.success+' !important;border-color:'+hexToRgba(t.success,0.4)+' !important}',
     '.pend-card-btn:hover{background:'+hexToRgba(t.success,0.22)+' !important}',
     '.row-novo-pagamento td{background:'+hexToRgba(t.success,0.1)+' !important}',

@@ -211,13 +211,13 @@ function cliAnexarRegraPadrao(descricao, reg) {
 })();
 
 // ── Tema ──────────────────────────────────────────────────────
-// 3 variantes do Vidro (mesma familia -- cards/sidebar/inputs em vidro
-// translucido branco, mesmas cores de acento), diferindo so no fundo
-// da pagina: claro (padrao) -> azulado -> escuro (tom do cabecalho,
-// paleta do logo). bodyText e a cor do texto solto direto no body,
-// fora de qualquer card -- separado de "text" (usado dentro dos
-// cards/tabelas, que continuam claros mesmo no Vidro Noite porque o
-// card em si continua um vidro branco por cima do fundo escuro).
+// 4 variantes do Vidro (mesma familia glass/blur), 3 delas com cards em
+// vidro translucido BRANCO (texto sempre escuro dentro do card, so o
+// fundo da pagina muda: claro -> azulado -> escuro/noite) + "Vidro
+// Escuro", onde o vidro dos proprios cards tambem fica escuro (texto
+// claro dentro do card) -- essa e a variante realmente dark da familia.
+// bodyText e a cor do texto solto direto no body, fora de qualquer
+// card -- separado de "text" (cor do texto dentro do card).
 var THEMES = {
   vidro: {
     name:'Vidro', swatch:'linear-gradient(135deg,#e3d6f2,#4f7f8c)', glass:true,
@@ -245,6 +245,19 @@ var THEMES = {
     hover:'rgba(79,127,140,0.12)', active:'rgba(79,127,140,0.18)', border:'rgba(255,255,255,0.7)',
     text:'#2a2733', muted:'#6e6a7c', dim:'#9994a8', bodyText:'#eaf5f2',
     accent:'#4f7f8c', accent2:'#8c7aa8', success:'#6f9e7c', warn:'#c98a45', danger:'#c07272'
+  },
+  'vidro-escuro': {
+    // Unica variante da familia com o vidro dos cards tambem escuro (as outras 3
+    // sao sempre vidro branco por cima do fundo). Acentos mais claros que as outras
+    // variantes pra manter contraste em cima do card escuro (nas outras, o mesmo
+    // acento fica sobre vidro branco, aqui ficaria escuro-sobre-escuro).
+    name:'Vidro Escuro', swatch:'linear-gradient(135deg,#b7a3dc,#7fb0bb)', glass:true,
+    customFont:'Manrope', customFontHref:'https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap',
+    bg:'radial-gradient(ellipse 1000px 700px at 6% -10%, rgba(90,70,130,0.35) 0%, transparent 60%), radial-gradient(ellipse 900px 800px at 100% 15%, rgba(40,95,100,0.32) 0%, transparent 58%), radial-gradient(ellipse 1000px 900px at 35% 110%, rgba(35,65,58,0.32) 0%, transparent 58%), #121118',
+    sbg:'rgba(22,20,30,0.6)', card:'rgba(28,26,38,0.55)', sec:'rgba(28,26,38,0.7)',
+    hover:'rgba(140,170,182,0.14)', active:'rgba(140,170,182,0.22)', border:'rgba(255,255,255,0.10)',
+    text:'#eae7f2', muted:'#a29db3', dim:'#726c85', bodyText:'#eae7f2',
+    accent:'#7fb0bb', accent2:'#b7a3dc', success:'#8fc79a', warn:'#e0b96a', danger:'#e2917f'
   }
 };
 
@@ -278,8 +291,8 @@ function notifyThemeChange() {
   if (typeof onThemeChange === 'function') { try { onThemeChange(); } catch(e){ console.error('[onThemeChange]', e); } }
 }
 
-var currentTheme = localStorage.getItem('ideali-theme') || 'vidro';
-if (!THEMES[currentTheme]) currentTheme = 'vidro';
+var currentTheme = localStorage.getItem('ideali-theme') || 'vidro-escuro';
+if (!THEMES[currentTheme]) currentTheme = 'vidro-escuro';
 
 function applyTheme(name) {
   var t = THEMES[name]; if (!t) return;
@@ -338,7 +351,9 @@ function applyTheme(name) {
     // Temas "glass" (ex: Vidro) borram o que fica atrás dos painéis translúcidos, pra dar o efeito de vidro fosco.
     t.glass ? [
       'body{background-attachment:fixed !important}',
-      '.card,#sidebar,.dash-card,.hm-card,.hm-section,.counter-card,.task-item,.fin-card,.tab-tarefa,#month-dd-list,.mob-back,.hamburger,.sb-close,.sb-icon,input,select{',
+      '.card,#sidebar,.dash-card,.hm-card,.hm-section,.counter-card,.task-item,.fin-card,.tab-tarefa,#month-dd-list,.mob-back,.hamburger,.sb-close,.sb-icon,input,select,'+
+      '.cam-col,.cam-card,.cam-report,.cam-report-stat,.cam-pend-card,.cam-scan-box,#cam-panel,#cam-arq-panel,#cam-client-panel,#cadista-dropdown,#cadista-real-dropdown,#obs-dropdown,#qtd-dropdown,'+
+      '.modal,.sum-card,.table-wrap,.pend-card,.rank-card,.pont-col{',
       '  -webkit-backdrop-filter:blur(16px) saturate(1.3) !important;backdrop-filter:blur(16px) saturate(1.3) !important;',
       '  box-shadow:0 2px 6px rgba(60,40,90,0.10),0 14px 34px rgba(60,40,90,0.20) !important',
       '}',
@@ -354,6 +369,12 @@ function applyTheme(name) {
       // da lista acima porque nao sao compartilhadas com mais ninguem.
       '.cam-col,.cam-report,.cam-report-scroll,.cam-report-table th,.cam-scan-box,.cam-scan-toggle button,.dente{background:'+t.sec+' !important}',
       '.cam-card,.cam-report-stat,.cam-pend-card{background:'+t.card+' !important}',
+      // Estes paineis/dropdowns tem o fundo escuro so no HTML original (sem classe) e o
+      // JS troca style.display pra abrir/fechar -- isso faz o navegador reserializar todo
+      // o atributo style (hex vira rgb(), sem o texto "background:#1a1d27" literal), entao
+      // o catch-all por atributo la embaixo para de bater neles depois de abertos uma vez.
+      // Seletor por ID direto aqui garante que fiquem no vidro mesmo depois disso.
+      '#cam-panel,#cam-arq-panel,#cam-client-panel,#cadista-dropdown,#cadista-real-dropdown,#obs-dropdown,#qtd-dropdown{background:'+t.card+' !important}',
       '.cam-report-chevron,.cam-report-stat .l,.cam-report-table th,.cam-upload{color:'+t.dim+' !important}',
       '.cam-report-table td{color:'+t.text+' !important}',
       '.cam-scan-toggle button,.dente{color:'+t.muted+' !important}',
@@ -367,11 +388,11 @@ function applyTheme(name) {
       // Pega o resto: cores e fundos cinza-escuro do tema Sombra escritos direto no HTML de cada página
       // (não vêm de classe, então só um seletor por atributo alcança).
       '[style*="color:#f1f5f9"],[style*="color:#e2e8f0"]{color:'+t.text+' !important}',
-      '[style*="color:#94a3b8"]{color:'+t.muted+' !important}',
+      '[style*="color:#94a3b8"],[style*="color:#71717a"]{color:'+t.muted+' !important}',
       '[style*="color:#64748b"],[style*="color:#4a5568"]{color:'+t.dim+' !important}',
       '[style*="background:#0f1117"],[style*="background:#13151f"],[style*="background:#13161f"]{background:'+t.sec+' !important}',
       '[style*="background:#1a1d27"]{background:'+t.card+' !important}',
-      '[style*="background:#22263a"]{background:'+t.sec+' !important}',
+      '[style*="background:#22263a"],[style*="background:#1c1c24"]{background:'+t.sec+' !important}',
       '[style*="background:#2d3250"]{background:'+t.hover+' !important}'
     ].join('\n') : ''
   ].join('\n');
