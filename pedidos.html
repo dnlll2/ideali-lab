@@ -630,6 +630,7 @@ function initShell() {
     .then(function(html) {
       document.getElementById('shared-shell').innerHTML = html;
       updateSidebarActive();
+      renderThemePicker();
       var keyEl = document.getElementById('sb-groq-key');
       if (keyEl && GROQ_API_KEY) keyEl.value = GROQ_API_KEY;
     })
