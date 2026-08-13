@@ -61,6 +61,7 @@ function initShell() {
     .then(function(html) {
       document.getElementById('shared-shell').innerHTML = html;
       updateSidebarActive();
+      renderThemePicker();
       // Preenche a chave Groq se já estiver salva
       var keyEl = document.getElementById('sb-groq-key');
       if (keyEl && GROQ_API_KEY) keyEl.value = GROQ_API_KEY;
