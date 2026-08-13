@@ -14,6 +14,9 @@
   .cam-col-body{padding:8px;display:flex;flex-direction:column;gap:8px;min-height:120px}
   .cam-card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.09);border-radius:9px;padding:10px 12px;cursor:grab;transition:box-shadow 0.15s}
   .cam-card:active{cursor:grabbing;box-shadow:0 4px 16px rgba(0,0,0,0.4)}
+  .cam-card-novo{border-color:#fbbf24 !important;background:rgba(251,191,36,0.07);box-shadow:0 0 0 1px rgba(251,191,36,0.35)}
+  .cam-notif-badge{display:none;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;background:#78350f;color:#fbbf24;cursor:pointer;white-space:nowrap}
+  .cam-notif-badge:hover{background:#92400e}
   .cam-orig-btn{height:32px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:12px;cursor:pointer;font-family:inherit;transition:all 0.15s}
   .cam-orig-btn.active{background:#1d3a6e;border-color:#60a5fa;color:#93c5fd}
   @media(max-width:767px){#cam-kanban{grid-template-columns:1fr !important}}
@@ -37,6 +40,41 @@
   .cam-report-table tbody tr:hover td{background:rgba(255,255,255,0.025)}
   .cam-report-table tbody tr:last-child td{border-bottom:none}
   @media(max-width:767px){.cam-report-totals{grid-template-columns:repeat(2,1fr)}}
+
+  .cam-pendentes{background:#1f1708;border:0.5px solid rgba(251,191,36,0.35);border-radius:12px;margin-bottom:12px;overflow:hidden}
+  .cam-pendentes-head{display:flex;align-items:center;gap:8px;padding:12px 16px;font-size:13px;font-weight:600;color:#fbbf24}
+  .cam-pendentes-body{padding:0 12px 12px;display:flex;flex-direction:column;gap:8px}
+  .cam-pend-card{background:#1a1d27;border:0.5px solid rgba(251,191,36,0.25);border-radius:9px;padding:10px 12px;cursor:pointer}
+  .cam-pend-card:hover{border-color:rgba(251,191,36,0.5)}
+
+  .cam-row{display:flex;gap:12px}
+  .cam-row>div{flex:1;min-width:0}
+  .cam-scan-box{background:#13161f;border:0.5px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px}
+  .cam-scan-toggle{display:flex;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;overflow:hidden;height:34px}
+  .cam-scan-toggle button{flex:1;border:0;background:#0f1117;color:#94a3b8;font-size:12px;cursor:pointer;font-family:inherit}
+  .cam-scan-toggle button.active{background:#1d3a6e;color:#93c5fd}
+  .cam-scan-cond{display:flex;gap:8px;margin-top:8px}
+  .cam-scan-cond>div{flex:1;min-width:0}
+  .cam-anexos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:520px){.cam-anexos-grid{grid-template-columns:repeat(2,1fr)}}
+  .cam-upload{border:1px dashed rgba(255,255,255,0.2);border-radius:8px;min-height:52px;display:flex;align-items:center;justify-content:center;text-align:center;gap:4px;color:#64748b;font-size:10.5px;cursor:pointer;padding:4px 6px;word-break:break-word;line-height:1.3}
+  .cam-upload.has-file{border-style:solid;border-color:rgba(96,165,250,0.45);color:#93c5fd;background:rgba(96,165,250,0.07)}
+  .cam-upload.dragover{border-style:solid;border-color:#3b82f6;background:rgba(59,130,246,0.14);color:#93c5fd}
+  .cam-anexo-files{display:flex;flex-direction:column;gap:3px;margin-top:5px}
+  .cam-anexo-file-row{display:flex;align-items:center;justify-content:center;gap:5px}
+  .cam-anexo-view{font-size:10px;color:#63b3ed;text-decoration:none;word-break:break-word}
+  .cam-anexo-view:hover{text-decoration:underline}
+  .cam-anexo-del{flex-shrink:0;border:none;background:none;color:#ef4444;font-size:11px;cursor:pointer;padding:0;font-family:inherit}
+  .cam-anexo-del:hover{color:#f87171}
+  #cam-panel .cp-footer{flex-wrap:wrap}
+  .odonto{display:flex;flex-direction:column;gap:6px;margin-bottom:4px}
+  .odonto-row{display:flex;gap:4px;justify-content:center}
+  .odonto-quad{display:flex;gap:3px}
+  .dente{width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.15);background:#22263a;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;transition:all 0.1s}
+  .dente:hover{border-color:#3b82f6}
+  .dente.on{background:#1d4ed8;border-color:#3b82f6;color:#fff;font-weight:600}
+  .odonto-gap{width:8px}
+  @media(max-width:520px){.dente{width:24px;height:24px;font-size:10px}}
 </style>
 </head>
 <body>
@@ -44,36 +82,138 @@
 
 <!-- ── Modal: Nova Ordem ──────────────────────────────────────── -->
 <div id="cam-overlay" onclick="closeCamPanel()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:80"></div>
-<div id="cam-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:81;width:min(480px,95vw);background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;overflow:hidden">
-  <div class="cp-header">
+<div id="cam-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:81;width:min(620px,95vw);max-height:90vh;overflow-y:auto;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px">
+  <div class="cp-header" style="position:sticky;top:0;background:#1a1d27;z-index:1">
     <div style="flex:1;min-width:0">
-      <p style="font-size:15px;font-weight:600;color:#f1f5f9">Nova Ordem CAM</p>
-      <p style="font-size:11px;color:#64748b;margin-top:2px">Design / arquivo de fresagem</p>
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9" id="cam-panel-title">Nova Ordem CAM</p>
+      <p style="font-size:11px;color:#64748b;margin-top:2px" id="cam-panel-subtitle">Design / arquivo de fresagem</p>
     </div>
     <button class="sb-close" onclick="closeCamPanel()"><i class="ti ti-x"></i></button>
   </div>
-  <div class="cp-body" style="display:flex;flex-direction:column;gap:12px">
-    <div>
-      <p class="label" style="margin-bottom:4px">Cliente cadastrado</p>
-      <select id="cam-form-cliente" style="width:100%;height:36px"
-        onchange="this.value?(document.getElementById('cam-form-nome-livre').style.display='none'):(document.getElementById('cam-form-nome-livre').style.display='');camUpdateRegraBanner()">
-        <option value="">— Nome livre abaixo —</option>
-      </select>
-    </div>
-    <div id="cam-form-nome-livre">
-      <p class="label" style="margin-bottom:4px">Ou nome livre (sem cadastro)</p>
-      <input type="text" id="cam-form-nome-livre-inp" placeholder="Nome do cliente..." style="width:100%;height:36px">
+  <div class="cp-body" style="display:flex;flex-direction:column;gap:14px">
+    <!-- Linha 1: Paciente | Cliente -->
+    <div class="cam-row">
+      <div>
+        <p class="label" style="margin-bottom:4px">Paciente</p>
+        <input type="text" id="cam-form-paciente" placeholder="Nome do paciente..." style="width:100%;height:36px">
+      </div>
+      <div>
+        <p class="label" style="margin-bottom:4px">Cliente</p>
+        <select id="cam-form-cliente" style="width:100%;height:36px" onchange="camUpdateRegraBanner()">
+          <option value="">— Selecione o cliente cadastrado —</option>
+        </select>
+      </div>
     </div>
     <div id="cam-form-regra-banner"></div>
+
+    <!-- Linha 2: Tipo de trabalho | Scanbody -->
+    <div class="cam-row">
+      <div>
+        <p class="label" style="margin-bottom:4px">Tipo de trabalho</p>
+        <select id="cam-form-tipo" style="width:100%;height:36px">
+          <option value="Zircônia">Zircônia</option>
+          <option value="E-max">E-max</option>
+          <option value="PMMA">PMMA</option>
+          <option value="Mockup">Mockup</option>
+          <option value="Prova">Prova</option>
+          <option value="Resina">Resina</option>
+          <option value="Carga Cerâmica">Carga Cerâmica</option>
+          <option value="Outros">Outros</option>
+        </select>
+      </div>
+      <div style="flex:1.6">
+        <p class="label" style="margin-bottom:4px">Scanbody</p>
+        <div class="cam-scan-box">
+          <div class="cam-scan-toggle">
+            <button type="button" id="cam-scan-nao" class="active" onclick="camSetScanbody('nao')">Não</button>
+            <button type="button" id="cam-scan-sim" onclick="camSetScanbody('sim')">Sim</button>
+          </div>
+          <div class="cam-scan-cond" id="cam-scan-cond" style="display:none">
+            <div>
+              <p class="label" style="margin-bottom:4px">Marca do Scanbody</p>
+              <select id="cam-form-scan-marca" style="width:100%;height:34px">
+                <option value="Neodent">Neodent</option>
+                <option value="S.I.N">S.I.N</option>
+                <option value="Implacil">Implacil</option>
+                <option value="Titanium Fix">Titanium Fix</option>
+                <option value="Outro">Outro</option>
+                <option value="Não especificado">Não especificado</option>
+              </select>
+            </div>
+            <div>
+              <p class="label" style="margin-bottom:4px">Tipo de Scanbody</p>
+              <input type="text" id="cam-form-scan-tipo" placeholder="Digite o tipo..." style="width:100%;height:34px">
+            </div>
+          </div>
+          <input type="hidden" id="cam-form-scanbody" value="nao">
+        </div>
+      </div>
+    </div>
+
+    <!-- Linha 3: Observações -->
     <div>
-      <p class="label" style="margin-bottom:4px">Descrição</p>
-      <textarea id="cam-form-desc" rows="3" placeholder="Descreva o trabalho..."
+      <p class="label" style="margin-bottom:4px">Observações</p>
+      <textarea id="cam-form-obs" rows="3" placeholder="Observações gerais sobre o trabalho..."
         style="width:100%;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;font-size:13px;background:#0f1117;color:#e2e8f0;outline:none;font-family:inherit;resize:vertical"></textarea>
     </div>
+
+    <!-- Linha 4: Anexos -->
     <div>
-      <p class="label" style="margin-bottom:4px">Qtd. elementos</p>
-      <input type="number" id="cam-form-qtd" min="1" step="1" value="1" style="width:100%;height:36px">
+      <p class="label" style="margin-bottom:6px">Anexos</p>
+      <div class="cam-anexos-grid">
+        <div>
+          <p class="label" style="margin-bottom:4px">Escaneamento</p>
+          <input type="file" id="cam-anexo-escaneamento" multiple style="display:none" onchange="camAnexoChange(this)">
+          <div class="cam-upload" id="cam-anexo-escaneamento-box" onclick="document.getElementById('cam-anexo-escaneamento').click()" ondragover="camAnexoDragOver(event)" ondragleave="camAnexoDragLeave(event)" ondrop="camAnexoDrop(event,'escaneamento')">📎 Anexar arquivo</div>
+          <div class="cam-anexo-files" id="cam-anexo-escaneamento-files"></div>
+        </div>
+        <div>
+          <p class="label" style="margin-bottom:4px">HTML</p>
+          <input type="file" id="cam-anexo-html" multiple style="display:none" onchange="camAnexoChange(this)">
+          <div class="cam-upload" id="cam-anexo-html-box" onclick="document.getElementById('cam-anexo-html').click()" ondragover="camAnexoDragOver(event)" ondragleave="camAnexoDragLeave(event)" ondrop="camAnexoDrop(event,'html')">📎 Anexar arquivo</div>
+          <div class="cam-anexo-files" id="cam-anexo-html-files"></div>
+        </div>
+        <div>
+          <p class="label" style="margin-bottom:4px">STL</p>
+          <input type="file" id="cam-anexo-stl" multiple style="display:none" onchange="camAnexoChange(this)">
+          <div class="cam-upload" id="cam-anexo-stl-box" onclick="document.getElementById('cam-anexo-stl').click()" ondragover="camAnexoDragOver(event)" ondragleave="camAnexoDragLeave(event)" ondrop="camAnexoDrop(event,'stl')">📎 Anexar arquivo</div>
+          <div class="cam-anexo-files" id="cam-anexo-stl-files"></div>
+        </div>
+        <div>
+          <p class="label" style="margin-bottom:4px">Foto da cor</p>
+          <input type="file" id="cam-anexo-cor" accept="image/*" multiple style="display:none" onchange="camAnexoChange(this)">
+          <div class="cam-upload" id="cam-anexo-cor-box" onclick="document.getElementById('cam-anexo-cor').click()" ondragover="camAnexoDragOver(event)" ondragleave="camAnexoDragLeave(event)" ondrop="camAnexoDrop(event,'cor')">📎 Anexar imagem</div>
+          <div class="cam-anexo-files" id="cam-anexo-cor-files"></div>
+        </div>
+        <div>
+          <p class="label" style="margin-bottom:4px">Foto do sorriso</p>
+          <input type="file" id="cam-anexo-sorriso" accept="image/*" multiple style="display:none" onchange="camAnexoChange(this)">
+          <div class="cam-upload" id="cam-anexo-sorriso-box" onclick="document.getElementById('cam-anexo-sorriso').click()" ondragover="camAnexoDragOver(event)" ondragleave="camAnexoDragLeave(event)" ondrop="camAnexoDrop(event,'sorriso')">📎 Anexar imagem</div>
+          <div class="cam-anexo-files" id="cam-anexo-sorriso-files"></div>
+        </div>
+        <div>
+          <p class="label" style="margin-bottom:4px">Foto do Scanbody (Exocad)</p>
+          <input type="file" id="cam-anexo-scanbody" accept="image/*" multiple style="display:none" onchange="camAnexoChange(this)">
+          <div class="cam-upload" id="cam-anexo-scanbody-box" onclick="document.getElementById('cam-anexo-scanbody').click()" ondragover="camAnexoDragOver(event)" ondragleave="camAnexoDragLeave(event)" ondrop="camAnexoDrop(event,'scanbody')">📎 Anexar imagem</div>
+          <div class="cam-anexo-files" id="cam-anexo-scanbody-files"></div>
+        </div>
+        <div>
+          <p class="label" style="margin-bottom:4px">Anexo Detalhado (.zip)</p>
+          <input type="file" id="cam-anexo-detalhado" accept=".zip" multiple style="display:none" onchange="camAnexoChange(this)">
+          <div class="cam-upload" id="cam-anexo-detalhado-box" onclick="document.getElementById('cam-anexo-detalhado').click()" ondragover="camAnexoDragOver(event)" ondragleave="camAnexoDragLeave(event)" ondrop="camAnexoDrop(event,'detalhado')">📎 Anexar arquivo</div>
+          <div class="cam-anexo-files" id="cam-anexo-detalhado-files"></div>
+        </div>
+      </div>
     </div>
+
+    <div>
+      <p class="label" style="margin-bottom:4px">Qtd. elementos (clique nos dentes)</p>
+      <p id="cam-odonto-atual" style="font-size:11px;color:#64748b;margin-bottom:6px">Atual: 1 elemento(s)</p>
+      <div class="odonto" id="cam-odonto"></div>
+      <p id="cam-odonto-sel" style="font-size:12px;color:#64748b;margin-top:6px;text-align:center">Nenhum dente selecionado</p>
+      <input type="hidden" id="cam-form-qtd" value="1">
+    </div>
+
     <div>
       <p class="label" style="margin-bottom:6px">Origem</p>
       <div style="display:flex;gap:8px">
@@ -83,9 +223,10 @@
       <input type="hidden" id="cam-form-origem" value="whatsapp">
     </div>
   </div>
-  <div class="cp-footer">
+  <div class="cp-footer" style="position:sticky;bottom:0;background:#1a1d27">
+    <button class="cad-btn-ghost" id="cam-form-copy-btn" style="display:none" onclick="camCopyAll()">📋 Copiar tudo</button>
     <button class="cad-btn-ghost" onclick="closeCamPanel()">Cancelar</button>
-    <button class="cad-btn-primary" onclick="saveNovaCamOrdem()"><i class="ti ti-device-floppy" style="font-size:14px"></i> Salvar</button>
+    <button class="cad-btn-primary" id="cam-form-save-btn" onclick="saveNovaCamOrdem()"><i class="ti ti-device-floppy" style="font-size:14px"></i> Salvar</button>
   </div>
 </div>
 
@@ -97,19 +238,6 @@
     <button class="sb-close" onclick="closeCamArquivados()"><i class="ti ti-x"></i></button>
   </div>
   <div id="cam-arq-body" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:8px"></div>
-</div>
-
-<!-- ── Modal: Detalhe ─────────────────────────────────────────── -->
-<div id="cam-detail-overlay" onclick="closeCamDetail()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:90"></div>
-<div id="cam-detail-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:91;width:min(540px,95vw);max-height:85vh;overflow-y:auto;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px">
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:0.5px solid rgba(255,255,255,0.08);position:sticky;top:0;background:#1a1d27;z-index:1">
-    <p style="font-size:15px;font-weight:600;color:#f1f5f9;margin:0">Detalhes da Ordem</p>
-    <button onclick="closeCamDetail()" style="width:28px;height:28px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
-  </div>
-  <div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px" id="cam-detail-body"></div>
-  <div style="padding:12px 18px;border-top:0.5px solid rgba(255,255,255,0.08);display:flex;justify-content:flex-end">
-    <button onclick="camCopyAll()" style="height:34px;padding:0 16px;border-radius:8px;border:0.5px solid rgba(99,179,237,0.4);background:rgba(99,179,237,0.08);color:#63b3ed;font-size:13px;cursor:pointer;font-family:inherit">📋 Copiar tudo</button>
-  </div>
 </div>
 
 <!-- ── Modal: Ordens do Cliente (via Relatório) ──────────────────── -->
@@ -140,6 +268,7 @@
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span id="cam-notif-badge" class="cam-notif-badge" onclick="camScrollToNotif()" title="Casos finalizados pelo cadista que voce ainda nao confirmou">🔔 <span id="cam-notif-count">0</span> finalizado(s)</span>
       <span id="relogio" style="font-size:11px;color:#4a5568"></span>
       <span id="sync-status" style="font-size:12px;color:#64748b">
         <span class="sync-dot" id="sync-dot"></span>Conectado
@@ -158,6 +287,14 @@
         <button onclick="loadOrdensCam()" style="height:36px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.1);background:#22263a;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit">&#8635; Atualizar</button>
         <button onclick="openNovaCamOrdem()" class="cad-btn-primary"><i class="ti ti-plus" style="font-size:15px"></i> Nova Ordem</button>
       </div>
+    </div>
+
+    <div class="cam-pendentes" id="cam-pendentes-section" style="display:none">
+      <div class="cam-pendentes-head">
+        🆕 Novos pedidos do cliente
+        <span class="badge" id="cam-pendentes-badge" style="background:#78350f;color:#fbbf24">0</span>
+      </div>
+      <div class="cam-pendentes-body" id="cam-pendentes-body"></div>
     </div>
 
     <div class="cam-report" id="cam-report-section">
@@ -241,6 +378,7 @@
 var ordensCam  = [];
 var camDragId  = null;
 var camDetailId = null;
+var camEditId   = null;
 var _camReportRows  = [];
 var _camClientTexts = [];
 
@@ -249,6 +387,7 @@ async function loadOrdensCam() {
   try {
     var res = await sb.from('ordens_exocad').select('*')
       .or('arquivado.is.null,arquivado.eq.false')
+      .eq('excluido', false)
       .order('created_at', { ascending: false });
     if (res.error) throw res.error;
     ordensCam = res.data || [];
@@ -257,7 +396,7 @@ async function loadOrdensCam() {
     try {
       var res2 = await sb.from('ordens_exocad').select('*').order('created_at', { ascending: false });
       if (res2.error) throw res2.error;
-      ordensCam = (res2.data || []).filter(function(o){ return !o.arquivado; });
+      ordensCam = (res2.data || []).filter(function(o){ return !o.arquivado && !o.excluido; });
       renderOrdensCam();
     } catch(e2) {
       showConnError(e2.message || String(e2));
@@ -297,6 +436,11 @@ function camCardHtml(o) {
   var arqBtn   = o.status==='finalizado'
     ? '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camArchivar(\''+o.id+'\')" style="height:24px;padding:0 8px;border-radius:4px;border:0.5px solid rgba(113,113,122,0.4);background:#1c1c24;color:#71717a;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">📦 Arquivar</button>'
     : '';
+  var isNovo   = o.status==='finalizado' && o.visto_pelo_admin === false;
+  var confBtn  = isNovo
+    ? '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camConfirmVisto(\''+o.id+'\')" title="Confirmar que voce viu este caso finalizado" style="height:24px;padding:0 8px;border-radius:4px;border:0.5px solid #fbbf24;background:rgba(251,191,36,0.12);color:#fbbf24;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0">🔔 Confirmar</button>'
+    : '';
+  var delBtn   = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camExcluirCaso(\''+o.id+'\')" title="Excluir permanentemente" style="height:24px;padding:0 8px;border-radius:4px;border:0.5px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.08);color:#ef4444;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0">🗑️</button>';
 
   var scan     = !!o.conferir_scanbody;
   var inove    = !!o.enviado_inove;
@@ -317,13 +461,13 @@ function camCardHtml(o) {
   var qtdElem  = o.qtd_elementos || 1;
   var btnQtd   = '<button onmousedown="event.stopPropagation()" onclick="event.stopPropagation();camOpenQtdDropdown(\''+o.id+'\',event)" title="Qtd. elementos (base do pagamento do cadista)" style="height:22px;padding:0 7px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;border:0.5px solid;transition:all 0.15s;background:transparent;border-color:rgba(148,163,184,0.4);color:#94a3b8">🦷 '+qtdElem+'</button>';
 
-  return '<div class="cam-card" draggable="true" ondragstart="camDragStart(event,\''+o.id+'\')" onclick="openCamDetail(\''+o.id+'\')" style="'+ageStyle+';cursor:pointer">'+
+  return '<div class="cam-card'+(isNovo?' cam-card-novo':'')+'" draggable="true" ondragstart="camDragStart(event,\''+o.id+'\')" onclick="openEditCamOrdem(\''+o.id+'\')" style="'+ageStyle+';cursor:pointer">'+
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:5px">'+
       '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0;line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(cli)+(o.cliente_reg?cliRegraBadgeHtml(o.cliente_reg):'')+'</p>'+
-      '<div draggable="false" style="display:flex;gap:4px">'+advBtn+arqBtn+'</div>'+
+      '<div draggable="false" style="display:flex;gap:4px">'+confBtn+advBtn+arqBtn+delBtn+'</div>'+
     '</div>'+
     '<p style="font-size:12px;color:#94a3b8;margin:0 0 5px;line-height:1.4">'+escHtml(desc)+'</p>'+
-    '<p style="font-size:10px;color:#4a5568;margin:0 0 7px">'+(o.created_at?new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—')+'</p>'+
+    '<p style="font-size:10px;color:#4a5568;margin:0 0 7px">📅 Criado em '+(o.created_at?new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—')+'</p>'+
     '<div style="display:flex;align-items:center;justify-content:space-between">'+
       '<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;'+badgeSt+'">'+badgeLbl+'</span>'+
       '<div draggable="false" style="display:flex;gap:4px;flex-wrap:wrap">'+btnScan+btnInove+btnAprov+btnCadist+btnCadistReal+btnQtd+btnObs+'</div>'+
@@ -333,13 +477,80 @@ function camCardHtml(o) {
 
 function renderOrdensCam() {
   ['a_fazer','fazendo','finalizado'].forEach(function(st) {
-    var list = ordensCam.filter(function(o){ return o.status === st; });
+    var list = ordensCam.filter(function(o){ return o.status === st && o.aceito_pelo_admin !== false; });
     var el   = document.getElementById('cam-body-'+st);
     var ct   = document.getElementById('cam-count-'+st);
     if (el) el.innerHTML = list.length ? list.map(camCardHtml).join('') : '<p style="font-size:12px;color:#4a5568;padding:16px;text-align:center">Nenhuma ordem</p>';
     if (ct) ct.textContent = list.length;
   });
   renderCamReport();
+  renderCamNotifBadge();
+  renderCamPendentes();
+}
+
+// ── Novos pedidos do cliente (aceito_pelo_admin=false) ─────────
+// Ficam fora da coluna "A Fazer" e do Relatorio por Cliente ate o
+// admin aceitar -- ver 013_aceitar_caso_cliente.sql.
+function camPendCardHtml(o) {
+  var cli  = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '—');
+  var desc = (o.descricao||'').length > 140 ? o.descricao.substring(0,140)+'…' : (o.descricao||'—');
+  return '<div class="cam-pend-card" onclick="openEditCamOrdem(\''+o.id+'\')">'+
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px">'+
+      '<p style="font-size:13px;font-weight:600;color:#f1f5f9;margin:0;line-height:1.3">'+escHtml(cli)+(o.cliente_reg?cliRegraBadgeHtml(o.cliente_reg):'')+'</p>'+
+      '<div draggable="false" style="display:flex;gap:4px;flex-shrink:0">'+
+        '<button onclick="event.stopPropagation();camExcluirCaso(\''+o.id+'\')" title="Excluir permanentemente" style="height:26px;padding:0 8px;border-radius:6px;border:0.5px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.08);color:#ef4444;font-size:11px;cursor:pointer;font-family:inherit">🗑️</button>'+
+        '<button onclick="event.stopPropagation();camAceitarCaso(\''+o.id+'\')" style="height:26px;padding:0 10px;border-radius:6px;border:none;background:#0f766e;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">✅ Aceitar</button>'+
+      '</div>'+
+    '</div>'+
+    '<p style="font-size:12px;color:#94a3b8;margin:0 0 5px;line-height:1.4">'+escHtml(desc)+'</p>'+
+    '<p style="font-size:10px;color:#4a5568;margin:0">📅 Criado em '+(o.created_at?new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—')+'</p>'+
+  '</div>';
+}
+
+function renderCamPendentes() {
+  var pendentes = ordensCam.filter(function(o){ return o.aceito_pelo_admin === false; });
+  var section = document.getElementById('cam-pendentes-section');
+  var body    = document.getElementById('cam-pendentes-body');
+  var badge   = document.getElementById('cam-pendentes-badge');
+  if (!section || !body) return;
+  section.style.display = pendentes.length ? '' : 'none';
+  body.innerHTML = pendentes.map(camPendCardHtml).join('');
+  if (badge) badge.textContent = pendentes.length;
+}
+
+async function camAceitarCaso(id) {
+  try {
+    var res = await sb.from('ordens_exocad').update({ aceito_pelo_admin: true }).eq('id', id);
+    if (res.error) throw res.error;
+    var o = ordensCam.find(function(x){ return x.id === id; });
+    if (o) o.aceito_pelo_admin = true;
+    renderOrdensCam();
+  } catch(e) { alert('Erro ao aceitar: '+(e.message||e)); }
+}
+
+// ── Notificação: finalizados pelo cadista ainda não confirmados ──
+function renderCamNotifBadge() {
+  var novos = ordensCam.filter(function(o){ return o.status === 'finalizado' && o.visto_pelo_admin === false; });
+  var badge = document.getElementById('cam-notif-badge');
+  var count = document.getElementById('cam-notif-count');
+  if (!badge || !count) return;
+  count.textContent = novos.length;
+  badge.style.display = novos.length ? 'inline-flex' : 'none';
+}
+
+function camScrollToNotif() {
+  var col = document.getElementById('cam-body-finalizado');
+  if (col) col.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function camConfirmVisto(id) {
+  try {
+    var res = await sb.from('ordens_exocad').update({ visto_pelo_admin: true }).eq('id', id);
+    if (res.error) throw res.error;
+    var o = ordensCam.find(function(x){ return x.id === id; });
+    if (o) o.visto_pelo_admin = true;
+    renderOrdensCam();
+  } catch(e) { alert('Erro ao confirmar: '+(e.message||e)); }
 }
 
 // ── Relatório por Cliente ──────────────────────────────────────
@@ -362,7 +573,7 @@ function camReportClienteNome(o) {
 function renderCamReport() {
   var totals  = { a_fazer:0, fazendo:0, finalizado:0 };
   var byCli   = {};
-  ordensCam.forEach(function(o) {
+  ordensCam.filter(function(o){ return o.aceito_pelo_admin !== false; }).forEach(function(o) {
     var key  = camReportGroupKey(o);
     if (!byCli[key]) {
       byCli[key] = { key:key, nome:camReportClienteNome(o), semCadastro:!o.cliente_reg, a_fazer:0, fazendo:0, finalizado:0 };
@@ -518,12 +729,15 @@ async function camDrop(event, newStatus) {
 // ── Ações ─────────────────────────────────────────────────────
 async function camAdvanceStatus(id, newStatus) {
   var payload = { status: newStatus };
-  if (newStatus === 'finalizado') payload.finalizado_at = new Date().toISOString();
+  if (newStatus === 'finalizado') {
+    payload.finalizado_at = new Date().toISOString();
+    payload.visto_pelo_admin = true; // admin mesmo quem finalizou aqui, nao precisa de aviso pra si mesmo
+  }
   try {
     var res = await sb.from('ordens_exocad').update(payload).eq('id', id);
     if (res.error) throw res.error;
     var o = ordensCam.find(function(x){ return x.id === id; });
-    if (o) { o.status = newStatus; if (payload.finalizado_at) o.finalizado_at = payload.finalizado_at; }
+    if (o) { o.status = newStatus; if (payload.finalizado_at) o.finalizado_at = payload.finalizado_at; if (payload.visto_pelo_admin !== undefined) o.visto_pelo_admin = payload.visto_pelo_admin; }
     renderOrdensCam();
   } catch(e) { console.error('[camAdvance]', e.message||e); }
 }
@@ -557,23 +771,63 @@ async function camArchivar(id) {
   } catch(e) { alert('Erro ao arquivar: '+(e.message||e)); }
 }
 
+async function camExcluirCaso(id) {
+  if (!confirm('Tem certeza que deseja excluir este pedido? Essa ação não pode ser desfeita.')) return;
+  try {
+    var res = await sb.from('ordens_exocad').update({ excluido: true }).eq('id', id);
+    if (res.error) throw res.error;
+    ordensCam = ordensCam.filter(function(o){ return o.id !== id; });
+    renderOrdensCam();
+  } catch(e) { alert('Erro ao excluir: '+(e.message||e)); }
+}
+
 // ── Modal: Nova Ordem ─────────────────────────────────────────
+var CAM_ANEXO_SLOTS = [
+  { id: 'escaneamento', label: 'Escaneamento',              img: false },
+  { id: 'html',         label: 'HTML',                      img: false },
+  { id: 'stl',          label: 'STL',                       img: false },
+  { id: 'cor',          label: 'Foto da cor',                img: true  },
+  { id: 'sorriso',      label: 'Foto do sorriso',            img: true  },
+  { id: 'scanbody',     label: 'Foto do Scanbody (Exocad)',  img: true  },
+  { id: 'detalhado',    label: 'Anexo Detalhado (.zip)',     img: false }
+];
+
 function openNovaCamOrdem() {
+  camEditId = null;
+  camDetailId = null;
+  var titleEl = document.getElementById('cam-panel-title');
+  if (titleEl) titleEl.textContent = 'Nova Ordem CAM';
+  var subEl = document.getElementById('cam-panel-subtitle');
+  if (subEl) subEl.textContent = 'Design / arquivo de fresagem';
+  var copyBtn = document.getElementById('cam-form-copy-btn');
+  if (copyBtn) copyBtn.style.display = 'none';
   var sel = document.getElementById('cam-form-cliente');
   if (sel) {
-    sel.innerHTML = '<option value="">— Nome livre abaixo —</option>' +
+    sel.innerHTML = '<option value="">— Selecione o cliente cadastrado —</option>' +
       clients.slice().sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); })
         .map(function(c){ return '<option value="'+c.reg+'">'+escHtml(c.nome)+'</option>'; }).join('');
+    sel.value = '';
   }
-  var nomeDiv = document.getElementById('cam-form-nome-livre');
-  if (nomeDiv) nomeDiv.style.display = '';
-  var nomeInp = document.getElementById('cam-form-nome-livre-inp');
-  if (nomeInp) nomeInp.value = '';
-  var descEl  = document.getElementById('cam-form-desc');
-  if (descEl) descEl.value = '';
-  var qtdEl   = document.getElementById('cam-form-qtd');
-  if (qtdEl) qtdEl.value = 1;
-  if (sel) sel.value = '';
+  var pacEl = document.getElementById('cam-form-paciente');
+  if (pacEl) pacEl.value = '';
+  var tipoEl = document.getElementById('cam-form-tipo');
+  if (tipoEl) tipoEl.selectedIndex = 0;
+  camSetScanbody('nao');
+  var marcaEl = document.getElementById('cam-form-scan-marca');
+  if (marcaEl) marcaEl.selectedIndex = 0;
+  var scanTipoEl = document.getElementById('cam-form-scan-tipo');
+  if (scanTipoEl) scanTipoEl.value = '';
+  var obsEl = document.getElementById('cam-form-obs');
+  if (obsEl) obsEl.value = '';
+  CAM_ANEXO_SLOTS.forEach(function(slot) {
+    var input = document.getElementById('cam-anexo-' + slot.id);
+    if (input) input.value = '';
+    var box = document.getElementById('cam-anexo-' + slot.id + '-box');
+    if (box) { box.textContent = slot.img ? '📎 Anexar imagem' : '📎 Anexar arquivo'; box.classList.remove('has-file'); }
+    var filesEl = document.getElementById('cam-anexo-' + slot.id + '-files');
+    if (filesEl) filesEl.innerHTML = '';
+  });
+  camBuildOdontograma([], 1);
   document.querySelectorAll('.cam-orig-btn').forEach(function(b){ b.classList.remove('active'); });
   var wb = document.getElementById('cam-orig-whatsapp');
   if (wb) wb.classList.add('active');
@@ -582,6 +836,101 @@ function openNovaCamOrdem() {
   document.getElementById('cam-overlay').style.display = '';
   document.getElementById('cam-panel').style.display   = '';
   camUpdateRegraBanner();
+}
+
+// ── Odontograma (FDI): os dentes marcados ficam salvos de verdade em
+//    ordens_exocad.dentes (024_dentes_ordens_exocad.sql) -- ao reabrir
+//    uma ordem pra editar qualquer outra coisa, o odontograma vem
+//    pre-marcado com os mesmos dentes de antes, em vez de zerar.
+//    qtd_elementos continua sendo o campo "oficial" (usado na
+//    comissao); dentes e so o detalhe de quais exatamente. ─────────
+var _camDentesSelecionados = [];
+var _camQtdOriginal = 1;
+var CAM_QUADRANTES = [[18,17,16,15,14,13,12,11],[21,22,23,24,25,26,27,28],
+                      [48,47,46,45,44,43,42,41],[31,32,33,34,35,36,37,38]];
+
+function camBuildOdontograma(dentesAtuais, qtdAtual) {
+  var el = document.getElementById('cam-odonto');
+  if (!el) return;
+  _camDentesSelecionados = (dentesAtuais || []).slice().sort(function(a,b){ return a-b; });
+  _camQtdOriginal = qtdAtual || 1;
+  function quadHtml(q) {
+    return '<div class="odonto-quad">' + q.map(function(n){
+      var on = _camDentesSelecionados.indexOf(n) >= 0;
+      return '<button type="button" class="dente'+(on?' on':'')+'" data-dente="'+n+'" onclick="camToggleDente('+n+')">'+n+'</button>';
+    }).join('') + '</div>';
+  }
+  el.innerHTML =
+    '<div class="odonto-row">' + quadHtml(CAM_QUADRANTES[0]) + '<span class="odonto-gap"></span>' + quadHtml(CAM_QUADRANTES[1]) + '</div>' +
+    '<div class="odonto-row">' + quadHtml(CAM_QUADRANTES[2]) + '<span class="odonto-gap"></span>' + quadHtml(CAM_QUADRANTES[3]) + '</div>';
+  var atualEl = document.getElementById('cam-odonto-atual');
+  if (atualEl) atualEl.textContent = 'Atual: ' + _camQtdOriginal + ' elemento(s).';
+  var selEl = document.getElementById('cam-odonto-sel');
+  if (selEl) selEl.textContent = _camDentesSelecionados.length
+    ? _camDentesSelecionados.length + ' selecionado(s): ' + _camDentesSelecionados.join(', ')
+    : 'Nenhum dente selecionado';
+  var qtdEl = document.getElementById('cam-form-qtd');
+  if (qtdEl) qtdEl.value = _camDentesSelecionados.length || _camQtdOriginal;
+}
+
+function camToggleDente(n) {
+  var i = _camDentesSelecionados.indexOf(n);
+  if (i >= 0) _camDentesSelecionados.splice(i, 1); else _camDentesSelecionados.push(n);
+  _camDentesSelecionados.sort(function(a,b){ return a-b; });
+  var btn = document.querySelector('#cam-odonto .dente[data-dente="'+n+'"]');
+  if (btn) btn.classList.toggle('on', _camDentesSelecionados.indexOf(n) >= 0);
+  var lbl = document.getElementById('cam-odonto-sel');
+  if (lbl) lbl.textContent = _camDentesSelecionados.length
+    ? _camDentesSelecionados.length + ' selecionado(s): ' + _camDentesSelecionados.join(', ')
+    : 'Nenhum dente selecionado';
+  var qtdEl = document.getElementById('cam-form-qtd');
+  if (qtdEl) qtdEl.value = _camDentesSelecionados.length || _camQtdOriginal;
+}
+
+function camSetScanbody(val) {
+  var hid = document.getElementById('cam-form-scanbody');
+  if (hid) hid.value = val;
+  var simBtn = document.getElementById('cam-scan-sim');
+  var naoBtn = document.getElementById('cam-scan-nao');
+  if (simBtn) simBtn.classList.toggle('active', val === 'sim');
+  if (naoBtn) naoBtn.classList.toggle('active', val === 'nao');
+  var cond = document.getElementById('cam-scan-cond');
+  if (cond) cond.style.display = val === 'sim' ? 'flex' : 'none';
+}
+
+function camAnexoChange(inputEl) {
+  var box = document.getElementById(inputEl.id + '-box');
+  if (!box) return;
+  if (inputEl.files && inputEl.files.length) {
+    box.textContent = inputEl.files.length === 1
+      ? '📎 ' + inputEl.files[0].name
+      : '📎 ' + inputEl.files.length + ' arquivos selecionados';
+    box.classList.add('has-file');
+  } else {
+    var slot = CAM_ANEXO_SLOTS.find(function(s){ return 'cam-anexo-'+s.id === inputEl.id; });
+    box.textContent = (slot && slot.img) ? '📎 Anexar imagem' : '📎 Anexar arquivo';
+    box.classList.remove('has-file');
+  }
+}
+
+function camAnexoDragOver(event) {
+  event.preventDefault();
+  event.currentTarget.classList.add('dragover');
+}
+
+function camAnexoDragLeave(event) {
+  event.currentTarget.classList.remove('dragover');
+}
+
+function camAnexoDrop(event, slotId) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('dragover');
+  var files = event.dataTransfer && event.dataTransfer.files;
+  if (!files || !files.length) return;
+  var input = document.getElementById('cam-anexo-' + slotId);
+  if (!input) return;
+  input.files = files;
+  camAnexoChange(input);
 }
 
 function camUpdateRegraBanner() {
@@ -601,6 +950,8 @@ function camUpdateRegraBanner() {
 function closeCamPanel() {
   document.getElementById('cam-overlay').style.display = 'none';
   document.getElementById('cam-panel').style.display   = 'none';
+  camEditId   = null;
+  camDetailId = null;
 }
 
 function camSetOrigem(origem) {
@@ -612,28 +963,80 @@ function camSetOrigem(origem) {
 }
 
 async function saveNovaCamOrdem() {
-  var sel         = document.getElementById('cam-form-cliente');
-  var clienteReg  = sel && sel.value ? parseInt(sel.value) : null;
-  var nomeEl      = document.getElementById('cam-form-nome-livre-inp');
-  var clienteNome = clienteReg ? null : ((nomeEl && nomeEl.value) || '').trim();
-  var descEl      = document.getElementById('cam-form-desc');
-  var desc        = ((descEl && descEl.value) || '').trim();
-  var qtdEl       = document.getElementById('cam-form-qtd');
+  var sel          = document.getElementById('cam-form-cliente');
+  var clienteReg   = sel && sel.value ? parseInt(sel.value) : null;
+  var paciente     = ((document.getElementById('cam-form-paciente').value) || '').trim();
+  var tipo         = document.getElementById('cam-form-tipo').value;
+  var scanSim      = document.getElementById('cam-form-scanbody').value === 'sim';
+  var scanMarca    = document.getElementById('cam-form-scan-marca').value;
+  var scanTipo     = ((document.getElementById('cam-form-scan-tipo').value) || '').trim();
+  var obs          = ((document.getElementById('cam-form-obs').value) || '').trim();
+  var qtdEl        = document.getElementById('cam-form-qtd');
   var qtdElementos = parseInt(qtdEl && qtdEl.value) || 1;
-  var origEl      = document.getElementById('cam-form-origem');
-  var origem      = (origEl && origEl.value) || 'whatsapp';
-  if (!desc) { alert('Preencha a descrição.'); return; }
-  if (!clienteReg && !clienteNome) { alert('Selecione um cliente ou informe um nome livre.'); return; }
-  if (clienteReg) desc = cliAnexarRegraPadrao(desc, clienteReg);
-  var payload = { descricao: desc, origem: origem, status: 'a_fazer', qtd_elementos: qtdElementos };
-  if (clienteReg) payload.cliente_reg = clienteReg; else payload.cliente_nome = clienteNome;
+  var origEl       = document.getElementById('cam-form-origem');
+  var origem       = (origEl && origEl.value) || 'whatsapp';
+
+  if (!clienteReg) { alert('Selecione um cliente cadastrado.'); return; }
+  if (!paciente) { alert('Preencha o nome do paciente.'); return; }
+
+  var desc = 'Paciente: ' + paciente +
+    '\n\nTipo de trabalho: ' + tipo +
+    '\nScanbody: ' + (scanSim ? ('Sim (Marca: ' + scanMarca + ', Tipo: ' + (scanTipo || '—') + ')') : 'Não') +
+    (obs ? ('\n\nObservacoes: ' + obs) : '');
+  desc = cliAnexarRegraPadrao(desc, clienteReg);
+
+  var payload = { descricao: desc, origem: origem, qtd_elementos: qtdElementos, dentes: _camDentesSelecionados.length ? _camDentesSelecionados.slice() : null, cliente_reg: clienteReg };
+  if (!camEditId) payload.status = 'a_fazer';
+  var saveBtn = document.getElementById('cam-form-save-btn');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Salvando...'; }
   try {
-    var res = await sb.from('ordens_exocad').insert([payload]).select();
-    if (res.error) throw res.error;
-    ordensCam.unshift(res.data[0]);
-    renderOrdensCam();
-    closeCamPanel();
-  } catch(e) { alert('Erro: '+(e.message||e)); }
+    if (camEditId) {
+      var resUp = await sb.from('ordens_exocad').update(payload).eq('id', camEditId).select();
+      if (resUp.error) throw resUp.error;
+      var ordemAtualizada = resUp.data[0];
+      var avisoAnexoUp = await camUploadAnexos(clienteReg, camEditId);
+      var idx = ordensCam.findIndex(function(x){ return x.id === camEditId; });
+      if (idx > -1) ordensCam[idx] = ordemAtualizada;
+      renderOrdensCam();
+      closeCamPanel();
+      if (avisoAnexoUp) alert(avisoAnexoUp);
+    } else {
+      var res = await sb.from('ordens_exocad').insert([payload]).select();
+      if (res.error) throw res.error;
+      var novaOrdem = res.data[0];
+      var avisoAnexo = await camUploadAnexos(clienteReg, novaOrdem.id);
+      ordensCam.unshift(novaOrdem);
+      renderOrdensCam();
+      closeCamPanel();
+      if (avisoAnexo) alert(avisoAnexo);
+    }
+  } catch(e) {
+    alert('Erro: '+(e.message||e));
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="ti ti-device-floppy" style="font-size:14px"></i> Salvar'; }
+  }
+}
+
+async function camUploadAnexos(clienteReg, ordemId) {
+  var falhas = [];
+  for (var i = 0; i < CAM_ANEXO_SLOTS.length; i++) {
+    var slot  = CAM_ANEXO_SLOTS[i];
+    var input = document.getElementById('cam-anexo-' + slot.id);
+    var files = input && input.files;
+    if (!files || !files.length) continue;
+    for (var j = 0; j < files.length; j++) {
+      var file = files[j];
+      var nomeSeguro = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+      var path = clienteReg + '/' + ordemId + '/' + slot.id + '-' + nomeSeguro;
+      try {
+        var upRes = await sb.storage.from('casos').upload(path, file);
+        if (upRes.error) throw upRes.error;
+      } catch(e) {
+        falhas.push(slot.label + ' (' + file.name + '): ' + (e.message || e));
+      }
+    }
+  }
+  return falhas.length ? ('Pedido salvo, mas falhou o anexo: ' + falhas.join(', ') + '.') : null;
 }
 
 // ── Modal: Arquivados ─────────────────────────────────────────
@@ -645,7 +1048,7 @@ async function openCamArquivados() {
   panel.style.display   = 'flex';
   body.innerHTML = '<p style="font-size:12px;color:#64748b;text-align:center;padding:16px">Carregando…</p>';
   try {
-    var res = await sb.from('ordens_exocad').select('*').eq('arquivado', true).order('created_at', { ascending: false });
+    var res = await sb.from('ordens_exocad').select('*').eq('arquivado', true).eq('excluido', false).order('created_at', { ascending: false });
     if (res.error) throw res.error;
     var rows = res.data || [];
     if (!rows.length) {
@@ -674,57 +1077,151 @@ function closeCamArquivados() {
 }
 
 // ── Modal: Detalhe ────────────────────────────────────────────
-function openCamDetail(id) {
-  var o = ordensCam.find(function(x){ return x.id === id; });
-  if (!o) return;
-  camDetailId = id;
-  var cli  = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '—');
-  var orig = o.origem === 'email' ? '✉️ Email' : '📱 WhatsApp';
-  var data = o.created_at ? new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
-  var paciente  = '—';
-  var descricao = o.descricao || '—';
-  var mPac = (o.descricao || '').match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
-  if (mPac) { paciente = mPac[1]; descricao = mPac[2] || '—'; }
-  var regra = o.cliente_reg ? cliRegraPadrao(o.cliente_reg) : '';
-  var fields = [
-    { label: 'Cliente', value: cli }
-  ];
-  if (regra) fields.push({ warn: true, value: '⚠️ REGRA PADRÃO DESTE CLIENTE: ' + regra });
-  fields.push(
-    { label: 'Paciente',        value: paciente },
-    { label: 'Descrição',       value: descricao },
-    { label: 'Origem',          value: orig },
-    { label: 'Data de criação', value: data }
-  );
-  var body = document.getElementById('cam-detail-body');
-  if (!body) return;
-  body.innerHTML = fields.map(function(f, i) {
-    if (f.warn) {
-      return '<div style="background:rgba(245,158,11,0.14);border:1px solid rgba(245,158,11,0.55);border-radius:10px;padding:12px 14px">'+
-        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
-          '<p style="flex:1;min-width:0;font-size:13px;font-weight:700;color:#fcd34d;margin:0;line-height:1.5;word-break:break-word" id="cam-det-val-'+i+'">'+escHtml(f.value)+'</p>'+
-          '<button onclick="camCopyField('+i+',this)" style="height:28px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(245,158,11,0.55);background:rgba(245,158,11,0.18);color:#fcd34d;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap">📋 Copiar</button>'+
-        '</div>'+
-      '</div>';
-    }
-    return '<div style="background:#13161f;border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px">'+
-      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
-        '<div style="flex:1;min-width:0">'+
-          '<p style="font-size:10px;color:#4a5568;text-transform:uppercase;letter-spacing:0.07em;margin:0 0 4px">'+f.label+'</p>'+
-          '<p style="font-size:13px;color:#e2e8f0;margin:0;line-height:1.5;word-break:break-word" id="cam-det-val-'+i+'">'+escHtml(f.value)+'</p>'+
-        '</div>'+
-        '<button onclick="camCopyField('+i+',this)" style="height:28px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:11px;cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap">📋 Copiar</button>'+
-      '</div>'+
-    '</div>';
-  }).join('');
-  document.getElementById('cam-detail-overlay').style.display = '';
-  document.getElementById('cam-detail-panel').style.display   = '';
+function camParsePedidoCompleto(descricao) {
+  var d = descricao || '';
+  var mLegacyPac = d.match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
+  var mPac  = d.match(/Paciente: ([^\n]*)/);
+  var mTipo = d.match(/Tipo de trabalho: ([^\n]*)/);
+  var mScan = d.match(/Scanbody: ([^\n]*)/);
+  var mObs  = d.match(/Observacoes: ([\s\S]*?)(?:\n\nRegra do cliente:|$)/);
+  var estruturado = !!(mPac || mTipo || mLegacyPac);
+  var paciente = mPac ? mPac[1] : (mLegacyPac ? mLegacyPac[1] : '');
+  var observacoes;
+  if (mObs) observacoes = mObs[1].trim();
+  else if (mLegacyPac) observacoes = (mLegacyPac[2] || '').trim();
+  else if (!estruturado) observacoes = d.trim();
+  else observacoes = '';
+  return {
+    paciente:     paciente,
+    tipoTrabalho: mTipo ? mTipo[1] : '',
+    scanbody:     mScan ? mScan[1] : '',
+    observacoes:  observacoes
+  };
 }
 
-function closeCamDetail() {
-  document.getElementById('cam-detail-overlay').style.display = 'none';
-  document.getElementById('cam-detail-panel').style.display   = 'none';
-  camDetailId = null;
+async function camPrefillAnexos(o) {
+  CAM_ANEXO_SLOTS.forEach(function(slot) {
+    var input = document.getElementById('cam-anexo-' + slot.id);
+    if (input) input.value = '';
+    var box = document.getElementById('cam-anexo-' + slot.id + '-box');
+    if (box) { box.textContent = slot.img ? '📎 Anexar imagem' : '📎 Anexar arquivo'; box.classList.remove('has-file'); }
+    var filesEl = document.getElementById('cam-anexo-' + slot.id + '-files');
+    if (filesEl) filesEl.innerHTML = '';
+  });
+  if (!o.cliente_reg) return;
+  var pasta = o.cliente_reg + '/' + o.id;
+  try {
+    var res = await sb.storage.from('casos').list(pasta);
+    if (res.error) throw res.error;
+    var arquivos = (res.data || []).filter(function(f){ return f.name; });
+    var porSlot = {};
+    arquivos.forEach(function(f) {
+      var slot = CAM_ANEXO_SLOTS.find(function(s){ return f.name.indexOf(s.id + '-') === 0; });
+      if (!slot) return;
+      (porSlot[slot.id] = porSlot[slot.id] || []).push(f);
+    });
+    await Promise.all(Object.keys(porSlot).map(async function(slotId) {
+      var box = document.getElementById('cam-anexo-' + slotId + '-box');
+      if (box) box.classList.add('has-file');
+      var filesEl = document.getElementById('cam-anexo-' + slotId + '-files');
+      if (!filesEl) return;
+      var rows = await Promise.all(porSlot[slotId].map(async function(f) {
+        var signed = await sb.storage.from('casos').createSignedUrl(pasta + '/' + f.name, 3600);
+        var url = (signed.data && signed.data.signedUrl) || '#';
+        var nome = f.name.slice(slotId.length + 1);
+        return '<div class="cam-anexo-file-row"><a href="'+url+'" target="_blank" rel="noopener" class="cam-anexo-view">👁 '+escHtml(nome)+'</a>'+
+          '<button type="button" class="cam-anexo-del" onclick="camExcluirAnexoSlot(\''+slotId+'\',\''+escJs(f.name)+'\')">🗑</button></div>';
+      }));
+      filesEl.innerHTML = rows.join('');
+    }));
+  } catch(e) {
+    console.error('[camPrefillAnexos]', e.message || e);
+  }
+}
+
+function escJs(s) {
+  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+async function camExcluirAnexoSlot(slotId, fileName) {
+  if (!camEditId) return;
+  var sel = document.getElementById('cam-form-cliente');
+  var clienteReg = sel && sel.value ? parseInt(sel.value) : null;
+  if (!clienteReg) return;
+  if (!confirm('Excluir este anexo? Essa acao nao pode ser desfeita.')) return;
+  try {
+    var path = clienteReg + '/' + camEditId + '/' + fileName;
+    var res = await sb.storage.from('casos').remove([path]);
+    if (res.error) throw res.error;
+    camPrefillAnexos({ id: camEditId, cliente_reg: clienteReg });
+  } catch(e) {
+    alert('Erro ao excluir anexo: ' + (e.message || e));
+  }
+}
+
+function openEditCamOrdem(id) {
+  var o = ordensCam.find(function(x){ return x.id === id; });
+  if (!o) return;
+  camEditId   = id;
+  camDetailId = id;
+
+  var titleEl = document.getElementById('cam-panel-title');
+  if (titleEl) titleEl.textContent = 'Editar Ordem CAM';
+  var subEl = document.getElementById('cam-panel-subtitle');
+  if (subEl) subEl.textContent = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '');
+  var copyBtn = document.getElementById('cam-form-copy-btn');
+  if (copyBtn) copyBtn.style.display = '';
+
+  var sel = document.getElementById('cam-form-cliente');
+  if (sel) {
+    sel.innerHTML = '<option value="">— Selecione o cliente cadastrado —</option>' +
+      clients.slice().sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR'); })
+        .map(function(c){ return '<option value="'+c.reg+'">'+escHtml(c.nome)+'</option>'; }).join('');
+    sel.value = o.cliente_reg || '';
+  }
+
+  var parsed = camParsePedidoCompleto(o.descricao);
+
+  var pacEl = document.getElementById('cam-form-paciente');
+  if (pacEl) pacEl.value = parsed.paciente || '';
+
+  var tipoEl = document.getElementById('cam-form-tipo');
+  if (tipoEl) {
+    var temOpcao = Array.prototype.some.call(tipoEl.options, function(op){ return op.value === parsed.tipoTrabalho; });
+    tipoEl.value = temOpcao ? parsed.tipoTrabalho : tipoEl.options[0].value;
+  }
+
+  var scanMatch = (parsed.scanbody || '').match(/^Sim\s*\(Marca:\s*([^,]*),\s*Tipo:\s*([^)]*)\)/);
+  if (scanMatch) {
+    camSetScanbody('sim');
+    var marcaEl = document.getElementById('cam-form-scan-marca');
+    var marca   = scanMatch[1].trim();
+    if (marcaEl) {
+      var temMarca = Array.prototype.some.call(marcaEl.options, function(op){ return op.value === marca; });
+      marcaEl.value = temMarca ? marca : marcaEl.options[0].value;
+    }
+    var scanTipoEl = document.getElementById('cam-form-scan-tipo');
+    if (scanTipoEl) scanTipoEl.value = scanMatch[2].trim() === '—' ? '' : scanMatch[2].trim();
+  } else {
+    camSetScanbody('nao');
+    var marcaEl2 = document.getElementById('cam-form-scan-marca');
+    if (marcaEl2) marcaEl2.selectedIndex = 0;
+    var scanTipoEl2 = document.getElementById('cam-form-scan-tipo');
+    if (scanTipoEl2) scanTipoEl2.value = '';
+  }
+
+  var obsEl = document.getElementById('cam-form-obs');
+  if (obsEl) obsEl.value = parsed.observacoes || '';
+
+  camBuildOdontograma(o.dentes || [], o.qtd_elementos || 1);
+
+  camSetOrigem(o.origem === 'email' ? 'email' : 'whatsapp');
+
+  camPrefillAnexos(o);
+
+  document.getElementById('cam-overlay').style.display = '';
+  document.getElementById('cam-panel').style.display   = '';
+  camUpdateRegraBanner();
 }
 
 function camCopy(text, btn, origLabel) {
@@ -744,23 +1241,19 @@ function camCopy(text, btn, origLabel) {
   } else { fallback(); }
 }
 
-function camCopyField(idx, btn) {
-  var el = document.getElementById('cam-det-val-'+idx);
-  if (!el) return;
-  camCopy(el.textContent, btn, btn.textContent);
-}
-
 function camCopyAll() {
   var o = ordensCam.find(function(x){ return x.id === camDetailId; });
   if (!o) return;
-  var cli  = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '—');
-  var orig = o.origem === 'email' ? 'Email' : 'WhatsApp';
-  var data = o.created_at ? new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
-  var pacCopy  = '';
-  var descCopy = o.descricao || '—';
-  var mCopy = (o.descricao || '').match(/^Pac\s+(.+?)\s+-\s+([\s\S]*)$/);
-  if (mCopy) { pacCopy = mCopy[1]; descCopy = mCopy[2] || '—'; }
-  var txt = 'Cliente: '+cli+(pacCopy?'\nPaciente: '+pacCopy:'')+'\nDescrição: '+descCopy+'\nOrigem: '+orig+'\nData: '+data;
+  var cli    = o.cliente_nome || (o.cliente_reg ? cliNomePed(o.cliente_reg) : '—');
+  var orig   = o.origem === 'email' ? 'Email' : 'WhatsApp';
+  var data   = o.created_at ? new Date(o.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+  var parsed = camParsePedidoCompleto(o.descricao);
+  var txt = 'Cliente: '+cli+
+    (parsed.paciente ? '\nPaciente: '+parsed.paciente : '')+
+    (parsed.tipoTrabalho ? '\nTipo de trabalho: '+parsed.tipoTrabalho : '')+
+    (parsed.scanbody ? '\nScanbody: '+parsed.scanbody : '')+
+    '\nObservações: '+(parsed.observacoes || '—')+
+    '\nOrigem: '+orig+'\nData: '+data;
   camCopy(txt, event.currentTarget, '📋 Copiar tudo');
 }
 
@@ -1000,9 +1493,37 @@ function showConnError(msg) {
   if (msg2) msg2.textContent  = msg;
 }
 
+// Clientes cadastrados direto no banco (SQL, ou aprovados via
+// cadastro.html) nao entravam automaticamente no array hardcoded
+// `clients` de shared.js -- so apareciam aqui depois de alguem editar
+// shared.js na mao e publicar. Isso completa `clients` com qualquer
+// reg que exista em cadastro_clientes e ainda nao esteja no array (so
+// adiciona os que faltam, nunca sobrescreve um ja existente, pra nao
+// perder dado mais completo que so exista no hardcoded). ───────────
+async function syncClientsFromDb() {
+  try {
+    var res = await sb.from('cadastro_clientes')
+      .select('reg,nome,cpf,cro,end_str,bairro,cidade,uf,cep,tel,obs,regra_padrao');
+    if (res.error) throw res.error;
+    (res.data || []).forEach(function(row) {
+      if (clients.some(function(c){ return c.reg === row.reg; })) return;
+      var novo = {
+        reg: row.reg, nome: row.nome, cpf: row.cpf || '', cro: row.cro || '',
+        end: row.end_str || '', bairro: row.bairro || '', cidade: row.cidade || '',
+        uf: row.uf || '', cep: row.cep || '', tel: row.tel || '', obs: row.obs || ''
+      };
+      if (row.regra_padrao) novo.regraPadrao = row.regra_padrao;
+      clients.push(novo);
+    });
+  } catch(e) {
+    console.error('[syncClientsFromDb]', e.message || e);
+  }
+}
+
 async function init() {
   camInitReportToggle();
   try {
+    await syncClientsFromDb();
     await loadCadistasReais();
     await loadOrdensCam();
   } catch(e) {

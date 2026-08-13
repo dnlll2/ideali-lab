@@ -164,10 +164,12 @@ button{font-family:inherit;cursor:pointer}
 .ia-status.loading{background:#1d3a6e;border:0.5px solid #3b82f6;color:#93c5fd;display:block}
 .comp-clip{width:26px;height:26px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.15);background:#22263a;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:#4a5568;transition:all 0.15s;flex-shrink:0}
 .comp-clip.has-comp{background:#0d3d2b;border-color:#22c55e;color:#22c55e}
+.comp-clip.has-extrato{background:#3d2a0d;border-color:#f59e0b;color:#f59e0b}
 .comp-clip:hover{border-color:#3b82f6;color:#60a5fa;background:#1d3a6e}
 .comp-clip-col{display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0}
 .comp-lbl{font-size:10px;color:#4a5568;text-align:center;line-height:1.1}
 .comp-lbl.has-comp{color:#22c55e;font-weight:500}
+.comp-lbl.has-extrato{color:#f59e0b;font-weight:500}
 .comp-menu-popup{position:fixed;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.14);border-radius:10px;padding:4px;z-index:800;min-width:175px;box-shadow:0 8px 28px rgba(0,0,0,0.5)}
 .comp-menu-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:7px;cursor:pointer;font-size:12px;color:#94a3b8;transition:background 0.1s;white-space:nowrap;border:none;background:none;font-family:inherit;width:100%;text-align:left}
 .comp-menu-item:hover{background:#22263a;color:#e2e8f0}

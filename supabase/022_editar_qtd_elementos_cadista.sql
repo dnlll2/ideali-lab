@@ -1,19 +1,21 @@
 -- ============================================================
 -- Ideali Laboratorio - Portal do Cadista
--- Etapa 9: Badge "Aguardando aprovacao" no card do cadista.
+-- Cadista poder corrigir a quantidade de elementos (dentes) do
+-- proprio caso, direto no modal de detalhe (abrirDetalheCadista,
+-- portal-cadista.html) -- e o mesmo numero que a comissao usa
+-- (financeiro do cadista = qtd_elementos * R$15, ver
+-- 008_portal_financeiro_cadista.sql), entao se o pedido veio com a
+-- quantidade errada (ou sem preencher, ordens_exocad.qtd_elementos
+-- nulo) o cadista consegue ajustar sem precisar pedir pro laboratorio
+-- editar por fora.
 --
 -- Rode este arquivo inteiro, uma vez, no SQL Editor do Supabase
--- (projeto alqhhgysvehtgkwsxeok), depois de ja ter rodado
--- 009_portal_cadista_abas_observacao.sql. Seguro rodar de novo
--- (listar_casos_cadista precisa de DROP antes do CREATE, mesmo
--- motivo da etapa 7: Postgres nao deixa mudar a lista de colunas
--- de retorno com CREATE OR REPLACE).
+-- (projeto alqhhgysvehtgkwsxeok). Depende de 020_listar_casos_cadista_excluido.sql
+-- (ultima versao de listar_casos_cadista) ja ter rodado antes.
 --
--- Nao e um 4o status: e a mesma coluna booleana "aprovacao" que
--- ordens-cam.html ja usa (badge "⏳ Aprovação"), reaproveitada aqui
--- em vez de virar um novo campo paralelo -- fica refletida nos dois
--- lados, e continua ortogonal ao status (a_fazer/fazendo/finalizado),
--- podendo ligar/desligar em qualquer coluna do kanban.
+-- listar_casos_cadista precisa de DROP antes do CREATE porque estou
+-- adicionando uma coluna nova na lista de retorno (qtd_elementos) --
+-- o Postgres nao deixa trocar isso com CREATE OR REPLACE.
 -- ============================================================
 
 drop function if exists listar_casos_cadista(text);
@@ -27,7 +29,7 @@ returns table(
   descricao     text,
   status        text,
   observacao    text,
-  aprovacao     boolean,
+  qtd_elementos int,
   criado_em     timestamptz
 )
 language plpgsql
@@ -55,24 +57,28 @@ begin
       o.descricao,
       o.status,
       o.observacao,
-      coalesce(o.aprovacao, false) as aprovacao,
+      o.qtd_elementos,
       o.created_at
     from ordens_exocad o
     left join cadastro_clientes cc on cc.reg = o.cliente_reg
     where o.cadista_reg = v_sessao.reg
       and coalesce(o.arquivado, false) = false
+      and coalesce(o.excluido, false) = false
     order by o.created_at desc;
 end;
 $$;
 
 grant execute on function listar_casos_cadista(text) to anon;
 
--- ── Ligar/desligar "aguardando aprovacao" no proprio caso ──────
+-- ── Editar qtd_elementos do proprio caso ───────────────────────
+-- Mesmo padrao de seguranca de atualizar_observacao_caso_cadista
+-- (009): SECURITY DEFINER, valida a sessao e so deixa editar um caso
+-- cujo cadista_reg bate com o reg da sessao validada.
 
-create or replace function atualizar_aprovacao_caso_cadista(
-  p_sessao      text,
-  p_caso_id     uuid,
-  p_aprovacao   boolean
+create or replace function atualizar_qtd_elementos_caso_cadista(
+  p_sessao       text,
+  p_caso_id      uuid,
+  p_qtd_elementos int
 )
 returns void
 language plpgsql
@@ -95,10 +101,14 @@ begin
     raise exception 'Caso nao encontrado ou nao atribuido a voce.';
   end if;
 
+  if p_qtd_elementos is null or p_qtd_elementos < 1 then
+    raise exception 'Quantidade de elementos precisa ser pelo menos 1.';
+  end if;
+
   update ordens_exocad
-    set aprovacao = p_aprovacao
+    set qtd_elementos = p_qtd_elementos
     where id = p_caso_id;
 end;
 $$;
 
-grant execute on function atualizar_aprovacao_caso_cadista(text,uuid,boolean) to anon;
+grant execute on function atualizar_qtd_elementos_caso_cadista(text,uuid,int) to anon;
