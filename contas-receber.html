@@ -148,6 +148,7 @@
 <script>
 // ── State ─────────────────────────────────────────────────────
 var dbState = {};
+var prevMonthMap = {};
 var selected = null;
 var historicoEditMode = false;
 var extraMonths = [];
@@ -207,7 +208,7 @@ async function loadMonthData(m, y) {
     }
     var state = {};
     clients.forEach(function(c) {
-      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,obs_pagamento:'',extrato_url:null,extrato_path:null,comprovantes:compMap[c.reg]||[],extratos:extMap[c.reg]||[],aportes:aportesMap[c.reg]||[]};
+      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,obs_pagamento:'',extrato_url:null,extrato_path:null,abater_saldo_credor:null,comprovantes:compMap[c.reg]||[],extratos:extMap[c.reg]||[],aportes:aportesMap[c.reg]||[]};
     });
     rows.forEach(function(r) {
       state[r.cliente_reg] = {
@@ -215,6 +216,7 @@ async function loadMonthData(m, y) {
         valor_mes:Number(r.valor_mes)||0, valor_pago:Number(r.valor_pago)||0,
         obs_pagamento:r.obs_pagamento||'',
         extrato_url:r.extrato_url||null, extrato_path:r.extrato_path||null,
+        abater_saldo_credor: r.abater_saldo_credor === true ? true : r.abater_saldo_credor === false ? false : null,
         comprovantes:compMap[r.cliente_reg]||[],
         extratos:extMap[r.cliente_reg]||[],
         aportes:aportesMap[r.cliente_reg]||[]
@@ -227,6 +229,31 @@ async function loadMonthData(m, y) {
     showConnError(e.message || 'Erro de conexão');
     return {};
   }
+}
+
+// Mes anterior ao viewMonth/viewYear, so pra comparar valor_mes x valor_pago e
+// avisar/decidir saldo devedor/credor -- nao vira campo gravado (exceto a decisao
+// de abater, ver abater_saldo_credor). Recalculado toda vez que o mes muda, entao
+// pagamento atrasado lancado depois nao fica com aviso desatualizado.
+function prevMonthOf(m, y) { return m === 0 ? {m:11, y:y-1} : {m:m-1, y:y}; }
+
+async function loadPrevMonthMap(m, y) {
+  var prev = prevMonthOf(m, y);
+  var res = await sb.from('controle_mensal').select('cliente_reg,valor_mes,valor_pago').eq('mes',prev.m).eq('ano',prev.y);
+  var map = {};
+  if (res.error) { console.error('loadPrevMonthMap:', res.error); return map; }
+  (res.data||[]).forEach(function(r) {
+    map[r.cliente_reg] = {valor_mes:Number(r.valor_mes)||0, valor_pago:Number(r.valor_pago)||0};
+  });
+  return map;
+}
+
+// >0 = credor (pagou a mais), <0 = devedor (faltou pagar), null = nada a mostrar.
+function saldoAnteriorDe(reg) {
+  var p = prevMonthMap[reg];
+  if (!p) return null;
+  var diff = p.valor_pago - p.valor_mes;
+  return Math.abs(diff) < 0.005 ? null : diff;
 }
 
 // Busca o registro atual DIRETO DO SERVIDOR (nunca confia em dbState local pra decidir
@@ -382,9 +409,10 @@ async function switchMonth(m, y) {
   localStorage.setItem('ideali-viewYear', y);
   selected = null; historicoEditMode = false;
   document.getElementById('detail-panel').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:260px"><i class="ti ti-user-search" style="font-size:36px;color:#2d3250;margin-bottom:10px"></i><p style="font-size:13px;color:#4a5568">Carregando...</p></div>';
-  var loadedData = await loadMonthData(m, y);
+  var loaded = await Promise.all([loadMonthData(m, y), loadPrevMonthMap(m, y)]);
   if (viewMonth !== m || viewYear !== y) return;
-  dbState = loadedData;
+  dbState = loaded[0];
+  prevMonthMap = loaded[1];
   renderMonthTabs();
   updateCounts();
   doFilter();
@@ -559,6 +587,7 @@ function renderDetail() {
         '</div>'+
       '</div>';
 
+  var saldoSection = saldoAnteriorBanner(c.reg);
   var aportesSection = (!ro || (cv.aportes||[]).length) ? renderAportesSection(c.reg, cv, ro) : '';
 
   var rows = '';
@@ -587,9 +616,58 @@ function renderDetail() {
     (function(){var cl=cv.comprovantes||[];var n=cl.length;return '<button class="comp-clip'+(n?' has-comp':'')+'" style="width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:13px;height:30px" onclick="toggleCompMenu('+c.reg+',event)"><i class="ti ti-paperclip" style="font-size:14px"></i> '+(n?'<span style="color:'+T().success+'">'+n+' comprovante'+(n>1?'s':'')+'</span>':'Comprovante')+'</button>';})() +
     (function(){var el=cv.extratos||[];var n=el.length;return '<button class="comp-clip" style="width:auto;border-radius:8px;padding:0 12px;gap:6px;display:flex;align-items:center;font-size:13px;height:30px'+(n?';background:#1d3a6e;border-color:#3b82f6':'')+'" onclick="toggleExtratoMenu('+c.reg+',event)"><i class="ti ti-file-text" style="font-size:14px"></i> '+(n?'<span style="color:'+T().accent+'">'+n+' extrato'+(n>1?'s':'')+'</span>':'Extrato PDF')+'</button>';})() + '</div>' +
     finSection +
+    saldoSection +
     aportesSection +
     '<div>' + rows + '</div>';
 }
+
+// Aviso/decisao sobre o saldo do mes anterior (nao mexe no valor_mes gravado --
+// devedor e so informativo; credor precisa de decisao manual da Ideali, porque
+// pagamento a mais pode ser adiantamento de servico futuro em vez de sobra real).
+function saldoAnteriorBanner(reg) {
+  var diff = saldoAnteriorDe(reg);
+  if (diff === null) return '';
+  var cv = dbState[reg] || {};
+
+  if (diff < 0) {
+    var devedor = Math.abs(diff);
+    return '<div style="display:flex;gap:10px;align-items:flex-start;background:'+hexToRgba(T().danger,0.08)+';border:0.5px solid '+hexToRgba(T().danger,0.3)+';border-radius:9px;padding:11px 13px;margin-bottom:14px">'+
+      '<div style="flex-shrink:0;width:26px;height:26px;border-radius:7px;background:'+hexToRgba(T().danger,0.16)+';color:'+T().danger+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">!</div>'+
+      '<div style="flex:1;min-width:0"><p style="font-size:12.5px;font-weight:600;color:'+T().danger+'">Saldo devedor do mês anterior: '+fmt(devedor)+'</p>'+
+      '<p style="font-size:11.5px;color:#94a3b8;margin-top:2px;line-height:1.5">Ficou faltando pagar em '+MESES[prevMonthOf(viewMonth,viewYear).m]+'. Só um aviso — não altera o valor deste mês.</p></div></div>';
+  }
+
+  var credor = diff, status = cv.abater_saldo_credor;
+  if (status === true) {
+    return '<div style="display:flex;gap:10px;align-items:flex-start;background:'+hexToRgba(T().success,0.08)+';border:0.5px solid '+hexToRgba(T().success,0.3)+';border-radius:9px;padding:11px 13px;margin-bottom:14px">'+
+      '<div style="flex-shrink:0;width:26px;height:26px;border-radius:7px;background:'+hexToRgba(T().success,0.16)+';color:'+T().success+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700"><i class="ti ti-check" style="font-size:14px"></i></div>'+
+      '<div style="flex:1;min-width:0"><p style="font-size:12.5px;font-weight:600;color:'+T().success+'">'+fmt(credor)+' abatido do valor deste mês</p>'+
+      '<p style="font-size:11.5px;color:#94a3b8;margin-top:2px;margin-bottom:8px;line-height:1.5">A Elisangela já vê o valor líquido em pagamentos-inove.html.</p>'+
+      '<button onclick="reverterSaldoCredor('+reg+')" style="height:28px;padding:0 12px;border-radius:7px;border:0.5px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit"><i class="ti ti-arrow-back-up" style="font-size:12px"></i> Reverter decisão</button></div></div>';
+  }
+  if (status === false) {
+    return '<div style="display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 13px;margin-bottom:14px">'+
+      '<div style="flex-shrink:0;width:26px;height:26px;border-radius:7px;background:rgba(255,255,255,0.06);color:#94a3b8;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700"><i class="ti ti-x" style="font-size:14px"></i></div>'+
+      '<div style="flex:1;min-width:0"><p style="font-size:12.5px;font-weight:600;color:#cbd5e1">'+fmt(credor)+' mantido à parte (não abatido)</p>'+
+      '<p style="font-size:11.5px;color:#94a3b8;margin-top:2px;margin-bottom:8px;line-height:1.5">Crédito de '+MESES[prevMonthOf(viewMonth,viewYear).m]+' não desconta nada este mês.</p>'+
+      '<button onclick="reverterSaldoCredor('+reg+')" style="height:28px;padding:0 12px;border-radius:7px;border:0.5px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit"><i class="ti ti-arrow-back-up" style="font-size:12px"></i> Reverter decisão</button></div></div>';
+  }
+  return '<div style="display:flex;gap:10px;align-items:flex-start;background:'+hexToRgba(T().success,0.08)+';border:0.5px solid '+hexToRgba(T().success,0.3)+';border-radius:9px;padding:11px 13px;margin-bottom:14px">'+
+    '<div style="flex-shrink:0;width:26px;height:26px;border-radius:7px;background:'+hexToRgba(T().success,0.16)+';color:'+T().success+';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">?</div>'+
+    '<div style="flex:1;min-width:0"><p style="font-size:12.5px;font-weight:600;color:'+T().success+'">Saldo credor do mês anterior: '+fmt(credor)+'</p>'+
+    '<p style="font-size:11.5px;color:#94a3b8;margin-top:2px;margin-bottom:8px;line-height:1.5">Pagou a mais em '+MESES[prevMonthOf(viewMonth,viewYear).m]+'. Abater deste mês?</p>'+
+    '<div style="display:flex;gap:8px"><button onclick="decidirSaldoCredor('+reg+',true)" style="flex:1;height:30px;border-radius:7px;border:0.5px solid '+hexToRgba(T().success,0.4)+';background:'+hexToRgba(T().success,0.14)+';color:'+T().success+';font-size:12px;font-weight:600;cursor:pointer;font-family:inherit"><i class="ti ti-check" style="font-size:13px"></i> Sim, abater</button>'+
+    '<button onclick="decidirSaldoCredor('+reg+',false)" style="flex:1;height:30px;border-radius:7px;border:0.5px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Não abater</button></div></div></div>';
+}
+
+async function decidirSaldoCredor(reg, val) {
+  var ok = await patchControleMensal(reg, {abater_saldo_credor: val});
+  if (ok === false) { alert('Erro ao gravar a decisão. Tente de novo.'); return; }
+  if (!dbState[reg]) dbState[reg] = {};
+  dbState[reg].abater_saldo_credor = val;
+  if (selected && selected.reg === reg) renderDetail();
+}
+function reverterSaldoCredor(reg) { decidirSaldoCredor(reg, null); }
 
 function calcPreview(reg) {
   var vM = parseFloat(document.getElementById('fin-valor-'+reg).value) || 0;
@@ -1418,7 +1496,9 @@ async function init() {
   // Sempre abre no mes-calendario atual, mesmo que ainda nao tenha nenhum
   // valor_mes lancado nele -- mes atual "zerado" e um estado valido, nao
   // motivo pra pular pro mes anterior (mesmo padrao de pagamentos-inove.html).
-  dbState = await loadMonthData(currentMonth, currentYear);
+  var loaded = await Promise.all([loadMonthData(currentMonth, currentYear), loadPrevMonthMap(currentMonth, currentYear)]);
+  dbState = loaded[0];
+  prevMonthMap = loaded[1];
   renderMonthTabs();
   updateCounts();
   doFilter();
