@@ -207,13 +207,14 @@ async function loadMonthData(m, y) {
     }
     var state = {};
     clients.forEach(function(c) {
-      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,obs_pagamento:'',comprovantes:compMap[c.reg]||[],extratos:extMap[c.reg]||[],aportes:aportesMap[c.reg]||[]};
+      state[c.reg] = {recebido:false,enviado:false,quitado:false,valor_mes:0,valor_pago:0,obs_pagamento:'',extrato_url:null,extrato_path:null,comprovantes:compMap[c.reg]||[],extratos:extMap[c.reg]||[],aportes:aportesMap[c.reg]||[]};
     });
     rows.forEach(function(r) {
       state[r.cliente_reg] = {
         recebido:!!r.recebido, enviado:!!r.enviado, quitado:!!r.quitado,
         valor_mes:Number(r.valor_mes)||0, valor_pago:Number(r.valor_pago)||0,
         obs_pagamento:r.obs_pagamento||'',
+        extrato_url:r.extrato_url||null, extrato_path:r.extrato_path||null,
         comprovantes:compMap[r.cliente_reg]||[],
         extratos:extMap[r.cliente_reg]||[],
         aportes:aportesMap[r.cliente_reg]||[]
@@ -1339,16 +1340,21 @@ async function confirmarExtrato(reg, novoValorMes) {
   if (!dbState[reg].extratos) dbState[reg].extratos = [];
   dbState[reg].extratos.push({name: path.split('/').pop(), url: publicUrl});
 
-  if (novoValorMes !== null && novoValorMes !== undefined) {
-    var ok = await patchControleMensal(reg, {valor_mes: novoValorMes});
-    if (ok === false) {
-      setSyncStatus('error');
-      alert('Extrato anexado, mas houve erro ao gravar o novo valor do mês. Ajuste manualmente no campo "Valor do mês".');
-    } else {
-      dbState[reg].valor_mes = novoValorMes;
-    }
+  // Alem de listar no bucket (usado so pra a Ideali ver/apagar aqui), grava o
+  // link em controle_mensal.extrato_url -- e o unico jeito da Elisangela ver o
+  // extrato em pagamentos-inove.html, que le so essa coluna (nao lista o bucket).
+  // Ficava so em memoria antes disso, entao o link nunca aparecia pra ela.
+  // 1 extrato por cliente/mes: cada upload novo sobrescreve o anterior.
+  var campos = {extrato_url: publicUrl, extrato_path: path};
+  if (novoValorMes !== null && novoValorMes !== undefined) campos.valor_mes = novoValorMes;
+  var ok = await patchControleMensal(reg, campos);
+  if (ok === false) {
+    setSyncStatus('error');
+    alert('Extrato anexado ao Storage, mas houve erro ao gravar em controle_mensal. Ele pode não aparecer pra Elisangela em pagamentos-inove.html.');
   } else {
-    setSyncStatus('ok');
+    dbState[reg].extrato_url = publicUrl;
+    dbState[reg].extrato_path = path;
+    if (novoValorMes !== null && novoValorMes !== undefined) dbState[reg].valor_mes = novoValorMes;
   }
 
   updateCounts();
