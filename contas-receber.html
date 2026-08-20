@@ -149,6 +149,8 @@
 // ── State ─────────────────────────────────────────────────────
 var dbState = {};
 var prevMonthMap = {};
+var saldoAberturaMap = {};
+var historicoTotalMap = {};
 var selected = null;
 var historicoEditMode = false;
 var extraMonths = [];
@@ -254,6 +256,42 @@ function saldoAnteriorDe(reg) {
   if (!p) return null;
   var diff = p.valor_pago - p.valor_mes;
   return Math.abs(diff) < 0.005 ? null : diff;
+}
+
+// Saldo TOTAL real do cliente (saldo de abertura + todo o historico de
+// controle_mensal, nao so o mes anterior). So existe pra clientes com uma
+// divida anterior ao inicio do rastreio no sistema (ver saldo_abertura_clientes,
+// migration 036) -- pra maioria dos clientes nao ha registro e a funcao
+// retorna null, e so o aviso de "mes anterior" (saldoAnteriorBanner) aparece.
+// Carregado 1x no init(), nao muda com o mes selecionado (viewMonth).
+async function loadSaldoAberturaMap() {
+  var res = await sb.from('saldo_abertura_clientes').select('*');
+  var map = {};
+  if (res.error) { console.error('loadSaldoAberturaMap:', res.error); return map; }
+  (res.data||[]).forEach(function(r) { map[r.cliente_reg] = r; });
+  return map;
+}
+
+async function loadHistoricoTotalMap() {
+  var res = await sb.from('controle_mensal').select('cliente_reg,valor_mes,valor_pago');
+  var map = {};
+  if (res.error) { console.error('loadHistoricoTotalMap:', res.error); return map; }
+  (res.data||[]).forEach(function(r) {
+    if (!map[r.cliente_reg]) map[r.cliente_reg] = {valor_mes:0, valor_pago:0};
+    map[r.cliente_reg].valor_mes  += Number(r.valor_mes)  || 0;
+    map[r.cliente_reg].valor_pago += Number(r.valor_pago) || 0;
+  });
+  return map;
+}
+
+// >0 = devedor (deve no total), <0 = credor, null = sem saldo de abertura
+// cadastrado pra esse cliente (nao ha divida historica registrada).
+function saldoTotalDe(reg) {
+  var abertura = saldoAberturaMap[reg];
+  if (!abertura) return null;
+  var hist = historicoTotalMap[reg] || {valor_mes:0, valor_pago:0};
+  var total = Number(abertura.valor) + (hist.valor_mes - hist.valor_pago);
+  return {total: total, abertura: abertura};
 }
 
 // Busca o registro atual DIRETO DO SERVIDOR (nunca confia em dbState local pra decidir
@@ -587,7 +625,7 @@ function renderDetail() {
         '</div>'+
       '</div>';
 
-  var saldoSection = saldoAnteriorBanner(c.reg);
+  var saldoSection = saldoTotalBanner(c.reg) + saldoAnteriorBanner(c.reg);
   var aportesSection = (!ro || (cv.aportes||[]).length) ? renderAportesSection(c.reg, cv, ro) : '';
 
   var rows = '';
@@ -619,6 +657,23 @@ function renderDetail() {
     saldoSection +
     aportesSection +
     '<div>' + rows + '</div>';
+}
+
+// Saldo TOTAL real (abertura + todo o historico) -- so aparece pra clientes com
+// registro em saldo_abertura_clientes (ver migration 036). Distinto do aviso de
+// "mes anterior" abaixo: este e o numero que bate com o extrato oficial do
+// laboratorio, aquele e so um alerta pontual do ultimo mes.
+function saldoTotalBanner(reg) {
+  var st = saldoTotalDe(reg);
+  if (st === null) return '';
+  var pendente = !st.abertura.verificado;
+  var cor = st.total > 0.005 ? T().danger : st.total < -0.005 ? T().success : '#94a3b8';
+  var label = st.total > 0.005 ? 'Saldo devedor total' : st.total < -0.005 ? 'Saldo credor total' : 'Saldo total zerado';
+  return '<div style="display:flex;gap:10px;align-items:flex-start;background:'+hexToRgba(cor,0.08)+';border:0.5px solid '+hexToRgba(cor,0.3)+';border-radius:9px;padding:11px 13px;margin-bottom:10px">'+
+    '<div style="flex-shrink:0;width:26px;height:26px;border-radius:7px;background:'+hexToRgba(cor,0.16)+';color:'+cor+';display:flex;align-items:center;justify-content:center;font-size:14px"><i class="ti ti-file-invoice" style="font-size:14px"></i></div>'+
+    '<div style="flex:1;min-width:0"><p style="font-size:12.5px;font-weight:600;color:'+cor+'">'+label+': '+fmt(Math.abs(st.total))+'</p>'+
+    '<p style="font-size:11.5px;color:#94a3b8;margin-top:2px;line-height:1.5">Inclui saldo de abertura de '+fmt(st.abertura.valor)+' ('+(st.abertura.data_referencia||'')+') + histórico completo lançado no sistema. Fonte: '+escHtml(st.abertura.fonte||'—')+'.'+
+    (pendente ? ' <strong style="color:'+T().warn+'">Abertura ainda não conferida linha a linha — calculada por diferença.</strong>' : '')+'</p></div></div>';
 }
 
 // Aviso/decisao sobre o saldo do mes anterior (nao mexe no valor_mes gravado --
@@ -1496,9 +1551,11 @@ async function init() {
   // Sempre abre no mes-calendario atual, mesmo que ainda nao tenha nenhum
   // valor_mes lancado nele -- mes atual "zerado" e um estado valido, nao
   // motivo pra pular pro mes anterior (mesmo padrao de pagamentos-inove.html).
-  var loaded = await Promise.all([loadMonthData(currentMonth, currentYear), loadPrevMonthMap(currentMonth, currentYear)]);
+  var loaded = await Promise.all([loadMonthData(currentMonth, currentYear), loadPrevMonthMap(currentMonth, currentYear), loadSaldoAberturaMap(), loadHistoricoTotalMap()]);
   dbState = loaded[0];
   prevMonthMap = loaded[1];
+  saldoAberturaMap = loaded[2];
+  historicoTotalMap = loaded[3];
   renderMonthTabs();
   updateCounts();
   doFilter();

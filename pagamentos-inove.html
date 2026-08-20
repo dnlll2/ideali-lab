@@ -20,6 +20,10 @@ window.IDEALI_SKIP_AUTH = true;
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;padding:0.5rem;min-height:100vh}
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:12px}
+/* Esta pagina define body{padding:1.25rem}, diferente do 0.5rem que shared.css usa
+   nas paginas com sidebar -- sobrescreve a margem negativa de .header-glass pra
+   cancelar o padding certo (senao sobra ~0.75rem de borda visivel nos 3 lados). */
+.header-glass{margin:-1.25rem -1.25rem 0 -1.25rem !important}
 .header-left h1{font-size:20px;font-weight:600;color:#f1f5f9}
 .header-left p{font-size:13px;color:#64748b;margin-top:2px}
 .badge-ro{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 10px;border-radius:6px;background:#1a2a40;color:#60a5fa;border:0.5px solid rgba(96,165,250,0.3);font-weight:500}
@@ -353,6 +357,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <th>Valor pago</th>
           <th title="Ficou faltando pagar no mês anterior — só aviso, não afeta este mês">Saldo devedor (mês ant.)</th>
           <th title="Pagou a mais no mês anterior — aparece abatido do Restante só se a Ideali confirmar em contas-receber.html">Saldo credor (mês ant.)</th>
+          <th title="Devedor/credor real acumulado (abertura + todo o histórico) — só aparece pra clientes com saldo de abertura cadastrado. É o número que bate com o extrato oficial do Inove.">Saldo total (real)</th>
           <th>Restante</th>
           <th>Status</th>
           <th>Comprovantes</th>
@@ -527,6 +532,8 @@ var monthDDOpen = false;
 var extraMonths = [];
 var dbState = {};
 var prevMonthMap = {};
+var saldoAberturaMap = {};
+var historicoTotalMap = {};
 
 function fmt(v) {
   return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -593,7 +600,9 @@ async function switchMonth(m, y) {
   closeMonthDD();
   viewMonth = m; viewYear = y;
   renderMonthDD();
-  await Promise.all([loadMonthData(), loadExtratosPendentes(), loadComissaoHistorico(), loadVencimento(), loadPrevMonthMap()]);
+  var extraLoaded1 = await Promise.all([loadMonthData(), loadExtratosPendentes(), loadComissaoHistorico(), loadVencimento(), loadPrevMonthMap(), loadSaldoAberturaMap(), loadHistoricoTotalMap()]);
+  saldoAberturaMap = extraLoaded1[5];
+  historicoTotalMap = extraLoaded1[6];
   renderTable();
   renderVencimentoBadge();
   renderRankingValores();
@@ -668,6 +677,39 @@ function saldoAnteriorCells(reg, abaterStatus) {
     ? '<span class="status-badge status-q" title="Abatido do Restante pela Ideali"><i class="ti ti-check" style="font-size:11px"></i> '+fmt(diff)+'</span>'
     : '<span class="status-badge status-parcial" title="Ainda não abatido — decisão pendente com a Ideali">'+fmt(diff)+'</span>';
   return '<td><span class="no-comp">—</span></td><td>'+credorChip+'</td>';
+}
+
+async function loadSaldoAberturaMap() {
+  var res = await sb.from('saldo_abertura_clientes').select('*');
+  var map = {};
+  if (!res.error) (res.data||[]).forEach(function(r) { map[r.cliente_reg] = r; });
+  return map;
+}
+
+async function loadHistoricoTotalMap() {
+  var res = await sb.from('controle_mensal').select('cliente_reg,valor_mes,valor_pago');
+  var map = {};
+  if (!res.error) (res.data||[]).forEach(function(r) {
+    if (!map[r.cliente_reg]) map[r.cliente_reg] = {valor_mes:0, valor_pago:0};
+    map[r.cliente_reg].valor_mes  += Number(r.valor_mes)  || 0;
+    map[r.cliente_reg].valor_pago += Number(r.valor_pago) || 0;
+  });
+  return map;
+}
+
+// Devedor/credor acumulado real (abertura + todo o historico), so pra clientes
+// com registro em saldo_abertura_clientes (migration 036) -- pra maioria dos
+// clientes nao ha divida anterior ao inicio do rastreio e a celula fica vazia.
+function saldoTotalCell(reg) {
+  var abertura = saldoAberturaMap[reg];
+  if (!abertura) return '<td><span class="no-comp">—</span></td>';
+  var hist = historicoTotalMap[reg] || {valor_mes:0, valor_pago:0};
+  var total = Number(abertura.valor) + (hist.valor_mes - hist.valor_pago);
+  if (Math.abs(total) < 0.005) return '<td><span class="no-comp">—</span></td>';
+  var pendenteTag = abertura.verificado ? '' : ' ⚠';
+  var titulo = 'Inclui saldo de abertura de '+fmt(abertura.valor)+' ('+(abertura.data_referencia||'')+')'+(abertura.verificado?'':' — ainda não conferido linha a linha')+'. Fonte: '+(abertura.fonte||'—');
+  var cls = total > 0 ? 'status-nada' : 'status-q';
+  return '<td><span class="status-badge '+cls+'" title="'+escHtml(titulo)+'">'+fmt(Math.abs(total))+(total>0?' (deve)':' (crédito)')+pendenteTag+'</span></td>';
 }
 
 async function loadMonthData() {
@@ -1399,7 +1441,7 @@ function renderTable() {
   var tbody = document.getElementById('rows-body');
   if (!rows.length) {
     var emptyMsg = statusFilter === 'todos' ? 'Nenhum lançamento neste mês.' : 'Nenhum cliente com esse status neste mês.';
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#4a5568;padding:2rem">'+emptyMsg+'</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#4a5568;padding:2rem">'+emptyMsg+'</td></tr>';
   } else {
     tbody.innerHTML = rows.map(function(r) {
       var vm = Number(r.s.valor_mes||0), vp = Number(r.s.valor_pago||0);
@@ -1437,6 +1479,7 @@ function renderTable() {
         '<td class="'+(vm>0?'valor-mes':'valor-zero')+'">'+fmt(vm)+'</td>' +
         '<td class="'+(vp>0?'valor-pago':'valor-zero')+'">'+fmt(vp)+'</td>' +
         saldoAnteriorCells(r.c.reg, r.s.abater_saldo_credor) +
+        saldoTotalCell(r.c.reg) +
         '<td style="color:'+(rest>0?'#ef4444':'#4a5568')+'">'+fmt(rest)+'</td>' +
         '<td><span class="status-badge '+st.cls+'">'+st.lbl+'</span></td>' +
         '<td>'+compsHtml+'</td>' +
@@ -1479,7 +1522,9 @@ async function init() {
   var def = await findDefaultMonth();
   viewMonth = def.m; viewYear = def.y;
   renderMonthDD();
-  await Promise.all([loadMonthData(), loadExtratosPendentes(), loadComissaoHistorico(), loadVencimento(), loadPrevMonthMap()]);
+  var extraLoaded = await Promise.all([loadMonthData(), loadExtratosPendentes(), loadComissaoHistorico(), loadVencimento(), loadPrevMonthMap(), loadSaldoAberturaMap(), loadHistoricoTotalMap()]);
+  saldoAberturaMap = extraLoaded[5];
+  historicoTotalMap = extraLoaded[6];
   renderTable();
   renderVencimentoBadge();
   renderRankingValores();
