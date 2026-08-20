@@ -28,6 +28,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   overflow:hidden;
 }
 .header-glass{
+  /* body tem padding:0.5rem -- margem negativa cancela isso nos 3 lados
+     externos (fica colado no topo/esquerda/direita da janela de verdade,
+     nao so sem raio) e zera o margin-bottom que cada pagina define inline
+     no proprio elemento do cabecalho (por isso o !important). */
+  margin:-0.5rem -0.5rem 0 -0.5rem !important;
   padding:16px 24px;
   border-bottom:1px solid rgba(255,255,255,0.10);
 }
