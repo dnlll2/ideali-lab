@@ -903,7 +903,7 @@ function abrirHistoricoAportes(reg) {
     acumulado += Number(a.valor||0);
     var dataFmt = new Date(a.data_pagamento+'T00:00:00').toLocaleDateString('pt-BR');
     var compHtml = a.comprovante_url
-      ? '<a class="comp-link" href="'+a.comprovante_url+'" target="_blank" rel="noopener"><i class="ti ti-paperclip"></i> Ver</a>'
+      ? '<a class="comp-link" href="'+a.comprovante_url+'" target="_blank" rel="noopener"><i class="ti ti-paperclip"></i> Ver</a>' + renderSeloConferencia(a)
       : '<span class="no-comp">'+(a.legado ? 'lançamento anterior' : 'sem comprovante')+'</span>';
     return '<tr><td>'+dataFmt+'</td><td style="color:#4ade80;font-weight:600">'+fmt(a.valor)+'</td><td style="color:#94a3b8">'+fmt(acumulado)+'</td><td>'+compHtml+'</td></tr>';
   }).join('');
