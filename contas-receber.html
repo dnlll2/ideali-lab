@@ -85,7 +85,7 @@
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <button id="btn-conferir-antigos" onclick="abrirModalConferencia()" title="Lê os comprovantes de aporte já anexados e confere o valor com o que está lançado" style="height:32px;padding:0 12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit">🔍 Conferir comprovantes antigos</button>
+    <button id="btn-conferir-antigos" onclick="abrirModalConferencia()" title="Confere de uma vez os comprovantes de TODOS os clientes que ainda não foram lidos (abrir um cliente já confere os dele sozinho)" style="height:32px;padding:0 12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit">🔍 Conferir comprovantes antigos</button>
     <span id="relogio" style="font-size:11px;color:#4a5568"></span>
     <span id="sync-status" style="font-size:12px;color:#64748b"><span class="sync-dot" id="sync-dot"></span>Conectado</span>
     <span id="total-badge" class="badge" style="background:#1d3a6e;color:#93c5fd">clientes</span>
@@ -718,6 +718,7 @@ function selectClient(reg) {
   historicoEditMode = false;
   if (isMobile()) { var g = document.getElementById('clientes-grid'); if (g) g.classList.add('mob-detail'); }
   renderDetail(); doFilter();
+  conferirAportesPendentes(reg);
 }
 
 function mobBack() {
@@ -966,6 +967,8 @@ async function adicionarAporte(reg) {
       if (!campos) return;
       aporteNovo.conferencia_valor = campos.conferencia_valor;
       aporteNovo.conferencia_status = campos.conferencia_status;
+      aporteNovo.conferencia_obs = campos.conferencia_obs;
+      aporteNovo.conferencia_data_texto = campos.conferencia_data_texto;
       aporteNovo.conferido_em = campos.conferido_em;
       if (document.getElementById('aportes-modal').style.display !== 'none') abrirHistoricoAportes(reg);
     });
@@ -1008,11 +1011,46 @@ async function excluirAporte(reg, aporteId) {
   }
 }
 
-// Confere os comprovantes de aporte que ainda não têm conferencia_status
-// (comprovantes novos já são conferidos automaticamente no upload, ver
-// adicionarAporte -- isso aqui só cobre o histórico). Acionado pelo botão
-// "🔍 Conferir comprovantes antigos" no cabeçalho (ver abrirModalConferencia);
-// onProgress é opcional, então também dá pra rodar direto pelo console (F12):
+// Confere, em segundo plano, os comprovantes DESTE cliente que ainda não
+// foram conferidos -- disparada em selectClient, então só de clicar no
+// cliente já dispara a leitura, sem precisar abrir o Histórico nem clicar
+// em nenhum botão. Se o Histórico estiver aberto, atualiza o selo ao vivo
+// conforme cada comprovante termina de ser lido.
+async function conferirAportesPendentes(reg) {
+  var s = dbState[reg];
+  if (!s || !s.aportes) return;
+  var pendentes = s.aportes.filter(function(a) { return a.comprovante_url && !a.conferencia_status && !a._conferindo; });
+  if (!pendentes.length) return;
+  pendentes.forEach(function(a) { a._conferindo = true; });
+  if (document.getElementById('aportes-modal').style.display !== 'none') abrirHistoricoAportes(reg);
+  for (var i = 0; i < pendentes.length; i++) {
+    var a = pendentes[i];
+    try {
+      var fileRes = await fetch(a.comprovante_url);
+      if (!fileRes.ok) throw new Error('download HTTP ' + fileRes.status);
+      var blob = await fileRes.blob();
+      var campos = await conferirComprovanteAporte(a.id, blob, a.valor);
+      a._conferindo = false;
+      if (campos) {
+        a.conferencia_valor = campos.conferencia_valor;
+        a.conferencia_status = campos.conferencia_status;
+        a.conferencia_obs = campos.conferencia_obs;
+        a.conferencia_data_texto = campos.conferencia_data_texto;
+        a.conferido_em = campos.conferido_em;
+      }
+    } catch (e) {
+      console.error('conferirAportesPendentes (aporte ' + a.id + '):', e);
+      a._conferindo = false;
+    }
+    if (document.getElementById('aportes-modal').style.display !== 'none') abrirHistoricoAportes(reg);
+  }
+}
+
+// Confere os comprovantes de aporte que ainda não têm conferencia_status,
+// de TODOS os clientes de uma vez (conferirAportesPendentes acima só cobre
+// o cliente selecionado). Acionado pelo botão "🔍 Conferir comprovantes
+// antigos" no cabeçalho (ver abrirModalConferencia); onProgress é opcional,
+// então também dá pra rodar direto pelo console (F12):
 //   backfillConferenciaComprovantes()
 async function backfillConferenciaComprovantes(onProgress) {
   var res = await sb.from('pagamento_aportes').select('id,valor,comprovante_url')
@@ -1029,7 +1067,7 @@ async function backfillConferenciaComprovantes(onProgress) {
   var resumo = { total: lista.length, ok: 0, divergente: 0, semLeitura: 0, erro: 0 };
   for (var i = 0; i < lista.length; i++) {
     var a = lista[i];
-    var item = { tipo: 'item', indice: i + 1, total: lista.length, aporte: a, status: null, valorLido: null, motivo: null };
+    var item = { tipo: 'item', indice: i + 1, total: lista.length, aporte: a, status: null, valorLido: null, dataLida: null, motivo: null };
     try {
       var fileRes = await fetch(a.comprovante_url);
       if (!fileRes.ok) throw new Error('download HTTP ' + fileRes.status);
@@ -1039,6 +1077,7 @@ async function backfillConferenciaComprovantes(onProgress) {
       else {
         item.status = campos.conferencia_status;
         item.valorLido = campos.conferencia_valor;
+        item.dataLida = campos.conferencia_data_texto;
         item.motivo = campos.conferencia_obs;
         if (campos.conferencia_status === 'ok') resumo.ok++;
         else if (campos.conferencia_status === 'divergente') resumo.divergente++;
@@ -1109,7 +1148,7 @@ async function abrirModalConferencia() {
     } else if (ev.tipo === 'item') {
       sub.textContent = ev.indice + ' de ' + ev.total + ' processados…';
       var motivos = { 'imagem': 'foto/print', 'pdf-sem-texto': 'PDF sem texto', 'ambiguo': 'valor ambíguo' };
-      var complemento = ev.status === 'divergente' ? ' (comprovante: ' + fmt(ev.valorLido) + ')'
+      var complemento = ev.status === 'divergente' ? ' (comprovante: ' + fmt(ev.valorLido) + (ev.dataLida ? ', ' + ev.dataLida : '') + ')'
         : (ev.status !== 'ok' && motivos[ev.motivo]) ? ' (' + motivos[ev.motivo] + ')' : '';
       var valorTxt = fmt(ev.aporte.valor) + complemento;
       addLog('<span>' + escHtml(valorTxt) + '</span>' + seloMiniLog(ev.status));
