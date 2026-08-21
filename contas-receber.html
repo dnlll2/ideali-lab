@@ -1015,11 +1015,6 @@ async function excluirAporte(reg, aporteId) {
 // onProgress é opcional, então também dá pra rodar direto pelo console (F12):
 //   backfillConferenciaComprovantes()
 async function backfillConferenciaComprovantes(onProgress) {
-  if (!GROQ_API_KEY) {
-    console.warn('backfillConferenciaComprovantes: configure a Chave Groq (⚙️ no menu) antes de conferir.');
-    if (onProgress) onProgress({ tipo: 'sem-chave' });
-    return;
-  }
   var res = await sb.from('pagamento_aportes').select('id,valor,comprovante_url')
     .not('comprovante_path', 'is', null).is('conferencia_status', null);
   if (res.error) {
@@ -1034,7 +1029,7 @@ async function backfillConferenciaComprovantes(onProgress) {
   var resumo = { total: lista.length, ok: 0, divergente: 0, semLeitura: 0, erro: 0 };
   for (var i = 0; i < lista.length; i++) {
     var a = lista[i];
-    var item = { tipo: 'item', indice: i + 1, total: lista.length, aporte: a, status: null, valorLido: null };
+    var item = { tipo: 'item', indice: i + 1, total: lista.length, aporte: a, status: null, valorLido: null, motivo: null };
     try {
       var fileRes = await fetch(a.comprovante_url);
       if (!fileRes.ok) throw new Error('download HTTP ' + fileRes.status);
@@ -1044,6 +1039,7 @@ async function backfillConferenciaComprovantes(onProgress) {
       else {
         item.status = campos.conferencia_status;
         item.valorLido = campos.conferencia_valor;
+        item.motivo = campos.conferencia_obs;
         if (campos.conferencia_status === 'ok') resumo.ok++;
         else if (campos.conferencia_status === 'divergente') resumo.divergente++;
         else resumo.semLeitura++;
@@ -1055,7 +1051,6 @@ async function backfillConferenciaComprovantes(onProgress) {
     }
     console.log('(' + item.indice + '/' + item.total + ') aporte ' + a.id + ': ' + item.status);
     if (onProgress) onProgress(item);
-    if (i < lista.length - 1) await new Promise(function(r) { setTimeout(r, 700); });
   }
   console.log('backfillConferenciaComprovantes: concluído. ✅ ' + resumo.ok + ' bate · ⚠️ ' + resumo.divergente + ' divergente · ❔ ' + resumo.semLeitura + ' sem leitura · ✖ ' + resumo.erro + ' erro.');
   if (onProgress) onProgress({ tipo: 'fim', resumo: resumo });
@@ -1101,10 +1096,7 @@ async function abrirModalConferencia() {
   }
 
   await backfillConferenciaComprovantes(function(ev) {
-    if (ev.tipo === 'sem-chave') {
-      sub.textContent = 'Configure a Chave Groq (⚙️ no menu) antes de conferir.';
-      addLog('<span>Sem chave Groq configurada — nada foi processado.</span>');
-    } else if (ev.tipo === 'erro-busca') {
+    if (ev.tipo === 'erro-busca') {
       sub.textContent = 'Erro ao buscar comprovantes pendentes.';
       addLog('<span>✖ ' + escHtml((ev.erro && ev.erro.message) || 'erro desconhecido') + '</span>');
     } else if (ev.tipo === 'inicio') {
@@ -1116,7 +1108,10 @@ async function abrirModalConferencia() {
       }
     } else if (ev.tipo === 'item') {
       sub.textContent = ev.indice + ' de ' + ev.total + ' processados…';
-      var valorTxt = fmt(ev.aporte.valor) + (ev.status === 'divergente' ? ' (comprovante: ' + fmt(ev.valorLido) + ')' : '');
+      var motivos = { 'imagem': 'foto/print', 'pdf-sem-texto': 'PDF sem texto', 'ambiguo': 'valor ambíguo' };
+      var complemento = ev.status === 'divergente' ? ' (comprovante: ' + fmt(ev.valorLido) + ')'
+        : (ev.status !== 'ok' && motivos[ev.motivo]) ? ' (' + motivos[ev.motivo] + ')' : '';
+      var valorTxt = fmt(ev.aporte.valor) + complemento;
       addLog('<span>' + escHtml(valorTxt) + '</span>' + seloMiniLog(ev.status));
     } else if (ev.tipo === 'fim') {
       var r = ev.resumo;

@@ -1,17 +1,20 @@
 -- ============================================================
 -- Ideali Laboratorio - Conferencia automatica do comprovante (aportes)
 --
--- contas-receber.html agora le o comprovante de cada aporte (imagem ou
--- PDF, print de Pix ou recibo de banco) com um modelo de visao (Groq)
--- e compara o valor lido com pagamento_aportes.valor, guardando o
--- resultado aqui -- e o que vira o selo "confere / diverge" no
+-- contas-receber.html agora le o comprovante de cada aporte com pdf.js +
+-- regex local (mesma tecnica do extrato do Inove -- sem IA, sem chave,
+-- sem chamada de rede) e compara o valor lido com pagamento_aportes.valor,
+-- guardando o resultado aqui -- e o que vira o selo "confere / diverge" no
 -- Historico de Pagamentos (contas-receber.html e pagamentos-inove.html).
+-- So funciona pra PDF com texto selecionavel de verdade -- comprovante que
+-- e foto/print (imagem, ou PDF escaneado) fica "sem_leitura" (conferencia_obs
+-- explica o motivo: 'imagem' | 'pdf-sem-texto' | 'ambiguo' | 'erro').
 --
--- A leitura roda uma vez (no upload do aporte) e o resultado fica
--- salvo -- nao reprocessa a cada visita. Comprovantes anexados antes
--- desta funcionalidade existir passam por um backfill unico (rodado a
--- mao, uma vez, via console do navegador -- ver backfillConferenciaComprovantes
--- em contas-receber.html).
+-- A leitura roda uma vez (no upload do aporte) e o resultado fica salvo --
+-- nao reprocessa a cada visita. Comprovantes anexados antes desta
+-- funcionalidade existir sao cobertos pelo botao "Conferir comprovantes
+-- antigos" no cabecalho (ver backfillConferenciaComprovantes em
+-- contas-receber.html).
 --
 -- Rode no SQL Editor do Supabase (projeto alqhhgysvehtgkwsxeok).
 -- ============================================================
