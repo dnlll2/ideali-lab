@@ -52,7 +52,8 @@ var clients = [
   {reg:37,nome:"Zivana Castilhos dos Santos",cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
   {reg:38,nome:"José Vitor Ortega",          cpf:"349.656.358-33",  cro:"115567",       end:"Av. Eugen Wissmann, 600 - 1º andar, loja 8",       bairro:"São Luiz",           cidade:"Itu",                 uf:"SP", cep:"13304-270", tel:"",                  obs:""},
   {reg:39,nome:"Luiz Henrique da Silva",     cpf:"058.886.078-60",  cro:"CROSP 35744",  end:"Rua Nicola Martins Romeira, 251",                  bairro:"",                   cidade:"Ribeirão do Sul",     uf:"SP", cep:"19930-025", tel:"",                  obs:""},
-  {reg:41,nome:"Marcelo Rissio",             cpf:"326.412.558-71",  cro:"",             end:"Av. Pereira da Silva, 56",                         bairro:"Jd. Santa Rosalia",  cidade:"Sorocaba",            uf:"SP", cep:"18095-340", tel:"",                  obs:""}
+  {reg:41,nome:"Marcelo Rissio",             cpf:"326.412.558-71",  cro:"",             end:"Av. Pereira da Silva, 56",                         bairro:"Jd. Santa Rosalia",  cidade:"Sorocaba",            uf:"SP", cep:"18095-340", tel:"",                  obs:""},
+  {reg:42,nome:"Dr. Eduardo de Mello Caprio",cpf:"CNPJ: 35.977.659/0001-87",cro:"CROSP 83222",end:"Rua Arizona, 1422 - Conjunto 81",              bairro:"Brooklin",           cidade:"Sao Paulo",           uf:"SP", cep:"04567-003", tel:"",                  obs:"Odontocaprio"}
 ];
 
 // ── Estado global ─────────────────────────────────────────────
@@ -817,6 +818,126 @@ function renderIAHistory() {
       '<div class="ia-history-time">' + escHtml(h.time) + '</div>' +
       '</div>';
   }).join('');
+}
+
+// ── Conferência automática do comprovante de aporte (Groq vision) ──
+// Compara o valor mostrado no comprovante (imagem ou PDF de pagamento)
+// com pagamento_aportes.valor e guarda o resultado em
+// conferencia_status/conferencia_valor (ver supabase/036_conferencia_comprovante.sql).
+// Roda uma vez por aporte: no upload (contas-receber.html, adicionarAporte)
+// ou no backfill único dos comprovantes já anexados antes desta função
+// existir (contas-receber.html, backfillConferenciaComprovantes). Nunca
+// altera o valor lançado -- só informa via selo, quem decide é sempre a Ideali.
+// A Groq descontinua modelo de tempos em tempos -- se a conferência
+// começar a voltar sempre "sem_leitura" (ou HTTP 4xx no console), o
+// mais provável é este id ter saído do ar; troque por um modelo de
+// visão atual em https://console.groq.com/docs/models.
+var GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+
+// Converte o comprovante pra uma imagem (data URL) que o modelo de visão
+// aceita: se já é imagem, lê direto; se é PDF, renderiza a 1ª página num
+// canvas via pdf.js (precisa de pdfjsLib carregado na página que chamar isso).
+async function arquivoComprovanteParaImagem(file) {
+  if (file.type === 'application/pdf') {
+    if (typeof pdfjsLib === 'undefined') throw new Error('pdf.js não carregado nesta página');
+    var buf = await file.arrayBuffer();
+    var pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    var page = await pdf.getPage(1);
+    var viewport = page.getViewport({ scale: 2 });
+    var canvas = document.createElement('canvas');
+    canvas.width = viewport.width; canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
+    return canvas.toDataURL('image/png');
+  }
+  return await new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function() { resolve(reader.result); };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Pergunta ao modelo de visão qual o valor do comprovante. Retorna número
+// ou null (sem chave configurada, leitura ilegível, ou erro de rede/API --
+// nesses casos o aporte fica sem selo, nunca com um selo errado).
+async function lerValorComprovanteIA(file) {
+  if (!GROQ_API_KEY) return null;
+  var imgDataUrl;
+  try {
+    imgDataUrl = await arquivoComprovanteParaImagem(file);
+  } catch (e) {
+    console.error('lerValorComprovanteIA (conversão):', e);
+    return null;
+  }
+  try {
+    var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_API_KEY },
+      body: JSON.stringify({
+        model: GROQ_VISION_MODEL,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Este é um comprovante de pagamento (Pix ou transferência bancária). Responda APENAS com um JSON, sem texto ao redor, no formato {"valor": 123.45} -- o valor total pago mostrado no comprovante, em reais, como número (ponto decimal, sem "R$", sem separador de milhar). Se não conseguir identificar o valor com confiança, responda {"valor": null}.' },
+            { type: 'image_url', image_url: { url: imgDataUrl } }
+          ]
+        }],
+        max_tokens: 100,
+        temperature: 0
+      })
+    });
+    if (!res.ok) { console.error('lerValorComprovanteIA: HTTP ' + res.status); return null; }
+    var data = await res.json();
+    var raw = (data.choices[0].message.content || '').trim();
+    raw = raw.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
+    var parsed;
+    try { parsed = JSON.parse(raw); }
+    catch (e2) { var m = raw.match(/-?\d+(\.\d+)?/); parsed = { valor: m ? parseFloat(m[0]) : null }; }
+    var v = parsed && parsed.valor !== undefined ? parsed.valor : null;
+    return (v === null || v === undefined || isNaN(v)) ? null : Number(v);
+  } catch (e) {
+    console.error('lerValorComprovanteIA:', e);
+    return null;
+  }
+}
+
+// Lê o comprovante, decide o selo (ok/divergente/sem_leitura) e salva no
+// aporte. Tolerância de 1 centavo pra absorver arredondamento. Sem chave
+// Groq configurada, não grava nada (fica null = "ainda não processado",
+// não "sem_leitura") -- assim, assim que a chave for configurada, uma
+// nova conferência (upload novo ou botão de backfill) tenta de novo.
+async function conferirComprovanteAporte(aporteId, file, valorLancado) {
+  if (!GROQ_API_KEY) return null;
+  var lido = await lerValorComprovanteIA(file);
+  var status = lido === null ? 'sem_leitura' : (Math.abs(lido - Number(valorLancado)) < 0.01 ? 'ok' : 'divergente');
+  var campos = { conferencia_valor: lido, conferencia_status: status, conferido_em: new Date().toISOString() };
+  var res = await sb.from('pagamento_aportes').update(campos).eq('id', aporteId);
+  if (res.error) { console.error('conferirComprovanteAporte (salvar):', res.error); return null; }
+  return campos;
+}
+
+// HTML do selo pra uma linha do Histórico de Pagamentos -- usado por
+// contas-receber.html e pagamentos-inove.html. aporte._conferindo=true
+// mostra o estado "lendo" enquanto a chamada acima ainda não voltou.
+function renderSeloConferencia(aporte) {
+  if (!aporte.comprovante_url) return '';
+  var t = T();
+  if (aporte._conferindo) {
+    return '<div class="selo-conf" style="color:#94a3b8;background:rgba(148,163,184,0.12);border-color:rgba(148,163,184,0.32)"><span class="selo-spin"></span> Lendo comprovante…</div>';
+  }
+  var status = aporte.conferencia_status;
+  if (!status) return '';
+  if (status === 'ok') {
+    return '<div class="selo-conf" style="color:'+t.success+';background:'+hexToRgba(t.success,0.13)+';border-color:'+hexToRgba(t.success,0.38)+'">✅ Bate com o valor lançado</div>';
+  }
+  if (status === 'divergente') {
+    var lido = aporte.conferencia_valor;
+    return '<div class="selo-conf" style="color:'+t.warn+';background:'+hexToRgba(t.warn,0.14)+';border-color:'+hexToRgba(t.warn,0.4)+'">⚠️ Divergência'+
+      '<span class="selo-tip"><span class="selo-tip-ico">i</span><span class="selo-tip-bubble">Comprovante mostra <b>'+fmt(lido)+'</b>, mas o sistema tem lançado <b>'+fmt(aporte.valor)+'</b> para este pagamento. Confira o anexo.</span></span>'+
+      '</div><div class="selo-conf-detalhe">comprovante: <b>'+fmt(lido)+'</b> · lançado: <b>'+fmt(aporte.valor)+'</b></div>';
+  }
+  return '<div class="selo-conf" style="color:#94a3b8;background:rgba(148,163,184,0.12);border-color:rgba(148,163,184,0.32)">❔ Não deu para ler o valor'+
+    '<span class="selo-tip"><span class="selo-tip-ico">i</span><span class="selo-tip-bubble">Foto ilegível ou fora do padrão. Não impede o pagamento — só não há conferência automática aqui. Confira manualmente.</span></span></div>';
 }
 
 // ── Autenticação por senha ────────────────────────────────────

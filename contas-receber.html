@@ -58,6 +58,24 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="conf-modal-overlay" onclick="fecharModalConferencia()"></div>
+<div class="modal" id="conf-modal" style="width:min(480px,95vw)">
+  <div class="modal-header">
+    <div>
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9">Conferência de comprovantes antigos</p>
+      <p style="font-size:12px;color:#64748b" id="conf-modal-sub">—</p>
+    </div>
+    <button class="modal-close" onclick="fecharModalConferencia()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="modal-body">
+    <div id="conf-modal-summary" style="display:none;gap:8px;flex-wrap:wrap"></div>
+    <div id="conf-modal-log" style="max-height:280px;overflow-y:auto"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-secondary" id="conf-modal-close-btn" onclick="fecharModalConferencia()">Fechar</button>
+  </div>
+</div>
+
 <div class="app-header header-glass">
   <div style="display:flex;align-items:center;gap:10px">
     <button onclick="openSidebar()" style="width:36px;height:36px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">&#9776;</button>
@@ -67,6 +85,7 @@
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <button id="btn-conferir-antigos" onclick="abrirModalConferencia()" title="Lê os comprovantes de aporte já anexados e confere o valor com o que está lançado" style="height:32px;padding:0 12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit">🔍 Conferir comprovantes antigos</button>
     <span id="relogio" style="font-size:11px;color:#4a5568"></span>
     <span id="sync-status" style="font-size:12px;color:#64748b"><span class="sync-dot" id="sync-dot"></span>Conectado</span>
     <span id="total-badge" class="badge" style="background:#1d3a6e;color:#93c5fd">clientes</span>
@@ -843,7 +862,7 @@ function abrirHistoricoAportes(reg) {
     acumulado += Number(a.valor||0);
     var dataFmt = new Date(a.data_pagamento+'T00:00:00').toLocaleDateString('pt-BR');
     var compHtml = a.comprovante_url
-      ? '<a href="'+a.comprovante_url+'" target="_blank" rel="noopener" style="color:'+T().accent+';font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-paperclip"></i> Ver</a>'
+      ? '<a href="'+a.comprovante_url+'" target="_blank" rel="noopener" style="color:'+T().accent+';font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-paperclip"></i> Ver</a>' + renderSeloConferencia(a)
       : '<span style="font-size:11px;color:#4a5568">'+(a.legado ? 'lançamento anterior' : 'sem comprovante')+'</span>';
     var delBtn = ro ? '' : '<button onclick="excluirAporte('+reg+',\''+a.id+'\')" title="Excluir" style="width:24px;height:24px;border-radius:6px;border:0.5px solid '+hexToRgba(T().danger,0.4)+';background:transparent;color:'+T().danger+';display:flex;align-items:center;justify-content:center;cursor:pointer"><i class="ti ti-trash" style="font-size:12px"></i></button>';
     return '<tr><td>'+dataFmt+'</td><td style="color:'+T().success+';font-weight:600">'+fmt(a.valor)+'</td><td style="color:#94a3b8">'+fmt(acumulado)+'</td><td>'+compHtml+'</td><td>'+delBtn+'</td></tr>';
@@ -924,7 +943,8 @@ async function adicionarAporte(reg) {
       comprovante_path: path, comprovante_url: publicUrl
     }).select();
     if (insRes.error) throw insRes.error;
-    s.aportes.push(insRes.data[0]);
+    var aporteNovo = insRes.data[0];
+    s.aportes.push(aporteNovo);
 
     var soma = s.aportes.reduce(function(sum,a){ return sum + Number(a.valor||0); }, 0);
     s.valor_pago = soma;
@@ -936,6 +956,19 @@ async function adicionarAporte(reg) {
 
     updateCounts(); doFilter();
     if (selected && selected.reg === reg) renderDetail();
+
+    // Confere o comprovante em segundo plano (não trava o salvamento) -- se o
+    // modal de histórico estiver aberto pra este cliente, atualiza o selo ao terminar.
+    aporteNovo._conferindo = true;
+    if (document.getElementById('aportes-modal').style.display !== 'none') abrirHistoricoAportes(reg);
+    conferirComprovanteAporte(aporteNovo.id, file, valor).then(function(campos) {
+      aporteNovo._conferindo = false;
+      if (!campos) return;
+      aporteNovo.conferencia_valor = campos.conferencia_valor;
+      aporteNovo.conferencia_status = campos.conferencia_status;
+      aporteNovo.conferido_em = campos.conferido_em;
+      if (document.getElementById('aportes-modal').style.display !== 'none') abrirHistoricoAportes(reg);
+    });
   } catch (e) {
     console.error('adicionarAporte:', e);
     alert('Erro ao lançar pagamento: ' + (e.message || e));
@@ -973,6 +1006,140 @@ async function excluirAporte(reg, aporteId) {
     console.error('excluirAporte:', e);
     alert('Erro ao excluir pagamento: ' + (e.message || e));
   }
+}
+
+// Confere os comprovantes de aporte que ainda não têm conferencia_status
+// (comprovantes novos já são conferidos automaticamente no upload, ver
+// adicionarAporte -- isso aqui só cobre o histórico). Acionado pelo botão
+// "🔍 Conferir comprovantes antigos" no cabeçalho (ver abrirModalConferencia);
+// onProgress é opcional, então também dá pra rodar direto pelo console (F12):
+//   backfillConferenciaComprovantes()
+async function backfillConferenciaComprovantes(onProgress) {
+  if (!GROQ_API_KEY) {
+    console.warn('backfillConferenciaComprovantes: configure a Chave Groq (⚙️ no menu) antes de conferir.');
+    if (onProgress) onProgress({ tipo: 'sem-chave' });
+    return;
+  }
+  var res = await sb.from('pagamento_aportes').select('id,valor,comprovante_url')
+    .not('comprovante_path', 'is', null).is('conferencia_status', null);
+  if (res.error) {
+    console.error('backfillConferenciaComprovantes:', res.error);
+    if (onProgress) onProgress({ tipo: 'erro-busca', erro: res.error });
+    return;
+  }
+  var lista = res.data || [];
+  console.log('backfillConferenciaComprovantes: ' + lista.length + ' comprovante(s) pra conferir.');
+  if (onProgress) onProgress({ tipo: 'inicio', total: lista.length });
+
+  var resumo = { total: lista.length, ok: 0, divergente: 0, semLeitura: 0, erro: 0 };
+  for (var i = 0; i < lista.length; i++) {
+    var a = lista[i];
+    var item = { tipo: 'item', indice: i + 1, total: lista.length, aporte: a, status: null, valorLido: null };
+    try {
+      var fileRes = await fetch(a.comprovante_url);
+      if (!fileRes.ok) throw new Error('download HTTP ' + fileRes.status);
+      var blob = await fileRes.blob();
+      var campos = await conferirComprovanteAporte(a.id, blob, a.valor);
+      if (!campos) { item.status = 'erro'; resumo.erro++; }
+      else {
+        item.status = campos.conferencia_status;
+        item.valorLido = campos.conferencia_valor;
+        if (campos.conferencia_status === 'ok') resumo.ok++;
+        else if (campos.conferencia_status === 'divergente') resumo.divergente++;
+        else resumo.semLeitura++;
+      }
+    } catch (e) {
+      console.error('backfillConferenciaComprovantes (aporte ' + a.id + '):', e);
+      item.status = 'erro'; item.erro = e;
+      resumo.erro++;
+    }
+    console.log('(' + item.indice + '/' + item.total + ') aporte ' + a.id + ': ' + item.status);
+    if (onProgress) onProgress(item);
+    if (i < lista.length - 1) await new Promise(function(r) { setTimeout(r, 700); });
+  }
+  console.log('backfillConferenciaComprovantes: concluído. ✅ ' + resumo.ok + ' bate · ⚠️ ' + resumo.divergente + ' divergente · ❔ ' + resumo.semLeitura + ' sem leitura · ✖ ' + resumo.erro + ' erro.');
+  if (onProgress) onProgress({ tipo: 'fim', resumo: resumo });
+  return resumo;
+}
+
+// Selo mini, igual ao das linhas do Histórico de Pagamentos (ver renderSeloConferencia
+// em shared.js), usado no log de progresso do modal "Conferir comprovantes antigos".
+function seloMiniLog(status) {
+  if (status === 'ok') return '<span class="selo-conf" style="color:'+T().success+';background:'+hexToRgba(T().success,0.13)+';border-color:'+hexToRgba(T().success,0.38)+';margin:0">✅ Bate</span>';
+  if (status === 'divergente') return '<span class="selo-conf" style="color:'+T().warn+';background:'+hexToRgba(T().warn,0.14)+';border-color:'+hexToRgba(T().warn,0.4)+';margin:0">⚠️ Divergência</span>';
+  if (status === 'erro') return '<span class="selo-conf" style="color:'+T().danger+';background:'+hexToRgba(T().danger,0.13)+';border-color:'+hexToRgba(T().danger,0.38)+';margin:0">✖ Erro ao ler</span>';
+  return '<span class="selo-conf" style="color:#94a3b8;background:rgba(148,163,184,0.12);border-color:rgba(148,163,184,0.32);margin:0">❔ Não deu pra ler</span>';
+}
+
+// Modal do botão "🔍 Conferir comprovantes antigos" -- mostra o progresso e
+// o resumo final na própria tela (o backfill em si continua em
+// backfillConferenciaComprovantes, aqui é só a UI em cima dele).
+async function abrirModalConferencia() {
+  var overlay = document.getElementById('conf-modal-overlay');
+  var modal = document.getElementById('conf-modal');
+  var sub = document.getElementById('conf-modal-sub');
+  var log = document.getElementById('conf-modal-log');
+  var summary = document.getElementById('conf-modal-summary');
+  var closeBtn = document.getElementById('conf-modal-close-btn');
+  var triggerBtn = document.getElementById('btn-conferir-antigos');
+
+  log.innerHTML = '';
+  summary.style.display = 'none';
+  summary.innerHTML = '';
+  sub.textContent = 'Buscando comprovantes ainda não conferidos…';
+  overlay.style.display = 'block';
+  modal.style.display = 'block';
+  closeBtn.disabled = true;
+  if (triggerBtn) { triggerBtn.disabled = true; triggerBtn.style.opacity = '0.55'; }
+
+  function addLog(html) {
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,0.05);font-size:12px;color:#94a3b8';
+    row.innerHTML = html;
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  await backfillConferenciaComprovantes(function(ev) {
+    if (ev.tipo === 'sem-chave') {
+      sub.textContent = 'Configure a Chave Groq (⚙️ no menu) antes de conferir.';
+      addLog('<span>Sem chave Groq configurada — nada foi processado.</span>');
+    } else if (ev.tipo === 'erro-busca') {
+      sub.textContent = 'Erro ao buscar comprovantes pendentes.';
+      addLog('<span>✖ ' + escHtml((ev.erro && ev.erro.message) || 'erro desconhecido') + '</span>');
+    } else if (ev.tipo === 'inicio') {
+      if (ev.total === 0) {
+        sub.textContent = 'Tudo certo — nenhum comprovante pendente de conferência.';
+        addLog('<span style="color:'+T().success+'">✅ Todos os comprovantes já foram conferidos.</span>');
+      } else {
+        sub.textContent = '0 de ' + ev.total + ' processados…';
+      }
+    } else if (ev.tipo === 'item') {
+      sub.textContent = ev.indice + ' de ' + ev.total + ' processados…';
+      var valorTxt = fmt(ev.aporte.valor) + (ev.status === 'divergente' ? ' (comprovante: ' + fmt(ev.valorLido) + ')' : '');
+      addLog('<span>' + escHtml(valorTxt) + '</span>' + seloMiniLog(ev.status));
+    } else if (ev.tipo === 'fim') {
+      var r = ev.resumo;
+      sub.textContent = 'Concluído — ' + r.total + ' comprovante(s) processado(s).';
+      summary.style.display = 'flex';
+      summary.innerHTML =
+        '<span class="selo-conf" style="color:'+T().success+';background:'+hexToRgba(T().success,0.13)+';border-color:'+hexToRgba(T().success,0.38)+'">✅ ' + r.ok + ' bate</span>' +
+        '<span class="selo-conf" style="color:'+T().warn+';background:'+hexToRgba(T().warn,0.14)+';border-color:'+hexToRgba(T().warn,0.4)+'">⚠️ ' + r.divergente + ' divergente</span>' +
+        '<span class="selo-conf" style="color:#94a3b8;background:rgba(148,163,184,0.12);border-color:rgba(148,163,184,0.32)">❔ ' + r.semLeitura + ' sem leitura</span>' +
+        (r.erro ? '<span class="selo-conf" style="color:'+T().danger+';background:'+hexToRgba(T().danger,0.13)+';border-color:'+hexToRgba(T().danger,0.38)+'">✖ ' + r.erro + ' erro</span>' : '');
+    }
+  });
+
+  closeBtn.disabled = false;
+  if (triggerBtn) { triggerBtn.disabled = false; triggerBtn.style.opacity = ''; }
+  // Se o Histórico de algum cliente estiver aberto, atualiza os selos com o resultado.
+  if (selected && document.getElementById('aportes-modal').style.display !== 'none') abrirHistoricoAportes(selected.reg);
+}
+
+function fecharModalConferencia() {
+  if (document.getElementById('conf-modal-close-btn').disabled) return; // ainda processando
+  document.getElementById('conf-modal-overlay').style.display = 'none';
+  document.getElementById('conf-modal').style.display = 'none';
 }
 
 // ── Comprovantes ──────────────────────────────────────────────
