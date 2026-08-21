@@ -454,6 +454,7 @@ var PAGE_MAP = {
   'cobranca':       'cobranca.html',
   'recibo':         'recibo.html',
   'gastos':         'gastos.html',
+  'relatorio':      'relatorio.html',
   'relatorios':     'relatorios.html',
   'ordens-cam':     'ordens-cam.html',
   'tabela-precos':  'tabela-precos.html',
