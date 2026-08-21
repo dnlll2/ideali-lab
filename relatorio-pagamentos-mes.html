@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatório de Pagamentos do Mês - Ideali Laboratório</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<script>
+// ── Autenticação por senha (espelho leve de checkAuth em shared.js) ────────
+// Página standalone (não carrega shared.js), mesmo padrão de relatorio.html
+// e relatorio-comprovantes.html.
+(function checkAuth() {
+  var IDEALI_PASSWORD = 'ideali2026';
+  if (sessionStorage.getItem('ideali-auth') === 'ok') return;
+
+  function injectLogin() {
+    var overlay = document.createElement('div');
+    overlay.id = 'auth-overlay';
+    overlay.style.cssText = [
+      'position:fixed','inset:0','background:#0f1117','z-index:99999',
+      'display:flex','align-items:center','justify-content:center',
+      'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif'
+    ].join(';');
+    overlay.innerHTML =
+      '<div style="background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px 28px;width:min(340px,90vw);text-align:center">'+
+        '<img src="assets/logo.png" alt="" style="height:64px;width:64px;object-fit:contain;margin:0 auto 8px;display:block">'+
+        '<p style="font-size:18px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Ideali Laboratório</p>'+
+        '<p style="font-size:13px;color:#64748b;margin-bottom:24px">Digite a senha para continuar</p>'+
+        '<input id="auth-inp" type="password" placeholder="Senha" autocomplete="current-password" '+
+          'style="width:100%;height:40px;background:#0f1117;border:0.5px solid rgba(255,255,255,0.15);'+
+          'border-radius:8px;padding:0 14px;font-size:14px;color:#e2e8f0;outline:none;font-family:inherit;margin-bottom:10px"/>'+
+        '<p id="auth-err" style="font-size:12px;color:#ef4444;margin-bottom:10px;min-height:16px"></p>'+
+        '<button id="auth-btn" '+
+          'style="width:100%;height:40px;background:#1d4ed8;border:none;border-radius:8px;'+
+          'color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Entrar</button>'+
+      '</div>';
+    document.body.appendChild(overlay);
+    document.getElementById('auth-inp').focus();
+
+    function tryLogin() {
+      var val = (document.getElementById('auth-inp').value || '').trim();
+      if (val === IDEALI_PASSWORD) {
+        sessionStorage.setItem('ideali-auth', 'ok');
+        document.getElementById('auth-overlay').remove();
+      } else {
+        var err = document.getElementById('auth-err');
+        var inp = document.getElementById('auth-inp');
+        if (err) err.textContent = 'Senha incorreta. Tente novamente.';
+        if (inp) {
+          inp.value = '';
+          inp.style.borderColor = '#ef4444';
+          inp.focus();
+          setTimeout(function(){ inp.style.borderColor = ''; }, 1500);
+        }
+      }
+    }
+
+    document.getElementById('auth-btn').addEventListener('click', tryLogin);
+    document.getElementById('auth-inp').addEventListener('keydown', function(e){
+      if (e.key === 'Enter') tryLogin();
+    });
+  }
+
+  if (document.body) { injectLogin(); }
+  else { document.addEventListener('DOMContentLoaded', injectLogin); }
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#eef2f6;
+  --paper:#ffffff;
+  --ink:#1b2430;
+  --muted:#5b6b7c;
+  --dim:#8a97a6;
+  --line:#e2e8ee;
+  --line-strong:#cdd6e0;
+  --accent:#1e5aa8;
+  --success:#1f8a5b;
+  --success-soft:#e8f5ee;
+  --warn:#a3670a;
+  --warn-soft:#fbf1de;
+  --danger:#b3413a;
+  --danger-soft:#fbeceb;
+  --neutral:#5b6b7c;
+  --neutral-soft:#eef1f4;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;min-height:100vh;background:var(--bg);color:var(--ink);
+  font-family:Manrope,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  padding:32px 20px 64px;display:flex;flex-direction:column;align-items:center;gap:18px;
+}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace}
+
+.toolbar{width:min(820px,100%);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--muted);text-decoration:none}
+.back-link:hover{color:var(--ink)}
+.print-btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 18px;border-radius:9px;background:var(--accent);color:#fff;border:none;font-size:13.5px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(30,90,168,0.28)}
+
+.doc{width:min(820px,100%);background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 3px rgba(20,30,45,0.06), 0 12px 32px rgba(20,30,45,0.07);overflow:hidden}
+.doc-band{background:linear-gradient(100deg,#1e5aa8 0%,#2f8fae 55%,#1f8f8a 100%);padding:22px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{width:38px;height:38px;border-radius:9px;background:rgba(255,255,255,0.16);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.brand-name{font-size:14.5px;font-weight:800;color:#fff;letter-spacing:0.01em}
+.brand-sub{font-size:11.5px;color:rgba(255,255,255,0.78);margin-top:1px}
+.doc-tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:rgba(255,255,255,0.92);background:rgba(255,255,255,0.16);padding:6px 12px;border-radius:20px;white-space:nowrap}
+
+.doc-head{padding:26px 32px 20px;border-bottom:1px solid var(--line);display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.doc-title{font-size:22px;font-weight:800;margin:0 0 6px}
+.doc-sub{font-size:14.5px;color:var(--muted)}
+.doc-sub b{color:var(--ink);font-weight:700}
+.doc-meta{text-align:right;font-size:12px;color:var(--dim);line-height:1.6}
+.doc-meta b{color:var(--muted);font-weight:600}
+
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.summary-cell{background:var(--paper);padding:16px 24px}
+.summary-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--dim);margin-bottom:5px}
+.summary-val{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
+.summary-val.success{color:var(--success)}
+.summary-val.accent{color:var(--accent)}
+.summary-val.warn{color:var(--warn)}
+
+.doc-body{padding:10px 32px 8px}
+
+.client-block{padding:16px 0;border-bottom:1px solid var(--line)}
+.client-block:last-child{border-bottom:none}
+.client-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.client-name{font-size:14.5px;font-weight:700}
+.client-figures{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.figure{text-align:right}
+.figure-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--dim);margin-bottom:2px}
+.figure-val{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.figure-val.warn{color:var(--warn)}
+.figure-val.success{color:var(--success)}
+
+.status-pill{font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.status-pill.ok{color:var(--success);background:var(--success-soft)}
+.status-pill.partial{color:var(--warn);background:var(--warn-soft)}
+.status-pill.none{color:var(--danger);background:var(--danger-soft)}
+
+.aportes-list{margin:10px 0 0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:5px}
+.aporte-item{display:flex;align-items:center;gap:10px;font-size:12px;padding-left:14px;position:relative;flex-wrap:wrap}
+.aporte-item::before{content:"";position:absolute;left:0;top:9px;width:5px;height:5px;border-radius:50%;background:var(--line-strong)}
+.aporte-data{color:var(--muted);width:44px;flex-shrink:0}
+.aporte-valor{font-weight:700;width:90px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.aporte-selo{font-size:11px;font-weight:700;flex-shrink:0;width:14px}
+.aporte-selo.ok{color:var(--success)}
+.aporte-selo.warn{color:var(--warn)}
+.aporte-selo.neutral{color:var(--dim)}
+.aporte-detalhe{color:var(--warn);font-size:11px}
+.aporte-link{color:var(--accent);text-decoration:none;font-weight:700;margin-left:auto}
+.aporte-link:hover{text-decoration:underline}
+.aporte-none{color:var(--dim);font-style:italic;padding-left:14px}
+
+.doc-foot{padding:20px 32px 26px;border-top:2px solid var(--ink);display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.foot-total-lbl{font-size:13.5px;color:var(--muted);font-weight:600}
+.foot-total-val{font-size:22px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;margin-left:10px}
+.foot-gen{font-size:11px;color:var(--dim);text-align:right;line-height:1.6}
+
+.state-msg{width:min(820px,100%);background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:40px;text-align:center;color:var(--muted);font-size:14px}
+
+@media print{
+  .toolbar{display:none}
+  body{background:#fff;padding:0}
+  .doc{box-shadow:none;border:none;border-radius:0;width:100%}
+  .client-block{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <a class="back-link" href="relatorio.html">← Voltar pro relatório</a>
+  <button class="print-btn" onclick="window.print()">🖨️ Imprimir / Salvar como PDF</button>
+</div>
+
+<div id="content">
+  <div class="state-msg">Carregando…</div>
+</div>
+
+<script>
+var SUPABASE_URL = 'https://alqhhgysvehtgkwsxeok.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFscWhoZ3lzdmVodGdrd3N4ZW9rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDE0ODg2NSwiZXhwIjoyMDk1NzI0ODY1fQ.xogvgvFob-7Ir6hSLkz0pOj3GawRPRbwfz9oGuGQ90E';
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+var MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function fmt(v) {
+  return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtDataCurta(iso) {
+  if (!iso) return '—';
+  var d = new Date(iso+'T00:00:00');
+  return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
+}
+
+function seloMini(a) {
+  var status = a.conferencia_status;
+  if (status === 'ok') return { icon:'✓', cls:'ok', detalhe:'' };
+  if (status === 'divergente') {
+    var det = 'comprovante: ' + fmt(a.conferencia_valor) + (a.conferencia_data_texto ? ' (' + escHtml(a.conferencia_data_texto) + ')' : '');
+    return { icon:'⚠', cls:'warn', detalhe:det };
+  }
+  return { icon:'—', cls:'neutral', detalhe:'' };
+}
+
+async function montar() {
+  var params = new URLSearchParams(window.location.search);
+  var mes = parseInt(params.get('mes'));
+  var ano = parseInt(params.get('ano'));
+  var content = document.getElementById('content');
+
+  if (isNaN(mes) || isNaN(ano)) {
+    content.innerHTML = '<div class="state-msg">Link inválido — faltam mês/ano. Volte pro relatório e clique de novo no botão.</div>';
+    return;
+  }
+
+  try {
+    var [cmRes, apRes, clRes] = await Promise.all([
+      sb.from('controle_mensal').select('cliente_reg,valor_mes,valor_pago,quitado').eq('mes', mes).eq('ano', ano),
+      sb.from('pagamento_aportes').select('*').eq('mes', mes).eq('ano', ano).order('data_pagamento'),
+      sb.from('cadastro_clientes').select('reg,nome')
+    ]);
+    if (cmRes.error) throw cmRes.error;
+    if (apRes.error) throw apRes.error;
+    if (clRes.error) throw clRes.error;
+
+    var nomeMap = {};
+    (clRes.data || []).forEach(function(c) { nomeMap[c.reg] = c.nome; });
+
+    var aportesMap = {};
+    (apRes.data || []).forEach(function(a) {
+      if (!aportesMap[a.cliente_reg]) aportesMap[a.cliente_reg] = [];
+      aportesMap[a.cliente_reg].push(a);
+    });
+
+    var linhas = (cmRes.data || [])
+      .filter(function(r) { return Number(r.valor_mes || 0) > 0; })
+      .map(function(r) {
+        return {
+          reg: r.cliente_reg,
+          nome: nomeMap[r.cliente_reg] || ('Cliente #' + r.cliente_reg),
+          valorMes: Number(r.valor_mes || 0),
+          valorPago: Number(r.valor_pago || 0),
+          quitado: !!r.quitado,
+          aportes: aportesMap[r.cliente_reg] || []
+        };
+      })
+      .sort(function(a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
+
+    if (!linhas.length) {
+      content.innerHTML = '<div class="state-msg">Nenhum cliente com valor faturado em ' + MESES[mes] + ' ' + ano + '.</div>';
+      return;
+    }
+
+    var totalFaturado = 0, totalPago = 0;
+    var blocos = linhas.map(function(l) {
+      totalFaturado += l.valorMes;
+      totalPago += l.valorPago;
+
+      var statusPill = l.quitado
+        ? '<span class="status-pill ok">Quitado</span>'
+        : l.valorPago > 0
+        ? '<span class="status-pill partial">Parcial</span>'
+        : '<span class="status-pill none">Pendente</span>';
+
+      var aportesHtml = l.aportes.length
+        ? l.aportes.map(function(a) {
+            var s = seloMini(a);
+            var link = a.comprovante_url
+              ? '<a class="aporte-link" href="' + escHtml(a.comprovante_url) + '" target="_blank" rel="noopener">Ver comprovante ↗</a>'
+              : '<span class="aporte-link" style="color:var(--dim);cursor:default">' + (a.legado ? 'lançamento anterior' : 'sem comprovante') + '</span>';
+            return '<div class="aporte-item">' +
+              '<span class="aporte-data mono">' + fmtDataCurta(a.data_pagamento) + '</span>' +
+              '<span class="aporte-valor mono">' + fmt(a.valor) + '</span>' +
+              '<span class="aporte-selo ' + s.cls + '">' + s.icon + '</span>' +
+              (s.detalhe ? '<span class="aporte-detalhe">' + s.detalhe + '</span>' : '') +
+              link +
+              '</div>';
+          }).join('')
+        : '<span class="aporte-none">nenhum pagamento lançado ainda</span>';
+
+      return '<div class="client-block">' +
+        '<div class="client-row">' +
+          '<span class="client-name">' + escHtml(l.nome) + '</span>' +
+          '<div class="client-figures">' +
+            '<div class="figure"><div class="figure-lbl">Extrato</div><div class="figure-val warn mono">' + fmt(l.valorMes) + '</div></div>' +
+            '<div class="figure"><div class="figure-lbl">Pago</div><div class="figure-val success mono">' + fmt(l.valorPago) + '</div></div>' +
+            statusPill +
+          '</div>' +
+        '</div>' +
+        '<div class="aportes-list">' + aportesHtml + '</div>' +
+      '</div>';
+    }).join('');
+
+    var aReceber = Math.max(0, totalFaturado - totalPago);
+    var pctMes = totalFaturado > 0 ? Math.round(totalPago / totalFaturado * 100) : 0;
+    var agora = new Date();
+    var geradoEm = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+
+    content.innerHTML =
+      '<div class="doc">' +
+        '<div class="doc-band">' +
+          '<div class="brand">' +
+            '<div class="brand-mark">🦷</div>' +
+            '<div><div class="brand-name">Ideali Laboratório</div><div class="brand-sub">Prótese e Escaneamento Digital</div></div>' +
+          '</div>' +
+          '<div class="doc-tag">Pagamentos do mês</div>' +
+        '</div>' +
+        '<div class="doc-head">' +
+          '<div>' +
+            '<p class="doc-title">Relatório de Pagamentos do Mês</p>' +
+            '<p class="doc-sub">Período: <b>' + MESES[mes] + ' ' + ano + '</b> · <b>' + linhas.length + '</b> clientes com movimentação</p>' +
+          '</div>' +
+          '<div class="doc-meta">Gerado em <b>' + geradoEm + '</b><br>Sistema de Controle Financeiro Ideali</div>' +
+        '</div>' +
+        '<div class="summary">' +
+          '<div class="summary-cell"><div class="summary-lbl">Total faturado</div><div class="summary-val mono">' + fmt(totalFaturado) + '</div></div>' +
+          '<div class="summary-cell"><div class="summary-lbl">Total pago</div><div class="summary-val success mono">' + fmt(totalPago) + '</div></div>' +
+          '<div class="summary-cell"><div class="summary-lbl">A receber</div><div class="summary-val warn mono">' + fmt(aReceber) + '</div></div>' +
+          '<div class="summary-cell"><div class="summary-lbl">% do mês</div><div class="summary-val accent mono">' + pctMes + '%</div></div>' +
+        '</div>' +
+        '<div class="doc-body">' + blocos + '</div>' +
+        '<div class="doc-foot">' +
+          '<div><span class="foot-total-lbl">Total geral pago no mês</span><span class="foot-total-val mono">' + fmt(totalPago) + '</span></div>' +
+          '<div class="foot-gen">Documento gerado automaticamente pelo sistema Ideali Laboratório.<br>Soma de todos os pagamentos lançados no período.</div>' +
+        '</div>' +
+      '</div>';
+  } catch (e) {
+    console.error('montar:', e);
+    content.innerHTML = '<div class="state-msg">Erro ao carregar: ' + escHtml(e.message || 'desconhecido') + '</div>';
+  }
+}
+
+montar();
+</script>
+</body>
+</html>
