@@ -237,3 +237,18 @@ button{font-family:inherit;cursor:pointer}
 .cam-card:active{cursor:grabbing;box-shadow:0 4px 16px rgba(0,0,0,0.4)}
 .cam-orig-btn{height:32px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:12px;cursor:pointer;font-family:inherit;transition:all 0.15s}
 .cam-orig-btn.active{background:#1d3a6e;border-color:#60a5fa;color:#93c5fd}
+
+/* ── Selo de conferência automática do comprovante (aportes) ─────
+   Compara o valor lido por IA no comprovante com o valor lançado.
+   .ok/.warn/.load/.miss = bate / diverge / lendo / não deu pra ler.
+   Cores vêm inline (T().success/warn etc) de cada página -- aqui só
+   o layout, comum a contas-receber.html e pagamentos-inove.html. */
+.selo-conf{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 8px;border-radius:7px;border:0.5px solid transparent;white-space:nowrap;margin-top:5px}
+.selo-conf-detalhe{font-size:10.5px;color:#64748b;margin-top:3px;line-height:1.4}
+.selo-spin{display:inline-block;width:9px;height:9px;border:1.5px solid rgba(148,163,184,0.35);border-top-color:#94a3b8;border-radius:50%;animation:selo-spin 0.85s linear infinite}
+@media(prefers-reduced-motion:reduce){.selo-spin{animation:none}}
+@keyframes selo-spin{to{transform:rotate(360deg)}}
+.selo-tip{position:relative;display:inline-flex}
+.selo-tip .selo-tip-ico{width:13px;height:13px;border-radius:50%;border:1px solid #64748b;color:#64748b;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:default}
+.selo-tip .selo-tip-bubble{position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%);background:#0b0d13;color:#e2e8f0;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:7px 9px;font-size:11px;line-height:1.4;font-weight:400;width:210px;box-shadow:0 8px 24px rgba(0,0,0,0.4);opacity:0;pointer-events:none;transition:opacity 0.12s ease;z-index:5}
+.selo-tip:hover .selo-tip-bubble{opacity:1}
