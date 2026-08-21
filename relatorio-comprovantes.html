@@ -119,12 +119,13 @@ body{
 .doc-meta{text-align:right;font-size:12px;color:var(--dim);line-height:1.6}
 .doc-meta b{color:var(--muted);font-weight:600}
 
-.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
 .summary-cell{background:var(--paper);padding:16px 32px}
 .summary-lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--dim);margin-bottom:5px}
 .summary-val{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
 .summary-val.success{color:var(--success)}
 .summary-val.accent{color:var(--accent)}
+.summary-val.warn{color:var(--warn)}
 
 .doc-body{padding:8px 32px 28px}
 table{width:100%;border-collapse:collapse;margin-top:14px}
@@ -217,15 +218,17 @@ async function montar() {
   }
 
   try {
-    var [clRes, apRes] = await Promise.all([
+    var [clRes, apRes, cmRes] = await Promise.all([
       sb.from('cadastro_clientes').select('nome').eq('reg', reg).single(),
-      sb.from('pagamento_aportes').select('*').eq('cliente_reg', reg).eq('mes', mes).eq('ano', ano).order('data_pagamento')
+      sb.from('pagamento_aportes').select('*').eq('cliente_reg', reg).eq('mes', mes).eq('ano', ano).order('data_pagamento'),
+      sb.from('controle_mensal').select('valor_mes').eq('cliente_reg', reg).eq('mes', mes).eq('ano', ano).maybeSingle()
     ]);
     if (clRes.error) throw clRes.error;
     if (apRes.error) throw apRes.error;
 
     var nome = clRes.data ? clRes.data.nome : ('Cliente #' + reg);
     var aportes = apRes.data || [];
+    var valorMes = cmRes.data ? Number(cmRes.data.valor_mes) || 0 : 0;
 
     if (!aportes.length) {
       content.innerHTML = '<div class="state-msg">Nenhum pagamento lançado pra <b>' + escHtml(nome) + '</b> em ' + MESES[mes] + ' ' + ano + '.</div>';
@@ -247,6 +250,12 @@ async function montar() {
         '</tr>';
     }).join('');
 
+    var restante = valorMes - total;
+    var restanteHtml = valorMes > 0
+      ? '<div class="summary-cell"><div class="summary-lbl">Restante a pagar</div><div class="summary-val ' + (restante > 0.01 ? 'warn' : 'success') + ' mono">' + fmt(Math.max(restante, 0)) + '</div></div>'
+      : '<div class="summary-cell"><div class="summary-lbl">Restante a pagar</div><div class="summary-val mono">—</div></div>';
+    var faturadoHtml = '<div class="summary-cell"><div class="summary-lbl">Valor faturado no mês</div><div class="summary-val mono">' + (valorMes > 0 ? fmt(valorMes) : '—') + '</div></div>';
+
     var agora = new Date();
     var geradoEm = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
@@ -267,8 +276,9 @@ async function montar() {
           '<div class="doc-meta">Gerado em <b>' + geradoEm + '</b><br>Sistema de Controle Financeiro Ideali</div>' +
         '</div>' +
         '<div class="summary">' +
+          faturadoHtml +
           '<div class="summary-cell"><div class="summary-lbl">Total pago no mês</div><div class="summary-val accent mono">' + fmt(total) + '</div></div>' +
-          '<div class="summary-cell"><div class="summary-lbl">Pagamentos lançados</div><div class="summary-val mono">' + aportes.length + '</div></div>' +
+          restanteHtml +
           '<div class="summary-cell"><div class="summary-lbl">Conferidos automaticamente</div><div class="summary-val success mono">' + confOk + ' de ' + aportes.length + '</div></div>' +
         '</div>' +
         '<div class="doc-body">' +
@@ -276,7 +286,9 @@ async function montar() {
           '<tbody>' + rows + '</tbody></table>' +
         '</div>' +
         '<div class="doc-foot">' +
-          '<div class="foot-total">Total do período <b class="mono">' + fmt(total) + '</b></div>' +
+          '<div class="foot-total">Total do período <b class="mono">' + fmt(total) + '</b>' +
+            (valorMes > 0 ? ' &nbsp;·&nbsp; Restante <b class="mono">' + fmt(Math.max(restante, 0)) + '</b>' : '') +
+          '</div>' +
           '<div class="foot-gen">Documento gerado automaticamente pelo sistema Ideali Laboratório.<br>Em caso de dúvida sobre qualquer valor, entre em contato.</div>' +
         '</div>' +
       '</div>';
