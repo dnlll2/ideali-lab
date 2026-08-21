@@ -52,7 +52,8 @@ var clients = [
   {reg:37,nome:"Zivana Castilhos dos Santos",cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
   {reg:38,nome:"José Vitor Ortega",          cpf:"349.656.358-33",  cro:"115567",       end:"Av. Eugen Wissmann, 600 - 1º andar, loja 8",       bairro:"São Luiz",           cidade:"Itu",                 uf:"SP", cep:"13304-270", tel:"",                  obs:""},
   {reg:39,nome:"Luiz Henrique da Silva",     cpf:"058.886.078-60",  cro:"CROSP 35744",  end:"Rua Nicola Martins Romeira, 251",                  bairro:"",                   cidade:"Ribeirão do Sul",     uf:"SP", cep:"19930-025", tel:"",                  obs:""},
-  {reg:41,nome:"Marcelo Rissio",             cpf:"326.412.558-71",  cro:"",             end:"Av. Pereira da Silva, 56",                         bairro:"Jd. Santa Rosalia",  cidade:"Sorocaba",            uf:"SP", cep:"18095-340", tel:"",                  obs:""}
+  {reg:41,nome:"Marcelo Rissio",             cpf:"326.412.558-71",  cro:"",             end:"Av. Pereira da Silva, 56",                         bairro:"Jd. Santa Rosalia",  cidade:"Sorocaba",            uf:"SP", cep:"18095-340", tel:"",                  obs:""},
+  {reg:42,nome:"Dr. Eduardo de Mello Caprio",cpf:"CNPJ: 35.977.659/0001-87",cro:"CROSP 83222",end:"Rua Arizona, 1422 - Conjunto 81",              bairro:"Brooklin",           cidade:"Sao Paulo",           uf:"SP", cep:"04567-003", tel:"",                  obs:"Odontocaprio"}
 ];
 
 // ── Estado global ─────────────────────────────────────────────
@@ -818,6 +819,158 @@ function renderIAHistory() {
       '<div class="ia-history-time">' + escHtml(h.time) + '</div>' +
       '</div>';
   }).join('');
+}
+
+// ── Conferência automática do comprovante de aporte (regex local) ──
+// Mesma técnica já usada pro extrato do Inove (contas-receber.html,
+// parseExtratoInove): pdf.js lê o texto selecionável do PDF, regex acha o
+// valor em reais. Sem IA, sem chave, sem chamada de rede nenhuma. Compara
+// com pagamento_aportes.valor e guarda o resultado em
+// conferencia_status/conferencia_valor/conferencia_obs/conferencia_data_texto
+// (ver supabase/036_conferencia_comprovante.sql e 037_conferencia_comprovante_data.sql).
+// Roda uma vez por aporte: no upload (contas-receber.html, adicionarAporte),
+// ao clicar num cliente (conferirAportesPendentes, cobre os comprovantes já
+// anexados desse cliente sozinho) ou no botão "🔍 Conferir comprovantes
+// antigos" no cabeçalho (backfillConferenciaComprovantes, cobre todo mundo
+// de uma vez). Nunca altera o valor lançado -- só informa via selo, quem
+// decide é sempre a Ideali.
+//
+// Limite conhecido: só lê PDF com texto de verdade. Comprovante que é foto/print
+// (imagem) não tem camada de texto nenhuma pra ler -- precisaria de OCR, que
+// esta função não faz de propósito (ver conferencia_obs='imagem'). PDF "escaneado"
+// (print salvo como PDF) cai no mesmo caso (conferencia_obs='pdf-sem-texto').
+
+// Extrai todas as páginas de texto do PDF via pdf.js (precisa de pdfjsLib
+// carregado na página que chamar isso -- só contas-receber.html carrega).
+async function lerTextoPDFComprovante(file) {
+  var buf = await file.arrayBuffer();
+  var pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  var texto = '';
+  for (var i = 1; i <= pdf.numPages; i++) {
+    var page = await pdf.getPage(i);
+    var content = await page.getTextContent();
+    content.items.forEach(function(item) { texto += item.str + (item.hasEOL ? '\n' : ' '); });
+    texto += '\n';
+  }
+  return texto;
+}
+
+function _valorBRParaNumero(raw) {
+  raw = String(raw).replace(/[R$\s]/g, '');
+  var n = parseFloat(raw.replace(/\./g, '').replace(',', '.'));
+  return isNaN(n) ? null : n;
+}
+
+// Acha o valor pago num texto de comprovante (formato livre -- cada banco
+// exporta diferente, ao contrário do extrato do Inove que tem layout fixo).
+// Prioriza o valor mais próximo da palavra "valor" (rótulo mais comum em
+// comprovante de Pix/transferência); sem rótulo, só assume o valor se
+// houver exatamente 1 valor distinto em reais no documento inteiro --
+// com 0 ou 2+ valores ambíguos, prefere devolver null a arriscar errado.
+function extrairValorComprovante(texto) {
+  if (!texto || !texto.replace(/\s/g, '').length) return null;
+  var reBRL = /R?\$?\s*\d{1,3}(?:\.\d{3})*,\d{2}/;
+  var idxValor = texto.toLowerCase().search(/valor/);
+  if (idxValor !== -1) {
+    var mLabel = texto.slice(idxValor, idxValor + 80).match(reBRL);
+    if (mLabel) {
+      var v = _valorBRParaNumero(mLabel[0]);
+      if (v !== null) return v;
+    }
+  }
+  var todos = texto.match(new RegExp(reBRL.source, 'g')) || [];
+  var distintos = {};
+  todos.forEach(function(m) { var n = _valorBRParaNumero(m); if (n !== null) distintos[n] = true; });
+  var chaves = Object.keys(distintos);
+  return chaves.length === 1 ? parseFloat(chaves[0]) : null;
+}
+
+// Acha a data (e hora, se tiver perto) que o comprovante mostra -- só pra
+// exibir junto do valor quando diverge (ajuda a confrontar com a Inove:
+// "o comprovante é desse dia, mostra esse valor"). Pega a 1ª data no
+// formato DD/MM/AAAA do texto e, se houver um HH:MM nos 40 caracteres
+// seguintes, junta os dois. Sem regra de desambiguação: é só exibição,
+// não entra na decisão de bate/não bate.
+function extrairDataComprovante(texto) {
+  if (!texto) return null;
+  var mData = texto.match(/\d{2}\/\d{2}\/\d{4}/);
+  if (!mData) return null;
+  var resto = texto.slice(mData.index + mData[0].length, mData.index + mData[0].length + 40);
+  var mHora = resto.match(/\d{2}:\d{2}/);
+  return mHora ? mData[0] + ' ' + mHora[0] : mData[0];
+}
+
+// Lê o comprovante localmente. Retorna { valor, dataTexto, motivo} -- valor
+// number ou null; motivo só é preenchido quando valor é null, pra explicar
+// o porquê no selo (ver renderSeloConferencia): 'imagem' | 'pdf-sem-texto' |
+// 'ambiguo' | 'erro'.
+async function lerDadosComprovanteLocal(file) {
+  if (file.type !== 'application/pdf') return { valor: null, dataTexto: null, motivo: 'imagem' };
+  if (typeof pdfjsLib === 'undefined') return { valor: null, dataTexto: null, motivo: 'erro' };
+  var texto;
+  try {
+    texto = await lerTextoPDFComprovante(file);
+  } catch (e) {
+    console.error('lerDadosComprovanteLocal:', e);
+    return { valor: null, dataTexto: null, motivo: 'erro' };
+  }
+  if (!texto || !texto.replace(/\s/g, '').length) return { valor: null, dataTexto: null, motivo: 'pdf-sem-texto' };
+  var valor = extrairValorComprovante(texto);
+  return { valor: valor, dataTexto: extrairDataComprovante(texto), motivo: valor === null ? 'ambiguo' : null };
+}
+
+// Lê o comprovante, decide o selo (ok/divergente/sem_leitura) e salva no
+// aporte. Tolerância de 1 centavo pra absorver arredondamento -- a
+// comparação é só pelo valor (o que a Inove questiona); a data lida vai
+// junto só como informação extra pro selo de divergência.
+async function conferirComprovanteAporte(aporteId, file, valorLancado) {
+  var resultado = await lerDadosComprovanteLocal(file);
+  var status = resultado.valor === null ? 'sem_leitura' : (Math.abs(resultado.valor - Number(valorLancado)) < 0.01 ? 'ok' : 'divergente');
+  var campos = {
+    conferencia_valor: resultado.valor,
+    conferencia_status: status,
+    conferencia_obs: resultado.motivo || null,
+    conferencia_data_texto: resultado.dataTexto || null,
+    conferido_em: new Date().toISOString()
+  };
+  var res = await sb.from('pagamento_aportes').update(campos).eq('id', aporteId);
+  if (res.error) { console.error('conferirComprovanteAporte (salvar):', res.error); return null; }
+  return campos;
+}
+
+// HTML do selo pra uma linha do Histórico de Pagamentos -- usado por
+// contas-receber.html e pagamentos-inove.html. aporte._conferindo=true
+// mostra o estado "lendo" enquanto a chamada acima ainda não voltou.
+function renderSeloConferencia(aporte) {
+  if (!aporte.comprovante_url) return '';
+  var t = T();
+  if (aporte._conferindo) {
+    return '<div class="selo-conf" style="color:#94a3b8;background:rgba(148,163,184,0.12);border-color:rgba(148,163,184,0.32)"><span class="selo-spin"></span> Lendo comprovante…</div>';
+  }
+  var status = aporte.conferencia_status;
+  if (!status) return '';
+  if (status === 'ok') {
+    return '<div class="selo-conf" style="color:'+t.success+';background:'+hexToRgba(t.success,0.13)+';border-color:'+hexToRgba(t.success,0.38)+'">✅ Bate com o valor lançado</div>';
+  }
+  if (status === 'divergente') {
+    var lido = aporte.conferencia_valor;
+    var dataLida = aporte.conferencia_data_texto;
+    var dataLancada = aporte.data_pagamento ? new Date(aporte.data_pagamento+'T00:00:00').toLocaleDateString('pt-BR') : null;
+    var tipTxt = 'Comprovante mostra <b>'+fmt(lido)+'</b>'+(dataLida?' ('+dataLida+')':'')+', mas o sistema tem lançado <b>'+fmt(aporte.valor)+'</b>'+(dataLancada?' em '+dataLancada:'')+' para este pagamento. Confira o anexo.';
+    var detalheTxt = 'comprovante: <b>'+fmt(lido)+'</b>'+(dataLida?' ('+dataLida+')':'')+' · lançado: <b>'+fmt(aporte.valor)+'</b>';
+    return '<div class="selo-conf" style="color:'+t.warn+';background:'+hexToRgba(t.warn,0.14)+';border-color:'+hexToRgba(t.warn,0.4)+'">⚠️ Divergência'+
+      '<span class="selo-tip"><span class="selo-tip-ico">i</span><span class="selo-tip-bubble">'+tipTxt+'</span></span>'+
+      '</div><div class="selo-conf-detalhe">'+detalheTxt+'</div>';
+  }
+  var motivos = {
+    'imagem': 'Comprovante é uma foto/print (imagem) — sem texto pra ler, precisaria de OCR.',
+    'pdf-sem-texto': 'PDF sem texto selecionável (provavelmente é um print salvo como PDF) — precisaria de OCR.',
+    'ambiguo': 'Não encontrei um valor único com confiança no texto do PDF.',
+    'erro': 'Erro ao processar o arquivo.'
+  };
+  var msg = motivos[aporte.conferencia_obs] || 'Não deu pra identificar o valor automaticamente.';
+  return '<div class="selo-conf" style="color:#94a3b8;background:rgba(148,163,184,0.12);border-color:rgba(148,163,184,0.32)">❔ Não deu para ler o valor'+
+    '<span class="selo-tip"><span class="selo-tip-ico">i</span><span class="selo-tip-bubble">'+msg+' Não impede o pagamento — só não há conferência automática aqui. Confira manualmente.</span></span></div>';
 }
 
 // ── Autenticação por senha ────────────────────────────────────
