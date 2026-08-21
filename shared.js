@@ -820,97 +820,97 @@ function renderIAHistory() {
   }).join('');
 }
 
-// ── Conferência automática do comprovante de aporte (Groq vision) ──
-// Compara o valor mostrado no comprovante (imagem ou PDF de pagamento)
+// ── Conferência automática do comprovante de aporte (regex local) ──
+// Mesma técnica já usada pro extrato do Inove (contas-receber.html,
+// parseExtratoInove): pdf.js lê o texto selecionável do PDF, regex acha o
+// valor em reais. Sem IA, sem chave, sem chamada de rede nenhuma. Compara
 // com pagamento_aportes.valor e guarda o resultado em
-// conferencia_status/conferencia_valor (ver supabase/036_conferencia_comprovante.sql).
-// Roda uma vez por aporte: no upload (contas-receber.html, adicionarAporte)
-// ou no backfill único dos comprovantes já anexados antes desta função
-// existir (contas-receber.html, backfillConferenciaComprovantes). Nunca
-// altera o valor lançado -- só informa via selo, quem decide é sempre a Ideali.
-// A Groq descontinua modelo de tempos em tempos -- se a conferência
-// começar a voltar sempre "sem_leitura" (ou HTTP 4xx no console), o
-// mais provável é este id ter saído do ar; troque por um modelo de
-// visão atual em https://console.groq.com/docs/models.
-var GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+// conferencia_status/conferencia_valor/conferencia_obs (ver
+// supabase/036_conferencia_comprovante.sql). Roda uma vez por aporte: no
+// upload (contas-receber.html, adicionarAporte) ou no backfill dos
+// comprovantes já anexados (contas-receber.html, backfillConferenciaComprovantes,
+// acionado pelo botão "🔍 Conferir comprovantes antigos"). Nunca altera o
+// valor lançado -- só informa via selo, quem decide é sempre a Ideali.
+//
+// Limite conhecido: só lê PDF com texto de verdade. Comprovante que é foto/print
+// (imagem) não tem camada de texto nenhuma pra ler -- precisaria de OCR, que
+// esta função não faz de propósito (ver conferencia_obs='imagem'). PDF "escaneado"
+// (print salvo como PDF) cai no mesmo caso (conferencia_obs='pdf-sem-texto').
 
-// Converte o comprovante pra uma imagem (data URL) que o modelo de visão
-// aceita: se já é imagem, lê direto; se é PDF, renderiza a 1ª página num
-// canvas via pdf.js (precisa de pdfjsLib carregado na página que chamar isso).
-async function arquivoComprovanteParaImagem(file) {
-  if (file.type === 'application/pdf') {
-    if (typeof pdfjsLib === 'undefined') throw new Error('pdf.js não carregado nesta página');
-    var buf = await file.arrayBuffer();
-    var pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-    var page = await pdf.getPage(1);
-    var viewport = page.getViewport({ scale: 2 });
-    var canvas = document.createElement('canvas');
-    canvas.width = viewport.width; canvas.height = viewport.height;
-    await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
-    return canvas.toDataURL('image/png');
+// Extrai todas as páginas de texto do PDF via pdf.js (precisa de pdfjsLib
+// carregado na página que chamar isso -- só contas-receber.html carrega).
+async function lerTextoPDFComprovante(file) {
+  var buf = await file.arrayBuffer();
+  var pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  var texto = '';
+  for (var i = 1; i <= pdf.numPages; i++) {
+    var page = await pdf.getPage(i);
+    var content = await page.getTextContent();
+    content.items.forEach(function(item) { texto += item.str + (item.hasEOL ? '\n' : ' '); });
+    texto += '\n';
   }
-  return await new Promise(function(resolve, reject) {
-    var reader = new FileReader();
-    reader.onload = function() { resolve(reader.result); };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+  return texto;
 }
 
-// Pergunta ao modelo de visão qual o valor do comprovante. Retorna número
-// ou null (sem chave configurada, leitura ilegível, ou erro de rede/API --
-// nesses casos o aporte fica sem selo, nunca com um selo errado).
-async function lerValorComprovanteIA(file) {
-  if (!GROQ_API_KEY) return null;
-  var imgDataUrl;
-  try {
-    imgDataUrl = await arquivoComprovanteParaImagem(file);
-  } catch (e) {
-    console.error('lerValorComprovanteIA (conversão):', e);
-    return null;
+function _valorBRParaNumero(raw) {
+  raw = String(raw).replace(/[R$\s]/g, '');
+  var n = parseFloat(raw.replace(/\./g, '').replace(',', '.'));
+  return isNaN(n) ? null : n;
+}
+
+// Acha o valor pago num texto de comprovante (formato livre -- cada banco
+// exporta diferente, ao contrário do extrato do Inove que tem layout fixo).
+// Prioriza o valor mais próximo da palavra "valor" (rótulo mais comum em
+// comprovante de Pix/transferência); sem rótulo, só assume o valor se
+// houver exatamente 1 valor distinto em reais no documento inteiro --
+// com 0 ou 2+ valores ambíguos, prefere devolver null a arriscar errado.
+function extrairValorComprovante(texto) {
+  if (!texto || !texto.replace(/\s/g, '').length) return null;
+  var reBRL = /R?\$?\s*\d{1,3}(?:\.\d{3})*,\d{2}/;
+  var idxValor = texto.toLowerCase().search(/valor/);
+  if (idxValor !== -1) {
+    var mLabel = texto.slice(idxValor, idxValor + 80).match(reBRL);
+    if (mLabel) {
+      var v = _valorBRParaNumero(mLabel[0]);
+      if (v !== null) return v;
+    }
   }
+  var todos = texto.match(new RegExp(reBRL.source, 'g')) || [];
+  var distintos = {};
+  todos.forEach(function(m) { var n = _valorBRParaNumero(m); if (n !== null) distintos[n] = true; });
+  var chaves = Object.keys(distintos);
+  return chaves.length === 1 ? parseFloat(chaves[0]) : null;
+}
+
+// Lê o comprovante localmente. Retorna { valor, motivo } -- valor number ou
+// null; motivo só é preenchido quando valor é null, pra explicar o porquê
+// no selo (ver renderSeloConferencia): 'imagem' | 'pdf-sem-texto' | 'ambiguo' | 'erro'.
+async function lerValorComprovanteLocal(file) {
+  if (file.type !== 'application/pdf') return { valor: null, motivo: 'imagem' };
+  if (typeof pdfjsLib === 'undefined') return { valor: null, motivo: 'erro' };
+  var texto;
   try {
-    var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_API_KEY },
-      body: JSON.stringify({
-        model: GROQ_VISION_MODEL,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'text', text: 'Este é um comprovante de pagamento (Pix ou transferência bancária). Responda APENAS com um JSON, sem texto ao redor, no formato {"valor": 123.45} -- o valor total pago mostrado no comprovante, em reais, como número (ponto decimal, sem "R$", sem separador de milhar). Se não conseguir identificar o valor com confiança, responda {"valor": null}.' },
-            { type: 'image_url', image_url: { url: imgDataUrl } }
-          ]
-        }],
-        max_tokens: 100,
-        temperature: 0
-      })
-    });
-    if (!res.ok) { console.error('lerValorComprovanteIA: HTTP ' + res.status); return null; }
-    var data = await res.json();
-    var raw = (data.choices[0].message.content || '').trim();
-    raw = raw.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
-    var parsed;
-    try { parsed = JSON.parse(raw); }
-    catch (e2) { var m = raw.match(/-?\d+(\.\d+)?/); parsed = { valor: m ? parseFloat(m[0]) : null }; }
-    var v = parsed && parsed.valor !== undefined ? parsed.valor : null;
-    return (v === null || v === undefined || isNaN(v)) ? null : Number(v);
+    texto = await lerTextoPDFComprovante(file);
   } catch (e) {
-    console.error('lerValorComprovanteIA:', e);
-    return null;
+    console.error('lerValorComprovanteLocal:', e);
+    return { valor: null, motivo: 'erro' };
   }
+  if (!texto || !texto.replace(/\s/g, '').length) return { valor: null, motivo: 'pdf-sem-texto' };
+  var valor = extrairValorComprovante(texto);
+  return { valor: valor, motivo: valor === null ? 'ambiguo' : null };
 }
 
 // Lê o comprovante, decide o selo (ok/divergente/sem_leitura) e salva no
-// aporte. Tolerância de 1 centavo pra absorver arredondamento. Sem chave
-// Groq configurada, não grava nada (fica null = "ainda não processado",
-// não "sem_leitura") -- assim, assim que a chave for configurada, uma
-// nova conferência (upload novo ou botão de backfill) tenta de novo.
+// aporte. Tolerância de 1 centavo pra absorver arredondamento.
 async function conferirComprovanteAporte(aporteId, file, valorLancado) {
-  if (!GROQ_API_KEY) return null;
-  var lido = await lerValorComprovanteIA(file);
-  var status = lido === null ? 'sem_leitura' : (Math.abs(lido - Number(valorLancado)) < 0.01 ? 'ok' : 'divergente');
-  var campos = { conferencia_valor: lido, conferencia_status: status, conferido_em: new Date().toISOString() };
+  var resultado = await lerValorComprovanteLocal(file);
+  var status = resultado.valor === null ? 'sem_leitura' : (Math.abs(resultado.valor - Number(valorLancado)) < 0.01 ? 'ok' : 'divergente');
+  var campos = {
+    conferencia_valor: resultado.valor,
+    conferencia_status: status,
+    conferencia_obs: resultado.motivo || null,
+    conferido_em: new Date().toISOString()
+  };
   var res = await sb.from('pagamento_aportes').update(campos).eq('id', aporteId);
   if (res.error) { console.error('conferirComprovanteAporte (salvar):', res.error); return null; }
   return campos;
@@ -936,8 +936,15 @@ function renderSeloConferencia(aporte) {
       '<span class="selo-tip"><span class="selo-tip-ico">i</span><span class="selo-tip-bubble">Comprovante mostra <b>'+fmt(lido)+'</b>, mas o sistema tem lançado <b>'+fmt(aporte.valor)+'</b> para este pagamento. Confira o anexo.</span></span>'+
       '</div><div class="selo-conf-detalhe">comprovante: <b>'+fmt(lido)+'</b> · lançado: <b>'+fmt(aporte.valor)+'</b></div>';
   }
+  var motivos = {
+    'imagem': 'Comprovante é uma foto/print (imagem) — sem texto pra ler, precisaria de OCR.',
+    'pdf-sem-texto': 'PDF sem texto selecionável (provavelmente é um print salvo como PDF) — precisaria de OCR.',
+    'ambiguo': 'Não encontrei um valor único com confiança no texto do PDF.',
+    'erro': 'Erro ao processar o arquivo.'
+  };
+  var msg = motivos[aporte.conferencia_obs] || 'Não deu pra identificar o valor automaticamente.';
   return '<div class="selo-conf" style="color:#94a3b8;background:rgba(148,163,184,0.12);border-color:rgba(148,163,184,0.32)">❔ Não deu para ler o valor'+
-    '<span class="selo-tip"><span class="selo-tip-ico">i</span><span class="selo-tip-bubble">Foto ilegível ou fora do padrão. Não impede o pagamento — só não há conferência automática aqui. Confira manualmente.</span></span></div>';
+    '<span class="selo-tip"><span class="selo-tip-ico">i</span><span class="selo-tip-bubble">'+msg+' Não impede o pagamento — só não há conferência automática aqui. Confira manualmente.</span></span></div>';
 }
 
 // ── Autenticação por senha ────────────────────────────────────
