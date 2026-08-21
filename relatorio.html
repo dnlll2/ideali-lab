@@ -124,6 +124,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .comp-btn{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:6px;border:0.5px solid rgba(96,165,250,0.4);background:#1a2a40;color:#60a5fa;font-size:11px;font-weight:500;cursor:pointer;text-decoration:none;transition:all 0.15s;white-space:nowrap;font-family:inherit}
 .comp-btn:hover{background:#1d3a6e;border-color:#3b82f6}
 .no-comp{font-size:11px;color:#4a5568}
+.rel-doc-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:26px;border-radius:6px;border:0.5px solid rgba(34,197,94,0.4);background:#0d3d2b;color:#4ade80;cursor:pointer;text-decoration:none;transition:all 0.15s}
+.rel-doc-btn:hover{background:#125c3f;border-color:#22c55e}
 .loading{text-align:center;padding:40px;color:#64748b;font-size:13px}
 .spinner{width:28px;height:28px;border:2.5px solid rgba(255,255,255,0.08);border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 10px}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -221,6 +223,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     '.valor-pago{color:'+t.success+' !important}',
     '.comp-btn{background:'+hexToRgba(t.accent,0.16)+' !important;color:'+t.accent+' !important;border-color:'+hexToRgba(t.accent,0.4)+' !important}',
     '.comp-btn:hover{background:'+hexToRgba(t.accent,0.26)+' !important;border-color:'+t.accent+' !important}',
+    '.rel-doc-btn{background:'+hexToRgba(t.success,0.16)+' !important;color:'+t.success+' !important;border-color:'+hexToRgba(t.success,0.4)+' !important}',
+    '.rel-doc-btn:hover{background:'+hexToRgba(t.success,0.26)+' !important;border-color:'+t.success+' !important}',
     '.spinner{border-top-color:'+t.accent+' !important}',
     '.error-box{background:'+hexToRgba(t.danger,0.15)+' !important;border-color:'+t.danger+' !important}',
     '.error-box i,.error-box p{color:'+t.danger+' !important}',
@@ -577,6 +581,9 @@ function renderTable(stateMap, newCompMap) {
       '<td><div>' + valorPagoHtml + restaHtml + '</div></td>' +
       '<td><div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start">' + compHtml + '</div></td>' +
       '<td style="text-align:center">' + (obsIcon || '<span class="no-comp">—</span>') + '</td>' +
+      '<td style="text-align:center">' + (vp > 0
+        ? '<a class="rel-doc-btn" href="relatorio-comprovantes.html?reg=' + c.reg + '&mes=' + viewMonth + '&ano=' + viewYear + '" target="_blank" rel="noopener" title="Gerar relatório de comprovantes (pra enviar pra Inove)"><i class="ti ti-file-text" style="font-size:13px"></i></a>'
+        : '<span class="no-comp">—</span>') + '</td>' +
       '</tr>';
   }).join('');
 
@@ -589,6 +596,7 @@ function renderTable(stateMap, newCompMap) {
     '<th>Valor pago</th>' +
     '<th>Comprovante</th>' +
     '<th style="text-align:center">Obs</th>' +
+    '<th style="text-align:center">Relatório</th>' +
     '</tr></thead>' +
     '<tbody>' + rows + '</tbody>' +
     '</table>';
