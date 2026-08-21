@@ -825,12 +825,14 @@ function renderIAHistory() {
 // parseExtratoInove): pdf.js lê o texto selecionável do PDF, regex acha o
 // valor em reais. Sem IA, sem chave, sem chamada de rede nenhuma. Compara
 // com pagamento_aportes.valor e guarda o resultado em
-// conferencia_status/conferencia_valor/conferencia_obs (ver
-// supabase/036_conferencia_comprovante.sql). Roda uma vez por aporte: no
-// upload (contas-receber.html, adicionarAporte) ou no backfill dos
-// comprovantes já anexados (contas-receber.html, backfillConferenciaComprovantes,
-// acionado pelo botão "🔍 Conferir comprovantes antigos"). Nunca altera o
-// valor lançado -- só informa via selo, quem decide é sempre a Ideali.
+// conferencia_status/conferencia_valor/conferencia_obs/conferencia_data_texto
+// (ver supabase/036_conferencia_comprovante.sql e 037_conferencia_comprovante_data.sql).
+// Roda uma vez por aporte: no upload (contas-receber.html, adicionarAporte),
+// ao clicar num cliente (conferirAportesPendentes, cobre os comprovantes já
+// anexados desse cliente sozinho) ou no botão "🔍 Conferir comprovantes
+// antigos" no cabeçalho (backfillConferenciaComprovantes, cobre todo mundo
+// de uma vez). Nunca altera o valor lançado -- só informa via selo, quem
+// decide é sempre a Ideali.
 //
 // Limite conhecido: só lê PDF com texto de verdade. Comprovante que é foto/print
 // (imagem) não tem camada de texto nenhuma pra ler -- precisaria de OCR, que
@@ -882,33 +884,52 @@ function extrairValorComprovante(texto) {
   return chaves.length === 1 ? parseFloat(chaves[0]) : null;
 }
 
-// Lê o comprovante localmente. Retorna { valor, motivo } -- valor number ou
-// null; motivo só é preenchido quando valor é null, pra explicar o porquê
-// no selo (ver renderSeloConferencia): 'imagem' | 'pdf-sem-texto' | 'ambiguo' | 'erro'.
-async function lerValorComprovanteLocal(file) {
-  if (file.type !== 'application/pdf') return { valor: null, motivo: 'imagem' };
-  if (typeof pdfjsLib === 'undefined') return { valor: null, motivo: 'erro' };
+// Acha a data (e hora, se tiver perto) que o comprovante mostra -- só pra
+// exibir junto do valor quando diverge (ajuda a confrontar com a Inove:
+// "o comprovante é desse dia, mostra esse valor"). Pega a 1ª data no
+// formato DD/MM/AAAA do texto e, se houver um HH:MM nos 40 caracteres
+// seguintes, junta os dois. Sem regra de desambiguação: é só exibição,
+// não entra na decisão de bate/não bate.
+function extrairDataComprovante(texto) {
+  if (!texto) return null;
+  var mData = texto.match(/\d{2}\/\d{2}\/\d{4}/);
+  if (!mData) return null;
+  var resto = texto.slice(mData.index + mData[0].length, mData.index + mData[0].length + 40);
+  var mHora = resto.match(/\d{2}:\d{2}/);
+  return mHora ? mData[0] + ' ' + mHora[0] : mData[0];
+}
+
+// Lê o comprovante localmente. Retorna { valor, dataTexto, motivo} -- valor
+// number ou null; motivo só é preenchido quando valor é null, pra explicar
+// o porquê no selo (ver renderSeloConferencia): 'imagem' | 'pdf-sem-texto' |
+// 'ambiguo' | 'erro'.
+async function lerDadosComprovanteLocal(file) {
+  if (file.type !== 'application/pdf') return { valor: null, dataTexto: null, motivo: 'imagem' };
+  if (typeof pdfjsLib === 'undefined') return { valor: null, dataTexto: null, motivo: 'erro' };
   var texto;
   try {
     texto = await lerTextoPDFComprovante(file);
   } catch (e) {
-    console.error('lerValorComprovanteLocal:', e);
-    return { valor: null, motivo: 'erro' };
+    console.error('lerDadosComprovanteLocal:', e);
+    return { valor: null, dataTexto: null, motivo: 'erro' };
   }
-  if (!texto || !texto.replace(/\s/g, '').length) return { valor: null, motivo: 'pdf-sem-texto' };
+  if (!texto || !texto.replace(/\s/g, '').length) return { valor: null, dataTexto: null, motivo: 'pdf-sem-texto' };
   var valor = extrairValorComprovante(texto);
-  return { valor: valor, motivo: valor === null ? 'ambiguo' : null };
+  return { valor: valor, dataTexto: extrairDataComprovante(texto), motivo: valor === null ? 'ambiguo' : null };
 }
 
 // Lê o comprovante, decide o selo (ok/divergente/sem_leitura) e salva no
-// aporte. Tolerância de 1 centavo pra absorver arredondamento.
+// aporte. Tolerância de 1 centavo pra absorver arredondamento -- a
+// comparação é só pelo valor (o que a Inove questiona); a data lida vai
+// junto só como informação extra pro selo de divergência.
 async function conferirComprovanteAporte(aporteId, file, valorLancado) {
-  var resultado = await lerValorComprovanteLocal(file);
+  var resultado = await lerDadosComprovanteLocal(file);
   var status = resultado.valor === null ? 'sem_leitura' : (Math.abs(resultado.valor - Number(valorLancado)) < 0.01 ? 'ok' : 'divergente');
   var campos = {
     conferencia_valor: resultado.valor,
     conferencia_status: status,
     conferencia_obs: resultado.motivo || null,
+    conferencia_data_texto: resultado.dataTexto || null,
     conferido_em: new Date().toISOString()
   };
   var res = await sb.from('pagamento_aportes').update(campos).eq('id', aporteId);
@@ -932,9 +953,13 @@ function renderSeloConferencia(aporte) {
   }
   if (status === 'divergente') {
     var lido = aporte.conferencia_valor;
+    var dataLida = aporte.conferencia_data_texto;
+    var dataLancada = aporte.data_pagamento ? new Date(aporte.data_pagamento+'T00:00:00').toLocaleDateString('pt-BR') : null;
+    var tipTxt = 'Comprovante mostra <b>'+fmt(lido)+'</b>'+(dataLida?' ('+dataLida+')':'')+', mas o sistema tem lançado <b>'+fmt(aporte.valor)+'</b>'+(dataLancada?' em '+dataLancada:'')+' para este pagamento. Confira o anexo.';
+    var detalheTxt = 'comprovante: <b>'+fmt(lido)+'</b>'+(dataLida?' ('+dataLida+')':'')+' · lançado: <b>'+fmt(aporte.valor)+'</b>';
     return '<div class="selo-conf" style="color:'+t.warn+';background:'+hexToRgba(t.warn,0.14)+';border-color:'+hexToRgba(t.warn,0.4)+'">⚠️ Divergência'+
-      '<span class="selo-tip"><span class="selo-tip-ico">i</span><span class="selo-tip-bubble">Comprovante mostra <b>'+fmt(lido)+'</b>, mas o sistema tem lançado <b>'+fmt(aporte.valor)+'</b> para este pagamento. Confira o anexo.</span></span>'+
-      '</div><div class="selo-conf-detalhe">comprovante: <b>'+fmt(lido)+'</b> · lançado: <b>'+fmt(aporte.valor)+'</b></div>';
+      '<span class="selo-tip"><span class="selo-tip-ico">i</span><span class="selo-tip-bubble">'+tipTxt+'</span></span>'+
+      '</div><div class="selo-conf-detalhe">'+detalheTxt+'</div>';
   }
   var motivos = {
     'imagem': 'Comprovante é uma foto/print (imagem) — sem texto pra ler, precisaria de OCR.',
