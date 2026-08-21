@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatório de Comprovantes - Ideali Laboratório</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<script>
+// ── Autenticação por senha (espelho leve de checkAuth em shared.js) ────────
+// Página standalone (não carrega shared.js), mesmo padrão de relatorio.html:
+// usa a mesma senha e a mesma chave de sessionStorage, então a sessão
+// continua válida ao navegar pra/de outras páginas do sistema.
+(function checkAuth() {
+  var IDEALI_PASSWORD = 'ideali2026';
+  if (sessionStorage.getItem('ideali-auth') === 'ok') return;
+
+  function injectLogin() {
+    var overlay = document.createElement('div');
+    overlay.id = 'auth-overlay';
+    overlay.style.cssText = [
+      'position:fixed','inset:0','background:#0f1117','z-index:99999',
+      'display:flex','align-items:center','justify-content:center',
+      'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif'
+    ].join(';');
+    overlay.innerHTML =
+      '<div style="background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px 28px;width:min(340px,90vw);text-align:center">'+
+        '<img src="assets/logo.png" alt="" style="height:64px;width:64px;object-fit:contain;margin:0 auto 8px;display:block">'+
+        '<p style="font-size:18px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Ideali Laboratório</p>'+
+        '<p style="font-size:13px;color:#64748b;margin-bottom:24px">Digite a senha para continuar</p>'+
+        '<input id="auth-inp" type="password" placeholder="Senha" autocomplete="current-password" '+
+          'style="width:100%;height:40px;background:#0f1117;border:0.5px solid rgba(255,255,255,0.15);'+
+          'border-radius:8px;padding:0 14px;font-size:14px;color:#e2e8f0;outline:none;font-family:inherit;margin-bottom:10px"/>'+
+        '<p id="auth-err" style="font-size:12px;color:#ef4444;margin-bottom:10px;min-height:16px"></p>'+
+        '<button id="auth-btn" '+
+          'style="width:100%;height:40px;background:#1d4ed8;border:none;border-radius:8px;'+
+          'color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Entrar</button>'+
+      '</div>';
+    document.body.appendChild(overlay);
+    document.getElementById('auth-inp').focus();
+
+    function tryLogin() {
+      var val = (document.getElementById('auth-inp').value || '').trim();
+      if (val === IDEALI_PASSWORD) {
+        sessionStorage.setItem('ideali-auth', 'ok');
+        document.getElementById('auth-overlay').remove();
+      } else {
+        var err = document.getElementById('auth-err');
+        var inp = document.getElementById('auth-inp');
+        if (err) err.textContent = 'Senha incorreta. Tente novamente.';
+        if (inp) {
+          inp.value = '';
+          inp.style.borderColor = '#ef4444';
+          inp.focus();
+          setTimeout(function(){ inp.style.borderColor = ''; }, 1500);
+        }
+      }
+    }
+
+    document.getElementById('auth-btn').addEventListener('click', tryLogin);
+    document.getElementById('auth-inp').addEventListener('keydown', function(e){
+      if (e.key === 'Enter') tryLogin();
+    });
+  }
+
+  if (document.body) { injectLogin(); }
+  else { document.addEventListener('DOMContentLoaded', injectLogin); }
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#eef2f6;
+  --paper:#ffffff;
+  --ink:#1b2430;
+  --muted:#5b6b7c;
+  --dim:#8a97a6;
+  --line:#e2e8ee;
+  --line-strong:#cdd6e0;
+  --accent:#1e5aa8;
+  --success:#1f8a5b;
+  --success-soft:#e8f5ee;
+  --warn:#a3670a;
+  --warn-soft:#fbf1de;
+  --neutral:#5b6b7c;
+  --neutral-soft:#eef1f4;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:Manrope,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  padding:32px 20px 64px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:18px;
+}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace}
+
+.toolbar{width:min(760px,100%);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--muted);text-decoration:none}
+.back-link:hover{color:var(--ink)}
+.print-btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 18px;border-radius:9px;background:var(--accent);color:#fff;border:none;font-size:13.5px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(30,90,168,0.28)}
+
+.doc{width:min(760px,100%);background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 3px rgba(20,30,45,0.06), 0 12px 32px rgba(20,30,45,0.07);overflow:hidden}
+.doc-band{background:linear-gradient(100deg,#1e5aa8 0%,#2f8fae 55%,#1f8f8a 100%);padding:22px 32px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{width:38px;height:38px;border-radius:9px;background:rgba(255,255,255,0.16);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.brand-name{font-size:14.5px;font-weight:800;color:#fff;letter-spacing:0.01em}
+.brand-sub{font-size:11.5px;color:rgba(255,255,255,0.78);margin-top:1px}
+.doc-tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:rgba(255,255,255,0.92);background:rgba(255,255,255,0.16);padding:6px 12px;border-radius:20px;white-space:nowrap}
+
+.doc-head{padding:26px 32px 20px;border-bottom:1px solid var(--line);display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.doc-title{font-size:22px;font-weight:800;text-wrap:balance;margin:0 0 6px}
+.doc-client{font-size:14.5px;color:var(--muted)}
+.doc-client b{color:var(--ink);font-weight:700}
+.doc-meta{text-align:right;font-size:12px;color:var(--dim);line-height:1.6}
+.doc-meta b{color:var(--muted);font-weight:600}
+
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.summary-cell{background:var(--paper);padding:16px 32px}
+.summary-lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--dim);margin-bottom:5px}
+.summary-val{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.summary-val.success{color:var(--success)}
+.summary-val.accent{color:var(--accent)}
+
+.doc-body{padding:8px 32px 28px}
+table{width:100%;border-collapse:collapse;margin-top:14px}
+th{text-align:left;font-size:10.5px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:0.06em;padding:0 10px 10px;border-bottom:1.5px solid var(--line-strong);white-space:nowrap}
+th.num,td.num{text-align:right}
+td{padding:13px 10px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+td.data{color:var(--muted);white-space:nowrap}
+td.valor{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.selo{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap}
+.selo.ok{color:var(--success);background:var(--success-soft)}
+.selo.warn{color:var(--warn);background:var(--warn-soft)}
+.selo.neutral{color:var(--neutral);background:var(--neutral-soft)}
+.selo-sub{display:block;font-size:11px;color:var(--dim);margin-top:4px}
+
+.ver-link{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;color:var(--accent);text-decoration:none;white-space:nowrap}
+.ver-link:hover{text-decoration:underline}
+
+.doc-foot{padding:18px 32px 24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.foot-total{font-size:13.5px;color:var(--muted)}
+.foot-total b{font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums;margin-left:6px}
+.foot-gen{font-size:11px;color:var(--dim);text-align:right;line-height:1.6}
+
+.state-msg{width:min(760px,100%);background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:40px;text-align:center;color:var(--muted);font-size:14px}
+
+@media print{
+  .toolbar{display:none}
+  body{background:#fff;padding:0}
+  .doc{box-shadow:none;border:none;border-radius:0;width:100%}
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <a class="back-link" href="relatorio.html">← Voltar pro relatório</a>
+  <button class="print-btn" onclick="window.print()">🖨️ Imprimir / Salvar como PDF</button>
+</div>
+
+<div id="content">
+  <div class="state-msg">Carregando…</div>
+</div>
+
+<script>
+var SUPABASE_URL = 'https://alqhhgysvehtgkwsxeok.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFscWhoZ3lzdmVodGdrd3N4ZW9rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDE0ODg2NSwiZXhwIjoyMDk1NzI0ODY1fQ.xogvgvFob-7Ir6hSLkz0pOj3GawRPRbwfz9oGuGQ90E';
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+var MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function fmt(v) {
+  return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtData(iso) {
+  return iso ? new Date(iso+'T00:00:00').toLocaleDateString('pt-BR') : '—';
+}
+
+function seloHtml(a) {
+  var status = a.conferencia_status;
+  if (!a.comprovante_url) return '<span class="selo neutral">— Sem comprovante</span>';
+  if (status === 'ok') return '<span class="selo ok">✓ Confere</span>';
+  if (status === 'divergente') {
+    var sub = 'comprovante: ' + fmt(a.conferencia_valor) + (a.conferencia_data_texto ? ' (' + escHtml(a.conferencia_data_texto) + ')' : '');
+    return '<span class="selo warn">⚠ Divergência</span><span class="selo-sub">' + sub + '</span>';
+  }
+  var motivos = {
+    'imagem': 'foto/print, sem leitura automática',
+    'pdf-sem-texto': 'PDF sem texto selecionável',
+    'ambiguo': 'valor ambíguo no comprovante',
+    'erro': 'erro ao processar o arquivo'
+  };
+  var sub2 = status === 'sem_leitura' ? (motivos[a.conferencia_obs] || 'não foi possível ler automaticamente') : 'ainda não conferido';
+  return '<span class="selo neutral">— Não conferido</span><span class="selo-sub">' + sub2 + '</span>';
+}
+
+async function montar() {
+  var params = new URLSearchParams(window.location.search);
+  var reg = parseInt(params.get('reg'));
+  var mes = parseInt(params.get('mes'));
+  var ano = parseInt(params.get('ano'));
+  var content = document.getElementById('content');
+
+  if (!reg || isNaN(mes) || isNaN(ano)) {
+    content.innerHTML = '<div class="state-msg">Link inválido — faltam dados do cliente/mês. Volte pro relatório e clique de novo no botão.</div>';
+    return;
+  }
+
+  try {
+    var [clRes, apRes] = await Promise.all([
+      sb.from('cadastro_clientes').select('nome').eq('reg', reg).single(),
+      sb.from('pagamento_aportes').select('*').eq('cliente_reg', reg).eq('mes', mes).eq('ano', ano).order('data_pagamento')
+    ]);
+    if (clRes.error) throw clRes.error;
+    if (apRes.error) throw apRes.error;
+
+    var nome = clRes.data ? clRes.data.nome : ('Cliente #' + reg);
+    var aportes = apRes.data || [];
+
+    if (!aportes.length) {
+      content.innerHTML = '<div class="state-msg">Nenhum pagamento lançado pra <b>' + escHtml(nome) + '</b> em ' + MESES[mes] + ' ' + ano + '.</div>';
+      return;
+    }
+
+    var total = 0, confOk = 0;
+    var rows = aportes.map(function(a) {
+      total += Number(a.valor || 0);
+      if (a.conferencia_status === 'ok') confOk++;
+      var verLink = a.comprovante_url
+        ? '<a class="ver-link" href="' + escHtml(a.comprovante_url) + '" target="_blank" rel="noopener">Ver comprovante ↗</a>'
+        : '<span class="selo-sub" style="margin-top:0">' + (a.legado ? 'lançamento anterior' : 'sem comprovante') + '</span>';
+      return '<tr>' +
+        '<td class="data mono">' + fmtData(a.data_pagamento) + '</td>' +
+        '<td class="valor mono">' + fmt(a.valor) + '</td>' +
+        '<td>' + seloHtml(a) + '</td>' +
+        '<td>' + verLink + '</td>' +
+        '</tr>';
+    }).join('');
+
+    var agora = new Date();
+    var geradoEm = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+
+    content.innerHTML =
+      '<div class="doc">' +
+        '<div class="doc-band">' +
+          '<div class="brand">' +
+            '<div class="brand-mark">🦷</div>' +
+            '<div><div class="brand-name">Ideali Laboratório</div><div class="brand-sub">Prótese e Escaneamento Digital</div></div>' +
+          '</div>' +
+          '<div class="doc-tag">Comprovante de pagamentos</div>' +
+        '</div>' +
+        '<div class="doc-head">' +
+          '<div>' +
+            '<p class="doc-title">Relatório de Comprovantes</p>' +
+            '<p class="doc-client">Cliente: <b>' + escHtml(nome) + '</b> · Período: <b>' + MESES[mes] + ' ' + ano + '</b></p>' +
+          '</div>' +
+          '<div class="doc-meta">Gerado em <b>' + geradoEm + '</b><br>Sistema de Controle Financeiro Ideali</div>' +
+        '</div>' +
+        '<div class="summary">' +
+          '<div class="summary-cell"><div class="summary-lbl">Total pago no mês</div><div class="summary-val accent mono">' + fmt(total) + '</div></div>' +
+          '<div class="summary-cell"><div class="summary-lbl">Pagamentos lançados</div><div class="summary-val mono">' + aportes.length + '</div></div>' +
+          '<div class="summary-cell"><div class="summary-lbl">Conferidos automaticamente</div><div class="summary-val success mono">' + confOk + ' de ' + aportes.length + '</div></div>' +
+        '</div>' +
+        '<div class="doc-body">' +
+          '<table><thead><tr><th>Data</th><th class="num">Valor</th><th>Conferência</th><th>Comprovante</th></tr></thead>' +
+          '<tbody>' + rows + '</tbody></table>' +
+        '</div>' +
+        '<div class="doc-foot">' +
+          '<div class="foot-total">Total do período <b class="mono">' + fmt(total) + '</b></div>' +
+          '<div class="foot-gen">Documento gerado automaticamente pelo sistema Ideali Laboratório.<br>Em caso de dúvida sobre qualquer valor, entre em contato.</div>' +
+        '</div>' +
+      '</div>';
+  } catch (e) {
+    console.error('montar:', e);
+    content.innerHTML = '<div class="state-msg">Erro ao carregar: ' + escHtml(e.message || 'desconhecido') + '</div>';
+  }
+}
+
+montar();
+</script>
+</body>
+</html>
