@@ -493,24 +493,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <script>
-// clients agora vem direto de cadastro_clientes (loadClients, chamado no init) --
-// pagina continua standalone/sem shared.js (sem exigir login da Elisangela), so troca
-// a copia manual (que ficava desatualizada toda vez que um cliente novo era cadastrado
-// so no banco) por uma leitura publica normal na abertura da pagina.
-var clients = [];
-
-async function loadClients() {
-  try {
-    var res = await sb.from('cadastro_clientes').select('reg,nome,end_str,bairro,cidade,uf').order('nome');
-    if (res.error) throw res.error;
-    clients = (res.data || []).map(function(row) {
-      return { reg: row.reg, nome: row.nome || ('Cliente #' + row.reg), end: row.end_str || '', bairro: row.bairro || '', cidade: row.cidade || '', uf: row.uf || '' };
-    });
-  } catch (e) {
-    console.error('loadClients:', e);
-    alert('Não foi possível carregar a lista de clientes. Recarregue a página.');
-  }
-}
+// Seed minimo de clients (reg+nome), usado só como fallback enquanto
+// loadCadastroClientes() (abaixo) não carrega — ela busca a lista real e
+// completa direto da tabela cadastro_clientes, então clientes novos aparecem
+// aqui automaticamente, sem precisar editar este array à mão.
+var clients = [
+  {reg:20,nome:"[REMOVIDO]"},{reg:23,nome:"[REMOVIDO]"},
+  {reg:3,nome:"[REMOVIDO]"},{reg:7,nome:"[REMOVIDO]"},
+  {reg:10,nome:"[REMOVIDO]"},{reg:9,nome:"[REMOVIDO]"},
+  {reg:4,nome:"[REMOVIDO]"},{reg:11,nome:"[REMOVIDO]"},
+  {reg:8,nome:"[REMOVIDO]"},{reg:22,nome:"[REMOVIDO]"},
+  {reg:18,nome:"[REMOVIDO]"},{reg:5,nome:"[REMOVIDO]"},
+  {reg:24,nome:"[REMOVIDO]"},{reg:15,nome:"[REMOVIDO]"},
+  {reg:21,nome:"[REMOVIDO]"},{reg:2,nome:"[REMOVIDO]"},
+  {reg:16,nome:"[REMOVIDO]"},{reg:12,nome:"[REMOVIDO]"},
+  {reg:19,nome:"[REMOVIDO]"},{reg:6,nome:"[REMOVIDO]"},
+  {reg:1,nome:"[REMOVIDO]"},{reg:13,nome:"[REMOVIDO]"},
+  {reg:17,nome:"[REMOVIDO]"},{reg:25,nome:"[REMOVIDO]"},
+  {reg:26,nome:"[REMOVIDO]"},{reg:27,nome:"[REMOVIDO]"},
+  {reg:28,nome:"[REMOVIDO]"},{reg:29,nome:"[REMOVIDO]"},
+  {reg:30,nome:"[REMOVIDO]"},{reg:31,nome:"[REMOVIDO]"},
+  {reg:32,nome:"[REMOVIDO]"},{reg:33,nome:"[REMOVIDO]"},
+  {reg:34,nome:"[REMOVIDO]"},{reg:35,nome:"[REMOVIDO]"},
+  {reg:36,nome:"[REMOVIDO]"},{reg:37,nome:"[REMOVIDO]"}
+];
 
 var SUPABASE_URL = 'https://alqhhgysvehtgkwsxeok.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFscWhoZ3lzdmVodGdrd3N4ZW9rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDE0ODg2NSwiZXhwIjoyMDk1NzI0ODY1fQ.xogvgvFob-7Ir6hSLkz0pOj3GawRPRbwfz9oGuGQ90E';
@@ -1613,8 +1619,27 @@ async function findDefaultMonth() {
   return { m: currentMonth, y: currentYear };
 }
 
+// Carrega a lista real de clientes da tabela cadastro_clientes, atualizando/
+// completando o seed hardcoded acima (mesmo padrão de contas-receber.html) --
+// assim um cliente novo cadastrado lá aparece aqui sem precisar editar este arquivo.
+async function loadCadastroClientes() {
+  try {
+    // end_str/bairro/cidade/uf entram aqui pro endereco do cabecalho do "Gerar Extrato" --
+    // ver gerarExtratoCliente() mais abaixo.
+    var res = await sb.from('cadastro_clientes').select('reg,nome,end_str,bairro,cidade,uf');
+    if (res.error) { console.error('loadCadastroClientes:', res.error); return; }
+    (res.data || []).forEach(function(row) {
+      var idx = -1;
+      for (var i=0; i<clients.length; i++) { if (clients[i].reg === row.reg) { idx = i; break; } }
+      var obj = { reg: row.reg, nome: row.nome || ('Cliente #' + row.reg), end: row.end_str || '', bairro: row.bairro || '', cidade: row.cidade || '', uf: row.uf || '' };
+      if (idx >= 0) clients[idx] = obj; else clients.push(obj);
+    });
+    clients.sort(function(a,b){ return a.nome.localeCompare(b.nome, 'pt-BR'); });
+  } catch (e) { console.warn('[loadCadastroClientes]', e); }
+}
+
 async function init() {
-  await loadClients();
+  await loadCadastroClientes();
   var def = await findDefaultMonth();
   viewMonth = def.m; viewYear = def.y;
   renderMonthDD();
