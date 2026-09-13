@@ -493,24 +493,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <script>
-// clients agora vem direto de cadastro_clientes (loadClients, chamado no init) --
-// pagina continua standalone/sem shared.js (sem exigir login da Elisangela), so troca
-// a copia manual (que ficava desatualizada toda vez que um cliente novo era cadastrado
-// so no banco) por uma leitura publica normal na abertura da pagina.
-var clients = [];
-
-async function loadClients() {
-  try {
-    var res = await sb.from('cadastro_clientes').select('reg,nome,end_str,bairro,cidade,uf').order('nome');
-    if (res.error) throw res.error;
-    clients = (res.data || []).map(function(row) {
-      return { reg: row.reg, nome: row.nome || ('Cliente #' + row.reg), end: row.end_str || '', bairro: row.bairro || '', cidade: row.cidade || '', uf: row.uf || '' };
-    });
-  } catch (e) {
-    console.error('loadClients:', e);
-    alert('Não foi possível carregar a lista de clientes. Recarregue a página.');
-  }
-}
+// Seed minimo de clients (reg+nome), usado só como fallback enquanto
+// loadCadastroClientes() (abaixo) não carrega — ela busca a lista real e
+// completa direto da tabela cadastro_clientes, então clientes novos aparecem
+// aqui automaticamente, sem precisar editar este array à mão.
+var clients = [
+  {reg:20,nome:"Adriana Tavares de Almeida"},{reg:23,nome:"Alexandre Miranda Souza"},
+  {reg:3,nome:"Anthony Borges"},{reg:7,nome:"Bruno Rocco Giusto"},
+  {reg:10,nome:"Caio Vinicius Barreto dos Santos"},{reg:9,nome:"Danilo Tuttis T. G. dos Santos"},
+  {reg:4,nome:"Dr. Andre Ricardo G. Da Silva"},{reg:11,nome:"Dr. Renato Oliveira Ferreira da Silva"},
+  {reg:8,nome:"Fernando 021 Dental Barra"},{reg:22,nome:"Gilberto Ferreira Esquivel"},
+  {reg:18,nome:"Henrique Falcao"},{reg:5,nome:"Javier Garrido"},
+  {reg:24,nome:"Jose Ricardo de Miranda Pires"},{reg:15,nome:"Julia Ando"},
+  {reg:21,nome:"Juliano Balseiro"},{reg:2,nome:"Leonardo Moll"},
+  {reg:16,nome:"Luiz Junior"},{reg:12,nome:"Luiz Tolentino"},
+  {reg:19,nome:"Pedro Henrique de Araujo Cruz"},{reg:6,nome:"Renan Gerhard"},
+  {reg:1,nome:"Ricardo Cader"},{reg:13,nome:"Rodrigo Guimaraes"},
+  {reg:17,nome:"Talia Estefanelli Sampaio (Dr. Alfeu)"},{reg:25,nome:"Tiago Muller Pereira"},
+  {reg:26,nome:"Raquel Ghesso Brentzel"},{reg:27,nome:"Kleber Luander"},
+  {reg:28,nome:"Luiz Carlos Figueiredo Seixas"},{reg:29,nome:"Paulo Pagano"},
+  {reg:30,nome:"Juliana Barros"},{reg:31,nome:"Pedro Silva"},
+  {reg:32,nome:"Carlos Vinicios Camelo"},{reg:33,nome:"Clinica Dr Rosmar"},
+  {reg:34,nome:"Roberto Isao"},{reg:35,nome:"Rafael Heino Santos"},
+  {reg:36,nome:"Oral 360 Copa"},{reg:37,nome:"Zivana Castilhos dos Santos"}
+];
 
 var SUPABASE_URL = 'https://alqhhgysvehtgkwsxeok.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFscWhoZ3lzdmVodGdrd3N4ZW9rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDE0ODg2NSwiZXhwIjoyMDk1NzI0ODY1fQ.xogvgvFob-7Ir6hSLkz0pOj3GawRPRbwfz9oGuGQ90E';
@@ -1613,8 +1619,27 @@ async function findDefaultMonth() {
   return { m: currentMonth, y: currentYear };
 }
 
+// Carrega a lista real de clientes da tabela cadastro_clientes, atualizando/
+// completando o seed hardcoded acima (mesmo padrão de contas-receber.html) --
+// assim um cliente novo cadastrado lá aparece aqui sem precisar editar este arquivo.
+async function loadCadastroClientes() {
+  try {
+    // end_str/bairro/cidade/uf entram aqui pro endereco do cabecalho do "Gerar Extrato" --
+    // ver gerarExtratoCliente() mais abaixo.
+    var res = await sb.from('cadastro_clientes').select('reg,nome,end_str,bairro,cidade,uf');
+    if (res.error) { console.error('loadCadastroClientes:', res.error); return; }
+    (res.data || []).forEach(function(row) {
+      var idx = -1;
+      for (var i=0; i<clients.length; i++) { if (clients[i].reg === row.reg) { idx = i; break; } }
+      var obj = { reg: row.reg, nome: row.nome || ('Cliente #' + row.reg), end: row.end_str || '', bairro: row.bairro || '', cidade: row.cidade || '', uf: row.uf || '' };
+      if (idx >= 0) clients[idx] = obj; else clients.push(obj);
+    });
+    clients.sort(function(a,b){ return a.nome.localeCompare(b.nome, 'pt-BR'); });
+  } catch (e) { console.warn('[loadCadastroClientes]', e); }
+}
+
 async function init() {
-  await loadClients();
+  await loadCadastroClientes();
   var def = await findDefaultMonth();
   viewMonth = def.m; viewYear = def.y;
   renderMonthDD();
