@@ -88,6 +88,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .extrato-row.current{background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.3)}
 .extrato-row-label{display:flex;align-items:center;gap:7px;font-size:13px;color:#e2e8f0}
 .extrato-row-badge{font-size:10px;font-weight:600;color:#f59e0b;background:rgba(245,158,11,0.16);padding:1px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:0.03em}
+.menu-busca-item{padding:8px 10px;border-radius:8px;font-size:13px;color:#e2e8f0;cursor:pointer}
+.menu-busca-item:hover{background:rgba(255,255,255,0.06)}
+.menu-busca-empty{padding:8px 10px;font-size:12px;color:#64748b}
 .btn-gerar-extrato{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#60a5fa;padding:3px 9px;border-radius:6px;border:0.5px solid rgba(96,165,250,0.5);background:rgba(96,165,250,0.14);white-space:nowrap;cursor:pointer;font-family:inherit}
 .btn-gerar-extrato:hover{background:rgba(96,165,250,0.24)}
 .btn-gerar-extrato:disabled{opacity:0.5;cursor:default}
@@ -275,6 +278,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="header header-glass">
   <div style="display:flex;align-items:center;gap:12px">
+    <div style="position:relative">
+      <button class="nav-btn" id="menu-busca-btn" onclick="toggleMenuBusca()" title="Buscar cliente (Extrato + Lançar Pagamento)"><i class="ti ti-menu-2"></i></button>
+      <div id="menu-busca-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:95;width:260px;max-height:320px;overflow-y:auto;background:#1a1d27;border:0.5px solid rgba(255,255,255,0.12);border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+        <input type="text" id="menu-busca-input" class="fin-input" placeholder="Buscar cliente..." oninput="filtrarMenuBusca()" style="margin-bottom:6px">
+        <div id="menu-busca-lista"></div>
+      </div>
+    </div>
     <img src="assets/logo.png" alt="" style="height:34px;width:34px;object-fit:contain;flex-shrink:0">
     <div class="header-left">
       <h1>💰 Pagamentos — Inove</h1>
@@ -482,8 +492,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <button class="modal-close" onclick="fecharModalExtratos()"><i class="ti ti-x"></i></button>
   </div>
-  <div class="modal-body" id="extratos-modal-rows"></div>
+  <div class="modal-body">
+    <div id="extratos-modal-rows"></div>
+    <div id="lancamento-form" style="display:none;margin-top:4px;padding-top:12px;border-top:0.5px solid rgba(255,255,255,0.08)">
+      <p style="font-size:12px;color:#64748b;margin-bottom:8px" id="lancamento-form-titulo">Novo pagamento</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div><p class="label" style="margin-bottom:5px">Data</p><input class="fin-input" type="date" id="lanc-data"></div>
+        <div><p class="label" style="margin-bottom:5px">Valor (R$)</p><input class="fin-input" type="number" id="lanc-valor" placeholder="0,00" min="0.01" step="0.01"></div>
+      </div>
+      <div style="margin-bottom:8px"><p class="label" style="margin-bottom:5px">Comprovante (obrigatório)</p><input class="fin-input" style="padding:4px" type="file" id="lanc-file" accept="image/*,application/pdf"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn-secondary" onclick="cancelarLancamento()">Cancelar</button>
+        <button class="save-btn" id="lanc-save-btn" onclick="salvarLancamentoPagamento()">Salvar pagamento</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-footer">
+    <button class="btn-secondary" id="lanc-toggle-btn" onclick="abrirFormLancamento()"><i class="ti ti-plus"></i> Lançar Pagamento</button>
     <button class="btn-secondary" onclick="fecharModalExtratos()">Fechar</button>
   </div>
 </div>
@@ -955,6 +980,8 @@ function fecharModalAportes() {
 // preenchido em controle_mensal -- pra Elisangela poder ver extratos antigos,
 // nao so o do mes que esta sendo visualizado na tela.
 async function abrirExtratosCliente(reg) {
+  _extratosModalReg = reg;
+  cancelarLancamento();
   var clEl = document.getElementById('extratos-modal-cliente');
   if (clEl) clEl.textContent = nomeCliente(reg);
   var rowsEl = document.getElementById('extratos-modal-rows');
@@ -984,6 +1011,137 @@ async function abrirExtratosCliente(reg) {
       '<a class="comp-link extrato-link" href="'+r.extrato_url+'" target="_blank" rel="noopener">Ver <i class="ti ti-external-link"></i></a>' +
     '</div>';
   }).join('');
+}
+
+// Menu ☰ -- atalho pra achar um cliente e abrir direto o modal de Extrato
+// (com o botão de Lançar Pagamento já disponível), sem rolar a tabela.
+function toggleMenuBusca() {
+  var dd = document.getElementById('menu-busca-dropdown');
+  if (!dd) return;
+  var show = dd.style.display === 'none' || !dd.style.display;
+  dd.style.display = show ? 'block' : 'none';
+  if (show) {
+    var inp = document.getElementById('menu-busca-input');
+    if (inp) { inp.value = ''; inp.focus(); }
+    filtrarMenuBusca();
+  }
+}
+
+function filtrarMenuBusca() {
+  var inp = document.getElementById('menu-busca-input');
+  var termo = (inp ? inp.value : '').toLowerCase().trim();
+  var lista = clients
+    .filter(function(c) { return c.nome.toLowerCase().indexOf(termo) >= 0; })
+    .sort(function(a,b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
+  var el = document.getElementById('menu-busca-lista');
+  if (!el) return;
+  el.innerHTML = lista.length
+    ? lista.map(function(c) { return '<div class="menu-busca-item" onclick="selecionarClienteMenu('+c.reg+')">'+escHtml(c.nome)+'</div>'; }).join('')
+    : '<div class="menu-busca-empty">Nenhum cliente encontrado.</div>';
+}
+
+function selecionarClienteMenu(reg) {
+  var dd = document.getElementById('menu-busca-dropdown');
+  if (dd) dd.style.display = 'none';
+  abrirExtratosCliente(reg);
+}
+
+document.addEventListener('click', function(e) {
+  var dd = document.getElementById('menu-busca-dropdown');
+  var btn = document.getElementById('menu-busca-btn');
+  if (!dd || dd.style.display === 'none') return;
+  if (dd.contains(e.target) || (btn && btn.contains(e.target))) return;
+  dd.style.display = 'none';
+});
+
+// Lançamento de pagamento direto pelo modal de Extrato (público, sem senha) --
+// protegido por PIN só nesta ação (ver/confirmar extrato continuam livres).
+// Troque o PIN abaixo quando quiser.
+var PIN_LANCAMENTO = '7429';
+var _extratosModalReg = null;
+
+function abrirFormLancamento() {
+  var pin = prompt('Digite o PIN para lançar pagamento:');
+  if (pin === null) return;
+  if (pin !== PIN_LANCAMENTO) { alert('PIN incorreto.'); return; }
+  var dataEl = document.getElementById('lanc-data');
+  if (dataEl) dataEl.value = new Date().toISOString().slice(0,10);
+  var tituloEl = document.getElementById('lancamento-form-titulo');
+  if (tituloEl) tituloEl.textContent = 'Novo pagamento — ' + MESES[viewMonth] + '/' + viewYear;
+  var formEl = document.getElementById('lancamento-form');
+  if (formEl) formEl.style.display = '';
+  var btnEl = document.getElementById('lanc-toggle-btn');
+  if (btnEl) btnEl.style.display = 'none';
+}
+
+function cancelarLancamento() {
+  var formEl = document.getElementById('lancamento-form');
+  if (formEl) formEl.style.display = 'none';
+  var btnEl = document.getElementById('lanc-toggle-btn');
+  if (btnEl) btnEl.style.display = '';
+  var dataEl = document.getElementById('lanc-data'); if (dataEl) dataEl.value = '';
+  var valorEl = document.getElementById('lanc-valor'); if (valorEl) valorEl.value = '';
+  var fileEl = document.getElementById('lanc-file'); if (fileEl) fileEl.value = '';
+  var btn = document.getElementById('lanc-save-btn'); if (btn) { btn.disabled = false; btn.textContent = 'Salvar pagamento'; }
+}
+
+async function salvarLancamentoPagamento() {
+  var reg = _extratosModalReg;
+  if (!reg) return;
+  var elData  = document.getElementById('lanc-data');
+  var elValor = document.getElementById('lanc-valor');
+  var elFile  = document.getElementById('lanc-file');
+  var data  = elData ? elData.value : '';
+  var valor = parseFloat(elValor ? elValor.value : '') || 0;
+  var file  = elFile && elFile.files ? elFile.files[0] : null;
+
+  if (valor <= 0) { alert('Informe um valor maior que zero.'); return; }
+  if (!data)      { alert('Informe a data do pagamento.'); return; }
+  if (!file)      { alert('Anexe o comprovante deste pagamento.'); return; }
+
+  var btn = document.getElementById('lanc-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+
+  try {
+    var ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    var path = 'aportes/' + viewYear + '_' + viewMonth + '/reg' + reg + '_' + Date.now() + '.' + ext;
+    var upRes = await sb.storage.from('comprovantes').upload(path, file, {cacheControl:'3600', upsert:true});
+    if (upRes.error) throw upRes.error;
+    var publicUrl = sb.storage.from('comprovantes').getPublicUrl(path).data.publicUrl;
+
+    var insRes = await sb.from('pagamento_aportes').insert({
+      cliente_reg: reg, mes: viewMonth, ano: viewYear,
+      valor: valor, data_pagamento: data,
+      comprovante_path: path, comprovante_url: publicUrl
+    }).select();
+    if (insRes.error) throw insRes.error;
+
+    if (!dbState[reg]) dbState[reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, valor_pago_comissionado:0, obs_pagamento:'', confirmado_pela_inove:true, extrato_url:null, abater_saldo_credor:null, comprovantes:[], aportes:[] };
+    if (!dbState[reg].aportes) dbState[reg].aportes = [];
+    dbState[reg].aportes.push(insRes.data[0]);
+    var soma = dbState[reg].aportes.reduce(function(sum,a){ return sum + Number(a.valor||0); }, 0);
+    dbState[reg].valor_pago = soma;
+    dbState[reg].confirmado_pela_inove = false;
+
+    var existing = await sb.from('controle_mensal').select('id')
+      .eq('cliente_reg', reg).eq('mes', viewMonth).eq('ano', viewYear);
+    if (existing.error) throw existing.error;
+    if (existing.data && existing.data.length) {
+      var upd = await sb.from('controle_mensal').update({ valor_pago: soma, confirmado_pela_inove: false }).eq('id', existing.data[0].id);
+      if (upd.error) throw upd.error;
+    } else {
+      var ins = await sb.from('controle_mensal').insert({ cliente_reg: reg, mes: viewMonth, ano: viewYear, valor_pago: soma, confirmado_pela_inove: false });
+      if (ins.error) throw ins.error;
+    }
+
+    cancelarLancamento();
+    fecharModalExtratos();
+    renderTable();
+  } catch (e) {
+    console.error('salvarLancamentoPagamento:', e);
+    alert('Erro ao lançar pagamento: ' + (e.message || e));
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar pagamento'; }
+  }
 }
 
 function fecharModalExtratos() {
