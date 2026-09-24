@@ -932,28 +932,18 @@ async function adicionarAporte(reg) {
       s.aportes.push(seedRes.data[0]);
     }
 
-    var ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-    var path = 'aportes/' + viewYear + '_' + viewMonth + '/reg' + reg + '_' + Date.now() + '.' + ext;
-    var upRes = await sb.storage.from('comprovantes').upload(path, file, {cacheControl:'3600', upsert:true});
-    if (upRes.error) throw upRes.error;
-    var publicUrl = sb.storage.from('comprovantes').getPublicUrl(path).data.publicUrl;
-
-    var insRes = await sb.from('pagamento_aportes').insert({
+    var resultado = await salvarAporte({
       cliente_reg: reg, mes: viewMonth, ano: viewYear,
-      valor: valor, data_pagamento: data,
-      comprovante_path: path, comprovante_url: publicUrl
-    }).select();
-    if (insRes.error) throw insRes.error;
-    var aporteNovo = insRes.data[0];
+      valor: valor, data_pagamento: data, file: file,
+      aportesAtuais: s.aportes
+    });
+    var aporteNovo = resultado.aporte;
     s.aportes.push(aporteNovo);
-
-    var soma = s.aportes.reduce(function(sum,a){ return sum + Number(a.valor||0); }, 0);
-    s.valor_pago = soma;
+    s.valor_pago = resultado.valor_pago;
     s.confirmado_pela_inove = false;
     dbState[reg] = s;
 
-    var ok = await patchControleMensal(reg, {valor_pago: soma, confirmado_pela_inove: false});
-    if (ok === false) showConnError('Pagamento salvo, mas houve erro ao atualizar o total. Recarregue a página.');
+    if (!resultado.totalAtualizado) showConnError('Pagamento salvo, mas houve erro ao atualizar o total. Recarregue a página.');
 
     updateCounts(); doFilter();
     if (selected && selected.reg === reg) renderDetail();

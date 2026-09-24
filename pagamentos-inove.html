@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script>
 // Página pública (sem senha) — pula a autenticação de shared.js antes dela rodar.
 // Flag local à página (não grava em sessionStorage) pra não vazar acesso pras
@@ -494,8 +495,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <button class="modal-close" onclick="fecharModalExtratos()"><i class="ti ti-x"></i></button>
   </div>
-  <div class="modal-body" id="extratos-modal-rows"></div>
+  <div class="modal-body">
+    <div id="extratos-modal-rows"></div>
+    <div id="lancamento-form" style="display:none;margin-top:4px;padding-top:12px;border-top:0.5px solid rgba(255,255,255,0.08)">
+      <p style="font-size:12px;color:#64748b;margin-bottom:8px" id="lancamento-form-titulo">Novo pagamento</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div><p class="label" style="margin-bottom:5px">Data</p><input class="fin-input" type="date" id="lanc-data"></div>
+        <div><p class="label" style="margin-bottom:5px">Valor (R$)</p><input class="fin-input" type="number" id="lanc-valor" placeholder="0,00" min="0.01" step="0.01"></div>
+      </div>
+      <div style="margin-bottom:8px"><p class="label" style="margin-bottom:5px">Comprovante (obrigatório)</p><input class="fin-input" style="padding:4px" type="file" id="lanc-file" accept="image/*,application/pdf"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn-secondary" onclick="cancelarLancamento()">Cancelar</button>
+        <button class="save-btn" id="lanc-save-btn" onclick="salvarLancamentoPagamento()">Salvar pagamento</button>
+      </div>
+    </div>
+    <div id="lancamento-resultado" style="display:none;margin-top:4px;padding-top:12px;border-top:0.5px solid rgba(255,255,255,0.08)">
+      <p style="font-size:13px;color:#4ade80;margin-bottom:6px"><i class="ti ti-circle-check"></i> <span id="lancamento-resultado-texto"></span></p>
+      <div id="lancamento-resultado-selo"></div>
+    </div>
+  </div>
   <div class="modal-footer">
+    <button class="btn-secondary" id="lanc-toggle-btn" onclick="abrirFormLancamento()"><i class="ti ti-plus"></i> Lançar Pagamento</button>
     <button class="btn-secondary" onclick="fecharModalExtratos()">Fechar</button>
   </div>
 </div>
@@ -563,6 +583,12 @@ var monthDDOpen = false;
 var extraMonths = [];
 var dbState = {};
 var prevMonthMap = {};
+
+// Config do pdf.js (usado por lerDadosComprovanteLocal/conferirComprovanteAporte,
+// de shared.js) pra ler o texto de comprovantes PDF anexados no lançamento de pagamento.
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+}
 
 function fmt(v) {
   return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -967,6 +993,8 @@ function fecharModalAportes() {
 // preenchido em controle_mensal -- pra Elisangela poder ver extratos antigos,
 // nao so o do mes que esta sendo visualizado na tela.
 async function abrirExtratosCliente(reg) {
+  _extratosModalReg = reg;
+  cancelarLancamento();
   var clEl = document.getElementById('extratos-modal-cliente');
   if (clEl) clEl.textContent = nomeCliente(reg);
   var rowsEl = document.getElementById('extratos-modal-rows');
@@ -1047,6 +1075,107 @@ document.addEventListener('click', function(e) {
 function fecharModalExtratos() {
   document.getElementById('extratos-modal-overlay').style.display = 'none';
   document.getElementById('extratos-modal').style.display = 'none';
+}
+
+// Lançamento de pagamento direto pelo modal de Extrato -- reaproveita
+// salvarAporte() e conferirComprovanteAporte() de shared.js, exatamente
+// o mesmo núcleo usado em contas-receber.html.
+var _extratosModalReg = null;
+
+function abrirFormLancamento() {
+  var dataEl = document.getElementById('lanc-data');
+  if (dataEl) dataEl.value = new Date().toISOString().slice(0,10);
+  var tituloEl = document.getElementById('lancamento-form-titulo');
+  if (tituloEl) tituloEl.textContent = 'Novo pagamento — ' + MESES[viewMonth] + '/' + viewYear;
+  var resEl = document.getElementById('lancamento-resultado');
+  if (resEl) resEl.style.display = 'none';
+  var formEl = document.getElementById('lancamento-form');
+  if (formEl) formEl.style.display = '';
+  var btnEl = document.getElementById('lanc-toggle-btn');
+  if (btnEl) btnEl.style.display = 'none';
+}
+
+function cancelarLancamento() {
+  var formEl = document.getElementById('lancamento-form');
+  if (formEl) formEl.style.display = 'none';
+  var resEl = document.getElementById('lancamento-resultado');
+  if (resEl) resEl.style.display = 'none';
+  var btnEl = document.getElementById('lanc-toggle-btn');
+  if (btnEl) btnEl.style.display = '';
+  var dataEl = document.getElementById('lanc-data'); if (dataEl) dataEl.value = '';
+  var valorEl = document.getElementById('lanc-valor'); if (valorEl) valorEl.value = '';
+  var fileEl = document.getElementById('lanc-file'); if (fileEl) fileEl.value = '';
+  var btn = document.getElementById('lanc-save-btn'); if (btn) { btn.disabled = false; btn.textContent = 'Salvar pagamento'; }
+}
+
+async function salvarLancamentoPagamento() {
+  var reg = _extratosModalReg;
+  if (!reg) return;
+  var elData  = document.getElementById('lanc-data');
+  var elValor = document.getElementById('lanc-valor');
+  var elFile  = document.getElementById('lanc-file');
+  var data  = elData ? elData.value : '';
+  var valor = parseFloat(elValor ? elValor.value : '') || 0;
+  var file  = elFile && elFile.files ? elFile.files[0] : null;
+
+  if (valor <= 0) { alert('Informe um valor maior que zero.'); return; }
+  if (!data)      { alert('Informe a data do pagamento.'); return; }
+  if (!file)      { alert('Anexe o comprovante deste pagamento.'); return; }
+
+  var btn = document.getElementById('lanc-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+
+  try {
+    if (!dbState[reg]) dbState[reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, valor_pago_comissionado:0, obs_pagamento:'', confirmado_pela_inove:true, extrato_url:null, abater_saldo_credor:null, comprovantes:[], aportes:[] };
+    if (!dbState[reg].aportes) dbState[reg].aportes = [];
+
+    var resultado = await salvarAporte({
+      cliente_reg: reg, mes: viewMonth, ano: viewYear,
+      valor: valor, data_pagamento: data, file: file,
+      aportesAtuais: dbState[reg].aportes
+    });
+    var aporteNovo = resultado.aporte;
+    dbState[reg].aportes.push(aporteNovo);
+    dbState[reg].valor_pago = resultado.valor_pago;
+    dbState[reg].confirmado_pela_inove = false;
+
+    if (!resultado.totalAtualizado) alert('Pagamento salvo, mas houve erro ao atualizar o total exibido. Recarregue a página pra conferir.');
+
+    renderTable();
+
+    // Confirmação fica dentro do próprio modal, com o selo de conferência
+    // automática do comprovante (mesmo fluxo/visual de contas-receber.html) --
+    // roda em segundo plano e atualiza o selo quando terminar.
+    var formEl = document.getElementById('lancamento-form');
+    if (formEl) formEl.style.display = 'none';
+    var resEl = document.getElementById('lancamento-resultado');
+    var txtEl = document.getElementById('lancamento-resultado-texto');
+    var seloEl = document.getElementById('lancamento-resultado-selo');
+    if (txtEl) txtEl.textContent = 'Pagamento de ' + fmt(valor) + ' lançado em ' + new Date(data+'T00:00:00').toLocaleDateString('pt-BR') + '.';
+    aporteNovo._conferindo = true;
+    if (seloEl) seloEl.innerHTML = renderSeloConferencia(aporteNovo);
+    if (resEl) resEl.style.display = '';
+
+    conferirComprovanteAporte(aporteNovo.id, file, valor).then(function(campos) {
+      aporteNovo._conferindo = false;
+      if (!campos) { if (seloEl) seloEl.innerHTML = ''; return; }
+      aporteNovo.conferencia_valor = campos.conferencia_valor;
+      aporteNovo.conferencia_status = campos.conferencia_status;
+      aporteNovo.conferencia_obs = campos.conferencia_obs;
+      aporteNovo.conferencia_data_texto = campos.conferencia_data_texto;
+      aporteNovo.conferido_em = campos.conferido_em;
+      if (seloEl) seloEl.innerHTML = renderSeloConferencia(aporteNovo);
+    });
+
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar pagamento'; }
+    var dataEl2 = document.getElementById('lanc-data'); if (dataEl2) dataEl2.value = '';
+    var valorEl2 = document.getElementById('lanc-valor'); if (valorEl2) valorEl2.value = '';
+    var fileEl2 = document.getElementById('lanc-file'); if (fileEl2) fileEl2.value = '';
+  } catch (e) {
+    console.error('salvarLancamentoPagamento:', e);
+    alert('Erro ao lançar pagamento: ' + (e.message || e));
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar pagamento'; }
+  }
 }
 
 async function confirmarPagamentoComissao() {
