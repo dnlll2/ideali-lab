@@ -495,9 +495,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <button class="modal-close" onclick="fecharModalExtratos()"><i class="ti ti-x"></i></button>
   </div>
+  <div class="modal-body" id="extratos-modal-rows"></div>
+  <div class="modal-footer">
+    <button class="btn-secondary" onclick="fecharModalExtratos()">Fechar</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="extrato-gerado-modal-overlay" onclick="fecharExtratoGerado()"></div>
+<div class="modal" id="extrato-gerado-modal" style="width:min(680px,95vw)">
+  <div class="modal-header">
+    <div>
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9">Extrato do Sistema</p>
+      <p style="font-size:12px;color:#64748b" id="extrato-gerado-cliente">—</p>
+    </div>
+    <button class="modal-close" onclick="fecharExtratoGerado()"><i class="ti ti-x"></i></button>
+  </div>
   <div class="modal-body">
-    <div id="extratos-modal-rows"></div>
-    <div id="lancamento-form" style="display:none;margin-top:4px;padding-top:12px;border-top:0.5px solid rgba(255,255,255,0.08)">
+    <div id="extrato-gerado-aviso"></div>
+    <div style="overflow-x:auto">
+      <table class="comissao-table">
+        <thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th style="text-align:right">Saldo</th></tr></thead>
+        <tbody id="extrato-gerado-rows"></tbody>
+      </table>
+    </div>
+    <div id="extrato-gerado-totais" style="margin-top:12px;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.08);font-size:13px;color:#94a3b8;line-height:1.6"></div>
+    <div id="lancamento-form" style="display:none;margin-top:12px;padding-top:12px;border-top:0.5px solid rgba(255,255,255,0.08)">
       <p style="font-size:12px;color:#64748b;margin-bottom:8px" id="lancamento-form-titulo">Novo pagamento</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <div><p class="label" style="margin-bottom:5px">Data</p><input class="fin-input" type="date" id="lanc-data"></div>
@@ -509,14 +531,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <button class="save-btn" id="lanc-save-btn" onclick="salvarLancamentoPagamento()">Salvar pagamento</button>
       </div>
     </div>
-    <div id="lancamento-resultado" style="display:none;margin-top:4px;padding-top:12px;border-top:0.5px solid rgba(255,255,255,0.08)">
+    <div id="lancamento-resultado" style="display:none;margin-top:12px;padding-top:12px;border-top:0.5px solid rgba(255,255,255,0.08)">
       <p style="font-size:13px;color:#4ade80;margin-bottom:6px"><i class="ti ti-circle-check"></i> <span id="lancamento-resultado-texto"></span></p>
       <div id="lancamento-resultado-selo"></div>
     </div>
   </div>
   <div class="modal-footer">
     <button class="btn-secondary" id="lanc-toggle-btn" onclick="abrirFormLancamento()"><i class="ti ti-plus"></i> Lançar Pagamento</button>
-    <button class="btn-secondary" onclick="fecharModalExtratos()">Fechar</button>
+    <button class="btn-secondary" onclick="baixarExtratoPDF()"><i class="ti ti-download"></i> Baixar PDF</button>
+    <button class="btn-secondary" onclick="fecharExtratoGerado()">Fechar</button>
   </div>
 </div>
 
@@ -993,8 +1016,6 @@ function fecharModalAportes() {
 // preenchido em controle_mensal -- pra Elisangela poder ver extratos antigos,
 // nao so o do mes que esta sendo visualizado na tela.
 async function abrirExtratosCliente(reg) {
-  _extratosModalReg = reg;
-  cancelarLancamento();
   var clEl = document.getElementById('extratos-modal-cliente');
   if (clEl) clEl.textContent = nomeCliente(reg);
   var rowsEl = document.getElementById('extratos-modal-rows');
@@ -1075,107 +1096,6 @@ document.addEventListener('click', function(e) {
 function fecharModalExtratos() {
   document.getElementById('extratos-modal-overlay').style.display = 'none';
   document.getElementById('extratos-modal').style.display = 'none';
-}
-
-// Lançamento de pagamento direto pelo modal de Extrato -- reaproveita
-// salvarAporte() e conferirComprovanteAporte() de shared.js, exatamente
-// o mesmo núcleo usado em contas-receber.html.
-var _extratosModalReg = null;
-
-function abrirFormLancamento() {
-  var dataEl = document.getElementById('lanc-data');
-  if (dataEl) dataEl.value = new Date().toISOString().slice(0,10);
-  var tituloEl = document.getElementById('lancamento-form-titulo');
-  if (tituloEl) tituloEl.textContent = 'Novo pagamento — ' + MESES[viewMonth] + '/' + viewYear;
-  var resEl = document.getElementById('lancamento-resultado');
-  if (resEl) resEl.style.display = 'none';
-  var formEl = document.getElementById('lancamento-form');
-  if (formEl) formEl.style.display = '';
-  var btnEl = document.getElementById('lanc-toggle-btn');
-  if (btnEl) btnEl.style.display = 'none';
-}
-
-function cancelarLancamento() {
-  var formEl = document.getElementById('lancamento-form');
-  if (formEl) formEl.style.display = 'none';
-  var resEl = document.getElementById('lancamento-resultado');
-  if (resEl) resEl.style.display = 'none';
-  var btnEl = document.getElementById('lanc-toggle-btn');
-  if (btnEl) btnEl.style.display = '';
-  var dataEl = document.getElementById('lanc-data'); if (dataEl) dataEl.value = '';
-  var valorEl = document.getElementById('lanc-valor'); if (valorEl) valorEl.value = '';
-  var fileEl = document.getElementById('lanc-file'); if (fileEl) fileEl.value = '';
-  var btn = document.getElementById('lanc-save-btn'); if (btn) { btn.disabled = false; btn.textContent = 'Salvar pagamento'; }
-}
-
-async function salvarLancamentoPagamento() {
-  var reg = _extratosModalReg;
-  if (!reg) return;
-  var elData  = document.getElementById('lanc-data');
-  var elValor = document.getElementById('lanc-valor');
-  var elFile  = document.getElementById('lanc-file');
-  var data  = elData ? elData.value : '';
-  var valor = parseFloat(elValor ? elValor.value : '') || 0;
-  var file  = elFile && elFile.files ? elFile.files[0] : null;
-
-  if (valor <= 0) { alert('Informe um valor maior que zero.'); return; }
-  if (!data)      { alert('Informe a data do pagamento.'); return; }
-  if (!file)      { alert('Anexe o comprovante deste pagamento.'); return; }
-
-  var btn = document.getElementById('lanc-save-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
-
-  try {
-    if (!dbState[reg]) dbState[reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, valor_pago_comissionado:0, obs_pagamento:'', confirmado_pela_inove:true, extrato_url:null, abater_saldo_credor:null, comprovantes:[], aportes:[] };
-    if (!dbState[reg].aportes) dbState[reg].aportes = [];
-
-    var resultado = await salvarAporte({
-      cliente_reg: reg, mes: viewMonth, ano: viewYear,
-      valor: valor, data_pagamento: data, file: file,
-      aportesAtuais: dbState[reg].aportes
-    });
-    var aporteNovo = resultado.aporte;
-    dbState[reg].aportes.push(aporteNovo);
-    dbState[reg].valor_pago = resultado.valor_pago;
-    dbState[reg].confirmado_pela_inove = false;
-
-    if (!resultado.totalAtualizado) alert('Pagamento salvo, mas houve erro ao atualizar o total exibido. Recarregue a página pra conferir.');
-
-    renderTable();
-
-    // Confirmação fica dentro do próprio modal, com o selo de conferência
-    // automática do comprovante (mesmo fluxo/visual de contas-receber.html) --
-    // roda em segundo plano e atualiza o selo quando terminar.
-    var formEl = document.getElementById('lancamento-form');
-    if (formEl) formEl.style.display = 'none';
-    var resEl = document.getElementById('lancamento-resultado');
-    var txtEl = document.getElementById('lancamento-resultado-texto');
-    var seloEl = document.getElementById('lancamento-resultado-selo');
-    if (txtEl) txtEl.textContent = 'Pagamento de ' + fmt(valor) + ' lançado em ' + new Date(data+'T00:00:00').toLocaleDateString('pt-BR') + '.';
-    aporteNovo._conferindo = true;
-    if (seloEl) seloEl.innerHTML = renderSeloConferencia(aporteNovo);
-    if (resEl) resEl.style.display = '';
-
-    conferirComprovanteAporte(aporteNovo.id, file, valor).then(function(campos) {
-      aporteNovo._conferindo = false;
-      if (!campos) { if (seloEl) seloEl.innerHTML = ''; return; }
-      aporteNovo.conferencia_valor = campos.conferencia_valor;
-      aporteNovo.conferencia_status = campos.conferencia_status;
-      aporteNovo.conferencia_obs = campos.conferencia_obs;
-      aporteNovo.conferencia_data_texto = campos.conferencia_data_texto;
-      aporteNovo.conferido_em = campos.conferido_em;
-      if (seloEl) seloEl.innerHTML = renderSeloConferencia(aporteNovo);
-    });
-
-    if (btn) { btn.disabled = false; btn.textContent = 'Salvar pagamento'; }
-    var dataEl2 = document.getElementById('lanc-data'); if (dataEl2) dataEl2.value = '';
-    var valorEl2 = document.getElementById('lanc-valor'); if (valorEl2) valorEl2.value = '';
-    var fileEl2 = document.getElementById('lanc-file'); if (fileEl2) fileEl2.value = '';
-  } catch (e) {
-    console.error('salvarLancamentoPagamento:', e);
-    alert('Erro ao lançar pagamento: ' + (e.message || e));
-    if (btn) { btn.disabled = false; btn.textContent = 'Salvar pagamento'; }
-  }
 }
 
 async function confirmarPagamentoComissao() {
@@ -1679,7 +1599,7 @@ function renderTable() {
       if (r.s.extrato_url) {
         compsHtml += ' <button class="comp-link extrato-link" style="border:none;cursor:pointer;font-family:inherit" onclick="abrirExtratosCliente('+r.c.reg+')" title="Ver extratos anexados (todos os meses)"><i class="ti ti-file-text"></i> Extrato</button>';
       }
-      compsHtml += ' <button class="btn-gerar-extrato" onclick="gerarExtratoCliente('+r.c.reg+',this)" title="Gera um extrato interno (pedidos + pagamentos) pra comparar com o extrato oficial da Inove">📄 Gerar Extrato</button>';
+      compsHtml += ' <button class="btn-gerar-extrato" onclick="abrirExtratoGerado('+r.c.reg+',this)" title="Extrato interno (pedidos + pagamentos) pra comparar com o extrato oficial da Inove, com lançamento de pagamento">📄 Gerar Extrato</button>';
       var obsHtml = r.s.obs_pagamento
         ? '<span class="obs-txt">'+escHtml(r.s.obs_pagamento)+'</span>'
         : '<span class="no-comp">—</span>';
@@ -1735,124 +1655,311 @@ function fmtDataCurta(iso) {
   return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 
-async function gerarExtratoCliente(reg, btn) {
+// Monta os dados do extrato interno (pedidos + pagamentos do mês, saldo corrido) --
+// usado tanto pra desenhar a tela do modal quanto pro PDF baixável, os dois a partir
+// do mesmo cálculo (ver abrirExtratoGerado/baixarExtratoPDF).
+async function carregarDadosExtratoGerado(reg) {
+  var c = clients.find(function(x) { return x.reg === reg; });
+  if (!c) throw new Error('Cliente não encontrado.');
+
+  var startOfMonth = new Date(viewYear, viewMonth, 1, 0, 0, 0);
+  var endOfMonth   = new Date(viewYear, viewMonth + 1, 0, 23, 59, 59);
+  var pedidosRes = await sb.from('pedidos')
+    .select('descricao,valor,status,created_at')
+    .eq('cliente_reg', reg)
+    .neq('status', 'cancelado')
+    .gte('created_at', startOfMonth.toISOString())
+    .lte('created_at', endOfMonth.toISOString())
+    .order('created_at');
+  if (pedidosRes.error) throw pedidosRes.error;
+
+  // Pagamentos por DATA REAL de caixa (data_pagamento), não por competência (mes/ano) --
+  // um Pix recebido em agosto mas lançado como competência de um mês anterior (pago
+  // atrasado) precisa aparecer no extrato de agosto pra bater com o PDF da Inove. A
+  // competência continua intocada (é o que a comissão usa) -- só a consulta do extrato
+  // muda. +1 dia no fim porque o extrato da Inove às vezes fecha a janela no dia 1º do
+  // mês seguinte (visto em vários clientes reais).
+  function dateOnlyStr(y, m, d) { return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0'); }
+  var inicioJanela = dateOnlyStr(viewYear, viewMonth, 1);
+  var proxMes = viewMonth + 1, proxAno = viewYear;
+  if (proxMes > 11) { proxMes = 0; proxAno++; }
+  var fimJanelaExclusivo = dateOnlyStr(proxAno, proxMes, 2);
+  var aportesRes = await sb.from('pagamento_aportes')
+    .select('valor,data_pagamento,obs,legado')
+    .eq('cliente_reg', reg)
+    .gte('data_pagamento', inicioJanela)
+    .lt('data_pagamento', fimJanelaExclusivo)
+    .order('data_pagamento');
+  if (aportesRes.error) throw aportesRes.error;
+
+  var saldoAnteriorObj = prevMonthMap[reg];
+  var saldoAnterior = saldoAnteriorObj ? (saldoAnteriorObj.valor_pago - saldoAnteriorObj.valor_mes) : 0;
+
+  var entries = [];
+  (pedidosRes.data || []).forEach(function(p) {
+    entries.push({ dataObj: new Date(p.created_at), dataLbl: fmtDataCurta(p.created_at), desc: p.descricao || 'Pedido', valor: -Math.abs(Number(p.valor) || 0) });
+  });
+  (aportesRes.data || []).forEach(function(a) {
+    var desc = a.obs ? ('Pagamento recebido — ' + a.obs) : (a.legado ? 'Pagamento (saldo anterior lançado)' : 'Pagamento recebido');
+    entries.push({ dataObj: new Date(a.data_pagamento + 'T12:00:00'), dataLbl: fmtDate(a.data_pagamento), desc: desc, valor: Number(a.valor) || 0 });
+  });
+  entries.sort(function(x, y) { return x.dataObj - y.dataObj; });
+
+  var totalServicos = entries.filter(function(e){return e.valor<0;}).reduce(function(s,e){return s+e.valor;}, 0);
+  var totalPagamentos = entries.filter(function(e){return e.valor>0;}).reduce(function(s,e){return s+e.valor;}, 0);
+  var saldoFinal = saldoAnterior + totalServicos + totalPagamentos;
+
+  var valorMesLancado = (dbState[reg] ? Number(dbState[reg].valor_mes) || 0 : 0);
+  var diverge = Math.abs(Math.abs(totalServicos) - valorMesLancado) > 0.01;
+
+  return {
+    reg: reg, c: c, entries: entries, saldoAnterior: saldoAnterior,
+    totalServicos: totalServicos, totalPagamentos: totalPagamentos, saldoFinal: saldoFinal,
+    valorMesLancado: valorMesLancado, diverge: diverge, mesLabel: MESES[viewMonth] + ' de ' + viewYear,
+    endOfMonth: endOfMonth, viewMonth: viewMonth, viewYear: viewYear
+  };
+}
+
+// Estado do extrato aberto no momento -- alimenta tanto a tela (renderExtratoGeradoModal)
+// quanto o PDF (baixarExtratoPDF) e o formulário de lançamento, sem precisar recarregar
+// tudo de novo a cada re-render (só depois de salvar um pagamento novo).
+var _extratoGeradoState = null;
+
+async function abrirExtratoGerado(reg, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Carregando…'; }
+  try {
+    _extratoGeradoState = await carregarDadosExtratoGerado(reg);
+    cancelarLancamento();
+    renderExtratoGeradoModal();
+    document.getElementById('extrato-gerado-modal-overlay').style.display = 'block';
+    document.getElementById('extrato-gerado-modal').style.display = 'block';
+  } catch (e) {
+    console.error('abrirExtratoGerado:', e);
+    alert('Erro ao carregar o extrato: ' + (e.message || e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📄 Gerar Extrato'; }
+  }
+}
+
+function fecharExtratoGerado() {
+  document.getElementById('extrato-gerado-modal-overlay').style.display = 'none';
+  document.getElementById('extrato-gerado-modal').style.display = 'none';
+  _extratoGeradoState = null;
+}
+
+function renderExtratoGeradoModal() {
+  var s = _extratoGeradoState;
+  if (!s) return;
+
+  var clEl = document.getElementById('extrato-gerado-cliente');
+  if (clEl) clEl.textContent = s.c.nome + ' · ' + s.mesLabel;
+
+  var avisoEl = document.getElementById('extrato-gerado-aviso');
+  if (avisoEl) {
+    avisoEl.innerHTML = s.diverge
+      ? '<div style="margin-bottom:12px;border-radius:10px;padding:10px 14px;background:rgba(245,158,11,0.1);border:0.5px solid rgba(245,158,11,0.35);color:#fde68a;font-size:12px;line-height:1.5"><strong style="display:block;margin-bottom:2px;color:#fcd34d">Atenção</strong>Total de pedidos registrados (' + fmt(Math.abs(s.totalServicos)) + ') diverge do valor lançado no sistema para ' + s.mesLabel + ' (' + fmt(s.valorMesLancado) + '). Confira se há pedidos faltando antes de considerar este extrato definitivo.</div>'
+      : '';
+  }
+
+  var rowsEl = document.getElementById('extrato-gerado-rows');
+  if (rowsEl) {
+    var saldoCorrido = s.saldoAnterior;
+    var linhas = '<tr><td>—</td><td>Saldo Anterior</td><td style="text-align:right">—</td><td style="text-align:right">' + fmt(saldoCorrido) + '</td></tr>';
+    if (!s.entries.length) {
+      linhas += '<tr><td>—</td><td colspan="3" style="color:#64748b">Nenhum pedido ou pagamento lançado neste mês</td></tr>';
+    } else {
+      s.entries.forEach(function(e) {
+        saldoCorrido += e.valor;
+        linhas += '<tr><td>' + e.dataLbl + '</td><td>' + escHtml(e.desc) + '</td><td style="text-align:right;color:' + (e.valor<0?'#ef4444':'#4ade80') + '">' + fmt(e.valor) + '</td><td style="text-align:right">' + fmt(saldoCorrido) + '</td></tr>';
+      });
+    }
+    rowsEl.innerHTML = linhas;
+  }
+
+  var totEl = document.getElementById('extrato-gerado-totais');
+  if (totEl) {
+    totEl.innerHTML =
+      'Total de Serviços: <strong style="color:#ef4444">' + fmt(s.totalServicos) + '</strong> &nbsp;·&nbsp; ' +
+      'Total de Pagamentos: <strong style="color:#4ade80">' + fmt(s.totalPagamentos) + '</strong><br>' +
+      'Saldo Final: <strong>' + fmt(s.saldoFinal) + '</strong>';
+  }
+}
+
+function baixarExtratoPDF() {
+  var s = _extratoGeradoState;
+  if (!s) return;
   if (typeof jspdf === 'undefined' || !jspdf.jsPDF) {
     alert('Não foi possível carregar o gerador de PDF. Verifique sua conexão e tente novamente.');
     return;
   }
-  var c = clients.find(function(x) { return x.reg === reg; });
-  if (!c) { alert('Cliente não encontrado.'); return; }
+  var c = s.c;
+  var doc = new jspdf.jsPDF();
 
-  if (btn) { btn.disabled = true; btn.textContent = 'Gerando…'; }
+  doc.setFontSize(15);
+  doc.setTextColor(20);
+  doc.text('Ideali Laboratório', 14, 18);
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text('Extrato Individual — gerado internamente (comparar com o extrato oficial da Inove)', 14, 24);
+  doc.text('Período: 01/' + String(s.viewMonth+1).padStart(2,'0') + '/' + s.viewYear + ' a ' + fmtDataCurta(s.endOfMonth.toISOString()) + '   ·   Gerado em: ' + new Date().toLocaleString('pt-BR'), 14, 30);
+
+  doc.setFontSize(12);
+  doc.setTextColor(20);
+  doc.text(c.nome + '  (cliente #' + s.reg + ')', 14, 40);
+  var endereco = [c.end, c.bairro, [c.cidade, c.uf].filter(Boolean).join('/')].filter(Boolean).join(' — ');
+  var y = 40;
+  if (endereco) { doc.setFontSize(9); doc.setTextColor(100); doc.text(endereco, 14, 46); y = 46; }
+
+  y += 8;
+  if (s.diverge) {
+    doc.setFontSize(9);
+    var avisoLinhas = doc.splitTextToSize(
+      'ATENÇÃO: total de pedidos registrados (' + fmt(Math.abs(s.totalServicos)) + ') diverge do valor lançado no sistema para ' + s.mesLabel + ' (' + fmt(s.valorMesLancado) + '). ' +
+      'Confira se há pedidos faltando em "pedidos" antes de considerar este extrato definitivo.',
+      176
+    );
+    var boxH = avisoLinhas.length * 4.5 + 5;
+    doc.setFillColor(253, 230, 200);
+    doc.rect(14, y - 5, 182, boxH, 'F');
+    doc.setTextColor(150, 60, 10);
+    doc.text(avisoLinhas, 17, y);
+    y += boxH;
+  }
+
+  var body = [['Saldo Anterior', '—', '—', fmt(s.saldoAnterior)]];
+  var saldoCorrido = s.saldoAnterior;
+  s.entries.forEach(function(e) {
+    saldoCorrido += e.valor;
+    body.push([e.dataLbl, e.desc, fmt(e.valor), fmt(saldoCorrido)]);
+  });
+  if (!s.entries.length) body.push(['—', 'Nenhum pedido ou pagamento lançado neste mês', '—', fmt(saldoCorrido)]);
+
+  doc.autoTable({
+    startY: y + 4,
+    head: [['Data', 'Descrição', 'Valor', 'Saldo']],
+    body: body,
+    headStyles: { fillColor: [26, 29, 39] },
+    styles: { fontSize: 9, cellPadding: 3 },
+    columnStyles: { 0: { cellWidth: 24 }, 2: { halign: 'right', cellWidth: 28 }, 3: { halign: 'right', cellWidth: 28 } },
+    didParseCell: function(data) {
+      if (data.section === 'body' && data.column.index === 2 && typeof data.cell.raw === 'string' && data.cell.raw.indexOf('R$') === 0) {
+        data.cell.styles.textColor = data.cell.raw.indexOf('R$ -') === 0 ? [164, 52, 42] : [47, 122, 82];
+      }
+    }
+  });
+
+  var yFinal = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(10);
+  doc.setTextColor(20);
+  doc.text('Total de Serviços: ' + fmt(s.totalServicos), 14, yFinal);
+  doc.text('Total de Pagamentos: ' + fmt(s.totalPagamentos), 14, yFinal + 6);
+  doc.setFontSize(11);
+  doc.text('Saldo Final: ' + fmt(s.saldoFinal), 14, yFinal + 14);
+
+  var nomeArquivo = 'extrato_ideali_' + c.nome.toLowerCase().replace(/[^a-z0-9]+/g, '_') + '_' + MESES[s.viewMonth].toLowerCase() + '_' + s.viewYear + '.pdf';
+  doc.save(nomeArquivo);
+}
+
+// Lançamento de pagamento dentro do Extrato do Sistema -- reaproveita
+// salvarAporte() e conferirComprovanteAporte() de shared.js, exatamente
+// o mesmo núcleo usado em contas-receber.html.
+function abrirFormLancamento() {
+  if (!_extratoGeradoState) return;
+  var dataEl = document.getElementById('lanc-data');
+  if (dataEl) dataEl.value = new Date().toISOString().slice(0,10);
+  var tituloEl = document.getElementById('lancamento-form-titulo');
+  if (tituloEl) tituloEl.textContent = 'Novo pagamento — ' + _extratoGeradoState.mesLabel;
+  var resEl = document.getElementById('lancamento-resultado');
+  if (resEl) resEl.style.display = 'none';
+  var formEl = document.getElementById('lancamento-form');
+  if (formEl) formEl.style.display = '';
+  var btnEl = document.getElementById('lanc-toggle-btn');
+  if (btnEl) btnEl.style.display = 'none';
+}
+
+function cancelarLancamento() {
+  var formEl = document.getElementById('lancamento-form');
+  if (formEl) formEl.style.display = 'none';
+  var resEl = document.getElementById('lancamento-resultado');
+  if (resEl) resEl.style.display = 'none';
+  var btnEl = document.getElementById('lanc-toggle-btn');
+  if (btnEl) btnEl.style.display = '';
+  var dataEl = document.getElementById('lanc-data'); if (dataEl) dataEl.value = '';
+  var valorEl = document.getElementById('lanc-valor'); if (valorEl) valorEl.value = '';
+  var fileEl = document.getElementById('lanc-file'); if (fileEl) fileEl.value = '';
+  var btn = document.getElementById('lanc-save-btn'); if (btn) { btn.disabled = false; btn.textContent = 'Salvar pagamento'; }
+}
+
+async function salvarLancamentoPagamento() {
+  var s = _extratoGeradoState;
+  if (!s) return;
+  var reg = s.reg;
+  var elData  = document.getElementById('lanc-data');
+  var elValor = document.getElementById('lanc-valor');
+  var elFile  = document.getElementById('lanc-file');
+  var data  = elData ? elData.value : '';
+  var valor = parseFloat(elValor ? elValor.value : '') || 0;
+  var file  = elFile && elFile.files ? elFile.files[0] : null;
+
+  if (valor <= 0) { alert('Informe um valor maior que zero.'); return; }
+  if (!data)      { alert('Informe a data do pagamento.'); return; }
+  if (!file)      { alert('Anexe o comprovante deste pagamento.'); return; }
+
+  var btn = document.getElementById('lanc-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
 
   try {
-    var startOfMonth = new Date(viewYear, viewMonth, 1, 0, 0, 0);
-    var endOfMonth   = new Date(viewYear, viewMonth + 1, 0, 23, 59, 59);
-    var pedidosRes = await sb.from('pedidos')
-      .select('descricao,valor,status,created_at')
-      .eq('cliente_reg', reg)
-      .neq('status', 'cancelado')
-      .gte('created_at', startOfMonth.toISOString())
-      .lte('created_at', endOfMonth.toISOString())
-      .order('created_at');
-    if (pedidosRes.error) throw pedidosRes.error;
-    var aportesRes = await sb.from('pagamento_aportes')
-      .select('valor,data_pagamento,obs,legado')
-      .eq('cliente_reg', reg).eq('mes', viewMonth).eq('ano', viewYear)
-      .order('data_pagamento');
-    if (aportesRes.error) throw aportesRes.error;
+    if (!dbState[reg]) dbState[reg] = { recebido:false, enviado:false, quitado:false, valor_mes:0, valor_pago:0, valor_pago_comissionado:0, obs_pagamento:'', confirmado_pela_inove:true, extrato_url:null, abater_saldo_credor:null, comprovantes:[], aportes:[] };
+    if (!dbState[reg].aportes) dbState[reg].aportes = [];
 
-    var saldoAnteriorObj = prevMonthMap[reg];
-    var saldoAnterior = saldoAnteriorObj ? (saldoAnteriorObj.valor_pago - saldoAnteriorObj.valor_mes) : 0;
-
-    var entries = [];
-    (pedidosRes.data || []).forEach(function(p) {
-      entries.push({ dataObj: new Date(p.created_at), dataLbl: fmtDataCurta(p.created_at), desc: p.descricao || 'Pedido', valor: -Math.abs(Number(p.valor) || 0) });
+    var resultado = await salvarAporte({
+      cliente_reg: reg, mes: viewMonth, ano: viewYear,
+      valor: valor, data_pagamento: data, file: file,
+      aportesAtuais: dbState[reg].aportes
     });
-    (aportesRes.data || []).forEach(function(a) {
-      var desc = a.legado ? 'Pagamento (saldo anterior lançado)' : 'Pagamento recebido' + (a.obs ? ' — ' + a.obs : '');
-      entries.push({ dataObj: new Date(a.data_pagamento + 'T12:00:00'), dataLbl: fmtDate(a.data_pagamento), desc: desc, valor: Number(a.valor) || 0 });
-    });
-    entries.sort(function(x, y) { return x.dataObj - y.dataObj; });
+    var aporteNovo = resultado.aporte;
+    dbState[reg].aportes.push(aporteNovo);
+    dbState[reg].valor_pago = resultado.valor_pago;
+    dbState[reg].confirmado_pela_inove = false;
 
-    var totalServicos = entries.filter(function(e){return e.valor<0;}).reduce(function(s,e){return s+e.valor;}, 0);
-    var totalPagamentos = entries.filter(function(e){return e.valor>0;}).reduce(function(s,e){return s+e.valor;}, 0);
-    var saldoFinal = saldoAnterior + totalServicos + totalPagamentos;
+    if (!resultado.totalAtualizado) alert('Pagamento salvo, mas houve erro ao atualizar o total exibido. Recarregue a página pra conferir.');
 
-    var valorMesLancado = (dbState[reg] ? Number(dbState[reg].valor_mes) || 0 : 0);
-    var diverge = Math.abs(Math.abs(totalServicos) - valorMesLancado) > 0.01;
+    renderTable();
 
-    var mesLabel = MESES[viewMonth] + ' de ' + viewYear;
-    var doc = new jspdf.jsPDF();
+    // Recarrega os dados do extrato (pedidos + pagamentos do mês) pra a linha
+    // nova entrar na tabela em tela já com o saldo corrido certo.
+    _extratoGeradoState = await carregarDadosExtratoGerado(reg);
+    renderExtratoGeradoModal();
 
-    doc.setFontSize(15);
-    doc.setTextColor(20);
-    doc.text('Ideali Laboratório', 14, 18);
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text('Extrato Individual — gerado internamente (comparar com o extrato oficial da Inove)', 14, 24);
-    doc.text('Período: 01/' + String(viewMonth+1).padStart(2,'0') + '/' + viewYear + ' a ' + fmtDataCurta(endOfMonth.toISOString()) + '   ·   Gerado em: ' + new Date().toLocaleString('pt-BR'), 14, 30);
+    var formEl = document.getElementById('lancamento-form');
+    if (formEl) formEl.style.display = 'none';
+    var resEl = document.getElementById('lancamento-resultado');
+    var txtEl = document.getElementById('lancamento-resultado-texto');
+    var seloEl = document.getElementById('lancamento-resultado-selo');
+    if (txtEl) txtEl.textContent = 'Pagamento de ' + fmt(valor) + ' lançado em ' + new Date(data+'T00:00:00').toLocaleDateString('pt-BR') + '.';
+    aporteNovo._conferindo = true;
+    if (seloEl) seloEl.innerHTML = renderSeloConferencia(aporteNovo);
+    if (resEl) resEl.style.display = '';
 
-    doc.setFontSize(12);
-    doc.setTextColor(20);
-    doc.text(c.nome + '  (cliente #' + reg + ')', 14, 40);
-    var endereco = [c.end, c.bairro, [c.cidade, c.uf].filter(Boolean).join('/')].filter(Boolean).join(' — ');
-    var y = 40;
-    if (endereco) { doc.setFontSize(9); doc.setTextColor(100); doc.text(endereco, 14, 46); y = 46; }
-
-    y += 8;
-    if (diverge) {
-      doc.setFontSize(9);
-      var avisoLinhas = doc.splitTextToSize(
-        'ATENÇÃO: total de pedidos registrados (' + fmt(Math.abs(totalServicos)) + ') diverge do valor lançado no sistema para ' + mesLabel + ' (' + fmt(valorMesLancado) + '). ' +
-        'Confira se há pedidos faltando em "pedidos" antes de considerar este extrato definitivo.',
-        176
-      );
-      var boxH = avisoLinhas.length * 4.5 + 5;
-      doc.setFillColor(253, 230, 200);
-      doc.rect(14, y - 5, 182, boxH, 'F');
-      doc.setTextColor(150, 60, 10);
-      doc.text(avisoLinhas, 17, y);
-      y += boxH;
-    }
-
-    var body = [['Saldo Anterior', '—', '—', fmt(saldoAnterior)]];
-    var saldoCorrido = saldoAnterior;
-    entries.forEach(function(e) {
-      saldoCorrido += e.valor;
-      body.push([e.dataLbl, e.desc, fmt(e.valor), fmt(saldoCorrido)]);
-    });
-    if (!entries.length) body.push(['—', 'Nenhum pedido ou pagamento lançado neste mês', '—', fmt(saldoCorrido)]);
-
-    doc.autoTable({
-      startY: y + 4,
-      head: [['Data', 'Descrição', 'Valor', 'Saldo']],
-      body: body,
-      headStyles: { fillColor: [26, 29, 39] },
-      styles: { fontSize: 9, cellPadding: 3 },
-      columnStyles: { 0: { cellWidth: 24 }, 2: { halign: 'right', cellWidth: 28 }, 3: { halign: 'right', cellWidth: 28 } },
-      didParseCell: function(data) {
-        if (data.section === 'body' && data.column.index === 2 && typeof data.cell.raw === 'string' && data.cell.raw.indexOf('R$') === 0) {
-          data.cell.styles.textColor = data.cell.raw.indexOf('R$ -') === 0 ? [164, 52, 42] : [47, 122, 82];
-        }
-      }
+    conferirComprovanteAporte(aporteNovo.id, file, valor).then(function(campos) {
+      aporteNovo._conferindo = false;
+      if (!campos) { if (seloEl) seloEl.innerHTML = ''; return; }
+      aporteNovo.conferencia_valor = campos.conferencia_valor;
+      aporteNovo.conferencia_status = campos.conferencia_status;
+      aporteNovo.conferencia_obs = campos.conferencia_obs;
+      aporteNovo.conferencia_data_texto = campos.conferencia_data_texto;
+      aporteNovo.conferido_em = campos.conferido_em;
+      if (seloEl) seloEl.innerHTML = renderSeloConferencia(aporteNovo);
     });
 
-    var yFinal = doc.lastAutoTable.finalY + 10;
-    doc.setFontSize(10);
-    doc.setTextColor(20);
-    doc.text('Total de Serviços: ' + fmt(totalServicos), 14, yFinal);
-    doc.text('Total de Pagamentos: ' + fmt(totalPagamentos), 14, yFinal + 6);
-    doc.setFontSize(11);
-    doc.text('Saldo Final: ' + fmt(saldoFinal), 14, yFinal + 14);
-
-    var nomeArquivo = 'extrato_ideali_' + c.nome.toLowerCase().replace(/[^a-z0-9]+/g, '_') + '_' + MESES[viewMonth].toLowerCase() + '_' + viewYear + '.pdf';
-    doc.save(nomeArquivo);
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar pagamento'; }
+    var dataEl2 = document.getElementById('lanc-data'); if (dataEl2) dataEl2.value = '';
+    var valorEl2 = document.getElementById('lanc-valor'); if (valorEl2) valorEl2.value = '';
+    var fileEl2 = document.getElementById('lanc-file'); if (fileEl2) fileEl2.value = '';
   } catch (e) {
-    console.error('gerarExtratoCliente:', e);
-    alert('Erro ao gerar o extrato: ' + (e.message || e));
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '📄 Gerar Extrato'; }
+    console.error('salvarLancamentoPagamento:', e);
+    alert('Erro ao lançar pagamento: ' + (e.message || e));
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar pagamento'; }
   }
 }
 
@@ -1871,7 +1978,7 @@ async function findDefaultMonth() {
 async function loadCadastroClientes() {
   try {
     // end_str/bairro/cidade/uf entram aqui pro endereco do cabecalho do "Gerar Extrato" --
-    // ver gerarExtratoCliente() mais abaixo.
+    // ver baixarExtratoPDF() mais abaixo.
     var res = await sb.from('cadastro_clientes').select('reg,nome,end_str,bairro,cidade,uf');
     if (res.error) { console.error('loadCadastroClientes:', res.error); return; }
     (res.data || []).forEach(function(row) {
