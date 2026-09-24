@@ -938,6 +938,64 @@ async function conferirComprovanteAporte(aporteId, file, valorLancado) {
   return campos;
 }
 
+// Núcleo de "lançar pagamento" compartilhado por contas-receber.html (Ideali) e
+// pagamentos-inove.html (Inove) -- sobe o comprovante, insere em pagamento_aportes
+// e soma o novo total em controle_mensal.valor_pago (upsert). A conferência
+// automática do comprovante (conferirComprovanteAporte) fica por conta de quem
+// chama, depois que isso aqui retorna, pra cada página atualizar sua própria UI
+// enquanto ela roda em segundo plano (ver adicionarAporte/abrirFormLancamento).
+//
+// opts: {cliente_reg, mes, ano, valor, data_pagamento, file, aportesAtuais}
+// aportesAtuais = lista dos aportes já carregados desse cliente/mês (sem o novo),
+// só pra somar o total certo.
+//
+// Retorna {aporte, valor_pago, totalAtualizado}. totalAtualizado=false quando o
+// comprovante e o aporte JÁ foram salvos mas o update de controle_mensal falhou
+// (evita relançar o mesmo pagamento por engano -- quem chama deve avisar que é
+// só o total exibido que ficou desatualizado, não pedir pra tentar de novo).
+async function salvarAporte(opts) {
+  var reg = opts.cliente_reg, mes = opts.mes, ano = opts.ano;
+  var valor = opts.valor, dataPagamento = opts.data_pagamento, file = opts.file;
+  var aportesAtuais = opts.aportesAtuais || [];
+
+  var ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  var path = 'aportes/' + ano + '_' + mes + '/reg' + reg + '_' + Date.now() + '.' + ext;
+  var upRes = await sb.storage.from('comprovantes').upload(path, file, {cacheControl:'3600', upsert:true});
+  if (upRes.error) throw upRes.error;
+  var publicUrl = sb.storage.from('comprovantes').getPublicUrl(path).data.publicUrl;
+
+  var insRes = await sb.from('pagamento_aportes').insert({
+    cliente_reg: reg, mes: mes, ano: ano,
+    valor: valor, data_pagamento: dataPagamento,
+    comprovante_path: path, comprovante_url: publicUrl
+  }).select();
+  if (insRes.error) throw insRes.error;
+  var aporteNovo = insRes.data[0];
+
+  var soma = aportesAtuais.concat([aporteNovo]).reduce(function(sum, a) { return sum + Number(a.valor||0); }, 0);
+
+  var totalAtualizado = true;
+  try {
+    var existing = await sb.from('controle_mensal').select('id')
+      .eq('cliente_reg', reg).eq('mes', mes).eq('ano', ano);
+    if (existing.error) throw existing.error;
+    if (existing.data && existing.data.length) {
+      var upd = await sb.from('controle_mensal')
+        .update({ valor_pago: soma, confirmado_pela_inove: false, updated_at: new Date().toISOString() })
+        .eq('id', existing.data[0].id);
+      if (upd.error) throw upd.error;
+    } else {
+      var ins = await sb.from('controle_mensal').insert({ cliente_reg: reg, mes: mes, ano: ano, valor_pago: soma, confirmado_pela_inove: false });
+      if (ins.error) throw ins.error;
+    }
+  } catch (e) {
+    console.error('salvarAporte (controle_mensal):', e);
+    totalAtualizado = false;
+  }
+
+  return { aporte: aporteNovo, valor_pago: soma, totalAtualizado: totalAtualizado };
+}
+
 // HTML do selo pra uma linha do Histórico de Pagamentos -- usado por
 // contas-receber.html e pagamentos-inove.html. aporte._conferindo=true
 // mostra o estado "lendo" enquanto a chamada acima ainda não voltou.
