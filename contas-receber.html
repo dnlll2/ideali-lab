@@ -25,9 +25,8 @@
   .hist-total-row{display:flex;justify-content:space-between;align-items:center;padding:12px 4px 4px;font-size:15px;font-weight:600}
   .btn-historico{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:#4ade80;padding:4px 10px;border-radius:7px;border:0.5px solid rgba(34,197,94,0.5);background:rgba(34,197,94,0.14);white-space:nowrap;cursor:pointer;font-family:inherit}
   .btn-historico:hover{background:rgba(34,197,94,0.24)}
-  .hist-tabs{display:flex;gap:4px;margin-bottom:12px;padding:3px;border-radius:9px;background:#0f1117;width:fit-content}
-  .hist-tab{height:28px;padding:0 12px;border-radius:7px;border:none;background:transparent;color:#64748b;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
-  .hist-tab.active{background:#22263a;color:#e2e8f0}
+  .btn-hist-comp{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:#60a5fa;padding:4px 10px;border-radius:7px;border:0.5px solid rgba(59,130,246,0.5);background:rgba(59,130,246,0.14);white-space:nowrap;cursor:pointer;font-family:inherit}
+  .btn-hist-comp:hover{background:rgba(59,130,246,0.24)}
   .hist-filtro{height:28px;border:0.5px solid rgba(255,255,255,0.12);border-radius:7px;padding:0 8px;font-size:12px;background:#0f1117;color:#e2e8f0;font-family:inherit}
   .hist-mes-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin:14px 0 2px;padding-bottom:4px;border-bottom:0.5px solid rgba(255,255,255,0.1)}
   .hist-mes-head:first-child{margin-top:0}
@@ -44,16 +43,12 @@
 <div class="modal" id="aportes-modal">
   <div class="modal-header">
     <div>
-      <p style="font-size:15px;font-weight:600;color:#f1f5f9">Histórico de Pagamentos</p>
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9" id="aportes-modal-titulo">Histórico de Pagamentos</p>
       <p style="font-size:12px;color:#64748b" id="aportes-modal-cliente">—</p>
     </div>
     <button class="modal-close" onclick="fecharModalAportes()"><i class="ti ti-x"></i></button>
   </div>
   <div class="modal-body">
-    <div class="hist-tabs">
-      <button class="hist-tab" id="aportes-tab-mes" onclick="trocarAbaAportes('mes')">Este mês</button>
-      <button class="hist-tab" id="aportes-tab-todos" onclick="trocarAbaAportes('todos')">Todos os meses</button>
-    </div>
     <div id="aportes-pane-mes">
       <div style="overflow-x:auto">
         <table class="hist-table">
@@ -865,7 +860,7 @@ function renderAportesSection(reg, cv, ro) {
       '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em"><i class="ti ti-history" style="font-size:13px;vertical-align:-1px"></i> Histórico de pagamentos</p>'+
       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
         (list.length ? itensHtml : '')+
-        '<button class="btn-historico" onclick="abrirHistoricoAportes('+reg+',\'todos\')" title="Comprovantes de todos os meses deste cliente"><i class="ti ti-files"></i> Todos os comprovantes</button>'+
+        '<button class="btn-hist-comp" onclick="abrirHistoricoAportes('+reg+',\'todos\')" title="Extratos e comprovantes de todos os meses deste cliente"><i class="ti ti-files"></i> Histórico e Comprovantes</button>'+
         (ro ? '' : '<button onclick="toggleAporteForm('+reg+')" style="height:26px;padding:0 10px;border-radius:7px;border:0.5px solid '+hexToRgba(T().success,0.4)+';background:'+hexToRgba(T().success,0.1)+';color:'+T().success+';font-size:12px;cursor:pointer;font-family:inherit">+ Adicionar pagamento</button>')+
       '</div>'+
     '</div>'+
@@ -906,7 +901,8 @@ function abrirHistoricoAportes(reg, aba) {
 var histTodosEstilo = {
   tableClass: 'hist-table',
   compLink: function(url) { return '<a href="'+url+'" target="_blank" rel="noopener" style="color:'+T().accent+';font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-paperclip"></i> Ver</a>'; },
-  semComp: function(txt) { return '<span style="font-size:11px;color:#4a5568">'+txt+'</span>'; }
+  semComp: function(txt) { return '<span style="font-size:11px;color:#4a5568">'+txt+'</span>'; },
+  extratoLink: function(url) { return '<a href="'+url+'" target="_blank" rel="noopener" style="color:'+T().warn+';font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">Ver <i class="ti ti-external-link"></i></a>'; }
 };
 
 function fecharModalAportes() {

@@ -1031,16 +1031,17 @@ function renderSeloConferencia(aporte) {
     '<span class="selo-tip"><span class="selo-tip-ico">i</span><span class="selo-tip-bubble">'+msg+' Não impede o pagamento — só não há conferência automática aqui. Confira manualmente.</span></span></div>';
 }
 
-// Todos os comprovantes de um cliente, de todos os meses -- aba "Todos os meses"
-// do Histórico de Pagamentos (contas-receber.html e pagamentos-inove.html).
-// Junta os aportes (pagamento_aportes, com selo) e os anexos soltos do jeito
-// antigo (storage comprovantes/<ano>_<mes>/reg<N>_*, sem data/valor), agrupados
-// por mês de competência, mais recente primeiro. Só entram meses com algum
-// pagamento/anexo. Retorna [{mes, ano, valor_mes, valor_pago, aportes:[...], anexos:[{name,url}]}].
+// Visão "Histórico e Comprovantes" de um cliente, de todos os meses
+// (contas-receber.html e pagamentos-inove.html). Junta, por mês de competência
+// (mais recente primeiro): o extrato do mês (controle_mensal.extrato_path/url),
+// os aportes (pagamento_aportes, com selo) e os anexos soltos do jeito antigo
+// (storage comprovantes/<ano>_<mes>/reg<N>_*, sem data/valor). Só entram meses
+// com extrato, pagamento ou anexo.
+// Retorna [{mes, ano, valor_mes, valor_pago, extrato_url, aportes:[...], anexos:[{name,url}]}].
 async function carregarComprovantesCliente(reg) {
   var results = await Promise.all([
     sb.from('pagamento_aportes').select('*').eq('cliente_reg', reg).order('data_pagamento'),
-    sb.from('controle_mensal').select('mes,ano,valor_mes,valor_pago').eq('cliente_reg', reg),
+    sb.from('controle_mensal').select('mes,ano,valor_mes,valor_pago,extrato_url,extrato_path').eq('cliente_reg', reg),
     sb.storage.from('comprovantes').list('', { limit: 1000 })
   ]);
   if (results[0].error) throw results[0].error;
@@ -1048,7 +1049,7 @@ async function carregarComprovantesCliente(reg) {
   var grupos = {};
   function grupo(mes, ano) {
     var k = ano + '_' + mes;
-    if (!grupos[k]) grupos[k] = { mes: mes, ano: ano, valor_mes: 0, valor_pago: 0, aportes: [], anexos: [] };
+    if (!grupos[k]) grupos[k] = { mes: mes, ano: ano, valor_mes: 0, valor_pago: 0, extrato_url: null, aportes: [], anexos: [] };
     return grupos[k];
   }
   (results[0].data || []).forEach(function(a) { grupo(a.mes, a.ano).aportes.push(a); });
@@ -1072,32 +1073,46 @@ async function carregarComprovantesCliente(reg) {
     });
   });
 
-  (results[1].data || []).forEach(function(r) {
-    var g = grupos[r.ano + '_' + r.mes];
-    if (g) { g.valor_mes = Number(r.valor_mes) || 0; g.valor_pago = Number(r.valor_pago) || 0; }
+  // Extrato: link assinado a partir do extrato_path (igual loadMonthData de
+  // pagamentos-inove.html); sem path, cai no extrato_url gravado.
+  var controles = results[1].data || [];
+  var assinados = await Promise.all(controles.map(function(r) {
+    return r.extrato_path ? sb.storage.from('extratos').createSignedUrl(r.extrato_path, 3600) : Promise.resolve(null);
+  }));
+  controles.forEach(function(r, i) {
+    var s = assinados[i];
+    var extratoUrl = (s && !s.error && s.data) ? s.data.signedUrl : (r.extrato_url || null);
+    var g = grupos[r.ano + '_' + r.mes] || (extratoUrl ? grupo(r.mes, r.ano) : null);
+    if (!g) return;
+    g.valor_mes = Number(r.valor_mes) || 0;
+    g.valor_pago = Number(r.valor_pago) || 0;
+    g.extrato_url = extratoUrl;
   });
 
   return Object.keys(grupos).map(function(k) { return grupos[k]; })
     .sort(function(a, b) { return (b.ano - a.ano) || (b.mes - a.mes); });
 }
 
-// Filtro da aba "Todos os meses": 'divergente' = selo ⚠️; 'pendente' = sem
-// comprovante, anexo antigo ou comprovante ainda sem leitura "bate".
+// Filtro da visão "Histórico e Comprovantes": 'divergente' = selo ⚠️; 'pendente' =
+// sem comprovante, anexo antigo ou comprovante ainda sem leitura "bate". Extrato
+// só aparece em 'todos' (não é comprovante a conferir).
 function aporteCasaFiltro(a, filtro) {
   if (filtro === 'divergente') return a.conferencia_status === 'divergente';
   if (filtro === 'pendente') return !a.comprovante_url || a.conferencia_status !== 'ok';
   return true;
 }
 
-// HTML da aba "Todos os meses" a partir de carregarComprovantesCliente. Cada
-// página passa o próprio visual: o.tableClass (classe da tabela) e
-// o.compLink(url) / o.semComp(texto) pro link "Ver" e o texto apagado.
+// HTML da visão "Histórico e Comprovantes" a partir de carregarComprovantesCliente.
+// Cada página passa o próprio visual: o.tableClass (classe da tabela),
+// o.compLink(url) / o.semComp(texto) pro link "Ver" e o texto apagado, e
+// o.extratoLink(url) pro link do extrato (laranja, igual ao botão Extrato).
 function renderTodosComprovantesHtml(grupos, filtro, o) {
   var t = T();
-  var totalPago = 0, cont = { ok: 0, divergente: 0, outros: 0 };
+  var totalPago = 0, nExtratos = 0, cont = { ok: 0, divergente: 0, outros: 0 };
   var html = '';
   grupos.forEach(function(g) {
     totalPago += g.valor_pago;
+    if (g.extrato_url) nExtratos++;
     g.aportes.forEach(function(a) {
       if (a.comprovante_url && a.conferencia_status === 'ok') cont.ok++;
       else if (a.comprovante_url && a.conferencia_status === 'divergente') cont.divergente++;
@@ -1107,7 +1122,8 @@ function renderTodosComprovantesHtml(grupos, filtro, o) {
 
     var aps = g.aportes.filter(function(a) { return aporteCasaFiltro(a, filtro); });
     var anexos = filtro === 'divergente' ? [] : g.anexos;
-    if (!aps.length && !anexos.length) return;
+    var extrato = filtro === 'todos' ? g.extrato_url : null;
+    if (!aps.length && !anexos.length && !extrato) return;
 
     var falta = Math.max(0, g.valor_mes - g.valor_pago);
     var resumo = (g.valor_mes ? 'Faturado ' + fmt(g.valor_mes) + ' · ' : '') + 'Pago ' + fmt(g.valor_pago) +
@@ -1124,6 +1140,8 @@ function renderTodosComprovantesHtml(grupos, filtro, o) {
     }).concat(anexos.map(function(f) {
       return '<tr><td>' + o.semComp('—') + '</td><td>' + o.semComp('—') + '</td><td>' + o.compLink(f.url) + ' ' + o.semComp('anexo antigo (sem data/valor)') + '</td></tr>';
     })).join('');
+    if (!linhas) linhas = '<tr><td colspan="3">' + o.semComp('nenhum pagamento lançado') + '</td></tr>';
+    if (extrato) linhas = '<tr><td colspan="2" style="color:' + t.warn + ';font-weight:600"><i class="ti ti-file-text"></i> Extrato do mês (Inove)</td><td>' + o.extratoLink(extrato) + '</td></tr>' + linhas;
 
     html += '<div class="hist-mes-head"><span class="hist-mes-nome">' + MESES[g.mes] + ' ' + g.ano + '</span><span class="hist-mes-resumo">' + resumo + '</span></div>' +
       '<div style="overflow-x:auto"><table class="' + o.tableClass + '"><thead><tr><th>Data</th><th>Valor</th><th>Comprovante</th></tr></thead><tbody>' + linhas + '</tbody></table></div>';
@@ -1131,7 +1149,7 @@ function renderTodosComprovantesHtml(grupos, filtro, o) {
 
   if (!html) {
     html = '<p style="font-size:12px;color:#64748b;padding:12px 0">' +
-      (grupos.length ? 'Nenhum comprovante nesse filtro.' : 'Nenhum pagamento ou comprovante lançado pra este cliente.') + '</p>';
+      (grupos.length ? 'Nenhum comprovante nesse filtro.' : 'Nenhum extrato, pagamento ou comprovante lançado pra este cliente.') + '</p>';
   }
   var nTotal = cont.ok + cont.divergente + cont.outros;
   return html +
@@ -1139,41 +1157,46 @@ function renderTodosComprovantesHtml(grupos, filtro, o) {
       '<span style="color:#94a3b8;font-size:13px;font-weight:500">Total pago (meses listados)</span>' +
       '<span style="color:' + t.success + '">' + fmt(totalPago) + '</span>' +
     '</div>' +
-    '<p style="font-size:11px;color:#64748b;text-align:right;padding:0 4px">' + nTotal + ' lançamento' + (nTotal === 1 ? '' : 's') +
+    '<p style="font-size:11px;color:#64748b;text-align:right;padding:0 4px">' + nExtratos + ' extrato' + (nExtratos === 1 ? '' : 's') + ' · ' +
+      nTotal + ' lançamento' + (nTotal === 1 ? '' : 's') +
       ' · ✅ ' + cont.ok + ' bate · ⚠️ ' + cont.divergente + ' diverge · ' + cont.outros + ' sem conferência</p>';
 }
 
-// Abas "Este mês" | "Todos os meses" do modal #aportes-modal -- mesmos ids nas
-// duas páginas. Cada página chama iniciarModalAportes(reg, aba) no seu
-// abrirHistoricoAportes e define histTodosEstilo (ver renderTodosComprovantesHtml).
-// O cache dos outros meses cai a cada iniciarModalAportes, que é o que as
-// páginas já chamam depois de lançar/excluir/conferir um pagamento.
+// O modal #aportes-modal (mesmos ids nas duas páginas) tem duas visões:
+// 'mes' = "Histórico de Pagamentos" do mês selecionado (botão verde "Histórico (N)")
+// e 'todos' = "Histórico e Comprovantes" de todos os meses (botão azul).
+// Cada página chama iniciarModalAportes(reg, modo) no seu abrirHistoricoAportes e
+// define histTodosEstilo (ver renderTodosComprovantesHtml). Sem modo, mantém a
+// visão atual se o modal já está aberto pro mesmo cliente -- é o refresh que as
+// páginas já chamam depois de lançar/excluir/conferir um pagamento, e por isso
+// o cache dos outros meses cai a cada chamada.
 var aportesModalReg = null, aportesModalAba = 'mes', todosComprovantesCache = null;
 
-function iniciarModalAportes(reg, aba) {
+function iniciarModalAportes(reg, modo) {
   var modal = document.getElementById('aportes-modal');
   var jaAberto = modal.style.display === 'block' && aportesModalReg === reg;
   aportesModalReg = reg;
   todosComprovantesCache = null;
   document.getElementById('aportes-modal-overlay').style.display = 'block';
   modal.style.display = 'block';
-  trocarAbaAportes(aba || (jaAberto ? aportesModalAba : 'mes'));
+  mostrarVisaoAportes(modo || (jaAberto ? aportesModalAba : 'mes'));
 }
 
-async function trocarAbaAportes(aba) {
-  aportesModalAba = aba;
-  document.getElementById('aportes-tab-mes').classList.toggle('active', aba === 'mes');
-  document.getElementById('aportes-tab-todos').classList.toggle('active', aba === 'todos');
-  document.getElementById('aportes-pane-mes').style.display = aba === 'mes' ? '' : 'none';
-  document.getElementById('aportes-pane-todos').style.display = aba === 'todos' ? '' : 'none';
+async function mostrarVisaoAportes(modo) {
+  aportesModalAba = modo;
+  var todos = modo === 'todos';
+  document.getElementById('aportes-pane-mes').style.display = todos ? 'none' : '';
+  document.getElementById('aportes-pane-todos').style.display = todos ? '' : 'none';
+  var tituloEl = document.getElementById('aportes-modal-titulo');
+  if (tituloEl) tituloEl.textContent = todos ? 'Histórico e Comprovantes' : 'Histórico de Pagamentos';
   var reg = aportesModalReg;
   var clEl = document.getElementById('aportes-modal-cliente');
-  if (clEl) clEl.textContent = nomeCliente(reg) + ' · ' + (aba === 'todos' ? 'todos os meses' : MESES[viewMonth] + ' ' + viewYear);
-  if (aba !== 'todos') return;
+  if (clEl) clEl.textContent = nomeCliente(reg) + ' · ' + (todos ? 'todos os meses' : MESES[viewMonth] + ' ' + viewYear);
+  if (!todos) return;
   if (todosComprovantesCache) { renderTodosComprovantes(); return; }
 
   var lista = document.getElementById('aportes-todos-lista');
-  lista.innerHTML = '<p style="font-size:12px;color:#64748b;padding:12px 0"><span class="selo-spin"></span> Carregando comprovantes de todos os meses…</p>';
+  lista.innerHTML = '<p style="font-size:12px;color:#64748b;padding:12px 0"><span class="selo-spin"></span> Carregando extratos e comprovantes de todos os meses…</p>';
   try {
     var grupos = await carregarComprovantesCliente(reg);
     if (aportesModalReg !== reg) return; // trocou de cliente enquanto carregava
