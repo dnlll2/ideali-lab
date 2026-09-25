@@ -1031,6 +1031,167 @@ function renderSeloConferencia(aporte) {
     '<span class="selo-tip"><span class="selo-tip-ico">i</span><span class="selo-tip-bubble">'+msg+' Não impede o pagamento — só não há conferência automática aqui. Confira manualmente.</span></span></div>';
 }
 
+// Todos os comprovantes de um cliente, de todos os meses -- aba "Todos os meses"
+// do Histórico de Pagamentos (contas-receber.html e pagamentos-inove.html).
+// Junta os aportes (pagamento_aportes, com selo) e os anexos soltos do jeito
+// antigo (storage comprovantes/<ano>_<mes>/reg<N>_*, sem data/valor), agrupados
+// por mês de competência, mais recente primeiro. Só entram meses com algum
+// pagamento/anexo. Retorna [{mes, ano, valor_mes, valor_pago, aportes:[...], anexos:[{name,url}]}].
+async function carregarComprovantesCliente(reg) {
+  var results = await Promise.all([
+    sb.from('pagamento_aportes').select('*').eq('cliente_reg', reg).order('data_pagamento'),
+    sb.from('controle_mensal').select('mes,ano,valor_mes,valor_pago').eq('cliente_reg', reg),
+    sb.storage.from('comprovantes').list('', { limit: 1000 })
+  ]);
+  if (results[0].error) throw results[0].error;
+
+  var grupos = {};
+  function grupo(mes, ano) {
+    var k = ano + '_' + mes;
+    if (!grupos[k]) grupos[k] = { mes: mes, ano: ano, valor_mes: 0, valor_pago: 0, aportes: [], anexos: [] };
+    return grupos[k];
+  }
+  (results[0].data || []).forEach(function(a) { grupo(a.mes, a.ano).aportes.push(a); });
+
+  // Pastas <ano>_<mes> dos anexos antigos -- a busca do storage é ILIKE (o "_"
+  // vira curinga, reg1_ casaria reg12), então o filtro de verdade é a regex.
+  var pastas = (results[2].data || []).map(function(f) { return f.name; }).filter(function(n) { return /^\d{4}_\d{1,2}$/.test(n); });
+  var reNome = new RegExp('^reg' + reg + '_');
+  var listas = await Promise.all(pastas.map(function(p) {
+    return sb.storage.from('comprovantes').list(p, { search: 'reg' + reg + '_', limit: 1000 });
+  }));
+  listas.forEach(function(res, i) {
+    if (res.error || !res.data) return;
+    var partes = pastas[i].split('_');
+    res.data.forEach(function(f) {
+      if (!reNome.test(f.name)) return;
+      grupo(parseInt(partes[1]), parseInt(partes[0])).anexos.push({
+        name: f.name,
+        url: sb.storage.from('comprovantes').getPublicUrl(pastas[i] + '/' + f.name).data.publicUrl
+      });
+    });
+  });
+
+  (results[1].data || []).forEach(function(r) {
+    var g = grupos[r.ano + '_' + r.mes];
+    if (g) { g.valor_mes = Number(r.valor_mes) || 0; g.valor_pago = Number(r.valor_pago) || 0; }
+  });
+
+  return Object.keys(grupos).map(function(k) { return grupos[k]; })
+    .sort(function(a, b) { return (b.ano - a.ano) || (b.mes - a.mes); });
+}
+
+// Filtro da aba "Todos os meses": 'divergente' = selo ⚠️; 'pendente' = sem
+// comprovante, anexo antigo ou comprovante ainda sem leitura "bate".
+function aporteCasaFiltro(a, filtro) {
+  if (filtro === 'divergente') return a.conferencia_status === 'divergente';
+  if (filtro === 'pendente') return !a.comprovante_url || a.conferencia_status !== 'ok';
+  return true;
+}
+
+// HTML da aba "Todos os meses" a partir de carregarComprovantesCliente. Cada
+// página passa o próprio visual: o.tableClass (classe da tabela) e
+// o.compLink(url) / o.semComp(texto) pro link "Ver" e o texto apagado.
+function renderTodosComprovantesHtml(grupos, filtro, o) {
+  var t = T();
+  var totalPago = 0, cont = { ok: 0, divergente: 0, outros: 0 };
+  var html = '';
+  grupos.forEach(function(g) {
+    totalPago += g.valor_pago;
+    g.aportes.forEach(function(a) {
+      if (a.comprovante_url && a.conferencia_status === 'ok') cont.ok++;
+      else if (a.comprovante_url && a.conferencia_status === 'divergente') cont.divergente++;
+      else cont.outros++;
+    });
+    cont.outros += g.anexos.length;
+
+    var aps = g.aportes.filter(function(a) { return aporteCasaFiltro(a, filtro); });
+    var anexos = filtro === 'divergente' ? [] : g.anexos;
+    if (!aps.length && !anexos.length) return;
+
+    var falta = Math.max(0, g.valor_mes - g.valor_pago);
+    var resumo = (g.valor_mes ? 'Faturado ' + fmt(g.valor_mes) + ' · ' : '') + 'Pago ' + fmt(g.valor_pago) +
+      (g.valor_mes ? (falta > 0.009
+        ? ' · <span style="color:' + t.warn + '">falta ' + fmt(falta) + '</span>'
+        : ' · <span style="color:' + t.success + '">quitado</span>') : '');
+
+    var linhas = aps.map(function(a) {
+      var dataFmt = new Date(a.data_pagamento + 'T00:00:00').toLocaleDateString('pt-BR');
+      var compHtml = a.comprovante_url
+        ? o.compLink(a.comprovante_url) + renderSeloConferencia(a)
+        : o.semComp(a.legado ? 'lançamento anterior' : 'sem comprovante');
+      return '<tr><td>' + dataFmt + '</td><td style="color:' + t.success + ';font-weight:600">' + fmt(a.valor) + '</td><td>' + compHtml + '</td></tr>';
+    }).concat(anexos.map(function(f) {
+      return '<tr><td>' + o.semComp('—') + '</td><td>' + o.semComp('—') + '</td><td>' + o.compLink(f.url) + ' ' + o.semComp('anexo antigo (sem data/valor)') + '</td></tr>';
+    })).join('');
+
+    html += '<div class="hist-mes-head"><span class="hist-mes-nome">' + MESES[g.mes] + ' ' + g.ano + '</span><span class="hist-mes-resumo">' + resumo + '</span></div>' +
+      '<div style="overflow-x:auto"><table class="' + o.tableClass + '"><thead><tr><th>Data</th><th>Valor</th><th>Comprovante</th></tr></thead><tbody>' + linhas + '</tbody></table></div>';
+  });
+
+  if (!html) {
+    html = '<p style="font-size:12px;color:#64748b;padding:12px 0">' +
+      (grupos.length ? 'Nenhum comprovante nesse filtro.' : 'Nenhum pagamento ou comprovante lançado pra este cliente.') + '</p>';
+  }
+  var nTotal = cont.ok + cont.divergente + cont.outros;
+  return html +
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px 4px;font-size:15px;font-weight:600">' +
+      '<span style="color:#94a3b8;font-size:13px;font-weight:500">Total pago (meses listados)</span>' +
+      '<span style="color:' + t.success + '">' + fmt(totalPago) + '</span>' +
+    '</div>' +
+    '<p style="font-size:11px;color:#64748b;text-align:right;padding:0 4px">' + nTotal + ' lançamento' + (nTotal === 1 ? '' : 's') +
+      ' · ✅ ' + cont.ok + ' bate · ⚠️ ' + cont.divergente + ' diverge · ' + cont.outros + ' sem conferência</p>';
+}
+
+// Abas "Este mês" | "Todos os meses" do modal #aportes-modal -- mesmos ids nas
+// duas páginas. Cada página chama iniciarModalAportes(reg, aba) no seu
+// abrirHistoricoAportes e define histTodosEstilo (ver renderTodosComprovantesHtml).
+// O cache dos outros meses cai a cada iniciarModalAportes, que é o que as
+// páginas já chamam depois de lançar/excluir/conferir um pagamento.
+var aportesModalReg = null, aportesModalAba = 'mes', todosComprovantesCache = null;
+
+function iniciarModalAportes(reg, aba) {
+  var modal = document.getElementById('aportes-modal');
+  var jaAberto = modal.style.display === 'block' && aportesModalReg === reg;
+  aportesModalReg = reg;
+  todosComprovantesCache = null;
+  document.getElementById('aportes-modal-overlay').style.display = 'block';
+  modal.style.display = 'block';
+  trocarAbaAportes(aba || (jaAberto ? aportesModalAba : 'mes'));
+}
+
+async function trocarAbaAportes(aba) {
+  aportesModalAba = aba;
+  document.getElementById('aportes-tab-mes').classList.toggle('active', aba === 'mes');
+  document.getElementById('aportes-tab-todos').classList.toggle('active', aba === 'todos');
+  document.getElementById('aportes-pane-mes').style.display = aba === 'mes' ? '' : 'none';
+  document.getElementById('aportes-pane-todos').style.display = aba === 'todos' ? '' : 'none';
+  var reg = aportesModalReg;
+  var clEl = document.getElementById('aportes-modal-cliente');
+  if (clEl) clEl.textContent = nomeCliente(reg) + ' · ' + (aba === 'todos' ? 'todos os meses' : MESES[viewMonth] + ' ' + viewYear);
+  if (aba !== 'todos') return;
+  if (todosComprovantesCache) { renderTodosComprovantes(); return; }
+
+  var lista = document.getElementById('aportes-todos-lista');
+  lista.innerHTML = '<p style="font-size:12px;color:#64748b;padding:12px 0"><span class="selo-spin"></span> Carregando comprovantes de todos os meses…</p>';
+  try {
+    var grupos = await carregarComprovantesCliente(reg);
+    if (aportesModalReg !== reg) return; // trocou de cliente enquanto carregava
+    todosComprovantesCache = grupos;
+    renderTodosComprovantes();
+  } catch (e) {
+    console.error('carregarComprovantesCliente:', e);
+    lista.innerHTML = '<p style="font-size:12px;color:' + T().danger + ';padding:12px 0">Erro ao carregar os comprovantes: ' + escHtml(e.message || String(e)) + '</p>';
+  }
+}
+
+function renderTodosComprovantes() {
+  var lista = document.getElementById('aportes-todos-lista');
+  if (!lista || !todosComprovantesCache || aportesModalAba !== 'todos') return;
+  var filtro = document.getElementById('aportes-todos-filtro').value;
+  lista.innerHTML = renderTodosComprovantesHtml(todosComprovantesCache, filtro, histTodosEstilo);
+}
+
 // ── Autenticação por senha ────────────────────────────────────
 var IDEALI_PASSWORD = 'ideali2026';
 
