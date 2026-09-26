@@ -1095,7 +1095,7 @@ async function carregarComprovantesCliente(reg) {
 
 // Filtro da visão "Histórico e Comprovantes": 'divergente' = selo ⚠️; 'pendente' =
 // sem comprovante, anexo antigo ou comprovante ainda sem leitura "bate". Extrato
-// só aparece em 'todos' (não é comprovante a conferir).
+// aparece em todos os filtros, pra nenhum mês com extrato sumir da lista.
 function aporteCasaFiltro(a, filtro) {
   if (filtro === 'divergente') return a.conferencia_status === 'divergente';
   if (filtro === 'pendente') return !a.comprovante_url || a.conferencia_status !== 'ok';
@@ -1123,7 +1123,8 @@ function renderTodosComprovantesHtml(grupos, filtro, o) {
     // Anexos soltos do jeito antigo (sem data/valor) não aparecem mais: os arquivos
     // continuam no storage, só não poluem a lista.
     var anexos = [];
-    var extrato = filtro === 'todos' ? g.extrato_url : null;
+    // Extrato aparece em qualquer filtro: mês com extrato anexado nunca some da lista.
+    var extrato = g.extrato_url;
     if (!aps.length && !anexos.length && !extrato) return;
 
     var falta = Math.max(0, g.valor_mes - g.valor_pago);
@@ -1144,7 +1145,7 @@ function renderTodosComprovantesHtml(grupos, filtro, o) {
     if (!linhas) linhas = '<tr><td colspan="3">' + o.semComp('nenhum pagamento lançado') + '</td></tr>';
     if (extrato) linhas = '<tr><td colspan="2" style="color:' + t.warn + ';font-weight:600"><i class="ti ti-file-text"></i> Extrato do mês (Inove)</td><td>' + o.extratoLink(extrato) + '</td></tr>' + linhas;
 
-    html += '<div class="hist-mes-head"><span class="hist-mes-nome">' + MESES[g.mes] + ' ' + g.ano + '</span><span class="hist-mes-resumo">' + resumo + '</span></div>' +
+    html += '<div class="hist-mes-head"><span class="hist-mes-nome">' + MESES[g.mes] + '/' + g.ano + '</span><span class="hist-mes-resumo">' + resumo + '</span></div>' +
       '<div style="overflow-x:auto"><table class="' + o.tableClass + '"><thead><tr><th>Data</th><th>Valor</th><th>Comprovante</th></tr></thead><tbody>' + linhas + '</tbody></table></div>';
   });
 
