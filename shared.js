@@ -1118,10 +1118,11 @@ function renderTodosComprovantesHtml(grupos, filtro, o) {
       else if (a.comprovante_url && a.conferencia_status === 'divergente') cont.divergente++;
       else cont.outros++;
     });
-    cont.outros += g.anexos.length;
 
     var aps = g.aportes.filter(function(a) { return aporteCasaFiltro(a, filtro); });
-    var anexos = filtro === 'divergente' ? [] : g.anexos;
+    // Anexos soltos do jeito antigo (sem data/valor) não aparecem mais: os arquivos
+    // continuam no storage, só não poluem a lista.
+    var anexos = [];
     var extrato = filtro === 'todos' ? g.extrato_url : null;
     if (!aps.length && !anexos.length && !extrato) return;
 
@@ -1188,7 +1189,9 @@ async function mostrarVisaoAportes(modo) {
   document.getElementById('aportes-pane-mes').style.display = todos ? 'none' : '';
   document.getElementById('aportes-pane-todos').style.display = todos ? '' : 'none';
   var tituloEl = document.getElementById('aportes-modal-titulo');
-  if (tituloEl) tituloEl.textContent = todos ? 'Histórico e Comprovantes' : 'Histórico de Pagamentos';
+  if (tituloEl) tituloEl.textContent = todos ? 'Histórico Geral' : 'Histórico Mensal';
+  // Histórico Geral tem 3 colunas por mês + resumo -- em 560px ficava apertado.
+  document.getElementById('aportes-modal').style.width = todos ? 'min(880px,95vw)' : '';
   var reg = aportesModalReg;
   var clEl = document.getElementById('aportes-modal-cliente');
   if (clEl) clEl.textContent = nomeCliente(reg) + ' · ' + (todos ? 'todos os meses' : MESES[viewMonth] + ' ' + viewYear);
