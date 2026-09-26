@@ -1109,10 +1109,13 @@ function aporteCasaFiltro(a, filtro) {
 // o.extratoLink(url) pro link do extrato (laranja, igual ao botão Extrato).
 function renderTodosComprovantesHtml(grupos, filtro, o) {
   var t = T();
-  var totalPago = 0, nExtratos = 0, cont = { ok: 0, divergente: 0, outros: 0 };
+  var totalPago = 0, totalFaturado = 0, totalDevido = 0, nExtratos = 0, cont = { ok: 0, divergente: 0, outros: 0 };
   var html = '';
   grupos.forEach(function(g) {
     totalPago += g.valor_pago;
+    totalFaturado += g.valor_mes;
+    // Devido = soma do que falta em cada mês (mês pago a mais conta 0, igual ao card)
+    totalDevido += Math.max(0, g.valor_mes - g.valor_pago);
     if (g.extrato_url) nExtratos++;
     g.aportes.forEach(function(a) {
       if (a.comprovante_url && a.conferencia_status === 'ok') cont.ok++;
@@ -1178,10 +1181,13 @@ function renderTodosComprovantesHtml(grupos, filtro, o) {
       (grupos.length ? 'Nenhum comprovante nesse filtro.' : 'Nenhum extrato, pagamento ou comprovante lançado pra este cliente.') + '</p>';
   }
   var nTotal = cont.ok + cont.divergente + cont.outros;
+  var devidoCor = totalDevido > 0.009 ? '#f87171' : t.success;
   return html +
-    '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px 4px;font-size:15px;font-weight:600">' +
-      '<span style="color:#94a3b8;font-size:13px;font-weight:500">Total pago (meses listados)</span>' +
-      '<span style="color:' + t.success + '">' + fmt(totalPago) + '</span>' +
+    '<div class="hist-totais">' +
+      '<div class="hist-tot-linha"><span>Total faturado (meses listados)</span><b>' + fmt(totalFaturado) + '</b></div>' +
+      '<div class="hist-tot-linha"><span>Total pago (meses listados)</span><b style="color:' + t.success + '">' + fmt(totalPago) + '</b></div>' +
+      '<div class="hist-tot-linha devido" style="border-color:' + devidoCor + '"><span>Total devido (todos os meses)</span>' +
+        '<b style="color:' + devidoCor + '">' + fmt(totalDevido) + (totalDevido > 0.009 ? '' : ' · tudo quitado') + '</b></div>' +
     '</div>' +
     '<p style="font-size:11px;color:#64748b;text-align:right;padding:0 4px">' + nExtratos + ' extrato' + (nExtratos === 1 ? '' : 's') + ' · ' +
       nTotal + ' lançamento' + (nTotal === 1 ? '' : 's') +

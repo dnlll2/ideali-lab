@@ -295,3 +295,9 @@ button{font-family:inherit;cursor:pointer}
 .hist-falta-pagar{font-size:13px;font-weight:800;color:#f87171;margin-top:3px;font-variant-numeric:tabular-nums}
 .hist-conf-todos{margin-top:8px;height:28px;padding:0 12px;border-radius:6px;border:1px solid #3b82f6;background:rgba(59,130,246,0.14);color:#93c5fd;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .hist-conf-todos:hover{background:#3b82f6;color:#fff}
+
+.hist-totais{display:grid;gap:6px;padding:12px 4px 4px}
+.hist-tot-linha{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:13px;color:#94a3b8}
+.hist-tot-linha b{font-size:15px;color:#f1f5f9;font-variant-numeric:tabular-nums}
+.hist-tot-linha.devido{margin-top:4px;padding:10px 12px;border:1px solid;border-radius:10px;background:rgba(255,255,255,0.03);font-weight:600;color:#e2e8f0}
+.hist-tot-linha.devido b{font-size:18px;font-weight:800}
