@@ -73,6 +73,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .status-parcial{background:#3d330d;color:#fbbf24;border:0.5px solid #f59e0b}
 .status-nada{background:#3d0d0d;color:#ef4444;border:0.5px solid #ef4444}
 .status-filter-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.busca-cliente{margin-left:auto;display:flex;align-items:center;gap:8px;height:32px;min-width:280px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.15);background:#1a1d27;padding:0 10px;cursor:text}
+.busca-cliente:focus-within{border-color:#4dd0a8;box-shadow:0 0 0 3px rgba(77,208,168,0.12)}
+.busca-cliente input{flex:1;min-width:0;background:none;border:0;outline:none;color:#e2e8f0;font-size:13px;font-family:inherit}
+.busca-cliente .bc-cnt{font-size:11px;color:#64748b;white-space:nowrap;font-variant-numeric:tabular-nums}
+.busca-cliente .bc-clr{border:0;background:#22263a;color:#94a3b8;width:20px;height:20px;border-radius:50%;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.client-name mark{background:rgba(77,208,168,0.25);color:inherit;border-radius:3px;padding:0 1px}
+@media(max-width:767px){.busca-cliente{margin-left:0;min-width:0;width:100%}}
 .status-filter-btn{padding:6px 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s}
 .status-filter-btn:hover{background:#2d3250;color:#e2e8f0}
 .valor-mes{color:#fbbf24;font-weight:500}
@@ -83,12 +90,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .comp-link.extrato-link{color:#f59e0b;background:rgba(245,158,11,0.12)}
 .comp-link.extrato-link:hover{background:rgba(245,158,11,0.22)}
 .no-comp{font-size:11px;color:#4a5568}
-.btn-hist-comp{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#60a5fa;padding:3px 9px;border-radius:6px;border:0.5px solid rgba(59,130,246,0.5);background:rgba(59,130,246,0.14);white-space:nowrap;cursor:pointer;font-family:inherit}
-.btn-hist-comp:hover{background:rgba(59,130,246,0.24)}
+.btn-hist-comp{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#1a1204;padding:3px 9px;border-radius:6px;border:0.5px solid #f59e0b;background:#f59e0b;white-space:nowrap;cursor:pointer;font-family:inherit}
+.btn-hist-comp:hover{background:#fbbf24;border-color:#fbbf24}
 .hist-filtro{height:28px;border:0.5px solid rgba(255,255,255,0.12);border-radius:7px;padding:0 8px;font-size:12px;background:#0f1117;color:#e2e8f0;font-family:inherit}
 .hist-mes-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin:14px 0 2px;padding-bottom:4px;border-bottom:0.5px solid rgba(255,255,255,0.1)}
 .hist-mes-head:first-child{margin-top:0}
-.hist-mes-nome{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;font-weight:600}
+.hist-mes-nome{font-size:13px;color:#f59e0b;letter-spacing:0.02em;font-weight:700}
 .hist-mes-resumo{font-size:11px;color:#64748b}
 .btn-historico{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#4ade80;text-decoration:none;padding:3px 9px;border-radius:6px;border:0.5px solid rgba(34,197,94,0.5);background:rgba(34,197,94,0.14);white-space:nowrap;cursor:pointer;font-family:inherit}
 .btn-historico:hover{background:rgba(34,197,94,0.24)}
@@ -326,6 +333,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="status-filter-btn" data-filter="quitado" onclick="setStatusFilter('quitado')">Quitado</button>
     <button class="status-filter-btn" data-filter="parcial" onclick="setStatusFilter('parcial')">Parcial</button>
     <button class="status-filter-btn" data-filter="nada" onclick="setStatusFilter('nada')">Nada Pago</button>
+    <label class="busca-cliente" for="busca-cliente-inp" title="Filtra a tabela pelo nome do cliente (Esc limpa)">
+      <i class="ti ti-search" style="font-size:14px;color:#64748b"></i>
+      <input id="busca-cliente-inp" type="text" placeholder="Buscar cliente…" autocomplete="off" oninput="setBuscaCliente(this.value)" onkeydown="if(event.key==='Escape'){this.value='';setBuscaCliente('');}">
+      <span class="bc-cnt" id="busca-cliente-cnt"></span>
+      <button type="button" class="bc-clr" id="busca-cliente-clr" style="display:none" title="Limpar busca" onclick="var i=document.getElementById('busca-cliente-inp');i.value='';setBuscaCliente('');i.focus()">✕</button>
+    </label>
   </div>
 
   <div id="loading" class="loading">Carregando dados…</div>
@@ -896,6 +909,24 @@ function setStatusFilter(f) {
   var btns = document.querySelectorAll('#status-filter-row .status-filter-btn');
   for (var i=0; i<btns.length; i++) btns[i].classList.toggle('active', btns[i].dataset.filter === f);
   renderTable();
+}
+
+// Busca por nome de cliente na tela principal: filtra a tabela a cada letra,
+// sem acento/maiúscula, somando com o filtro de status. Os cartões de total
+// continuam sendo do mês inteiro.
+var buscaCliente = '';
+function normBusca(s) { return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+function setBuscaCliente(v) {
+  buscaCliente = normBusca(v).trim();
+  var clr = document.getElementById('busca-cliente-clr');
+  if (clr) clr.style.display = buscaCliente ? 'flex' : 'none';
+  renderTable();
+}
+function nomeClienteBuscaHtml(nome) {
+  var k = buscaCliente ? normBusca(nome).indexOf(buscaCliente) : -1;
+  if (k < 0) return escHtml(nome);
+  // normalize('NFD') + remover acentos preserva o tamanho de cada letra, então os índices batem
+  return escHtml(nome.slice(0, k)) + '<mark>' + escHtml(nome.slice(k, k + buscaCliente.length)) + '</mark>' + escHtml(nome.slice(k + buscaCliente.length));
 }
 
 // "Saque" de comissão — revisão (client-side, só pra preview) + confirmação, que chama
@@ -1473,8 +1504,12 @@ function renderTable() {
   var rows = clients
     .map(function(c) { return { c:c, s: dbState[c.reg] || {valor_mes:0,valor_pago:0,comprovantes:[]} }; })
     .filter(function(r) { return r.s.valor_mes > 0 || r.s.valor_pago > 0 || (r.s.comprovantes||[]).length > 0; })
-    .filter(function(r) { return statusFilter === 'todos' || statusOf(r.s).key === statusFilter; })
-    .sort(function(a,b){ return b.s.valor_mes - a.s.valor_mes; });
+    .filter(function(r) { return statusFilter === 'todos' || statusOf(r.s).key === statusFilter; });
+  var totalAntesBusca = rows.length;
+  if (buscaCliente) rows = rows.filter(function(r) { return normBusca(r.c.nome).indexOf(buscaCliente) >= 0; });
+  rows.sort(function(a,b){ return b.s.valor_mes - a.s.valor_mes; });
+  var cntEl = document.getElementById('busca-cliente-cnt');
+  if (cntEl) cntEl.textContent = buscaCliente ? rows.length + ' de ' + totalAntesBusca : '';
 
   var totMes=0, totPago=0, totRestante=0, clientesComPendencia=0, clientesQuePagaram=0;
   clients.forEach(function(c) {
@@ -1499,7 +1534,8 @@ function renderTable() {
 
   var tbody = document.getElementById('rows-body');
   if (!rows.length) {
-    var emptyMsg = statusFilter === 'todos' ? 'Nenhum lançamento neste mês.' : 'Nenhum cliente com esse status neste mês.';
+    var emptyMsg = buscaCliente ? 'Nenhum cliente com esse nome neste mês.'
+      : statusFilter === 'todos' ? 'Nenhum lançamento neste mês.' : 'Nenhum cliente com esse status neste mês.';
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#4a5568;padding:2rem">'+emptyMsg+'</td></tr>';
   } else {
     tbody.innerHTML = rows.map(function(r) {
@@ -1535,7 +1571,7 @@ function renderTable() {
         ? '<span class="badge-novo-pagamento">🟡 Novo pagamento — aguardando confirmação</span>'
         : '';
       return '<tr'+(isNovo?' class="row-novo-pagamento"':'')+'>' +
-        '<td><p class="client-name">'+escHtml(r.c.nome)+'</p>'+novoBadgeHtml+'</td>' +
+        '<td><p class="client-name">'+nomeClienteBuscaHtml(r.c.nome)+'</p>'+novoBadgeHtml+'</td>' +
         '<td class="'+(vm>0?'valor-mes':'valor-zero')+'">'+fmt(vm)+'</td>' +
         '<td class="'+(vp>0?'valor-pago':'valor-zero')+'">'+fmt(vp)+'</td>' +
         saldoAnteriorCells(r.c.reg, r.s.abater_saldo_credor) +
