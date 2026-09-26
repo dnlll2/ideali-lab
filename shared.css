@@ -257,3 +257,35 @@ button{font-family:inherit;cursor:pointer}
 .selo-tip .selo-tip-ico{width:13px;height:13px;border-radius:50%;border:1px solid #64748b;color:#64748b;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:default}
 .selo-tip .selo-tip-bubble{position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%);background:#0b0d13;color:#e2e8f0;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;padding:7px 9px;font-size:11px;line-height:1.4;font-weight:400;width:210px;box-shadow:0 8px 24px rgba(0,0,0,0.4);opacity:0;pointer-events:none;transition:opacity 0.12s ease;z-index:5}
 .selo-tip:hover .selo-tip-bubble{opacity:1}
+
+/* ── Histórico Geral: um card por mês + confirmação de comprovante pela Inove ── */
+.hist-card{background:#141722;border:1px solid rgba(255,255,255,0.1);border-radius:12px;overflow:hidden;margin-bottom:14px;box-shadow:0 6px 18px rgba(0,0,0,0.3)}
+.hist-card.pend{border-color:rgba(251,191,36,0.4)}
+.hist-card-h{display:flex;justify-content:space-between;align-items:center;gap:10px 16px;flex-wrap:wrap;padding:14px 16px;background:linear-gradient(180deg,rgba(255,255,255,0.035),transparent);border-bottom:0.5px solid rgba(255,255,255,0.08)}
+.hist-card .hist-mes-nome{font-size:17px;font-weight:700;color:#f59e0b;letter-spacing:0.01em;text-transform:none}
+.hist-card-sub{font-size:11.5px;color:#64748b;margin-top:3px}
+.hist-card-val{text-align:right;margin-left:auto}
+.hist-card-val .l{font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:#64748b}
+.hist-card-val .v{font-size:24px;font-weight:800;color:#f1f5f9;font-variant-numeric:tabular-nums;line-height:1.1;margin-top:2px}
+.hist-card-val .s{font-size:11.5px;margin-top:2px;font-variant-numeric:tabular-nums}
+.hist-pill{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:8px;vertical-align:middle}
+.hist-pill.quitado{background:rgba(74,222,128,0.14);color:#4ade80}
+.hist-pill.falta{background:rgba(251,191,36,0.14);color:#fbbf24}
+.hist-card table{margin:0}
+.hist-card th,.hist-card td{padding-left:16px}
+.hist-novo{font-size:10px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;padding:2px 7px;border-radius:4px;background:#facc15;color:#1a1204;margin-left:6px;white-space:nowrap}
+.hist-conf-btn{height:26px;padding:0 11px;border-radius:6px;border:1px solid #3b82f6;background:#3b82f6;color:#fff;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.hist-conf-btn:hover{background:#2563eb}
+.hist-conf-ok{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:#4ade80;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.4);border-radius:6px;padding:3px 10px;white-space:nowrap}
+.hist-conf-ok small{font-weight:500;color:#64748b}
+.hist-conf-pend{font-size:11px;color:#64748b;white-space:nowrap}
+.conf-comp-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:700;display:none;align-items:center;justify-content:center;padding:16px}
+.conf-comp-dlg{background:#1a1d27;border:1px solid rgba(255,255,255,0.14);border-top:3px solid #3b82f6;border-radius:12px;padding:18px 20px;max-width:380px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,0.6)}
+.conf-comp-dlg h3{font-size:16px;color:#f1f5f9;margin-bottom:6px}
+.conf-comp-dlg p{font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:12px}
+.conf-comp-erro{color:#f87171 !important;min-height:0}
+.conf-comp-bts{display:flex;gap:8px;justify-content:flex-end}
+.conf-comp-bts button{height:34px;padding:0 16px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.conf-comp-nao{background:#22263a;border:0.5px solid rgba(255,255,255,0.14);color:#94a3b8}
+.conf-comp-sim{background:#3b82f6;border:0;color:#fff}
+.conf-comp-sim:disabled{opacity:0.6;cursor:wait}
