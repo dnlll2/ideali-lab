@@ -1697,6 +1697,11 @@ async function init() {
   // Sempre abre no mes-calendario atual, mesmo que ainda nao tenha nenhum
   // valor_mes lancado nele -- mes atual "zerado" e um estado valido, nao
   // motivo pra pular pro mes anterior (mesmo padrao de pagamentos-inove.html).
+  // viewMonth vinha do localStorage (ultimo mes visitado) enquanto os dados eram do
+  // mes atual: o nome do mes e os lancamentos usavam um mes, a tela mostrava outro.
+  viewMonth = currentMonth; viewYear = currentYear;
+  localStorage.setItem('ideali-viewMonth', viewMonth);
+  localStorage.setItem('ideali-viewYear', viewYear);
   var loaded = await Promise.all([loadMonthData(currentMonth, currentYear), loadPrevMonthMap(currentMonth, currentYear)]);
   dbState = loaded[0];
   prevMonthMap = loaded[1];
