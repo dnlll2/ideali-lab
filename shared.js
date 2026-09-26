@@ -1082,7 +1082,8 @@ async function carregarComprovantesCliente(reg) {
   controles.forEach(function(r, i) {
     var s = assinados[i];
     var extratoUrl = (s && !s.error && s.data) ? s.data.signedUrl : (r.extrato_url || null);
-    var g = grupos[r.ano + '_' + r.mes] || (extratoUrl ? grupo(r.mes, r.ano) : null);
+    var temMes = extratoUrl || Number(r.valor_mes) > 0 || Number(r.valor_pago) > 0;
+    var g = grupos[r.ano + '_' + r.mes] || (temMes ? grupo(r.mes, r.ano) : null);
     if (!g) return;
     g.valor_mes = Number(r.valor_mes) || 0;
     g.valor_pago = Number(r.valor_pago) || 0;
@@ -1123,9 +1124,8 @@ function renderTodosComprovantesHtml(grupos, filtro, o) {
     // Anexos soltos do jeito antigo (sem data/valor) não aparecem mais: os arquivos
     // continuam no storage, só não poluem a lista.
     var anexos = [];
-    // Extrato aparece em qualquer filtro: mês com extrato anexado nunca some da lista.
-    var extrato = g.extrato_url;
-    if (!aps.length && !anexos.length && !extrato) return;
+    // Todo mês mostra a linha "Extrato do mês (Inove)", em qualquer filtro: com o
+    // botão Ver quando o extrato está anexado, sem botão quando ainda não está.
 
     var falta = Math.max(0, g.valor_mes - g.valor_pago);
     var resumo = (g.valor_mes ? 'Faturado ' + fmt(g.valor_mes) + ' · ' : '') + 'Pago ' + fmt(g.valor_pago) +
@@ -1143,7 +1143,8 @@ function renderTodosComprovantesHtml(grupos, filtro, o) {
       return '<tr><td>' + o.semComp('—') + '</td><td>' + o.semComp('—') + '</td><td>' + o.compLink(f.url) + ' ' + o.semComp('anexo antigo (sem data/valor)') + '</td></tr>';
     })).join('');
     if (!linhas) linhas = '<tr><td colspan="3">' + o.semComp('nenhum pagamento lançado') + '</td></tr>';
-    if (extrato) linhas = '<tr><td colspan="2" style="color:' + t.warn + ';font-weight:600"><i class="ti ti-file-text"></i> Extrato do mês (Inove)</td><td>' + o.extratoLink(extrato) + '</td></tr>' + linhas;
+    linhas = '<tr class="hist-extrato-row"><td colspan="2"><i class="ti ti-file-text"></i> Extrato do mês (Inove)</td><td>' +
+      (g.extrato_url ? o.extratoLink(g.extrato_url) : '<span class="hist-extrato-falta">não anexado</span>') + '</td></tr>' + linhas;
 
     html += '<div class="hist-mes-head"><span class="hist-mes-nome">' + MESES[g.mes] + '/' + g.ano + '</span><span class="hist-mes-resumo">' + resumo + '</span></div>' +
       '<div style="overflow-x:auto"><table class="' + o.tableClass + '"><thead><tr><th>Data</th><th>Valor</th><th>Comprovante</th></tr></thead><tbody>' + linhas + '</tbody></table></div>';

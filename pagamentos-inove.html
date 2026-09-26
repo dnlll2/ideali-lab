@@ -73,13 +73,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .status-parcial{background:#3d330d;color:#fbbf24;border:0.5px solid #f59e0b}
 .status-nada{background:#3d0d0d;color:#ef4444;border:0.5px solid #ef4444}
 .status-filter-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-.busca-cliente{margin-left:auto;display:flex;align-items:center;gap:8px;height:32px;min-width:280px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.15);background:#1a1d27;padding:0 10px;cursor:text}
+.busca-cliente{display:flex;align-items:center;gap:10px;width:100%;height:40px;margin-bottom:12px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.15);background:#1a1d27;padding:0 10px;cursor:text}
 .busca-cliente:focus-within{border-color:#4dd0a8;box-shadow:0 0 0 3px rgba(77,208,168,0.12)}
-.busca-cliente input{flex:1;min-width:0;background:none;border:0;outline:none;color:#e2e8f0;font-size:13px;font-family:inherit}
+.busca-cliente input{flex:1;min-width:0;background:none;border:0;outline:none;color:#e2e8f0;font-size:14px;font-family:inherit}
 .busca-cliente .bc-cnt{font-size:11px;color:#64748b;white-space:nowrap;font-variant-numeric:tabular-nums}
 .busca-cliente .bc-clr{border:0;background:#22263a;color:#94a3b8;width:20px;height:20px;border-radius:50%;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .client-name mark{background:rgba(77,208,168,0.25);color:inherit;border-radius:3px;padding:0 1px}
-@media(max-width:767px){.busca-cliente{margin-left:0;min-width:0;width:100%}}
 .status-filter-btn{padding:6px 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s}
 .status-filter-btn:hover{background:#2d3250;color:#e2e8f0}
 .valor-mes{color:#fbbf24;font-weight:500}
@@ -90,8 +89,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .comp-link.extrato-link{color:#f59e0b;background:rgba(245,158,11,0.12)}
 .comp-link.extrato-link:hover{background:rgba(245,158,11,0.22)}
 .no-comp{font-size:11px;color:#4a5568}
-.btn-hist-comp{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#1a1204;padding:3px 9px;border-radius:6px;border:0.5px solid #f59e0b;background:#f59e0b;white-space:nowrap;cursor:pointer;font-family:inherit}
-.btn-hist-comp:hover{background:#fbbf24;border-color:#fbbf24}
+.btn-hist-comp{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#60a5fa;padding:3px 9px;border-radius:6px;border:0.5px solid rgba(59,130,246,0.5);background:rgba(59,130,246,0.14);white-space:nowrap;cursor:pointer;font-family:inherit}
+.btn-hist-comp:hover{background:rgba(59,130,246,0.24)}
+table .hist-extrato-row td{background:#f59e0b !important;color:#fff !important;font-weight:700 !important;border-bottom:0 !important}
+table .hist-extrato-row td a,table .hist-extrato-row td a.comp-link.extrato-link{color:#fff !important;background:rgba(0,0,0,0.18) !important;border:1px solid rgba(255,255,255,0.55);font-weight:700 !important;padding:2px 10px;border-radius:5px;text-decoration:none}
+.hist-extrato-falta{font-size:11px;font-weight:600;color:rgba(255,255,255,0.85)}
 .hist-filtro{height:28px;border:0.5px solid rgba(255,255,255,0.12);border-radius:7px;padding:0 8px;font-size:12px;background:#0f1117;color:#e2e8f0;font-family:inherit}
 .hist-mes-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin:14px 0 2px;padding-bottom:4px;border-bottom:0.5px solid rgba(255,255,255,0.1)}
 .hist-mes-head:first-child{margin-top:0}
@@ -333,13 +335,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="status-filter-btn" data-filter="quitado" onclick="setStatusFilter('quitado')">Quitado</button>
     <button class="status-filter-btn" data-filter="parcial" onclick="setStatusFilter('parcial')">Parcial</button>
     <button class="status-filter-btn" data-filter="nada" onclick="setStatusFilter('nada')">Nada Pago</button>
-    <label class="busca-cliente" for="busca-cliente-inp" title="Filtra a tabela pelo nome do cliente (Esc limpa)">
+  </div>
+  <label class="busca-cliente" for="busca-cliente-inp" title="Filtra a tabela pelo nome do cliente (Esc limpa)">
       <i class="ti ti-search" style="font-size:14px;color:#64748b"></i>
       <input id="busca-cliente-inp" type="text" placeholder="Buscar cliente…" autocomplete="off" oninput="setBuscaCliente(this.value)" onkeydown="if(event.key==='Escape'){this.value='';setBuscaCliente('');}">
       <span class="bc-cnt" id="busca-cliente-cnt"></span>
       <button type="button" class="bc-clr" id="busca-cliente-clr" style="display:none" title="Limpar busca" onclick="var i=document.getElementById('busca-cliente-inp');i.value='';setBuscaCliente('');i.focus()">✕</button>
-    </label>
-  </div>
+  </label>
 
   <div id="loading" class="loading">Carregando dados…</div>
 
