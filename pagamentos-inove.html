@@ -430,7 +430,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="modal" id="aportes-modal">
   <div class="modal-header">
     <div>
-      <p style="font-size:15px;font-weight:600;color:#f1f5f9" id="aportes-modal-titulo">Histórico de Pagamentos</p>
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9" id="aportes-modal-titulo">Histórico Mensal</p>
       <p style="font-size:12px;color:#64748b" id="aportes-modal-cliente">—</p>
     </div>
     <button class="modal-close" onclick="fecharModalAportes()"><i class="ti ti-x"></i></button>
@@ -1517,9 +1517,9 @@ function renderTable() {
         : '<span class="no-comp">—</span>';
       var aportes = r.s.aportes || [];
       if (aportes.length) {
-        compsHtml += ' <button class="btn-historico" onclick="abrirHistoricoAportes('+r.c.reg+')"><i class="ti ti-history"></i> Histórico ('+aportes.length+')</button>';
+        compsHtml += ' <button class="btn-historico" onclick="abrirHistoricoAportes('+r.c.reg+')"><i class="ti ti-history"></i> Histórico Mensal ('+aportes.length+')</button>';
       }
-      compsHtml += ' <button class="btn-hist-comp" onclick="abrirHistoricoAportes('+r.c.reg+',\'todos\')" title="Extratos e comprovantes de todos os meses"><i class="ti ti-files"></i> Histórico e Comprovantes</button>';
+      compsHtml += ' <button class="btn-hist-comp" onclick="abrirHistoricoAportes('+r.c.reg+',\'todos\')" title="Extratos e comprovantes de todos os meses"><i class="ti ti-files"></i> Histórico Geral</button>';
       if (r.s.extrato_url) {
         compsHtml += ' <button class="comp-link extrato-link" style="border:none;cursor:pointer;font-family:inherit" onclick="abrirExtratosCliente('+r.c.reg+')" title="Ver extratos anexados (todos os meses)"><i class="ti ti-file-text"></i> Extrato</button>';
       }

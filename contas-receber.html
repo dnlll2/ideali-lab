@@ -43,7 +43,7 @@
 <div class="modal" id="aportes-modal">
   <div class="modal-header">
     <div>
-      <p style="font-size:15px;font-weight:600;color:#f1f5f9" id="aportes-modal-titulo">Histórico de Pagamentos</p>
+      <p style="font-size:15px;font-weight:600;color:#f1f5f9" id="aportes-modal-titulo">Histórico Mensal</p>
       <p style="font-size:12px;color:#64748b" id="aportes-modal-cliente">—</p>
     </div>
     <button class="modal-close" onclick="fecharModalAportes()"><i class="ti ti-x"></i></button>
@@ -844,7 +844,7 @@ async function clearFinanceiro(reg) {
 function renderAportesSection(reg, cv, ro) {
   var list = (cv.aportes||[]).slice().sort(function(a,b){ return new Date(a.data_pagamento) - new Date(b.data_pagamento); });
   var itensHtml = list.length
-    ? '<button class="btn-historico" onclick="abrirHistoricoAportes('+reg+')"><i class="ti ti-history"></i> Histórico ('+list.length+')</button>'
+    ? '<button class="btn-historico" onclick="abrirHistoricoAportes('+reg+')"><i class="ti ti-history"></i> Histórico Mensal ('+list.length+')</button>'
     : '<p style="font-size:12px;color:#4a5568;padding:6px 0">Nenhum pagamento lançado no histórico ainda.</p>';
 
   var addFormHtml = ro ? '' :
@@ -865,7 +865,7 @@ function renderAportesSection(reg, cv, ro) {
       '<p style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em"><i class="ti ti-history" style="font-size:13px;vertical-align:-1px"></i> Histórico de pagamentos</p>'+
       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
         (list.length ? itensHtml : '')+
-        '<button class="btn-hist-comp" onclick="abrirHistoricoAportes('+reg+',\'todos\')" title="Extratos e comprovantes de todos os meses deste cliente"><i class="ti ti-files"></i> Histórico e Comprovantes</button>'+
+        '<button class="btn-hist-comp" onclick="abrirHistoricoAportes('+reg+',\'todos\')" title="Extratos e comprovantes de todos os meses deste cliente"><i class="ti ti-files"></i> Histórico Geral</button>'+
         (ro ? '' : '<button onclick="toggleAporteForm('+reg+')" style="height:26px;padding:0 10px;border-radius:7px;border:0.5px solid '+hexToRgba(T().success,0.4)+';background:'+hexToRgba(T().success,0.1)+';color:'+T().success+';font-size:12px;cursor:pointer;font-family:inherit">+ Adicionar pagamento</button>')+
       '</div>'+
     '</div>'+
