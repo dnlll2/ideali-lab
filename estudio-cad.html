@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estúdio CAD — Ideali</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared.js"></script>
+<style>
+  /* Estúdio CAD: sistema separado pra desenhos avulsos (fora do fluxo Inove).
+     Usa só as tabelas estudio_clientes / estudio_pedidos (039_estudio_cad.sql). */
+  :root{
+    --ec-card:#1a1d27; --ec-col:#13161f; --ec-sec:#22263a; --ec-line:rgba(255,255,255,0.08);
+    --ec-text:#e2e8f0; --ec-muted:#94a3b8; --ec-dim:#64748b; --ec-accent:#4dd0a8;
+    --ec-todo-bg:#1d3a6e; --ec-todo-fg:#93c5fd; --ec-doing-bg:#3d2e0e; --ec-doing-fg:#fbbf24;
+    --ec-done-bg:#0d3d2b; --ec-done-fg:#4ade80; --ec-warn:#fb923c; --ec-late:#f87171;
+  }
+  .ec-brand{display:flex;align-items:center;gap:10px}
+  .ec-brand h1{font-size:22px;font-weight:600;color:#f1f5f9}
+  .ec-brand p{font-size:13px;color:#94a3b8;margin-top:1px}
+  .ec-hdr-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .ec-btn{height:34px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:var(--ec-sec);color:var(--ec-muted);font-size:13px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .ec-btn:hover{color:var(--ec-text);background:#2d3250}
+  .ec-btn.pri{background:var(--ec-accent);color:#06241b;border:0;font-weight:700}
+  .ec-btn.pri:hover{background:#6ee0bd}
+  .ec-btn.danger{color:#fca5a5;border-color:rgba(248,113,113,0.35)}
+  .ec-btn[hidden]{display:none}
+  .ec-btn.sm{height:26px;padding:0 9px;font-size:11px;border-radius:6px}
+  .ec-btn:focus-visible,.ec-tab:focus-visible,.ec-chip:focus-visible{outline:2px solid var(--ec-accent);outline-offset:2px}
+  .ec-sel{height:34px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:rgba(15,17,23,0.55);color:var(--ec-text);padding:0 10px;font-family:inherit;font-size:13px}
+
+  .ec-tabs{display:flex;gap:4px;border-bottom:0.5px solid var(--ec-line);margin:12px 0 16px;overflow-x:auto;scrollbar-width:none}
+  .ec-tab{padding:9px 14px;font-size:13px;color:var(--ec-dim);background:none;border:0;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .ec-tab.on{color:var(--ec-text);border-bottom-color:var(--ec-accent)}
+  .ec-tab .n{font-size:10px;background:var(--ec-sec);color:var(--ec-muted);padding:1px 6px;border-radius:8px;margin-left:5px}
+
+  .ec-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  @media(max-width:767px){.ec-kpis{grid-template-columns:1fr 1fr}}
+  .ec-kpi{background:var(--ec-card);border:0.5px solid var(--ec-line);border-radius:10px;padding:11px 14px}
+  .ec-kpi .l{font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ec-dim)}
+  .ec-kpi .v{font-size:21px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums;color:var(--ec-text)}
+  .ec-kpi .v.ok{color:var(--ec-done-fg)} .ec-kpi .v.wr{color:var(--ec-warn)}
+  .ec-kpi .s{font-size:11px;color:var(--ec-muted);margin-top:2px}
+
+  .ec-filters{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .ec-search{flex:1;min-width:180px;height:34px;border-radius:8px;border:0.5px solid var(--ec-line);background:var(--ec-card);color:var(--ec-text);padding:0 12px;font-family:inherit;font-size:13px}
+  .ec-chip{height:34px;padding:0 12px;border-radius:8px;background:var(--ec-card);border:0.5px solid var(--ec-line);color:var(--ec-muted);font-size:12px;cursor:pointer;font-family:inherit}
+  .ec-chip.on{color:var(--ec-text);border-color:rgba(77,208,168,0.6);background:rgba(77,208,168,0.08)}
+
+  .ec-board{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:767px){.ec-board{grid-template-columns:1fr}}
+  .ec-col{background:var(--ec-col);border:0.5px solid var(--ec-line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:160px}
+  .ec-col-h{display:flex;justify-content:space-between;align-items:center;padding:2px 4px 4px}
+  .ec-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px}
+  .b-a_fazer{background:var(--ec-todo-bg);color:var(--ec-todo-fg)}
+  .b-fazendo{background:var(--ec-doing-bg);color:var(--ec-doing-fg)}
+  .b-finalizado{background:var(--ec-done-bg);color:var(--ec-done-fg)}
+  .ec-cnt{font-size:11px;color:var(--ec-dim);font-variant-numeric:tabular-nums}
+  .ec-empty{font-size:12px;color:var(--ec-dim);text-align:center;padding:18px 6px}
+
+  .ec-ord{background:var(--ec-card);border:0.5px solid rgba(255,255,255,0.09);border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
+  .ec-ord:hover{border-color:rgba(255,255,255,0.18)}
+  .ec-ord.late{box-shadow:inset 3px 0 0 var(--ec-late)}
+  .ec-ord .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .ec-pac{font-weight:600;font-size:13px;color:var(--ec-text)}
+  .ec-num{font-size:10px;color:var(--ec-dim);font-variant-numeric:tabular-nums}
+  .ec-cli{font-size:11px;color:var(--ec-muted)}
+  .ec-meta{display:flex;gap:6px;flex-wrap:wrap}
+  .ec-tag{font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(15,17,23,0.6);color:var(--ec-muted)}
+  .ec-teeth{font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(47,143,174,0.18);color:#7dd3fc;font-variant-numeric:tabular-nums}
+  .ec-foot{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;color:var(--ec-dim);padding-top:5px;border-top:0.5px solid var(--ec-line)}
+  .ec-val{color:var(--ec-text);font-weight:600;font-variant-numeric:tabular-nums}
+  .ec-pay{font-size:10px;padding:1px 6px;border-radius:4px;margin-left:5px}
+  .ec-pay.p{background:var(--ec-done-bg);color:var(--ec-done-fg)} .ec-pay.a{background:rgba(251,146,60,0.14);color:var(--ec-warn)}
+  .ec-due-late{color:var(--ec-late);font-weight:600}
+  .ec-adv{height:22px;padding:0 7px;border-radius:4px;border:0.5px solid rgba(255,255,255,0.15);background:var(--ec-sec);color:var(--ec-muted);font-size:11px;cursor:pointer;font-family:inherit}
+
+  .ec-table-wrap{background:var(--ec-card);border:0.5px solid var(--ec-line);border-radius:12px;overflow-x:auto}
+  .ec-table{width:100%;border-collapse:collapse;font-size:13px}
+  .ec-table th{font-size:11px;color:var(--ec-dim);text-transform:uppercase;letter-spacing:0.06em;padding:10px 12px;text-align:left;border-bottom:0.5px solid rgba(255,255,255,0.1);white-space:nowrap}
+  .ec-table td{padding:10px 12px;border-bottom:0.5px solid rgba(255,255,255,0.05);color:var(--ec-text);vertical-align:middle}
+  .ec-table tr.click{cursor:pointer} .ec-table tr.click:hover td{background:rgba(255,255,255,0.04)}
+  .ec-table .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .ec-table .sub{font-size:11px;color:var(--ec-dim)}
+  .ec-sec-title{font-size:12px;font-weight:600;color:var(--ec-muted);text-transform:uppercase;letter-spacing:0.06em;margin:18px 0 8px}
+
+  /* Modal */
+  .ec-ov{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:4vh 12px;overflow-y:auto}
+  .ec-ov[hidden]{display:none}
+  .ec-modal{background:var(--ec-card);border:0.5px solid rgba(255,255,255,0.12);border-radius:14px;width:100%;max-width:620px;box-shadow:0 16px 48px rgba(0,0,0,0.5)}
+  .ec-modal-h{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:0.5px solid var(--ec-line)}
+  .ec-modal-h h2{font-size:16px;font-weight:600;color:var(--ec-text)}
+  .ec-x{width:30px;height:30px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.12);background:var(--ec-sec);color:var(--ec-muted);cursor:pointer;font-size:14px}
+  .ec-modal-b{padding:16px 18px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .ec-modal-f{padding:12px 18px;border-top:0.5px solid var(--ec-line);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .ec-f{display:flex;flex-direction:column;gap:4px}
+  .ec-f.full{grid-column:1/-1}
+  @media(max-width:520px){.ec-modal-b{grid-template-columns:1fr}}
+  .ec-f label{font-size:11px;color:var(--ec-dim);text-transform:uppercase;letter-spacing:0.06em}
+  .ec-inp{height:36px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:var(--ec-sec);color:var(--ec-text);padding:0 10px;font-family:inherit;font-size:13px;width:100%}
+  textarea.ec-inp{height:64px;padding:8px 10px;resize:vertical}
+  .ec-inp:focus{outline:none;border-color:var(--ec-accent)}
+  .ec-hint{font-size:11px;color:var(--ec-dim)}
+  .ec-check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ec-text);height:36px}
+  .ec-msg{font-size:12px;color:var(--ec-late);min-height:16px}
+
+  .odonto{display:flex;flex-direction:column;gap:6px}
+  .odonto-row{display:flex;gap:4px;justify-content:center}
+  .odonto-quad{display:flex;gap:3px}
+  .dente{width:28px;height:28px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.15);background:var(--ec-sec);color:var(--ec-muted);font-size:11px;cursor:pointer;font-family:inherit}
+  .dente:hover{border-color:var(--ec-accent)}
+  .dente.on{background:#2f8fae;border-color:var(--ec-accent);color:#fff;font-weight:600}
+  .odonto-gap{width:8px}
+  @media(max-width:520px){.dente{width:22px;height:24px;font-size:9.5px}}
+
+  .ec-anexos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  @media(max-width:520px){.ec-anexos{grid-template-columns:1fr}}
+  .ec-up{border:1px dashed rgba(255,255,255,0.2);border-radius:8px;min-height:48px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--ec-dim);font-size:11px;cursor:pointer;padding:4px 6px;word-break:break-word}
+  .ec-up.has{border-style:solid;border-color:rgba(77,208,168,0.5);color:var(--ec-accent)}
+  .ec-file{display:flex;justify-content:space-between;gap:4px;font-size:11px;margin-top:4px}
+  .ec-file a{color:#7dd3fc;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ec-file button{background:none;border:0;color:var(--ec-dim);cursor:pointer}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="glassDistort" x="-50%" y="-50%" width="200%" height="200%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.006 0.009" numOctaves="2" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="18" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="glassGrain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="2" seed="3" stitchTiles="stitch" result="n"/>
+      <feGaussianBlur in="n" stdDeviation="9" result="nb"/>
+      <feColorMatrix in="nb" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.35 0"/>
+    </filter>
+  </defs>
+</svg>
+
+<div style="max-width:100%">
+  <div class="header-glass" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <div class="ec-brand">
+      <img src="assets/logo.png" alt="" style="height:40px;width:40px;object-fit:contain">
+      <div>
+        <h1>Estúdio CAD</h1>
+        <p>Desenhos avulsos, fora do fluxo Inove</p>
+      </div>
+    </div>
+    <div class="ec-hdr-r">
+      <span id="sync-status" style="font-size:12px;color:#94a3b8"><span class="sync-dot" id="sync-dot"></span>Conectado</span>
+      <select id="ec-mes" class="ec-sel" onchange="ecSetMes(this.value)" title="Mês usado no resumo, nos finalizados e no financeiro"></select>
+      <button class="ec-btn" type="button" onclick="ecLoad()" title="Atualizar">&#8635;</button>
+      <button class="ec-btn" type="button" onclick="ecOpenCliente()"><i class="ti ti-user-plus"></i> Cliente</button>
+      <button class="ec-btn pri" type="button" onclick="ecOpenPedido()"><i class="ti ti-plus"></i> Novo pedido</button>
+    </div>
+  </div>
+
+  <main style="padding:0 0.5rem">
+    <div class="ec-tabs" role="tablist">
+      <button class="ec-tab on" type="button" id="ec-tab-pedidos"    onclick="ecSetTab('pedidos')">Pedidos <span class="n" id="ec-n-pedidos">0</span></button>
+      <button class="ec-tab"    type="button" id="ec-tab-clientes"   onclick="ecSetTab('clientes')">Clientes <span class="n" id="ec-n-clientes">0</span></button>
+      <button class="ec-tab"    type="button" id="ec-tab-financeiro" onclick="ecSetTab('financeiro')">Financeiro</button>
+    </div>
+
+    <!-- Pedidos -->
+    <section id="ec-panel-pedidos">
+      <div class="ec-kpis" id="ec-kpis"></div>
+      <div class="ec-filters">
+        <input class="ec-search" id="ec-busca" placeholder="Buscar paciente, cliente ou tipo…" oninput="ecRenderBoard()">
+        <select class="ec-sel" id="ec-filtro-cli" onchange="ecRenderBoard()" style="background:var(--ec-card)"></select>
+        <button class="ec-chip" type="button" id="ec-chip-late" onclick="ecToggleChip('late')">Só atrasados</button>
+        <button class="ec-chip" type="button" id="ec-chip-unpaid" onclick="ecToggleChip('unpaid')">Não pagos</button>
+      </div>
+      <div class="ec-board" id="ec-board"></div>
+      <p class="ec-hint" style="margin-top:10px">Na coluna Finalizado aparecem só os pedidos finalizados no mês selecionado.</p>
+    </section>
+
+    <!-- Clientes -->
+    <section id="ec-panel-clientes" hidden>
+      <div class="ec-table-wrap">
+        <table class="ec-table">
+          <thead><tr><th>Cliente</th><th>Contato</th><th>Cidade</th><th class="num">Preço/elem.</th><th class="num">Pedidos</th><th class="num">Total</th><th class="num">Em aberto</th></tr></thead>
+          <tbody id="ec-cli-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Financeiro -->
+    <section id="ec-panel-financeiro" hidden>
+      <div class="ec-kpis" id="ec-fin-kpis"></div>
+      <p class="ec-sec-title">Por cliente, no mês</p>
+      <div class="ec-table-wrap">
+        <table class="ec-table">
+          <thead><tr><th>Cliente</th><th class="num">Pedidos</th><th class="num">Elementos</th><th class="num">Faturado</th><th class="num">Recebido</th><th class="num">A receber</th></tr></thead>
+          <tbody id="ec-fin-body"></tbody>
+        </table>
+      </div>
+      <p class="ec-sec-title">Pedidos finalizados não pagos (todos os meses)</p>
+      <div class="ec-table-wrap">
+        <table class="ec-table">
+          <thead><tr><th>#</th><th>Cliente / Paciente</th><th>Finalizado</th><th class="num">Valor</th><th></th></tr></thead>
+          <tbody id="ec-fin-aberto"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Modal: Pedido -->
+<div class="ec-ov" id="ec-ped-ov" hidden onclick="if(event.target===this)ecClose('ec-ped-ov')">
+  <div class="ec-modal" role="dialog" aria-labelledby="ec-ped-title">
+    <div class="ec-modal-h"><h2 id="ec-ped-title">Novo pedido</h2><button class="ec-x" type="button" onclick="ecClose('ec-ped-ov')">✕</button></div>
+    <div class="ec-modal-b">
+      <div class="ec-f full"><label for="ec-p-cliente">Cliente</label><select class="ec-inp" id="ec-p-cliente" onchange="ecRecalcValor()"></select></div>
+      <div class="ec-f"><label for="ec-p-paciente">Paciente</label><input class="ec-inp" id="ec-p-paciente"></div>
+      <div class="ec-f"><label for="ec-p-tipo">Tipo de trabalho</label><input class="ec-inp" id="ec-p-tipo" list="ec-tipos" placeholder="Ex.: Coroa total"></div>
+      <div class="ec-f"><label for="ec-p-material">Material</label><input class="ec-inp" id="ec-p-material" list="ec-materiais" placeholder="Ex.: Zircônia"></div>
+      <div class="ec-f"><label for="ec-p-status">Status</label>
+        <select class="ec-inp" id="ec-p-status"><option value="a_fazer">A Fazer</option><option value="fazendo">Fazendo</option><option value="finalizado">Finalizado</option></select></div>
+      <div class="ec-f full"><label>Elementos (clique nos dentes)</label>
+        <div class="odonto" id="ec-odonto"></div>
+        <p class="ec-hint" id="ec-odonto-sel" style="text-align:center">Nenhum dente selecionado</p></div>
+      <div class="ec-f"><label for="ec-p-qtd">Qtd. elementos</label><input class="ec-inp" id="ec-p-qtd" type="number" min="0" value="1" oninput="ecRecalcValor()"></div>
+      <div class="ec-f"><label for="ec-p-prazo">Prazo</label><input class="ec-inp" id="ec-p-prazo" type="date"></div>
+      <div class="ec-f"><label for="ec-p-valor">Valor (R$)</label><input class="ec-inp" id="ec-p-valor" type="number" min="0" step="0.01" oninput="ecValorManual=true">
+        <span class="ec-hint" id="ec-p-valor-hint"></span></div>
+      <div class="ec-f"><label>Pagamento</label>
+        <div class="ec-check"><input type="checkbox" id="ec-p-pago" onchange="ecTogglePago()"><label for="ec-p-pago" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ec-text)">Pago</label>
+        <input class="ec-inp" id="ec-p-pagoem" type="date" style="flex:1" title="Data do pagamento"></div></div>
+      <div class="ec-f full"><label for="ec-p-obs">Observação</label><textarea class="ec-inp" id="ec-p-obs"></textarea></div>
+      <div class="ec-f full"><label>Arquivos</label>
+        <div class="ec-anexos" id="ec-anexos"></div></div>
+      <p class="ec-msg full" id="ec-p-msg" style="grid-column:1/-1"></p>
+    </div>
+    <div class="ec-modal-f">
+      <div style="display:flex;gap:8px">
+        <button class="ec-btn danger" type="button" id="ec-p-del" onclick="ecExcluirPedido()">Excluir</button>
+        <button class="ec-btn" type="button" id="ec-p-arq" onclick="ecArquivarPedido()">Arquivar</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="ec-btn" type="button" onclick="ecClose('ec-ped-ov')">Cancelar</button>
+        <button class="ec-btn pri" type="button" id="ec-p-save" onclick="ecSalvarPedido()">Salvar pedido</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Cliente -->
+<div class="ec-ov" id="ec-cli-ov" hidden onclick="if(event.target===this)ecClose('ec-cli-ov')">
+  <div class="ec-modal" role="dialog" aria-labelledby="ec-cli-title" style="max-width:520px">
+    <div class="ec-modal-h"><h2 id="ec-cli-title">Novo cliente</h2><button class="ec-x" type="button" onclick="ecClose('ec-cli-ov')">✕</button></div>
+    <div class="ec-modal-b">
+      <div class="ec-f full"><label for="ec-c-nome">Nome</label><input class="ec-inp" id="ec-c-nome" placeholder="Dentista, clínica ou laboratório"></div>
+      <div class="ec-f"><label for="ec-c-tel">Telefone / WhatsApp</label><input class="ec-inp" id="ec-c-tel"></div>
+      <div class="ec-f"><label for="ec-c-email">E-mail</label><input class="ec-inp" id="ec-c-email" type="email"></div>
+      <div class="ec-f"><label for="ec-c-doc">CPF / CNPJ</label><input class="ec-inp" id="ec-c-doc"></div>
+      <div class="ec-f"><label for="ec-c-cidade">Cidade</label><input class="ec-inp" id="ec-c-cidade"></div>
+      <div class="ec-f"><label for="ec-c-preco">Preço por elemento (R$)</label><input class="ec-inp" id="ec-c-preco" type="number" min="0" step="0.01">
+        <span class="ec-hint">Preenche o valor do pedido automaticamente</span></div>
+      <div class="ec-f"><label>Situação</label><div class="ec-check"><input type="checkbox" id="ec-c-ativo" checked><label for="ec-c-ativo" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ec-text)">Ativo</label></div></div>
+      <div class="ec-f full"><label for="ec-c-obs">Observação</label><textarea class="ec-inp" id="ec-c-obs"></textarea></div>
+      <p class="ec-msg" id="ec-c-msg" style="grid-column:1/-1"></p>
+    </div>
+    <div class="ec-modal-f">
+      <span></span>
+      <div style="display:flex;gap:8px">
+        <button class="ec-btn" type="button" onclick="ecClose('ec-cli-ov')">Cancelar</button>
+        <button class="ec-btn pri" type="button" id="ec-c-save" onclick="ecSalvarCliente()">Salvar cliente</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<datalist id="ec-tipos">
+  <option value="Coroa total"><option value="Coroa sobre implante"><option value="Faceta"><option value="Lente de contato">
+  <option value="Onlay"><option value="Inlay"><option value="Protocolo"><option value="Prótese parcial"><option value="Provisório">
+  <option value="Guia cirúrgico"><option value="Enceramento digital"><option value="Placa"><option value="Barra">
+</datalist>
+<datalist id="ec-materiais">
+  <option value="Zircônia"><option value="E.max"><option value="PMMA"><option value="Resina"><option value="Metal"><option value="Cerômero">
+</datalist>
+
+<script>
+// ── Estado ────────────────────────────────────────────────────
+var ecClientes = [];
+var ecPedidos  = [];
+var ecTab      = 'pedidos';
+var ecChips    = { late:false, unpaid:false };
+var ecMesSel   = (function(){ var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); })();
+var ecEditPedId = null;
+var ecEditCliId = null;
+var ecDentes    = [];
+var ecValorManual = false;
+var EC_STATUS = { a_fazer:'A Fazer', fazendo:'Fazendo', finalizado:'Finalizado' };
+var EC_NEXT   = { a_fazer:'fazendo', fazendo:'finalizado' };
+var EC_QUADS  = [[18,17,16,15,14,13,12,11],[21,22,23,24,25,26,27,28],
+                 [48,47,46,45,44,43,42,41],[31,32,33,34,35,36,37,38]];
+var EC_SLOTS  = [{id:'escaneamento',label:'Escaneamento'},{id:'stl',label:'STL final'},{id:'outros',label:'Outros'}];
+var EC_BUCKET = 'casos';
+
+// Data local (todayISO() do shared.js usa UTC e vira o dia depois das 21h)
+function ecHoje() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function ecMesDe(iso) { return iso ? String(iso).slice(0,7) : ''; }
+function ecMesDeTs(ts) {
+  if (!ts) return '';
+  var d = new Date(ts);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+function ecCli(id) { return ecClientes.find(function(c){ return c.id === id; }) || null; }
+function ecCliNome(id) { var c = ecCli(id); return c ? c.nome : '(cliente removido)'; }
+function ecAtrasado(p) { return p.status !== 'finalizado' && p.prazo && p.prazo < ecHoje(); }
+function ecNum(v) { return Number(v || 0); }
+
+// ── Carga ─────────────────────────────────────────────────────
+async function ecLoad() {
+  setSyncStatus('syncing');
+  try {
+    var r1 = await sb.from('estudio_clientes').select('*').order('nome');
+    if (r1.error) throw r1.error;
+    var r2 = await sb.from('estudio_pedidos').select('*').eq('arquivado', false).order('created_at', { ascending:false });
+    if (r2.error) throw r2.error;
+    ecClientes = r1.data || [];
+    ecPedidos  = r2.data || [];
+    setSyncStatus('ok');
+  } catch(e) {
+    console.error('[ecLoad]', e);
+    setSyncStatus('error');
+  }
+  ecRenderAll();
+}
+
+function ecRenderAll() {
+  ecRenderMesSelect();
+  ecRenderFiltroCli();
+  document.getElementById('ec-n-pedidos').textContent  = ecPedidos.filter(function(p){ return p.status !== 'finalizado'; }).length;
+  document.getElementById('ec-n-clientes').textContent = ecClientes.filter(function(c){ return c.ativo; }).length;
+  ecRenderKpis();
+  ecRenderBoard();
+  ecRenderClientes();
+  ecRenderFinanceiro();
+}
+
+function ecRenderMesSelect() {
+  var sel = document.getElementById('ec-mes');
+  var meses = {};
+  meses[ecMesSel] = 1;
+  var d = new Date();
+  for (var i = 0; i < 12; i++) {
+    var m = new Date(d.getFullYear(), d.getMonth() - i, 1);
+    meses[m.getFullYear() + '-' + String(m.getMonth()+1).padStart(2,'0')] = 1;
+  }
+  ecPedidos.forEach(function(p){ if (p.finalizado_at) meses[ecMesDeTs(p.finalizado_at)] = 1; });
+  sel.innerHTML = Object.keys(meses).sort().reverse().map(function(k){
+    var p = k.split('-');
+    return '<option value="'+k+'"'+(k===ecMesSel?' selected':'')+'>'+MESES[parseInt(p[1],10)-1]+' '+p[0]+'</option>';
+  }).join('');
+}
+function ecSetMes(v) { ecMesSel = v; ecRenderAll(); }
+
+function ecRenderFiltroCli() {
+  var sel = document.getElementById('ec-filtro-cli');
+  var atual = sel.value;
+  sel.innerHTML = '<option value="">Todos os clientes</option>' + ecClientes.map(function(c){
+    return '<option value="'+c.id+'">'+escHtml(c.nome)+'</option>';
+  }).join('');
+  sel.value = atual;
+}
+
+function ecSetTab(t) {
+  ecTab = t;
+  ['pedidos','clientes','financeiro'].forEach(function(k){
+    document.getElementById('ec-tab-'+k).classList.toggle('on', k === t);
+    document.getElementById('ec-panel-'+k).hidden = k !== t;
+  });
+}
+
+function ecToggleChip(k) {
+  ecChips[k] = !ecChips[k];
+  document.getElementById('ec-chip-'+k).classList.toggle('on', ecChips[k]);
+  ecRenderBoard();
+}
+
+// ── Resumo ────────────────────────────────────────────────────
+function ecFinalizadosNoMes() {
+  return ecPedidos.filter(function(p){ return p.status === 'finalizado' && ecMesDeTs(p.finalizado_at) === ecMesSel; });
+}
+function ecKpiHtml(l, v, s, cls) {
+  return '<div class="ec-kpi"><div class="l">'+l+'</div><div class="v '+(cls||'')+'">'+v+'</div><div class="s">'+s+'</div></div>';
+}
+function ecRenderKpis() {
+  var af = ecPedidos.filter(function(p){ return p.status === 'a_fazer'; }).length;
+  var fz = ecPedidos.filter(function(p){ return p.status === 'fazendo'; }).length;
+  var at = ecPedidos.filter(ecAtrasado).length;
+  var fin = ecFinalizadosNoMes();
+  var elem = fin.reduce(function(s,p){ return s + ecNum(p.qtd_elementos); }, 0);
+  var fat  = fin.reduce(function(s,p){ return s + ecNum(p.valor); }, 0);
+  var abertos = ecPedidos.filter(function(p){ return p.status === 'finalizado' && !p.pago; });
+  var aRec = abertos.reduce(function(s,p){ return s + ecNum(p.valor); }, 0);
+  var nCli = {}; abertos.forEach(function(p){ nCli[p.cliente_id] = 1; });
+  document.getElementById('ec-kpis').innerHTML =
+    ecKpiHtml('Em aberto', af + fz, af+' a fazer · '+fz+' fazendo'+(at?' · <span style="color:var(--ec-late)">'+at+' atrasado(s)</span>':'')) +
+    ecKpiHtml('Finalizados no mês', fin.length, elem + ' elemento(s)', 'ok') +
+    ecKpiHtml('Faturado no mês', fmt(fat), elem ? fmt(fat/elem) + ' por elemento, em média' : 'nenhum finalizado') +
+    ecKpiHtml('A receber', fmt(aRec), Object.keys(nCli).length + ' cliente(s), todos os meses', aRec ? 'wr' : '');
+}
+
+// ── Quadro ────────────────────────────────────────────────────
+function ecRenderBoard() {
+  var q   = (document.getElementById('ec-busca').value || '').toLowerCase().trim();
+  var cli = document.getElementById('ec-filtro-cli').value;
+  var list = ecPedidos.filter(function(p){
+    if (cli && p.cliente_id !== cli) return false;
+    if (ecChips.late && !ecAtrasado(p)) return false;
+    if (ecChips.unpaid && p.pago) return false;
+    if (p.status === 'finalizado' && ecMesDeTs(p.finalizado_at) !== ecMesSel) return false;
+    if (q) {
+      var txt = [p.paciente, ecCliNome(p.cliente_id), p.tipo_trabalho, p.material, '#'+p.numero].join(' ').toLowerCase();
+      if (txt.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+  document.getElementById('ec-board').innerHTML = ['a_fazer','fazendo','finalizado'].map(function(st){
+    var itens = list.filter(function(p){ return p.status === st; });
+    if (st !== 'finalizado') itens.sort(function(a,b){ return (a.prazo||'9999').localeCompare(b.prazo||'9999'); });
+    else itens.sort(function(a,b){ return String(b.finalizado_at).localeCompare(String(a.finalizado_at)); });
+    return '<div class="ec-col"><div class="ec-col-h"><span class="ec-badge b-'+st+'">'+EC_STATUS[st]+'</span><span class="ec-cnt">'+itens.length+'</span></div>' +
+      (itens.length ? itens.map(ecCardHtml).join('') : '<div class="ec-empty">Nenhum pedido</div>') + '</div>';
+  }).join('');
+}
+
+function ecCardHtml(p) {
+  var late = ecAtrasado(p);
+  var hoje = ecHoje();
+  var prazo;
+  if (p.status === 'finalizado') prazo = 'Entregue ' + (p.finalizado_at ? fmtDate(ecDataLocal(p.finalizado_at)) : '');
+  else if (!p.prazo) prazo = 'Sem prazo';
+  else if (late) prazo = '<span class="ec-due-late">Venceu ' + fmtDate(p.prazo) + '</span>';
+  else if (p.prazo === hoje) prazo = '<span style="color:var(--ec-warn);font-weight:600">Prazo hoje</span>';
+  else prazo = 'Prazo ' + fmtDate(p.prazo);
+  var dentes = (p.dentes && p.dentes.length) ? p.dentes.join(' · ') : (p.qtd_elementos ? p.qtd_elementos + ' elem.' : '');
+  var adv = EC_NEXT[p.status]
+    ? '<button class="ec-adv" type="button" title="Mover para '+EC_STATUS[EC_NEXT[p.status]]+'" onclick="event.stopPropagation();ecAvancar(\''+p.id+'\')">&gt;&gt;</button>' : '';
+  return '<div class="ec-ord'+(late?' late':'')+'" onclick="ecOpenPedido(\''+p.id+'\')">' +
+    '<div class="top"><span class="ec-pac">'+escHtml(p.paciente || 'Sem paciente')+'</span><span class="ec-num">#'+String(p.numero).padStart(4,'0')+'</span></div>' +
+    '<div class="ec-cli">'+escHtml(ecCliNome(p.cliente_id))+'</div>' +
+    '<div class="ec-meta">' +
+      (p.tipo_trabalho ? '<span class="ec-tag">'+escHtml(p.tipo_trabalho)+'</span>' : '') +
+      (dentes ? '<span class="ec-teeth">'+dentes+'</span>' : '') +
+      (p.material ? '<span class="ec-tag">'+escHtml(p.material)+'</span>' : '') +
+    '</div>' +
+    '<div class="ec-foot"><span>'+prazo+'</span><span style="display:flex;align-items:center;gap:6px">' +
+      '<span><span class="ec-val">'+fmt(p.valor)+'</span><span class="ec-pay '+(p.pago?'p':'a')+'">'+(p.pago?'Pago':'A receber')+'</span></span>'+adv+'</span></div>' +
+  '</div>';
+}
+function ecDataLocal(ts) {
+  var d = new Date(ts);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+async function ecAvancar(id) {
+  var p = ecPedidos.find(function(x){ return x.id === id; });
+  if (!p || !EC_NEXT[p.status]) return;
+  var novo = EC_NEXT[p.status];
+  var payload = { status: novo };
+  if (novo === 'finalizado') payload.finalizado_at = new Date().toISOString();
+  setSyncStatus('syncing');
+  var res = await sb.from('estudio_pedidos').update(payload).eq('id', id);
+  if (res.error) { setSyncStatus('error'); alert('Erro ao mudar status: ' + res.error.message); return; }
+  Object.assign(p, payload);
+  // Finalizou hoje: garante que o quadro mostra o mês atual pra o card não "sumir"
+  if (novo === 'finalizado' && ecMesDeTs(payload.finalizado_at) !== ecMesSel) ecMesSel = ecMesDeTs(payload.finalizado_at);
+  setSyncStatus('ok');
+  ecRenderAll();
+}
+
+// ── Clientes ──────────────────────────────────────────────────
+function ecRenderClientes() {
+  var body = document.getElementById('ec-cli-body');
+  if (!ecClientes.length) {
+    body.innerHTML = '<tr><td colspan="7" class="ec-empty">Nenhum cliente ainda. Use <b>Cliente</b> no topo para cadastrar o primeiro.</td></tr>';
+    return;
+  }
+  body.innerHTML = ecClientes.map(function(c){
+    var ps = ecPedidos.filter(function(p){ return p.cliente_id === c.id; });
+    var total = ps.reduce(function(s,p){ return s + ecNum(p.valor); }, 0);
+    var aberto = ps.filter(function(p){ return p.status === 'finalizado' && !p.pago; }).reduce(function(s,p){ return s + ecNum(p.valor); }, 0);
+    var contato = [c.telefone, c.email].filter(Boolean).map(escHtml).join('<br>');
+    return '<tr class="click" onclick="ecOpenCliente(\''+c.id+'\')"'+(c.ativo?'':' style="opacity:0.5"')+'>' +
+      '<td><b>'+escHtml(c.nome)+'</b>'+(c.ativo?'':' <span class="sub">(inativo)</span>')+(c.observacao?'<div class="sub">'+escHtml(c.observacao)+'</div>':'')+'</td>' +
+      '<td class="sub">'+(contato || '—')+'</td>' +
+      '<td>'+escHtml(c.cidade || '—')+'</td>' +
+      '<td class="num">'+(c.preco_elemento != null ? fmt(c.preco_elemento) : '—')+'</td>' +
+      '<td class="num">'+ps.length+'</td>' +
+      '<td class="num">'+fmt(total)+'</td>' +
+      '<td class="num" style="color:'+(aberto?'var(--ec-warn)':'var(--ec-done-fg)')+'">'+(aberto ? fmt(aberto) : 'em dia')+'</td></tr>';
+  }).join('');
+}
+
+// ── Financeiro ────────────────────────────────────────────────
+function ecRenderFinanceiro() {
+  var fin = ecFinalizadosNoMes();
+  var fat = fin.reduce(function(s,p){ return s + ecNum(p.valor); }, 0);
+  var rec = fin.filter(function(p){ return p.pago; }).reduce(function(s,p){ return s + ecNum(p.valor); }, 0);
+  var abertos = ecPedidos.filter(function(p){ return p.status === 'finalizado' && !p.pago; });
+  var aRecTotal = abertos.reduce(function(s,p){ return s + ecNum(p.valor); }, 0);
+  var recebidoNoMes = ecPedidos.filter(function(p){ return p.pago && ecMesDe(p.pago_em) === ecMesSel; }).reduce(function(s,p){ return s + ecNum(p.valor); }, 0);
+  document.getElementById('ec-fin-kpis').innerHTML =
+    ecKpiHtml('Faturado no mês', fmt(fat), fin.length + ' pedido(s) finalizado(s)') +
+    ecKpiHtml('Recebido desses', fmt(rec), fat ? Math.round(rec/fat*100) + '% do faturado' : '—', 'ok') +
+    ecKpiHtml('Entrou no mês', fmt(recebidoNoMes), 'pela data de pagamento') +
+    ecKpiHtml('A receber (total)', fmt(aRecTotal), abertos.length + ' pedido(s)', aRecTotal ? 'wr' : '');
+
+  var porCli = {};
+  fin.forEach(function(p){
+    var k = p.cliente_id;
+    porCli[k] = porCli[k] || { n:0, el:0, fat:0, rec:0 };
+    porCli[k].n++; porCli[k].el += ecNum(p.qtd_elementos); porCli[k].fat += ecNum(p.valor);
+    if (p.pago) porCli[k].rec += ecNum(p.valor);
+  });
+  var linhas = Object.keys(porCli).sort(function(a,b){ return porCli[b].fat - porCli[a].fat; });
+  document.getElementById('ec-fin-body').innerHTML = linhas.length ? linhas.map(function(k){
+    var r = porCli[k];
+    return '<tr><td>'+escHtml(ecCliNome(k))+'</td><td class="num">'+r.n+'</td><td class="num">'+r.el+'</td><td class="num">'+fmt(r.fat)+'</td>' +
+      '<td class="num" style="color:var(--ec-done-fg)">'+fmt(r.rec)+'</td><td class="num" style="color:'+(r.fat-r.rec?'var(--ec-warn)':'var(--ec-dim)')+'">'+fmt(r.fat-r.rec)+'</td></tr>';
+  }).join('') : '<tr><td colspan="6" class="ec-empty">Nenhum pedido finalizado neste mês.</td></tr>';
+
+  abertos.sort(function(a,b){ return String(a.finalizado_at).localeCompare(String(b.finalizado_at)); });
+  document.getElementById('ec-fin-aberto').innerHTML = abertos.length ? abertos.map(function(p){
+    return '<tr><td class="sub">#'+String(p.numero).padStart(4,'0')+'</td>' +
+      '<td>'+escHtml(ecCliNome(p.cliente_id))+'<div class="sub">'+escHtml(p.paciente || '')+(p.tipo_trabalho?' · '+escHtml(p.tipo_trabalho):'')+'</div></td>' +
+      '<td class="sub">'+(p.finalizado_at ? fmtDate(ecDataLocal(p.finalizado_at)) : '—')+'</td>' +
+      '<td class="num">'+fmt(p.valor)+'</td>' +
+      '<td class="num"><button class="ec-btn sm" type="button" onclick="ecMarcarPago(\''+p.id+'\')">Marcar pago</button></td></tr>';
+  }).join('') : '<tr><td colspan="5" class="ec-empty">Tudo recebido.</td></tr>';
+}
+
+async function ecMarcarPago(id) {
+  var payload = { pago:true, pago_em: ecHoje() };
+  setSyncStatus('syncing');
+  var res = await sb.from('estudio_pedidos').update(payload).eq('id', id);
+  if (res.error) { setSyncStatus('error'); alert('Erro ao marcar como pago: ' + res.error.message); return; }
+  var p = ecPedidos.find(function(x){ return x.id === id; });
+  if (p) Object.assign(p, payload);
+  setSyncStatus('ok');
+  ecRenderAll();
+}
+
+// ── Modais ────────────────────────────────────────────────────
+function ecClose(id) { document.getElementById(id).hidden = true; }
+document.addEventListener('keydown', function(e){
+  if (e.key !== 'Escape') return;
+  ecClose('ec-ped-ov'); ecClose('ec-cli-ov');
+});
+
+// ── Modal: Cliente ────────────────────────────────────────────
+function ecOpenCliente(id) {
+  var c = id ? ecCli(id) : null;
+  ecEditCliId = c ? c.id : null;
+  document.getElementById('ec-cli-title').textContent = c ? 'Editar cliente' : 'Novo cliente';
+  document.getElementById('ec-c-nome').value   = c ? c.nome : '';
+  document.getElementById('ec-c-tel').value    = c ? (c.telefone || '') : '';
+  document.getElementById('ec-c-email').value  = c ? (c.email || '') : '';
+  document.getElementById('ec-c-doc').value    = c ? (c.documento || '') : '';
+  document.getElementById('ec-c-cidade').value = c ? (c.cidade || '') : '';
+  document.getElementById('ec-c-preco').value  = c && c.preco_elemento != null ? c.preco_elemento : '';
+  document.getElementById('ec-c-ativo').checked = c ? c.ativo : true;
+  document.getElementById('ec-c-obs').value    = c ? (c.observacao || '') : '';
+  document.getElementById('ec-c-msg').textContent = '';
+  document.getElementById('ec-cli-ov').hidden = false;
+  document.getElementById('ec-c-nome').focus();
+}
+
+async function ecSalvarCliente() {
+  var nome = document.getElementById('ec-c-nome').value.trim();
+  var msg  = document.getElementById('ec-c-msg');
+  if (!nome) { msg.textContent = 'Preencha o nome do cliente.'; return; }
+  var dup = ecClientes.find(function(c){ return c.id !== ecEditCliId && c.nome.trim().toLowerCase() === nome.toLowerCase(); });
+  if (dup) { msg.textContent = 'Já existe um cliente com esse nome.'; return; }
+  var preco = document.getElementById('ec-c-preco').value;
+  var payload = {
+    nome: nome,
+    telefone:  document.getElementById('ec-c-tel').value.trim() || null,
+    email:     document.getElementById('ec-c-email').value.trim() || null,
+    documento: document.getElementById('ec-c-doc').value.trim() || null,
+    cidade:    document.getElementById('ec-c-cidade').value.trim() || null,
+    preco_elemento: preco === '' ? null : Number(preco),
+    ativo:     document.getElementById('ec-c-ativo').checked,
+    observacao: document.getElementById('ec-c-obs').value.trim() || null
+  };
+  var btn = document.getElementById('ec-c-save');
+  btn.disabled = true;
+  setSyncStatus('syncing');
+  var res = ecEditCliId
+    ? await sb.from('estudio_clientes').update(payload).eq('id', ecEditCliId)
+    : await sb.from('estudio_clientes').insert(payload);
+  btn.disabled = false;
+  if (res.error) { setSyncStatus('error'); msg.textContent = 'Erro ao salvar: ' + res.error.message; return; }
+  ecClose('ec-cli-ov');
+  await ecLoad();
+}
+
+// ── Modal: Pedido ─────────────────────────────────────────────
+function ecOpenPedido(id) {
+  var p = id ? ecPedidos.find(function(x){ return x.id === id; }) : null;
+  var ativos = ecClientes.filter(function(c){ return c.ativo || (p && c.id === p.cliente_id); });
+  if (!p && !ativos.length) {
+    alert('Cadastre um cliente antes de criar o primeiro pedido.');
+    ecOpenCliente();
+    return;
+  }
+  ecEditPedId = p ? p.id : null;
+  ecValorManual = !!p;
+  document.getElementById('ec-ped-title').textContent = p ? 'Pedido #' + String(p.numero).padStart(4,'0') : 'Novo pedido';
+  var sel = document.getElementById('ec-p-cliente');
+  sel.innerHTML = (p ? '' : '<option value="">Selecione…</option>') + ativos.map(function(c){
+    return '<option value="'+c.id+'">'+escHtml(c.nome)+'</option>';
+  }).join('');
+  var filtroCli = document.getElementById('ec-filtro-cli').value;
+  sel.value = p ? p.cliente_id : (filtroCli || '');
+  document.getElementById('ec-p-paciente').value = p ? (p.paciente || '') : '';
+  document.getElementById('ec-p-tipo').value     = p ? (p.tipo_trabalho || '') : '';
+  document.getElementById('ec-p-material').value = p ? (p.material || '') : '';
+  document.getElementById('ec-p-status').value   = p ? p.status : 'a_fazer';
+  document.getElementById('ec-p-qtd').value      = p ? (p.qtd_elementos || 0) : 1;
+  document.getElementById('ec-p-prazo').value    = p ? (p.prazo || '') : '';
+  document.getElementById('ec-p-valor').value    = p ? ecNum(p.valor) : '';
+  document.getElementById('ec-p-pago').checked   = p ? p.pago : false;
+  document.getElementById('ec-p-pagoem').value   = p ? (p.pago_em || '') : '';
+  document.getElementById('ec-p-obs').value      = p ? (p.observacao || '') : '';
+  document.getElementById('ec-p-msg').textContent = '';
+  document.getElementById('ec-p-del').hidden = !p;
+  document.getElementById('ec-p-arq').hidden = !(p && p.status === 'finalizado');
+  ecTogglePago();
+  ecBuildOdonto(p ? p.dentes : []);
+  ecRecalcValor();
+  ecRenderAnexos(p);
+  document.getElementById('ec-ped-ov').hidden = false;
+}
+
+function ecBuildOdonto(dentes) {
+  ecDentes = (dentes || []).slice().sort(function(a,b){ return a-b; });
+  function quad(q) {
+    return '<div class="odonto-quad">' + q.map(function(n){
+      return '<button type="button" class="dente'+(ecDentes.indexOf(n)>=0?' on':'')+'" data-dente="'+n+'" onclick="ecToggleDente('+n+')">'+n+'</button>';
+    }).join('') + '</div>';
+  }
+  document.getElementById('ec-odonto').innerHTML =
+    '<div class="odonto-row">'+quad(EC_QUADS[0])+'<span class="odonto-gap"></span>'+quad(EC_QUADS[1])+'</div>' +
+    '<div class="odonto-row">'+quad(EC_QUADS[2])+'<span class="odonto-gap"></span>'+quad(EC_QUADS[3])+'</div>';
+  ecOdontoLabel();
+}
+function ecToggleDente(n) {
+  var i = ecDentes.indexOf(n);
+  if (i >= 0) ecDentes.splice(i, 1); else ecDentes.push(n);
+  ecDentes.sort(function(a,b){ return a-b; });
+  var btn = document.querySelector('#ec-odonto .dente[data-dente="'+n+'"]');
+  if (btn) btn.classList.toggle('on', ecDentes.indexOf(n) >= 0);
+  if (ecDentes.length) document.getElementById('ec-p-qtd').value = ecDentes.length;
+  ecOdontoLabel();
+  ecRecalcValor();
+}
+function ecOdontoLabel() {
+  document.getElementById('ec-odonto-sel').textContent = ecDentes.length
+    ? ecDentes.length + ' selecionado(s): ' + ecDentes.join(', ')
+    : 'Nenhum dente selecionado (trabalhos de arcada: só preencha a quantidade)';
+}
+
+// Valor = preço por elemento do cliente × qtd, até o usuário digitar outro valor
+function ecRecalcValor() {
+  var c = ecCli(document.getElementById('ec-p-cliente').value);
+  var qtd = parseInt(document.getElementById('ec-p-qtd').value, 10) || 0;
+  var hint = document.getElementById('ec-p-valor-hint');
+  if (c && c.preco_elemento != null) {
+    hint.textContent = qtd + ' × ' + fmt(c.preco_elemento) + ' = ' + fmt(qtd * c.preco_elemento);
+    if (!ecValorManual) document.getElementById('ec-p-valor').value = (qtd * c.preco_elemento).toFixed(2);
+  } else {
+    hint.textContent = c ? 'Cliente sem preço padrão por elemento' : '';
+  }
+}
+
+function ecTogglePago() {
+  var pago = document.getElementById('ec-p-pago').checked;
+  var dt = document.getElementById('ec-p-pagoem');
+  dt.disabled = !pago;
+  if (pago && !dt.value) dt.value = ecHoje();
+  if (!pago) dt.value = '';
+}
+
+async function ecSalvarPedido() {
+  var msg = document.getElementById('ec-p-msg');
+  var cliente = document.getElementById('ec-p-cliente').value;
+  if (!cliente) { msg.textContent = 'Escolha o cliente.'; return; }
+  var status = document.getElementById('ec-p-status').value;
+  var atual  = ecEditPedId ? ecPedidos.find(function(x){ return x.id === ecEditPedId; }) : null;
+  var pago   = document.getElementById('ec-p-pago').checked;
+  var payload = {
+    cliente_id:    cliente,
+    paciente:      document.getElementById('ec-p-paciente').value.trim() || null,
+    tipo_trabalho: document.getElementById('ec-p-tipo').value.trim() || null,
+    material:      document.getElementById('ec-p-material').value.trim() || null,
+    dentes:        ecDentes.length ? ecDentes.slice() : null,
+    qtd_elementos: parseInt(document.getElementById('ec-p-qtd').value, 10) || 0,
+    prazo:         document.getElementById('ec-p-prazo').value || null,
+    valor:         Number(document.getElementById('ec-p-valor').value || 0),
+    pago:          pago,
+    pago_em:       pago ? (document.getElementById('ec-p-pagoem').value || ecHoje()) : null,
+    status:        status,
+    observacao:    document.getElementById('ec-p-obs').value.trim() || null
+  };
+  if (status === 'finalizado' && !(atual && atual.finalizado_at)) payload.finalizado_at = new Date().toISOString();
+  if (status !== 'finalizado') payload.finalizado_at = null;
+
+  var btn = document.getElementById('ec-p-save');
+  btn.disabled = true;
+  setSyncStatus('syncing');
+  var res = ecEditPedId
+    ? await sb.from('estudio_pedidos').update(payload).eq('id', ecEditPedId).select('id').single()
+    : await sb.from('estudio_pedidos').insert(payload).select('id').single();
+  if (res.error) { btn.disabled = false; setSyncStatus('error'); msg.textContent = 'Erro ao salvar: ' + res.error.message; return; }
+  var falha = await ecUploadAnexos(res.data.id);
+  btn.disabled = false;
+  if (payload.finalizado_at) ecMesSel = ecMesDeTs(payload.finalizado_at);
+  if (falha) { alert(falha); }
+  ecClose('ec-ped-ov');
+  await ecLoad();
+}
+
+async function ecExcluirPedido() {
+  if (!ecEditPedId) return;
+  if (!confirm('Excluir este pedido e os arquivos dele? Essa ação não pode ser desfeita.')) return;
+  setSyncStatus('syncing');
+  try {
+    var pasta = 'estudio/' + ecEditPedId;
+    var lst = await sb.storage.from(EC_BUCKET).list(pasta);
+    var arqs = (lst.data || []).filter(function(f){ return f.name; }).map(function(f){ return pasta + '/' + f.name; });
+    if (arqs.length) await sb.storage.from(EC_BUCKET).remove(arqs);
+  } catch(e) { console.error('[ecExcluirPedido] anexos', e); }
+  var res = await sb.from('estudio_pedidos').delete().eq('id', ecEditPedId);
+  if (res.error) { setSyncStatus('error'); alert('Erro ao excluir: ' + res.error.message); return; }
+  ecClose('ec-ped-ov');
+  await ecLoad();
+}
+
+async function ecArquivarPedido() {
+  if (!ecEditPedId) return;
+  var res = await sb.from('estudio_pedidos').update({ arquivado:true }).eq('id', ecEditPedId);
+  if (res.error) { alert('Erro ao arquivar: ' + res.error.message); return; }
+  ecClose('ec-ped-ov');
+  await ecLoad();
+}
+
+// ── Anexos: bucket 'casos', pasta estudio/<pedido_id>/<slot>-<arquivo> ──
+function ecRenderAnexos(p) {
+  document.getElementById('ec-anexos').innerHTML = EC_SLOTS.map(function(s){
+    return '<div><input type="file" id="ec-up-'+s.id+'" multiple hidden onchange="ecUpChange(\''+s.id+'\')">' +
+      '<div class="ec-up" id="ec-up-'+s.id+'-box" onclick="document.getElementById(\'ec-up-'+s.id+'\').click()">📎 '+s.label+'</div>' +
+      '<div id="ec-up-'+s.id+'-files"></div></div>';
+  }).join('');
+  if (p) ecListarAnexos(p.id);
+}
+function ecUpChange(slot) {
+  var inp = document.getElementById('ec-up-' + slot);
+  var box = document.getElementById('ec-up-' + slot + '-box');
+  var n = inp.files.length;
+  box.classList.toggle('has', n > 0);
+  var label = EC_SLOTS.find(function(s){ return s.id === slot; }).label;
+  box.textContent = n ? (n === 1 ? inp.files[0].name : n + ' arquivos') + ' (envia ao salvar)' : '📎 ' + label;
+}
+async function ecListarAnexos(pedidoId) {
+  var pasta = 'estudio/' + pedidoId;
+  try {
+    var res = await sb.storage.from(EC_BUCKET).list(pasta);
+    if (res.error) throw res.error;
+    var arqs = (res.data || []).filter(function(f){ return f.name; });
+    for (var i = 0; i < EC_SLOTS.length; i++) {
+      var s = EC_SLOTS[i];
+      var doSlot = arqs.filter(function(f){ return f.name.indexOf(s.id + '-') === 0; });
+      var el = document.getElementById('ec-up-' + s.id + '-files');
+      if (!el) continue;
+      var rows = await Promise.all(doSlot.map(async function(f){
+        var sg = await sb.storage.from(EC_BUCKET).createSignedUrl(pasta + '/' + f.name, 3600);
+        var url = (sg.data && sg.data.signedUrl) || '#';
+        var nome = f.name.slice(f.name.indexOf('-') + 1);
+        return '<div class="ec-file"><a href="'+url+'" target="_blank" rel="noopener" title="'+escHtml(nome)+'">👁 '+escHtml(nome)+'</a>' +
+          '<button type="button" title="Excluir arquivo" onclick="ecExcluirAnexo(\''+pedidoId+'\',\''+encodeURIComponent(f.name)+'\')">🗑</button></div>';
+      }));
+      el.innerHTML = rows.join('');
+    }
+  } catch(e) { console.error('[ecListarAnexos]', e); }
+}
+async function ecExcluirAnexo(pedidoId, nomeEnc) {
+  if (!confirm('Excluir este arquivo? Essa ação não pode ser desfeita.')) return;
+  var res = await sb.storage.from(EC_BUCKET).remove(['estudio/' + pedidoId + '/' + decodeURIComponent(nomeEnc)]);
+  if (res.error) { alert('Erro ao excluir arquivo: ' + res.error.message); return; }
+  ecListarAnexos(pedidoId);
+}
+async function ecUploadAnexos(pedidoId) {
+  var falhas = [];
+  for (var i = 0; i < EC_SLOTS.length; i++) {
+    var s = EC_SLOTS[i];
+    var inp = document.getElementById('ec-up-' + s.id);
+    if (!inp || !inp.files.length) continue;
+    for (var j = 0; j < inp.files.length; j++) {
+      var f = inp.files[j];
+      var path = 'estudio/' + pedidoId + '/' + s.id + '-' + f.name.replace(/[^A-Za-z0-9._-]/g, '_');
+      var up = await sb.storage.from(EC_BUCKET).upload(path, f, { upsert:true });
+      if (up.error) falhas.push(s.label + ' (' + f.name + '): ' + up.error.message);
+    }
+  }
+  return falhas.length ? 'Pedido salvo, mas falhou o envio de: ' + falhas.join(', ') + '.' : null;
+}
+
+ecLoad();
+</script>
+</body>
+</html>
