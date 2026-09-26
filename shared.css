@@ -289,3 +289,9 @@ button{font-family:inherit;cursor:pointer}
 .conf-comp-nao{background:#22263a;border:0.5px solid rgba(255,255,255,0.14);color:#94a3b8}
 .conf-comp-sim{background:#3b82f6;border:0;color:#fff}
 .conf-comp-sim:disabled{opacity:0.6;cursor:wait}
+
+.hist-pill.falta{background:rgba(239,68,68,0.16) !important;color:#f87171 !important}
+.hist-card.pend{border-color:rgba(239,68,68,0.45)}
+.hist-falta-pagar{font-size:13px;font-weight:800;color:#f87171;margin-top:3px;font-variant-numeric:tabular-nums}
+.hist-conf-todos{margin-top:8px;height:28px;padding:0 12px;border-radius:6px;border:1px solid #3b82f6;background:rgba(59,130,246,0.14);color:#93c5fd;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.hist-conf-todos:hover{background:#3b82f6;color:#fff}
