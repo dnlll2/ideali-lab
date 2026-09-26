@@ -11,25 +11,40 @@
 <style>
   /* Estúdio CAD: sistema separado pra desenhos avulsos (fora do fluxo Inove).
      Usa só as tabelas estudio_clientes / estudio_pedidos (039_estudio_cad.sql). */
+  /* Tema "estação CAD" (inspirado em software de CAD odontológico): grafite,
+     fundo em degradê de viewport 3D, azul de seleção e laranja nas ações --
+     de propósito bem diferente do azul-marinho/verde-água do sistema principal. */
   :root{
-    --ec-card:#1a1d27; --ec-col:#13161f; --ec-sec:#22263a; --ec-line:rgba(255,255,255,0.08);
-    --ec-text:#e2e8f0; --ec-muted:#94a3b8; --ec-dim:#64748b; --ec-accent:#4dd0a8;
-    --ec-todo-bg:#1d3a6e; --ec-todo-fg:#93c5fd; --ec-doing-bg:#3d2e0e; --ec-doing-fg:#fbbf24;
-    --ec-done-bg:#0d3d2b; --ec-done-fg:#4ade80; --ec-warn:#fb923c; --ec-late:#f87171;
+    --ec-card:#2b2f36; --ec-col:#23262c; --ec-sec:#353a42; --ec-line:rgba(255,255,255,0.09);
+    --ec-text:#e6e9ee; --ec-muted:#a3abb7; --ec-dim:#7b8491; --ec-accent:#3d9df2;
+    --ec-action:#f28c28; --ec-action-hover:#ffa347; --ec-bar:#1c1f24;
+    --ec-todo-bg:#1f3a5c; --ec-todo-fg:#8cc4ff; --ec-doing-bg:#4a3313; --ec-doing-fg:#ffb454;
+    --ec-done-bg:#1d4230; --ec-done-fg:#6fdc9a; --ec-warn:#ffa347; --ec-late:#ff6b6b;
   }
+  html body.ec-app{
+    background:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px) 0 0/28px 28px,
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px) 0 0/28px 28px,
+      radial-gradient(ellipse 120% 90% at 50% 20%, #4b5360 0%, #30353d 45%, #1e2126 100%) fixed !important;
+    color:var(--ec-text) !important;
+    min-height:100vh;
+  }
+  .ec-toolbar{margin:-0.5rem -0.5rem 0;padding:10px 20px;background:var(--ec-bar);border-bottom:2px solid var(--ec-accent);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;box-shadow:0 2px 12px rgba(0,0,0,0.35)}
+  .ec-mark{width:34px;height:34px;border-radius:4px;background:linear-gradient(135deg,#3d9df2,#1f5f9e);display:grid;place-items:center;color:#fff;font-size:18px}
+  .ec-env{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--ec-action);background:rgba(242,140,40,0.12);border:1px solid rgba(242,140,40,0.45);padding:2px 7px;border-radius:3px;margin-left:8px;vertical-align:middle}
   .ec-brand{display:flex;align-items:center;gap:10px}
-  .ec-brand h1{font-size:22px;font-weight:600;color:#f1f5f9}
-  .ec-brand p{font-size:13px;color:#94a3b8;margin-top:1px}
+  .ec-brand h1{font-size:18px;font-weight:600;color:#f4f6f9;letter-spacing:0.01em}
+  .ec-brand p{font-size:12px;color:var(--ec-dim);margin-top:1px}
   .ec-hdr-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .ec-btn{height:34px;padding:0 14px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:var(--ec-sec);color:var(--ec-muted);font-size:13px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-  .ec-btn:hover{color:var(--ec-text);background:#2d3250}
-  .ec-btn.pri{background:var(--ec-accent);color:#06241b;border:0;font-weight:700}
-  .ec-btn.pri:hover{background:#6ee0bd}
+  .ec-btn:hover{color:var(--ec-text);background:#414752}
+  .ec-btn.pri{background:var(--ec-action);color:#1c1204;border:0;font-weight:700}
+  .ec-btn.pri:hover{background:var(--ec-action-hover)}
   .ec-btn.danger{color:#fca5a5;border-color:rgba(248,113,113,0.35)}
   .ec-btn[hidden]{display:none}
   .ec-btn.sm{height:26px;padding:0 9px;font-size:11px;border-radius:6px}
   .ec-btn:focus-visible,.ec-tab:focus-visible,.ec-chip:focus-visible{outline:2px solid var(--ec-accent);outline-offset:2px}
-  .ec-sel{height:34px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:rgba(15,17,23,0.55);color:var(--ec-text);padding:0 10px;font-family:inherit;font-size:13px}
+  .ec-sel{height:34px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:var(--ec-sec);color:var(--ec-text);padding:0 10px;font-family:inherit;font-size:13px}
 
   .ec-tabs{display:flex;gap:4px;border-bottom:0.5px solid var(--ec-line);margin:12px 0 16px;overflow-x:auto;scrollbar-width:none}
   .ec-tab{padding:9px 14px;font-size:13px;color:var(--ec-dim);background:none;border:0;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit;white-space:nowrap}
@@ -122,35 +137,39 @@
   .ec-file{display:flex;justify-content:space-between;gap:4px;font-size:11px;margin-top:4px}
   .ec-file a{color:#7dd3fc;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .ec-file button{background:none;border:0;color:var(--ec-dim);cursor:pointer}
+
+  /* Cantos retos e painéis com cabeçalho, estilo painel de ferramenta de CAD */
+  .ec-btn,.ec-sel,.ec-search,.ec-chip,.ec-inp{border-radius:4px}
+  .ec-kpi,.ec-col,.ec-table-wrap{border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,0.25)}
+  .ec-ord{border-radius:4px;background:#32363e}
+  .ec-ord:hover{border-color:var(--ec-accent)}
+  .ec-col-h{margin:-10px -10px 2px;padding:8px 12px;background:var(--ec-bar);border-radius:6px 6px 0 0;border-bottom:1px solid var(--ec-line)}
+  .ec-tab.on{color:#fff;border-bottom-color:var(--ec-accent)}
+  .ec-tabs{border-bottom-color:rgba(255,255,255,0.12)}
+  .ec-modal{background:var(--ec-card);border-radius:6px;border-top:2px solid var(--ec-accent)}
+  .ec-modal-h{background:var(--ec-bar);border-radius:6px 6px 0 0}
+  .ec-kpi .l,.ec-f label,.ec-table th,.ec-sec-title{color:var(--ec-dim)}
+  .ec-table th{background:var(--ec-bar)}
+  .dente{border-radius:3px}
+  .dente.on{background:var(--ec-accent);border-color:#8cc4ff}
+  .ec-chip.on{border-color:var(--ec-accent);background:rgba(61,157,242,0.14)}
+  .ec-teeth{background:rgba(61,157,242,0.18);color:#8cc4ff}
+  .ec-up.has{border-color:rgba(61,157,242,0.6);color:#8cc4ff}
 </style>
 </head>
-<body>
-
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs>
-    <filter id="glassDistort" x="-50%" y="-50%" width="200%" height="200%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.006 0.009" numOctaves="2" seed="7" result="n"/>
-      <feDisplacementMap in="SourceGraphic" in2="n" scale="18" xChannelSelector="R" yChannelSelector="G"/>
-    </filter>
-    <filter id="glassGrain" x="0" y="0" width="100%" height="100%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="2" seed="3" stitchTiles="stitch" result="n"/>
-      <feGaussianBlur in="n" stdDeviation="9" result="nb"/>
-      <feColorMatrix in="nb" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.35 0"/>
-    </filter>
-  </defs>
-</svg>
+<body class="ec-app">
 
 <div style="max-width:100%">
-  <div class="header-glass" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+  <div class="ec-toolbar">
     <div class="ec-brand">
-      <img src="assets/logo.png" alt="" style="height:40px;width:40px;object-fit:contain">
+      <div class="ec-mark"><i class="ti ti-dental"></i></div>
       <div>
-        <h1>Estúdio CAD</h1>
+        <h1>Estúdio CAD <span class="ec-env">Ambiente externo</span></h1>
         <p>Desenhos avulsos, fora do fluxo Inove</p>
       </div>
     </div>
     <div class="ec-hdr-r">
-      <span id="sync-status" style="font-size:12px;color:#94a3b8"><span class="sync-dot" id="sync-dot"></span>Conectado</span>
+      <span id="sync-status" style="font-size:12px;color:var(--ec-muted)"><span class="sync-dot" id="sync-dot"></span>Conectado</span>
       <select id="ec-mes" class="ec-sel" onchange="ecSetMes(this.value)" title="Mês usado no resumo, nos finalizados e no financeiro"></select>
       <button class="ec-btn" type="button" onclick="ecLoad()" title="Atualizar">&#8635;</button>
       <button class="ec-btn" type="button" onclick="ecOpenCliente()"><i class="ti ti-user-plus"></i> Cliente</button>
