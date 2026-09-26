@@ -380,12 +380,17 @@ function isFechadoLocal() {
   return clients.every(function(c){ return dbState[c.reg] && dbState[c.reg].quitado; });
 }
 
+// Primeiro mes com dados em controle_mensal (mes e 0-indexado: 4 = Maio).
+// A lista vai desse mes ate o atual -- antes eram so os ultimos 4 meses,
+// e maio sumiu do seletor quando chegou setembro.
+var MES_INICIO_SISTEMA = {m:4, y:2026};
+
 function buildMonthList() {
   var base = [];
-  for (var i=3; i>=0; i--) {
-    var m = currentMonth - i, y = currentYear;
-    if (m < 0) { m += 12; y--; }
+  var m = MES_INICIO_SISTEMA.m, y = MES_INICIO_SISTEMA.y;
+  while (y < currentYear || (y === currentYear && m <= currentMonth)) {
     base.push({m:m, y:y});
+    m++; if (m > 11) { m = 0; y++; }
   }
   var all = base.slice();
   extraMonths.forEach(function(e) {
