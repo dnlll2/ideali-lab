@@ -685,37 +685,10 @@ function saldoAnteriorBanner(reg) {
       '<p style="font-size:11.5px;color:#94a3b8;margin-top:2px;line-height:1.5">Ficou faltando pagar em '+MESES[prevMonthOf(viewMonth,viewYear).m]+'. Só um aviso — não altera o valor deste mês.</p></div></div>';
   }
 
-  var credor = diff, status = cv.abater_saldo_credor;
-  if (status === true) {
-    return '<div style="display:flex;gap:10px;align-items:flex-start;background:'+hexToRgba(T().success,0.08)+';border:0.5px solid '+hexToRgba(T().success,0.3)+';border-radius:9px;padding:11px 13px;margin-bottom:14px">'+
-      '<div style="flex-shrink:0;width:26px;height:26px;border-radius:7px;background:'+hexToRgba(T().success,0.16)+';color:'+T().success+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700"><i class="ti ti-check" style="font-size:14px"></i></div>'+
-      '<div style="flex:1;min-width:0"><p style="font-size:12.5px;font-weight:600;color:'+T().success+'">'+fmt(credor)+' abatido do valor deste mês</p>'+
-      '<p style="font-size:11.5px;color:#94a3b8;margin-top:2px;margin-bottom:8px;line-height:1.5">A Elisangela já vê o valor líquido em pagamentos-inove.html.</p>'+
-      '<button onclick="reverterSaldoCredor('+reg+')" style="height:28px;padding:0 12px;border-radius:7px;border:0.5px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit"><i class="ti ti-arrow-back-up" style="font-size:12px"></i> Reverter decisão</button></div></div>';
-  }
-  if (status === false) {
-    return '<div style="display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 13px;margin-bottom:14px">'+
-      '<div style="flex-shrink:0;width:26px;height:26px;border-radius:7px;background:rgba(255,255,255,0.06);color:#94a3b8;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700"><i class="ti ti-x" style="font-size:14px"></i></div>'+
-      '<div style="flex:1;min-width:0"><p style="font-size:12.5px;font-weight:600;color:#cbd5e1">'+fmt(credor)+' mantido à parte (não abatido)</p>'+
-      '<p style="font-size:11.5px;color:#94a3b8;margin-top:2px;margin-bottom:8px;line-height:1.5">Crédito de '+MESES[prevMonthOf(viewMonth,viewYear).m]+' não desconta nada este mês.</p>'+
-      '<button onclick="reverterSaldoCredor('+reg+')" style="height:28px;padding:0 12px;border-radius:7px;border:0.5px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit"><i class="ti ti-arrow-back-up" style="font-size:12px"></i> Reverter decisão</button></div></div>';
-  }
-  return '<div style="display:flex;gap:10px;align-items:flex-start;background:'+hexToRgba(T().success,0.08)+';border:0.5px solid '+hexToRgba(T().success,0.3)+';border-radius:9px;padding:11px 13px;margin-bottom:14px">'+
-    '<div style="flex-shrink:0;width:26px;height:26px;border-radius:7px;background:'+hexToRgba(T().success,0.16)+';color:'+T().success+';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">?</div>'+
-    '<div style="flex:1;min-width:0"><p style="font-size:12.5px;font-weight:600;color:'+T().success+'">Saldo credor do mês anterior: '+fmt(credor)+'</p>'+
-    '<p style="font-size:11.5px;color:#94a3b8;margin-top:2px;margin-bottom:8px;line-height:1.5">Pagou a mais em '+MESES[prevMonthOf(viewMonth,viewYear).m]+'. Abater deste mês?</p>'+
-    '<div style="display:flex;gap:8px"><button onclick="decidirSaldoCredor('+reg+',true)" style="flex:1;height:30px;border-radius:7px;border:0.5px solid '+hexToRgba(T().success,0.4)+';background:'+hexToRgba(T().success,0.14)+';color:'+T().success+';font-size:12px;font-weight:600;cursor:pointer;font-family:inherit"><i class="ti ti-check" style="font-size:13px"></i> Sim, abater</button>'+
-    '<button onclick="decidirSaldoCredor('+reg+',false)" style="flex:1;height:30px;border-radius:7px;border:0.5px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Não abater</button></div></div></div>';
+  // Saldo credor: a pergunta "Abater deste mês?" foi removida (confundia).
+  // Só o aviso de saldo devedor continua aparecendo.
+  return '';
 }
-
-async function decidirSaldoCredor(reg, val) {
-  var ok = await patchControleMensal(reg, {abater_saldo_credor: val});
-  if (ok === false) { alert('Erro ao gravar a decisão. Tente de novo.'); return; }
-  if (!dbState[reg]) dbState[reg] = {};
-  dbState[reg].abater_saldo_credor = val;
-  if (selected && selected.reg === reg) renderDetail();
-}
-function reverterSaldoCredor(reg) { decidirSaldoCredor(reg, null); }
 
 function calcPreview(reg) {
   var vM = parseFloat(document.getElementById('fin-valor-'+reg).value) || 0;
