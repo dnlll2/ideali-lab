@@ -1123,31 +1123,49 @@ function renderTodosComprovantesHtml(grupos, filtro, o) {
     var aps = g.aportes.filter(function(a) { return aporteCasaFiltro(a, filtro); });
     // Anexos soltos do jeito antigo (sem data/valor) não aparecem mais: os arquivos
     // continuam no storage, só não poluem a lista.
-    var anexos = [];
     // Todo mês mostra a linha "Extrato do mês (Inove)", em qualquer filtro: com o
     // botão Ver quando o extrato está anexado, sem botão quando ainda não está.
 
     var falta = Math.max(0, g.valor_mes - g.valor_pago);
-    var resumo = (g.valor_mes ? 'Faturado ' + fmt(g.valor_mes) + ' · ' : '') + 'Pago ' + fmt(g.valor_pago) +
-      (g.valor_mes ? (falta > 0.009
-        ? ' · <span style="color:' + t.warn + '">falta ' + fmt(falta) + '</span>'
-        : ' · <span style="color:' + t.success + '">quitado</span>') : '');
+    var emAberto = g.valor_mes && falta > 0.009;
+    var pill = g.valor_mes ? (emAberto
+      ? '<span class="hist-pill falta">falta ' + fmt(falta) + '</span>'
+      : '<span class="hist-pill quitado">quitado</span>') : '';
+    var comComp = g.aportes.filter(function(a) { return a.comprovante_url; });
+    var nConf = comComp.filter(function(a) { return a.confirmado_inove_em; }).length;
+    var sub = comComp.length
+      ? comComp.length + ' comprovante' + (comComp.length === 1 ? '' : 's') + ' · ' + nConf + ' de ' + comComp.length + ' confirmado' + (comComp.length === 1 ? '' : 's') + ' pela Inove'
+      : 'nenhum comprovante';
 
     var linhas = aps.map(function(a) {
       var dataFmt = new Date(a.data_pagamento + 'T00:00:00').toLocaleDateString('pt-BR');
+      var novo = a.comprovante_url && !a.visto_inove_em;
+      var link = a.comprovante_url ? o.compLink(a.comprovante_url) : '';
+      // Na tela da Inove, clicar em "Ver" marca o comprovante como visto (some o "novo")
+      if (novo && o.podeConfirmar) link = '<span onclick="marcarComprovanteVisto(\'' + a.id + '\')">' + link + '</span>';
       var compHtml = a.comprovante_url
-        ? o.compLink(a.comprovante_url) + renderSeloConferencia(a)
+        ? link + renderSeloConferencia(a) + (novo ? '<span class="hist-novo">Comprovante novo</span>' : '')
         : o.semComp(a.legado ? 'lançamento anterior' : 'sem comprovante');
-      return '<tr><td>' + dataFmt + '</td><td style="color:' + t.success + ';font-weight:600">' + fmt(a.valor) + '</td><td>' + compHtml + '</td></tr>';
-    }).concat(anexos.map(function(f) {
-      return '<tr><td>' + o.semComp('—') + '</td><td>' + o.semComp('—') + '</td><td>' + o.compLink(f.url) + ' ' + o.semComp('anexo antigo (sem data/valor)') + '</td></tr>';
-    })).join('');
-    if (!linhas) linhas = '<tr><td colspan="3">' + o.semComp('nenhum pagamento lançado') + '</td></tr>';
-    linhas = '<tr class="hist-extrato-row"><td colspan="2"><i class="ti ti-file-text"></i> Extrato do mês (Inove)</td><td>' +
+      var inoveHtml = !a.comprovante_url ? o.semComp('—')
+        : a.confirmado_inove_em
+          ? '<span class="hist-conf-ok"><i class="ti ti-check"></i> Confirmado <small>' + new Date(a.confirmado_inove_em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + '</small></span>'
+          : o.podeConfirmar
+            ? '<button type="button" class="hist-conf-btn" onclick="pedirConfirmacaoComprovante(\'' + a.id + '\')"><i class="ti ti-square"></i> Confirmar</button>'
+            : '<span class="hist-conf-pend">aguardando Inove</span>';
+      return '<tr><td>' + dataFmt + '</td><td style="color:' + t.success + ';font-weight:600">' + fmt(a.valor) + '</td><td>' + compHtml + '</td><td>' + inoveHtml + '</td></tr>';
+    }).join('');
+    if (!linhas) linhas = '<tr><td colspan="4">' + o.semComp('nenhum pagamento lançado') + '</td></tr>';
+    linhas = '<tr class="hist-extrato-row"><td colspan="3"><i class="ti ti-file-text"></i> Extrato do mês (Inove)</td><td>' +
       (g.extrato_url ? o.extratoLink(g.extrato_url) : '<span class="hist-extrato-falta">não anexado</span>') + '</td></tr>' + linhas;
 
-    html += '<div class="hist-mes-head"><span class="hist-mes-nome">' + MESES[g.mes] + '/' + g.ano + '</span><span class="hist-mes-resumo">' + resumo + '</span></div>' +
-      '<div style="overflow-x:auto"><table class="' + o.tableClass + '"><thead><tr><th>Data</th><th>Valor</th><th>Comprovante</th></tr></thead><tbody>' + linhas + '</tbody></table></div>';
+    html += '<div class="hist-card' + (emAberto ? ' pend' : '') + '">' +
+      '<div class="hist-card-h">' +
+        '<div><div class="hist-mes-nome">' + MESES[g.mes] + '/' + g.ano + pill + '</div><div class="hist-card-sub">' + sub + '</div></div>' +
+        '<div class="hist-card-val"><div class="l">Valor do mês</div><div class="v">' + fmt(g.valor_mes) + '</div>' +
+          '<div class="s" style="color:' + (emAberto ? t.warn : t.success) + '">Pago ' + fmt(g.valor_pago) + '</div></div>' +
+      '</div>' +
+      '<div style="overflow-x:auto"><table class="' + o.tableClass + '"><thead><tr><th>Data</th><th>Valor</th><th>Comprovante</th><th>Inove</th></tr></thead><tbody>' + linhas + '</tbody></table></div>' +
+    '</div>';
   });
 
   if (!html) {
@@ -1211,6 +1229,78 @@ async function mostrarVisaoAportes(modo) {
     console.error('carregarComprovantesCliente:', e);
     lista.innerHTML = '<p style="font-size:12px;color:' + T().danger + ';padding:12px 0">Erro ao carregar os comprovantes: ' + escHtml(e.message || String(e)) + '</p>';
   }
+}
+
+// ── Confirmação de comprovante pela Inove (Histórico Geral) ─────────────
+// visto_inove_em: clicou em "Ver" (tira o "Comprovante novo").
+// confirmado_inove_em: respondeu "Sim" em "Realmente conferiu o comprovante?".
+// Só a tela da Inove (histTodosEstilo.podeConfirmar) mostra os botões.
+function acharAporteCache(id) {
+  var achado = null;
+  (todosComprovantesCache || []).forEach(function(g) {
+    g.aportes.forEach(function(a) { if (a.id === id) achado = a; });
+  });
+  return achado;
+}
+
+async function marcarComprovanteVisto(id) {
+  var a = acharAporteCache(id);
+  if (!a || a.visto_inove_em) return;
+  var agora = new Date().toISOString();
+  var res = await sb.from('pagamento_aportes').update({ visto_inove_em: agora }).eq('id', id).is('visto_inove_em', null);
+  if (res.error) { console.error('marcarComprovanteVisto:', res.error); return; }
+  a.visto_inove_em = agora;
+  renderTodosComprovantes();
+}
+
+function pedirConfirmacaoComprovante(id) {
+  var a = acharAporteCache(id);
+  if (!a) return;
+  var ov = document.getElementById('conf-comp-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'conf-comp-overlay';
+    ov.className = 'conf-comp-overlay';
+    ov.innerHTML = '<div class="conf-comp-dlg" role="dialog" aria-labelledby="conf-comp-titulo">' +
+      '<h3 id="conf-comp-titulo">Realmente conferiu o comprovante?</h3><p id="conf-comp-texto"></p>' +
+      '<p class="conf-comp-erro" id="conf-comp-erro"></p>' +
+      '<div class="conf-comp-bts"><button type="button" class="conf-comp-nao" onclick="fecharConfirmacaoComprovante()">Não</button>' +
+      '<button type="button" class="conf-comp-sim" id="conf-comp-sim">Sim, conferi</button></div></div>';
+    ov.addEventListener('click', function(e) { if (e.target === ov) fecharConfirmacaoComprovante(); });
+    document.body.appendChild(ov);
+  }
+  document.getElementById('conf-comp-texto').innerHTML = 'Comprovante de <b>' + fmt(a.valor) + '</b> de ' +
+    new Date(a.data_pagamento + 'T00:00:00').toLocaleDateString('pt-BR') + '. Depois de confirmar, ele fica marcado como conferido pela Inove.';
+  document.getElementById('conf-comp-erro').textContent = '';
+  var sim = document.getElementById('conf-comp-sim');
+  sim.disabled = false;
+  sim.onclick = function() { confirmarComprovanteInove(id); };
+  ov.style.display = 'flex';
+  sim.focus();
+}
+
+function fecharConfirmacaoComprovante() {
+  var ov = document.getElementById('conf-comp-overlay');
+  if (ov) ov.style.display = 'none';
+}
+
+async function confirmarComprovanteInove(id) {
+  var a = acharAporteCache(id);
+  if (!a) return;
+  var sim = document.getElementById('conf-comp-sim');
+  sim.disabled = true;
+  var agora = new Date().toISOString();
+  var payload = { confirmado_inove_em: agora };
+  if (!a.visto_inove_em) payload.visto_inove_em = agora;
+  var res = await sb.from('pagamento_aportes').update(payload).eq('id', id);
+  if (res.error) {
+    sim.disabled = false;
+    document.getElementById('conf-comp-erro').textContent = 'Não foi possível salvar: ' + res.error.message;
+    return;
+  }
+  Object.assign(a, payload);
+  fecharConfirmacaoComprovante();
+  renderTodosComprovantes();
 }
 
 function renderTodosComprovantes() {

@@ -1019,6 +1019,7 @@ function abrirHistoricoAportes(reg, aba) {
 // "Todos os meses" em shared.js).
 var histTodosEstilo = {
   tableClass: 'comissao-table',
+  podeConfirmar: true, // botão "Confirmar" e "Comprovante novo" some ao clicar em Ver
   compLink: function(url) { return '<a class="comp-link" href="'+url+'" target="_blank" rel="noopener"><i class="ti ti-paperclip"></i> Ver</a>'; },
   semComp: function(txt) { return '<span class="no-comp">'+txt+'</span>'; },
   extratoLink: function(url) { return '<a class="comp-link extrato-link" href="'+url+'" target="_blank" rel="noopener">Ver <i class="ti ti-external-link"></i></a>'; }
