@@ -130,6 +130,12 @@
   .dente:hover{border-color:var(--ec-accent)}
   .dente.on{background:#2f8fae;border-color:var(--ec-accent);color:#fff;font-weight:600}
   .odonto-gap{width:8px}
+  .odonto.off{opacity:0.35;pointer-events:none}
+  .ec-opts{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;min-height:36px}
+  .ec-f label.ec-opt{display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ec-text);cursor:pointer}
+  .ec-opt input:disabled+*,.ec-opt.dis{opacity:0.45;cursor:default}
+  .ec-opts .pr{font-size:11px;color:var(--ec-dim)}
+  .ec-opt-sep{flex-basis:100%;height:0}
   @media(max-width:520px){.dente{width:22px;height:24px;font-size:9.5px}}
 
   .ec-anexos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -281,10 +287,26 @@
         <select class="ec-inp" id="ec-p-status"><option value="a_fazer">A Fazer</option><option value="fazendo">Fazendo</option><option value="finalizado">Finalizado</option></select></div>
       <div class="ec-f"><label for="ec-p-cadista">Cadista</label>
         <select class="ec-inp" id="ec-p-cadista"></select></div>
-      <div class="ec-f full"><label>Elementos (clique nos dentes)</label>
+      <div class="ec-f full" id="ec-p-arc-box"><label>Trabalho por arcada</label>
+        <div class="ec-opts">
+          <label class="ec-opt"><input type="checkbox" id="ec-p-arc-protocolo" onchange="ecSetArcTipo('protocolo', this.checked)"> Protocolo <span class="pr" id="ec-pr-protocolo"></span></label>
+          <label class="ec-opt"><input type="checkbox" id="ec-p-arc-placa" onchange="ecSetArcTipo('placa', this.checked)"> Placa de bruxismo <span class="pr" id="ec-pr-placa"></span></label>
+          <span class="ec-opt-sep"></span>
+          <span class="pr">Arcada:</span>
+          <label class="ec-opt"><input type="checkbox" id="ec-p-arc-sup" onchange="ecComposicaoMudou()"> Superior</label>
+          <label class="ec-opt"><input type="checkbox" id="ec-p-arc-inf" onchange="ecComposicaoMudou()"> Inferior</label>
+        </div>
+        <span class="ec-hint" id="ec-p-arc-aviso" hidden style="color:var(--ec-warn)">Rode supabase/044_estudio_arcada_modelo.sql no Supabase para salvar protocolo, placa e modelos.</span></div>
+      <div class="ec-f full" id="ec-p-mod-box"><label>Gerar modelo</label>
+        <div class="ec-opts">
+          <label class="ec-opt"><input type="checkbox" id="ec-p-mod-sup" onchange="ecComposicaoMudou()"> Modelo superior</label>
+          <label class="ec-opt"><input type="checkbox" id="ec-p-mod-inf" onchange="ecComposicaoMudou()"> Modelo inferior</label>
+          <span class="pr" id="ec-pr-modelo"></span>
+        </div></div>
+      <div class="ec-f full" id="ec-p-dentes-box"><label>Elementos (clique nos dentes)</label>
         <div class="odonto" id="ec-odonto"></div>
         <p class="ec-hint" id="ec-odonto-sel" style="text-align:center">Nenhum dente selecionado</p></div>
-      <div class="ec-f"><label for="ec-p-qtd">Qtd. elementos</label><input class="ec-inp" id="ec-p-qtd" type="number" min="0" value="1" oninput="ecRecalcValor()"></div>
+      <div class="ec-f"><label for="ec-p-qtd">Qtd. elementos</label><input class="ec-inp" id="ec-p-qtd" type="number" min="0" value="1" oninput="ecComposicaoMudou()"></div>
       <div class="ec-f"><label for="ec-p-prazo">Prazo</label><input class="ec-inp" id="ec-p-prazo" type="date"></div>
       <div class="ec-f"><label for="ec-p-valor">Valor (R$)</label><input class="ec-inp" id="ec-p-valor" type="number" min="0" step="0.01" oninput="ecValorManual=true">
         <span class="ec-hint" id="ec-p-valor-hint"></span></div>
@@ -428,6 +450,13 @@ var EC_SLOTS  = [{id:'escaneamento',label:'Escaneamento'},{id:'stl',label:'STL f
 var EC_CADISTAS = ['Eu', 'Daniel Hosda'];
 // Coluna cadista vem da 041_estudio_cadista.sql; até ela ser rodada o campo fica oculto
 var ecTemCadista = false;
+// Preços padrão do Estúdio. Elemento: vale o preço do cliente se ele tiver um cadastrado.
+var EC_PRECOS = { elemento:15, protocolo:240, placa:60, modelo:15 };
+var EC_ARC_LABEL = { protocolo:'Protocolo', placa:'Placa de bruxismo' };
+var EC_ARC_NOME = { sup:'superior', inf:'inferior' };
+// Colunas arcada_tipo/arcadas/modelos vêm da 044_estudio_arcada_modelo.sql; até ela ser rodada as opções ficam travadas
+var ecTemArcada = false;
+var ecArcTipo = '';
 var EC_BUCKET = 'casos';
 // Pagamentos vêm da 043_estudio_pagamentos.sql; até ela ser rodada a aba mostra um aviso
 var ecPagamentos = [];
@@ -452,6 +481,22 @@ function ecCli(id) { return ecClientes.find(function(c){ return c.id === id; }) 
 function ecCliNome(id) { var c = ecCli(id); return c ? c.nome : '(cliente removido)'; }
 function ecAtrasado(p) { return p.status !== 'finalizado' && p.prazo && p.prazo < ecHoje(); }
 function ecNum(v) { return Number(v || 0); }
+function ecArcTexto(p) {
+  var arcs = (p.arcadas || []).map(function(a){ return EC_ARC_NOME[a] || a; });
+  return (EC_ARC_LABEL[p.arcada_tipo] || p.arcada_tipo) + (arcs.length ? ' ' + arcs.join(' e ') : '');
+}
+function ecModTexto(p) {
+  var m = (p.modelos || []).map(function(a){ return EC_ARC_NOME[a] || a; });
+  return m.length ? (m.length > 1 ? 'modelos ' : 'modelo ') + m.join(' e ') : '';
+}
+// "dentes 11, 21" / "Protocolo superior" / "3 elem.", com os modelos no fim
+function ecDetalheElem(p, semDentesTxt) {
+  var t = p.arcada_tipo ? ecArcTexto(p)
+    : (p.dentes && p.dentes.length) ? (semDentesTxt ? '' : 'dentes ') + p.dentes.join(', ')
+    : (p.qtd_elementos ? p.qtd_elementos + ' elem.' : '');
+  var m = ecModTexto(p);
+  return [t, m].filter(Boolean).join(' + ');
+}
 
 // ── Carga ─────────────────────────────────────────────────────
 async function ecLoad() {
@@ -464,6 +509,7 @@ async function ecLoad() {
     ecClientes = r1.data || [];
     ecPedidos  = r2.data || [];
     ecTemCadista = ecPedidos.length ? ('cadista' in ecPedidos[0]) : !(await sb.from('estudio_pedidos').select('cadista').limit(1)).error;
+    ecTemArcada = ecPedidos.length ? ('arcada_tipo' in ecPedidos[0]) : !(await sb.from('estudio_pedidos').select('arcada_tipo,arcadas,modelos').limit(1)).error;
     var r3 = await sb.from('estudio_pagamentos').select('*').order('data_pagamento', { ascending:false }).order('created_at', { ascending:false });
     ecTemPagamentos = !r3.error;
     ecPagamentos = r3.data || [];
@@ -596,7 +642,8 @@ function ecCardHtml(p) {
   else if (late) prazo = '<span class="ec-due-late">Venceu ' + fmtDate(p.prazo) + '</span>';
   else if (p.prazo === hoje) prazo = '<span style="color:var(--ec-warn);font-weight:600">Prazo hoje</span>';
   else prazo = 'Prazo ' + fmtDate(p.prazo);
-  var dentes = (p.dentes && p.dentes.length) ? p.dentes.join(' · ') : (p.qtd_elementos ? p.qtd_elementos + ' elem.' : '');
+  var dentes = p.arcada_tipo ? ecArcTexto(p) : (p.dentes && p.dentes.length) ? p.dentes.join(' · ') : (p.qtd_elementos ? p.qtd_elementos + ' elem.' : '');
+  if (p.modelos && p.modelos.length) dentes += (dentes ? ' + ' : '') + ecModTexto(p);
   var adv = EC_NEXT[p.status]
     ? '<button class="ec-adv" type="button" title="Mover para '+EC_STATUS[EC_NEXT[p.status]]+'" onclick="event.stopPropagation();ecAvancar(\''+p.id+'\')">&gt;&gt;</button>' : '';
   return '<div class="ec-ord'+(late?' late':'')+'" onclick="ecOpenPedido(\''+p.id+'\')">' +
@@ -972,7 +1019,7 @@ function ecOpenOrdemPg(cliId) {
   document.getElementById('ec-op-msg').textContent = '';
   function item(p) {
     var on = ecOpSel.indexOf(p.id) >= 0;
-    var sub = [p.tipo_trabalho, p.material, (p.dentes && p.dentes.length) ? 'dentes ' + p.dentes.join(', ') : (p.qtd_elementos ? p.qtd_elementos + ' elem.' : ''),
+    var sub = [p.tipo_trabalho, p.material, ecDetalheElem(p),
                p.status === 'finalizado' ? (p.finalizado_at ? 'finalizado ' + fmtDate(ecDataLocal(p.finalizado_at)) : 'finalizado') : EC_STATUS[p.status]]
       .filter(Boolean).map(escHtml).join(' · ');
     return '<label class="ec-pg-item">' +
@@ -1058,7 +1105,7 @@ function ecOpTexto() {
   var c = ecCli(ecOpCliId);
   var cfg = ecOpLerPix();
   var linhas = ecOpPedidosSel().map(function(p){
-    var det = [p.tipo_trabalho, (p.dentes && p.dentes.length) ? 'dentes ' + p.dentes.join(', ') : (p.qtd_elementos ? p.qtd_elementos + ' elem.' : '')].filter(Boolean).join(' · ');
+    var det = [p.tipo_trabalho, ecDetalheElem(p)].filter(Boolean).join(' · ');
     return '• #' + String(p.numero).padStart(4,'0') + ' ' + (p.paciente || 'Sem paciente') + (det ? ' — ' + det : '') + ' — ' + fmt(p.valor);
   });
   return '*Ordem de pagamento — Estúdio CAD*\n' +
@@ -1088,7 +1135,7 @@ function ecOpImprimir() {
   var qrImg = cv ? cv.toDataURL('image/png') : '';
   var linhas = ecOpPedidosSel().map(function(p){
     var det = [p.tipo_trabalho, p.material].filter(Boolean).join(' · ');
-    var dentes = (p.dentes && p.dentes.length) ? p.dentes.join(', ') : (p.qtd_elementos ? p.qtd_elementos + ' elem.' : '—');
+    var dentes = ecDetalheElem(p, true) || '—';
     return '<tr><td>#'+String(p.numero).padStart(4,'0')+'</td><td><b>'+escHtml(p.paciente || 'Sem paciente')+'</b>'+(det?'<div class="s">'+escHtml(det)+'</div>':'')+'</td>' +
       '<td>'+escHtml(dentes)+'</td><td class="n">'+fmt(p.valor)+'</td></tr>';
   }).join('');
@@ -1208,6 +1255,20 @@ function ecOpenPedido(id) {
   document.getElementById('ec-p-arq').hidden = !(p && p.status === 'finalizado');
   ecTogglePago();
   ecBuildOdonto(p ? p.dentes : []);
+  ecArcTipo = (p && p.arcada_tipo) || '';
+  ['sup','inf'].forEach(function(a){
+    document.getElementById('ec-p-arc-' + a).checked = !!(p && p.arcadas && p.arcadas.indexOf(a) >= 0);
+    document.getElementById('ec-p-mod-' + a).checked = !!(p && p.modelos && p.modelos.indexOf(a) >= 0);
+  });
+  document.getElementById('ec-p-arc-protocolo').disabled = !ecTemArcada;
+  document.getElementById('ec-p-arc-placa').disabled = !ecTemArcada;
+  document.getElementById('ec-p-mod-sup').disabled = !ecTemArcada;
+  document.getElementById('ec-p-mod-inf').disabled = !ecTemArcada;
+  document.getElementById('ec-p-arc-aviso').hidden = ecTemArcada;
+  document.getElementById('ec-pr-protocolo').textContent = fmt(EC_PRECOS.protocolo) + '/arcada';
+  document.getElementById('ec-pr-placa').textContent = fmt(EC_PRECOS.placa) + '/arcada';
+  document.getElementById('ec-pr-modelo').textContent = fmt(EC_PRECOS.modelo) + ' cada';
+  ecAplicaArcTipo();
   ecRecalcValor();
   ecRenderAnexos(p);
   document.getElementById('ec-ped-ov').hidden = false;
@@ -1233,25 +1294,82 @@ function ecToggleDente(n) {
   if (btn) btn.classList.toggle('on', ecDentes.indexOf(n) >= 0);
   if (ecDentes.length) document.getElementById('ec-p-qtd').value = ecDentes.length;
   ecOdontoLabel();
-  ecRecalcValor();
+  ecComposicaoMudou();
 }
 function ecOdontoLabel() {
-  document.getElementById('ec-odonto-sel').textContent = ecDentes.length
-    ? ecDentes.length + ' selecionado(s): ' + ecDentes.join(', ')
-    : 'Nenhum dente selecionado (trabalhos de arcada: só preencha a quantidade)';
+  document.getElementById('ec-odonto-sel').textContent = ecArcTipo
+    ? EC_ARC_LABEL[ecArcTipo] + ': cobrado por arcada, sem dentes'
+    : ecDentes.length
+      ? ecDentes.length + ' selecionado(s): ' + ecDentes.join(', ')
+      : 'Nenhum dente selecionado (sem dentes marcados: preencha a quantidade)';
 }
 
-// Valor = preço por elemento do cliente × qtd, até o usuário digitar outro valor
+// ── Trabalho por arcada (protocolo / placa) e modelos ────────
+function ecArcadasSel() {
+  return ['sup','inf'].filter(function(a){ return document.getElementById('ec-p-arc-' + a).checked; });
+}
+function ecModelosSel() {
+  return ['sup','inf'].filter(function(a){ return document.getElementById('ec-p-mod-' + a).checked; });
+}
+// Protocolo e placa são excludentes; com um deles marcado o pedido é por arcada e os dentes ficam desabilitados
+function ecSetArcTipo(tipo, on) {
+  var antigo = ecArcTipo;
+  ecArcTipo = on ? tipo : '';
+  var tipoInp = document.getElementById('ec-p-tipo');
+  var cur = tipoInp.value.trim();
+  if (ecArcTipo && (!cur || (antigo && cur === EC_ARC_LABEL[antigo]))) tipoInp.value = EC_ARC_LABEL[ecArcTipo];
+  if (!ecArcTipo && antigo && cur === EC_ARC_LABEL[antigo]) tipoInp.value = '';
+  if (ecArcTipo && !ecArcadasSel().length) document.getElementById('ec-p-arc-sup').checked = true;
+  if (ecArcTipo) { ecBuildOdonto([]); }
+  ecAplicaArcTipo();
+  ecComposicaoMudou();
+}
+function ecAplicaArcTipo() {
+  document.getElementById('ec-p-arc-protocolo').checked = ecArcTipo === 'protocolo';
+  document.getElementById('ec-p-arc-placa').checked = ecArcTipo === 'placa';
+  ['sup','inf'].forEach(function(a){
+    var inp = document.getElementById('ec-p-arc-' + a);
+    inp.disabled = !ecArcTipo;
+    if (!ecArcTipo) inp.checked = false;
+    inp.closest('.ec-opt').classList.toggle('dis', !ecArcTipo);
+  });
+  document.getElementById('ec-odonto').classList.toggle('off', !!ecArcTipo);
+  document.getElementById('ec-p-qtd').disabled = !!ecArcTipo;
+  ecOdontoLabel();
+}
+// Qualquer mudança no que compõe o pedido volta o valor pro automático
+function ecComposicaoMudou() {
+  if (ecArcTipo) document.getElementById('ec-p-qtd').value = ecArcadasSel().length;
+  ecValorManual = false;
+  ecRecalcValor();
+}
+function ecPrecoElemento(c) {
+  return (c && c.preco_elemento != null) ? ecNum(c.preco_elemento) : EC_PRECOS.elemento;
+}
+
+// Valor = (elementos × preço do elemento, ou arcadas × preço do protocolo/placa) + modelos,
+// até o usuário digitar outro valor
 function ecRecalcValor() {
   var c = ecCli(document.getElementById('ec-p-cliente').value);
-  var qtd = parseInt(document.getElementById('ec-p-qtd').value, 10) || 0;
   var hint = document.getElementById('ec-p-valor-hint');
-  if (c && c.preco_elemento != null) {
-    hint.textContent = qtd + ' × ' + fmt(c.preco_elemento) + ' = ' + fmt(qtd * c.preco_elemento);
-    if (!ecValorManual) document.getElementById('ec-p-valor').value = (qtd * c.preco_elemento).toFixed(2);
+  var partes = [], total = 0;
+  if (ecArcTipo) {
+    var arcs = ecArcadasSel().length;
+    var pa = EC_PRECOS[ecArcTipo];
+    total += arcs * pa;
+    partes.push(arcs + ' arcada(s) × ' + fmt(pa));
   } else {
-    hint.textContent = c ? 'Cliente sem preço padrão por elemento' : '';
+    var qtd = parseInt(document.getElementById('ec-p-qtd').value, 10) || 0;
+    var pe = ecPrecoElemento(c);
+    total += qtd * pe;
+    partes.push(qtd + ' × ' + fmt(pe));
   }
+  var mods = ecModelosSel().length;
+  if (mods) { total += mods * EC_PRECOS.modelo; partes.push(mods + ' modelo(s) × ' + fmt(EC_PRECOS.modelo)); }
+  var campo = document.getElementById('ec-p-valor');
+  if (!ecValorManual) campo.value = total.toFixed(2);
+  var difere = ecValorManual && campo.value !== '' && Math.abs(Number(campo.value) - total) > 0.005;
+  hint.textContent = partes.join(' + ') + ' = ' + fmt(total) + (difere ? ' · o valor no campo está diferente' : '');
 }
 
 function ecTogglePago() {
@@ -1284,6 +1402,14 @@ async function ecSalvarPedido() {
     observacao:    document.getElementById('ec-p-obs').value.trim() || null
   };
   if (ecTemCadista) payload.cadista = document.getElementById('ec-p-cadista').value || null;
+  if (ecTemArcada) {
+    var arcs = ecArcadasSel(), mods = ecModelosSel();
+    if (ecArcTipo && !arcs.length) { msg.textContent = 'Marque a arcada (superior e/ou inferior) do ' + EC_ARC_LABEL[ecArcTipo].toLowerCase() + '.'; return; }
+    payload.arcada_tipo = ecArcTipo || null;
+    payload.arcadas = ecArcTipo ? arcs : null;
+    payload.modelos = mods.length ? mods : null;
+    if (ecArcTipo) { payload.dentes = null; payload.qtd_elementos = arcs.length; }
+  }
   if (status === 'finalizado' && !(atual && atual.finalizado_at)) payload.finalizado_at = new Date().toISOString();
   if (status !== 'finalizado') payload.finalizado_at = null;
 
