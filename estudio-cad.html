@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="shared.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   /* Estúdio CAD: sistema separado pra desenhos avulsos (fora do fluxo Inove).
      Usa só as tabelas estudio_clientes / estudio_pedidos (039_estudio_cad.sql). */
@@ -112,6 +113,7 @@
   .ec-modal-f{padding:12px 18px;border-top:0.5px solid var(--ec-line);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
   .ec-f{display:flex;flex-direction:column;gap:4px}
   .ec-f.full{grid-column:1/-1}
+  .ec-f[hidden]{display:none}
   @media(max-width:520px){.ec-modal-b{grid-template-columns:1fr}}
   .ec-f label{font-size:11px;color:var(--ec-dim);text-transform:uppercase;letter-spacing:0.06em}
   .ec-inp{height:36px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:var(--ec-sec);color:var(--ec-text);padding:0 10px;font-family:inherit;font-size:13px;width:100%}
@@ -138,6 +140,26 @@
   .ec-file a{color:#7dd3fc;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .ec-file button{background:none;border:0;color:var(--ec-dim);cursor:pointer}
 
+  .ec-pg-list{border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;background:rgba(15,17,23,0.4);max-height:260px;overflow-y:auto}
+  .ec-pg-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:0.5px solid var(--ec-line);cursor:pointer;font-size:13px;color:var(--ec-text)}
+  .ec-pg-item:last-child{border-bottom:0}
+  .ec-f label.ec-pg-item{text-transform:none;letter-spacing:0;font-size:13px;color:var(--ec-text)}
+  .ec-pg-item:hover{background:rgba(255,255,255,0.03)}
+  .ec-pg-item .info{flex:1;min-width:0}
+  .ec-pg-item .info .sub{font-size:11px;color:var(--ec-dim)}
+  .ec-pg-item .v{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .ec-pg-item.pago{opacity:0.55}
+  .ec-pg-ref{font-size:12px;color:var(--ec-muted);line-height:1.5}
+  .ec-pg-grp{font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ec-dim);padding:8px 10px 4px;background:rgba(255,255,255,0.02)}
+  .ec-op-total{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--ec-muted)}
+  .ec-op-total b{font-size:22px;color:var(--ec-text);font-variant-numeric:tabular-nums}
+  .ec-op-pix{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+  .ec-op-qr{background:#fff;padding:8px;border-radius:8px;line-height:0}
+  .ec-op-qr:empty{display:none}
+  .ec-op-code{flex:1;min-width:200px;font-family:ui-monospace,Consolas,monospace;font-size:11px;word-break:break-all;color:var(--ec-muted);background:rgba(15,17,23,0.5);border:0.5px solid var(--ec-line);border-radius:8px;padding:8px 10px;max-height:110px;overflow-y:auto}
+  details.ec-op-cfg summary{cursor:pointer;font-size:11px;color:var(--ec-dim);text-transform:uppercase;letter-spacing:0.06em}
+  details.ec-op-cfg .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  @media(max-width:520px){details.ec-op-cfg .grid{grid-template-columns:1fr}}
   /* Cantos retos e painéis com cabeçalho, estilo painel de ferramenta de CAD */
   .ec-btn,.ec-sel,.ec-search,.ec-chip,.ec-inp{border-radius:4px}
   .ec-kpi,.ec-col,.ec-table-wrap{border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,0.25)}
@@ -181,6 +203,7 @@
     <div class="ec-tabs" role="tablist">
       <button class="ec-tab on" type="button" id="ec-tab-pedidos"    onclick="ecSetTab('pedidos')">Pedidos <span class="n" id="ec-n-pedidos">0</span></button>
       <button class="ec-tab"    type="button" id="ec-tab-clientes"   onclick="ecSetTab('clientes')">Clientes <span class="n" id="ec-n-clientes">0</span></button>
+      <button class="ec-tab"    type="button" id="ec-tab-pagamentos" onclick="ecSetTab('pagamentos')">Pagamentos <span class="n" id="ec-n-pagamentos">0</span></button>
       <button class="ec-tab"    type="button" id="ec-tab-financeiro" onclick="ecSetTab('financeiro')">Financeiro</button>
     </div>
 
@@ -190,6 +213,7 @@
       <div class="ec-filters">
         <input class="ec-search" id="ec-busca" placeholder="Buscar paciente, cliente ou tipo…" oninput="ecRenderBoard()">
         <select class="ec-sel" id="ec-filtro-cli" onchange="ecRenderBoard()" style="background:var(--ec-card)"></select>
+        <select class="ec-sel" id="ec-filtro-cad" onchange="ecRenderBoard()" style="background:var(--ec-card)"></select>
         <button class="ec-chip" type="button" id="ec-chip-late" onclick="ecToggleChip('late')">Só atrasados</button>
         <button class="ec-chip" type="button" id="ec-chip-unpaid" onclick="ecToggleChip('unpaid')">Não pagos</button>
       </div>
@@ -201,8 +225,24 @@
     <section id="ec-panel-clientes" hidden>
       <div class="ec-table-wrap">
         <table class="ec-table">
-          <thead><tr><th>Cliente</th><th>Contato</th><th>Cidade</th><th class="num">Preço/elem.</th><th class="num">Pedidos</th><th class="num">Total</th><th class="num">Em aberto</th></tr></thead>
+          <thead><tr><th>Cliente</th><th>Contato</th><th>Cidade</th><th class="num">Preço/elem.</th><th class="num">Pedidos</th><th class="num">Total</th><th class="num">Em aberto</th><th></th></tr></thead>
           <tbody id="ec-cli-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Pagamentos -->
+    <section id="ec-panel-pagamentos" hidden>
+      <div class="ec-filters">
+        <select class="ec-sel" id="ec-pg-filtro-cli" onchange="ecRenderPagamentos()" style="background:var(--ec-card)"></select>
+        <span style="flex:1"></span>
+        <button class="ec-btn pri" type="button" onclick="ecOpenPagamento()"><i class="ti ti-cash"></i> Novo pagamento</button>
+      </div>
+      <p class="ec-hint" id="ec-pg-aviso" hidden style="color:var(--ec-warn);margin-bottom:10px">A tabela de pagamentos ainda não existe — rode <b>supabase/043_estudio_pagamentos.sql</b> no SQL Editor do Supabase.</p>
+      <div class="ec-table-wrap">
+        <table class="ec-table">
+          <thead><tr><th>Data</th><th>Cliente</th><th>Referente a</th><th>Forma</th><th class="num">Valor</th><th></th></tr></thead>
+          <tbody id="ec-pg-body"></tbody>
         </table>
       </div>
     </section>
@@ -239,6 +279,8 @@
       <div class="ec-f"><label for="ec-p-material">Material</label><input class="ec-inp" id="ec-p-material" list="ec-materiais" placeholder="Ex.: Zircônia"></div>
       <div class="ec-f"><label for="ec-p-status">Status</label>
         <select class="ec-inp" id="ec-p-status"><option value="a_fazer">A Fazer</option><option value="fazendo">Fazendo</option><option value="finalizado">Finalizado</option></select></div>
+      <div class="ec-f"><label for="ec-p-cadista">Cadista</label>
+        <select class="ec-inp" id="ec-p-cadista"></select></div>
       <div class="ec-f full"><label>Elementos (clique nos dentes)</label>
         <div class="odonto" id="ec-odonto"></div>
         <p class="ec-hint" id="ec-odonto-sel" style="text-align:center">Nenhum dente selecionado</p></div>
@@ -249,6 +291,8 @@
       <div class="ec-f"><label>Pagamento</label>
         <div class="ec-check"><input type="checkbox" id="ec-p-pago" onchange="ecTogglePago()"><label for="ec-p-pago" style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ec-text)">Pago</label>
         <input class="ec-inp" id="ec-p-pagoem" type="date" style="flex:1" title="Data do pagamento"></div></div>
+      <div class="ec-f"><label>Comprovante de pagamento</label>
+        <div id="ec-comprovante"></div></div>
       <div class="ec-f full"><label for="ec-p-obs">Observação</label><textarea class="ec-inp" id="ec-p-obs"></textarea></div>
       <div class="ec-f full"><label>Arquivos</label>
         <div class="ec-anexos" id="ec-anexos"></div></div>
@@ -293,6 +337,68 @@
   </div>
 </div>
 
+<!-- Modal: Pagamento -->
+<div class="ec-ov" id="ec-pg-ov" hidden onclick="if(event.target===this)ecClose('ec-pg-ov')">
+  <div class="ec-modal" role="dialog" aria-labelledby="ec-pg-title">
+    <div class="ec-modal-h"><h2 id="ec-pg-title">Novo pagamento</h2><button class="ec-x" type="button" onclick="ecClose('ec-pg-ov')">✕</button></div>
+    <div class="ec-modal-b">
+      <div class="ec-f full"><label for="ec-g-cliente">Cliente</label><select class="ec-inp" id="ec-g-cliente" onchange="ecPgRenderPedidos()"></select></div>
+      <div class="ec-f full"><label>Referente aos pedidos (finalizados)</label>
+        <div class="ec-pg-list" id="ec-g-pedidos"></div>
+        <span class="ec-hint" id="ec-g-sel-hint"></span></div>
+      <div class="ec-f"><label for="ec-g-valor">Valor (R$)</label><input class="ec-inp" id="ec-g-valor" type="number" min="0" step="0.01" oninput="ecPgValorManual=true"></div>
+      <div class="ec-f"><label for="ec-g-data">Data do pagamento</label><input class="ec-inp" id="ec-g-data" type="date"></div>
+      <div class="ec-f"><label for="ec-g-forma">Forma</label>
+        <select class="ec-inp" id="ec-g-forma"><option>Pix</option><option>Dinheiro</option><option>Transferência</option><option>Cartão</option><option>Outro</option></select></div>
+      <div class="ec-f"><label>Comprovante</label>
+        <input type="file" id="ec-g-file" multiple hidden onchange="ecPgFileChange()">
+        <div class="ec-up" id="ec-g-file-box" onclick="document.getElementById('ec-g-file').click()">📎 Anexar comprovante</div>
+        <div id="ec-g-files"></div></div>
+      <div class="ec-f full"><label for="ec-g-obs">Observação</label><textarea class="ec-inp" id="ec-g-obs"></textarea></div>
+      <p class="ec-msg" id="ec-g-msg" style="grid-column:1/-1"></p>
+    </div>
+    <div class="ec-modal-f">
+      <div><button class="ec-btn danger" type="button" id="ec-g-del" onclick="ecExcluirPagamento()">Excluir pagamento</button></div>
+      <div style="display:flex;gap:8px">
+        <button class="ec-btn" type="button" onclick="ecClose('ec-pg-ov')">Cancelar</button>
+        <button class="ec-btn pri" type="button" id="ec-g-save" onclick="ecSalvarPagamento()">Salvar pagamento</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Ordem de pagamento (casos selecionados + PIX) -->
+<div class="ec-ov" id="ec-op-ov" hidden onclick="if(event.target===this)ecClose('ec-op-ov')">
+  <div class="ec-modal" role="dialog" aria-labelledby="ec-op-title">
+    <div class="ec-modal-h"><h2 id="ec-op-title">Ordem de pagamento</h2><button class="ec-x" type="button" onclick="ecClose('ec-op-ov')">✕</button></div>
+    <div class="ec-modal-b">
+      <div class="ec-f full"><label>Casos em aberto (marque os que entram na ordem)</label>
+        <div class="ec-pg-list" id="ec-op-pedidos"></div></div>
+      <div class="ec-f full"><div class="ec-op-total"><span id="ec-op-resumo">Nenhum caso marcado</span><b id="ec-op-total">R$ 0,00</b></div></div>
+      <div class="ec-f full"><label>PIX</label>
+        <div class="ec-op-pix"><div class="ec-op-qr" id="ec-op-qr"></div><div class="ec-op-code" id="ec-op-code"></div></div></div>
+      <div class="ec-f full">
+        <details class="ec-op-cfg" id="ec-op-cfg"><summary>Dados do PIX</summary>
+          <div class="grid">
+            <div class="ec-f"><label for="ec-op-chave">Chave PIX</label><input class="ec-inp" id="ec-op-chave" placeholder="CPF, CNPJ, celular ou e-mail" oninput="ecOpPixChange()"></div>
+            <div class="ec-f"><label for="ec-op-nome">Nome do recebedor</label><input class="ec-inp" id="ec-op-nome" maxlength="25" oninput="ecOpPixChange()"></div>
+            <div class="ec-f"><label for="ec-op-cidade">Cidade do recebedor</label><input class="ec-inp" id="ec-op-cidade" maxlength="15" oninput="ecOpPixChange()"></div>
+          </div>
+          <p class="ec-hint" style="margin-top:6px">Fica salvo neste navegador para as próximas ordens.</p>
+        </details></div>
+      <p class="ec-msg" id="ec-op-msg" style="grid-column:1/-1"></p>
+    </div>
+    <div class="ec-modal-f">
+      <span></span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="ec-btn" type="button" onclick="ecOpCopiar('pix')"><i class="ti ti-copy"></i> Copiar PIX</button>
+        <button class="ec-btn" type="button" onclick="ecOpCopiar('texto')"><i class="ti ti-brand-whatsapp"></i> Copiar texto</button>
+        <button class="ec-btn pri" type="button" onclick="ecOpImprimir()"><i class="ti ti-printer"></i> Imprimir / PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <datalist id="ec-tipos">
   <option value="Coroa total"><option value="Coroa sobre implante"><option value="Faceta"><option value="Lente de contato">
   <option value="Onlay"><option value="Inlay"><option value="Protocolo"><option value="Prótese parcial"><option value="Provisório">
@@ -317,8 +423,19 @@ var EC_STATUS = { a_fazer:'A Fazer', fazendo:'Fazendo', finalizado:'Finalizado' 
 var EC_NEXT   = { a_fazer:'fazendo', fazendo:'finalizado' };
 var EC_QUADS  = [[18,17,16,15,14,13,12,11],[21,22,23,24,25,26,27,28],
                  [48,47,46,45,44,43,42,41],[31,32,33,34,35,36,37,38]];
-var EC_SLOTS  = [{id:'escaneamento',label:'Escaneamento'},{id:'stl',label:'STL final'},{id:'outros',label:'Outros'}];
+var EC_SLOTS  = [{id:'escaneamento',label:'Escaneamento'},{id:'stl',label:'STL final'},{id:'outros',label:'Outros'},
+                 {id:'comprovante',label:'Anexar comprovante',box:'ec-comprovante'}];
+var EC_CADISTAS = ['Eu', 'Daniel Hosda'];
+// Coluna cadista vem da 041_estudio_cadista.sql; até ela ser rodada o campo fica oculto
+var ecTemCadista = false;
 var EC_BUCKET = 'casos';
+// Pagamentos vêm da 043_estudio_pagamentos.sql; até ela ser rodada a aba mostra um aviso
+var ecPagamentos = [];
+var ecTemPagamentos = false;
+var ecPedRef = {};        // id -> {numero, paciente}, inclui arquivados (pra coluna "Referente a")
+var ecEditPgId = null;
+var ecPgSel = [];         // ids dos pedidos marcados no modal
+var ecPgValorManual = false;
 
 // Data local (todayISO() do shared.js usa UTC e vira o dia depois das 21h)
 function ecHoje() {
@@ -346,6 +463,13 @@ async function ecLoad() {
     if (r2.error) throw r2.error;
     ecClientes = r1.data || [];
     ecPedidos  = r2.data || [];
+    ecTemCadista = ecPedidos.length ? ('cadista' in ecPedidos[0]) : !(await sb.from('estudio_pedidos').select('cadista').limit(1)).error;
+    var r3 = await sb.from('estudio_pagamentos').select('*').order('data_pagamento', { ascending:false }).order('created_at', { ascending:false });
+    ecTemPagamentos = !r3.error;
+    ecPagamentos = r3.data || [];
+    ecPedRef = {};
+    var r4 = await sb.from('estudio_pedidos').select('id,numero,paciente');
+    (r4.data || []).forEach(function(p){ ecPedRef[p.id] = p; });
     setSyncStatus('ok');
   } catch(e) {
     console.error('[ecLoad]', e);
@@ -362,6 +486,7 @@ function ecRenderAll() {
   ecRenderKpis();
   ecRenderBoard();
   ecRenderClientes();
+  ecRenderPagamentos();
   ecRenderFinanceiro();
 }
 
@@ -389,11 +514,17 @@ function ecRenderFiltroCli() {
     return '<option value="'+c.id+'">'+escHtml(c.nome)+'</option>';
   }).join('');
   sel.value = atual;
+  var cad = document.getElementById('ec-filtro-cad');
+  var atualCad = cad.value;
+  cad.hidden = !ecTemCadista;
+  cad.innerHTML = '<option value="">Todos os cadistas</option><option value="-">Sem cadista</option>' +
+    EC_CADISTAS.map(function(n){ return '<option value="'+escHtml(n)+'">'+escHtml(n)+'</option>'; }).join('');
+  cad.value = atualCad;
 }
 
 function ecSetTab(t) {
   ecTab = t;
-  ['pedidos','clientes','financeiro'].forEach(function(k){
+  ['pedidos','clientes','pagamentos','financeiro'].forEach(function(k){
     document.getElementById('ec-tab-'+k).classList.toggle('on', k === t);
     document.getElementById('ec-panel-'+k).hidden = k !== t;
   });
@@ -433,13 +564,16 @@ function ecRenderKpis() {
 function ecRenderBoard() {
   var q   = (document.getElementById('ec-busca').value || '').toLowerCase().trim();
   var cli = document.getElementById('ec-filtro-cli').value;
+  var cad = ecTemCadista ? document.getElementById('ec-filtro-cad').value : '';
   var list = ecPedidos.filter(function(p){
     if (cli && p.cliente_id !== cli) return false;
+    if (cad === '-' && p.cadista) return false;
+    if (cad && cad !== '-' && p.cadista !== cad) return false;
     if (ecChips.late && !ecAtrasado(p)) return false;
     if (ecChips.unpaid && p.pago) return false;
     if (p.status === 'finalizado' && ecMesDeTs(p.finalizado_at) !== ecMesSel) return false;
     if (q) {
-      var txt = [p.paciente, ecCliNome(p.cliente_id), p.tipo_trabalho, p.material, '#'+p.numero].join(' ').toLowerCase();
+      var txt = [p.paciente, ecCliNome(p.cliente_id), p.tipo_trabalho, p.material, p.cadista, '#'+p.numero].join(' ').toLowerCase();
       if (txt.indexOf(q) < 0) return false;
     }
     return true;
@@ -472,6 +606,7 @@ function ecCardHtml(p) {
       (p.tipo_trabalho ? '<span class="ec-tag">'+escHtml(p.tipo_trabalho)+'</span>' : '') +
       (dentes ? '<span class="ec-teeth">'+dentes+'</span>' : '') +
       (p.material ? '<span class="ec-tag">'+escHtml(p.material)+'</span>' : '') +
+      (p.cadista ? '<span class="ec-tag" title="Cadista"><i class="ti ti-pencil"></i> '+escHtml(p.cadista)+'</span>' : '') +
     '</div>' +
     '<div class="ec-foot"><span>'+prazo+'</span><span style="display:flex;align-items:center;gap:6px">' +
       '<span><span class="ec-val">'+fmt(p.valor)+'</span><span class="ec-pay '+(p.pago?'p':'a')+'">'+(p.pago?'Pago':'A receber')+'</span></span>'+adv+'</span></div>' +
@@ -502,7 +637,7 @@ async function ecAvancar(id) {
 function ecRenderClientes() {
   var body = document.getElementById('ec-cli-body');
   if (!ecClientes.length) {
-    body.innerHTML = '<tr><td colspan="7" class="ec-empty">Nenhum cliente ainda. Use <b>Cliente</b> no topo para cadastrar o primeiro.</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" class="ec-empty">Nenhum cliente ainda. Use <b>Cliente</b> no topo para cadastrar o primeiro.</td></tr>';
     return;
   }
   body.innerHTML = ecClientes.map(function(c){
@@ -517,7 +652,8 @@ function ecRenderClientes() {
       '<td class="num">'+(c.preco_elemento != null ? fmt(c.preco_elemento) : '—')+'</td>' +
       '<td class="num">'+ps.length+'</td>' +
       '<td class="num">'+fmt(total)+'</td>' +
-      '<td class="num" style="color:'+(aberto?'var(--ec-warn)':'var(--ec-done-fg)')+'">'+(aberto ? fmt(aberto) : 'em dia')+'</td></tr>';
+      '<td class="num" style="color:'+(aberto?'var(--ec-warn)':'var(--ec-done-fg)')+'">'+(aberto ? fmt(aberto) : 'em dia')+'</td>' +
+      '<td class="num"><button class="ec-btn sm" type="button" title="Gerar ordem de pagamento com PIX" onclick="event.stopPropagation();ecOpenOrdemPg(\''+c.id+'\')"><i class="ti ti-receipt"></i> Ordem de pgt</button></td></tr>';
   }).join('');
 }
 
@@ -570,11 +706,418 @@ async function ecMarcarPago(id) {
   ecRenderAll();
 }
 
+// ── Pagamentos ────────────────────────────────────────────────
+function ecPedLabel(id) {
+  var p = ecPedRef[id];
+  if (!p) return '(pedido removido)';
+  return '#' + String(p.numero).padStart(4,'0') + ' ' + (p.paciente || 'Sem paciente');
+}
+function ecPgPasta(id) { return 'estudio/pagamentos/' + id; }
+
+function ecRenderPagamentos() {
+  document.getElementById('ec-n-pagamentos').textContent = ecPagamentos.length;
+  document.getElementById('ec-pg-aviso').hidden = ecTemPagamentos;
+  var sel = document.getElementById('ec-pg-filtro-cli');
+  var atual = sel.value;
+  sel.innerHTML = '<option value="">Todos os clientes</option>' + ecClientes.map(function(c){
+    return '<option value="'+c.id+'">'+escHtml(c.nome)+'</option>';
+  }).join('');
+  sel.value = atual;
+  var list = ecPagamentos.filter(function(g){ return !sel.value || g.cliente_id === sel.value; });
+  document.getElementById('ec-pg-body').innerHTML = list.length ? list.map(function(g){
+    var refs = (g.pedido_ids || []).map(function(id){ return escHtml(ecPedLabel(id)); }).join('<br>');
+    return '<tr class="click" onclick="ecOpenPagamento(\''+g.id+'\')">' +
+      '<td style="white-space:nowrap">'+fmtDate(g.data_pagamento)+'</td>' +
+      '<td><b>'+escHtml(ecCliNome(g.cliente_id))+'</b>'+(g.observacao?'<div class="sub">'+escHtml(g.observacao)+'</div>':'')+'</td>' +
+      '<td class="ec-pg-ref">'+(refs || '<span class="sub">—</span>')+'</td>' +
+      '<td class="sub">'+escHtml(g.forma || '—')+'</td>' +
+      '<td class="num" style="color:var(--ec-done-fg);font-weight:600">'+fmt(g.valor)+'</td>' +
+      '<td class="num"><button class="ec-btn sm" type="button" title="Ver comprovante" onclick="event.stopPropagation();ecVerComprovante(\''+g.id+'\')"><i class="ti ti-paperclip"></i></button></td></tr>';
+  }).join('') : '<tr><td colspan="6" class="ec-empty">Nenhum pagamento registrado' + (sel.value ? ' para este cliente' : '') + '.</td></tr>';
+}
+
+async function ecVerComprovante(id) {
+  var pasta = ecPgPasta(id);
+  var res = await sb.storage.from(EC_BUCKET).list(pasta);
+  var arqs = (res.data || []).filter(function(f){ return f.name; });
+  if (!arqs.length) { alert('Este pagamento não tem comprovante anexado.'); return; }
+  for (var i = 0; i < arqs.length; i++) {
+    var sg = await sb.storage.from(EC_BUCKET).createSignedUrl(pasta + '/' + arqs[i].name, 3600);
+    if (sg.data && sg.data.signedUrl) window.open(sg.data.signedUrl, '_blank', 'noopener');
+  }
+}
+
+function ecOpenPagamento(id) {
+  if (!ecTemPagamentos) { alert('Rode supabase/043_estudio_pagamentos.sql no Supabase antes de registrar pagamentos.'); return; }
+  var g = id ? ecPagamentos.find(function(x){ return x.id === id; }) : null;
+  ecEditPgId = g ? g.id : null;
+  ecPgSel = g ? (g.pedido_ids || []).slice() : [];
+  ecPgValorManual = !!g;
+  document.getElementById('ec-pg-title').textContent = g ? 'Editar pagamento' : 'Novo pagamento';
+  var sel = document.getElementById('ec-g-cliente');
+  var opts = ecClientes.filter(function(c){ return c.ativo || (g && c.id === g.cliente_id); });
+  sel.innerHTML = (g ? '' : '<option value="">Selecione…</option>') + opts.map(function(c){
+    return '<option value="'+c.id+'">'+escHtml(c.nome)+'</option>';
+  }).join('');
+  sel.value = g ? g.cliente_id : (document.getElementById('ec-pg-filtro-cli').value || '');
+  sel.disabled = !!g;
+  document.getElementById('ec-g-valor').value = g ? ecNum(g.valor) : '';
+  document.getElementById('ec-g-data').value  = g ? g.data_pagamento : ecHoje();
+  document.getElementById('ec-g-forma').value = g ? (g.forma || 'Pix') : 'Pix';
+  document.getElementById('ec-g-obs').value   = g ? (g.observacao || '') : '';
+  document.getElementById('ec-g-msg').textContent = '';
+  document.getElementById('ec-g-file').value = '';
+  ecPgFileChange();
+  document.getElementById('ec-g-files').innerHTML = '';
+  document.getElementById('ec-g-del').hidden = !g;
+  ecPgRenderPedidos();
+  if (g) ecPgListarComprovantes(g.id);
+  document.getElementById('ec-pg-ov').hidden = false;
+}
+
+// Lista os pedidos finalizados do cliente: não pagos (marcáveis) primeiro; os já pagos
+// por outro pagamento/manual aparecem apagados e travados
+function ecPgRenderPedidos() {
+  var cli = document.getElementById('ec-g-cliente').value;
+  var box = document.getElementById('ec-g-pedidos');
+  if (!cli) { box.innerHTML = '<div class="ec-empty">Escolha o cliente para ver os pedidos finalizados.</div>'; ecPgAtualizaTotal(); return; }
+  ecPgSel = ecPgSel.filter(function(id){ var p = ecPedidos.find(function(x){ return x.id === id; }); return !p || p.cliente_id === cli; });
+  var fin = ecPedidos.filter(function(p){ return p.cliente_id === cli && p.status === 'finalizado'; });
+  var livres = fin.filter(function(p){ return !p.pago || ecPgSel.indexOf(p.id) >= 0; });
+  var pagos  = fin.filter(function(p){ return p.pago && ecPgSel.indexOf(p.id) < 0; });
+  livres.sort(function(a,b){ return String(a.finalizado_at).localeCompare(String(b.finalizado_at)); });
+  pagos.sort(function(a,b){ return String(b.finalizado_at).localeCompare(String(a.finalizado_at)); });
+  function item(p, travado) {
+    var on = ecPgSel.indexOf(p.id) >= 0;
+    var sub = [p.tipo_trabalho, p.qtd_elementos ? p.qtd_elementos + ' elem.' : '', p.finalizado_at ? 'finalizado ' + fmtDate(ecDataLocal(p.finalizado_at)) : '']
+      .filter(Boolean).map(escHtml).join(' · ');
+    return '<label class="ec-pg-item'+(travado?' pago':'')+'">' +
+      '<input type="checkbox"'+(on?' checked':'')+(travado?' disabled':'')+' onchange="ecPgToggle(\''+p.id+'\', this.checked)">' +
+      '<span class="info"><b>'+escHtml(p.paciente || 'Sem paciente')+'</b> <span class="sub">#'+String(p.numero).padStart(4,'0')+'</span>' +
+      '<div class="sub">'+sub+(travado ? ' · já pago' + (p.pago_em ? ' em ' + fmtDate(p.pago_em) : '') : '')+'</div></span>' +
+      '<span class="v">'+fmt(p.valor)+'</span></label>';
+  }
+  var html = livres.map(function(p){ return item(p, false); }).join('');
+  if (!livres.length) html = '<div class="ec-empty">Nenhum pedido finalizado em aberto para este cliente.</div>';
+  html += pagos.map(function(p){ return item(p, true); }).join('');
+  box.innerHTML = html;
+  ecPgAtualizaTotal();
+}
+function ecPgToggle(id, on) {
+  var i = ecPgSel.indexOf(id);
+  if (on && i < 0) ecPgSel.push(id);
+  if (!on && i >= 0) ecPgSel.splice(i, 1);
+  ecPgAtualizaTotal();
+}
+// Valor = soma dos pedidos marcados, até o usuário digitar outro valor
+function ecPgAtualizaTotal() {
+  var soma = ecPgSel.reduce(function(s,id){ var p = ecPedidos.find(function(x){ return x.id === id; }); return s + (p ? ecNum(p.valor) : 0); }, 0);
+  document.getElementById('ec-g-sel-hint').textContent = ecPgSel.length
+    ? ecPgSel.length + ' pedido(s) marcado(s) · soma ' + fmt(soma) : 'Nenhum pedido marcado';
+  if (!ecPgValorManual) document.getElementById('ec-g-valor').value = ecPgSel.length ? soma.toFixed(2) : '';
+}
+
+function ecPgFileChange() {
+  var inp = document.getElementById('ec-g-file');
+  var box = document.getElementById('ec-g-file-box');
+  var n = inp.files.length;
+  box.classList.toggle('has', n > 0);
+  box.textContent = n ? (n === 1 ? inp.files[0].name : n + ' arquivos') + ' (envia ao salvar)' : '📎 Anexar comprovante';
+}
+async function ecPgListarComprovantes(id) {
+  var pasta = ecPgPasta(id);
+  var el = document.getElementById('ec-g-files');
+  try {
+    var res = await sb.storage.from(EC_BUCKET).list(pasta);
+    if (res.error) throw res.error;
+    var arqs = (res.data || []).filter(function(f){ return f.name; });
+    var rows = await Promise.all(arqs.map(async function(f){
+      var sg = await sb.storage.from(EC_BUCKET).createSignedUrl(pasta + '/' + f.name, 3600);
+      var url = (sg.data && sg.data.signedUrl) || '#';
+      var nome = f.name.slice(f.name.indexOf('-') + 1);
+      return '<div class="ec-file"><a href="'+url+'" target="_blank" rel="noopener" title="'+escHtml(nome)+'">👁 '+escHtml(nome)+'</a>' +
+        '<button type="button" title="Excluir arquivo" onclick="ecPgExcluirComprovante(\''+id+'\',\''+encodeURIComponent(f.name)+'\')">🗑</button></div>';
+    }));
+    el.innerHTML = rows.join('');
+  } catch(e) { console.error('[ecPgListarComprovantes]', e); }
+}
+async function ecPgExcluirComprovante(id, nomeEnc) {
+  if (!confirm('Excluir este comprovante? Essa ação não pode ser desfeita.')) return;
+  var res = await sb.storage.from(EC_BUCKET).remove([ecPgPasta(id) + '/' + decodeURIComponent(nomeEnc)]);
+  if (res.error) { alert('Erro ao excluir comprovante: ' + res.error.message); return; }
+  ecPgListarComprovantes(id);
+}
+
+// Marca como pagos (com a data do pagamento) os pedidos marcados e volta pra
+// "A receber" os que saíram do pagamento.
+async function ecPgAplicaPedidos(marcar, desmarcar, data) {
+  var erros = [];
+  if (marcar.length) {
+    var r1 = await sb.from('estudio_pedidos').update({ pago:true, pago_em:data }).in('id', marcar);
+    if (r1.error) erros.push(r1.error.message);
+  }
+  if (desmarcar.length) {
+    var r2 = await sb.from('estudio_pedidos').update({ pago:false, pago_em:null }).in('id', desmarcar);
+    if (r2.error) erros.push(r2.error.message);
+  }
+  return erros;
+}
+
+async function ecSalvarPagamento() {
+  var msg = document.getElementById('ec-g-msg');
+  var cli = document.getElementById('ec-g-cliente').value;
+  var valor = Number(document.getElementById('ec-g-valor').value || 0);
+  var data = document.getElementById('ec-g-data').value;
+  if (!cli) { msg.textContent = 'Escolha o cliente.'; return; }
+  if (!(valor > 0)) { msg.textContent = 'Informe o valor do pagamento.'; return; }
+  if (!data) { msg.textContent = 'Informe a data do pagamento.'; return; }
+  if (!ecPgSel.length && !confirm('Nenhum pedido marcado. Salvar o pagamento mesmo assim?')) return;
+  var antigo = ecEditPgId ? ecPagamentos.find(function(x){ return x.id === ecEditPgId; }) : null;
+  var payload = {
+    cliente_id: cli,
+    valor: valor,
+    data_pagamento: data,
+    forma: document.getElementById('ec-g-forma').value,
+    pedido_ids: ecPgSel.slice(),
+    observacao: document.getElementById('ec-g-obs').value.trim() || null
+  };
+  var btn = document.getElementById('ec-g-save');
+  btn.disabled = true;
+  setSyncStatus('syncing');
+  var res = ecEditPgId
+    ? await sb.from('estudio_pagamentos').update(payload).eq('id', ecEditPgId).select('id').single()
+    : await sb.from('estudio_pagamentos').insert(payload).select('id').single();
+  if (res.error) { btn.disabled = false; setSyncStatus('error'); msg.textContent = 'Erro ao salvar: ' + res.error.message; return; }
+  var pgId = res.data.id;
+  var antes = antigo ? (antigo.pedido_ids || []) : [];
+  var tirados = antes.filter(function(id){ return ecPgSel.indexOf(id) < 0; });
+  var erros = await ecPgAplicaPedidos(ecPgSel, tirados, data);
+  var inp = document.getElementById('ec-g-file');
+  for (var j = 0; j < inp.files.length; j++) {
+    var f = inp.files[j];
+    var up = await sb.storage.from(EC_BUCKET).upload(ecPgPasta(pgId) + '/comprovante-' + f.name.replace(/[^A-Za-z0-9._-]/g, '_'), f, { upsert:true });
+    if (up.error) erros.push('comprovante ' + f.name + ': ' + up.error.message);
+  }
+  btn.disabled = false;
+  if (erros.length) alert('Pagamento salvo, mas houve erro em: ' + erros.join(', ') + '.');
+  ecClose('ec-pg-ov');
+  await ecLoad();
+}
+
+async function ecExcluirPagamento() {
+  if (!ecEditPgId) return;
+  var g = ecPagamentos.find(function(x){ return x.id === ecEditPgId; });
+  if (!confirm('Excluir este pagamento? Os pedidos dele voltam a ficar "A receber" e o comprovante é apagado.')) return;
+  setSyncStatus('syncing');
+  try {
+    var pasta = ecPgPasta(ecEditPgId);
+    var lst = await sb.storage.from(EC_BUCKET).list(pasta);
+    var arqs = (lst.data || []).filter(function(f){ return f.name; }).map(function(f){ return pasta + '/' + f.name; });
+    if (arqs.length) await sb.storage.from(EC_BUCKET).remove(arqs);
+  } catch(e) { console.error('[ecExcluirPagamento] comprovante', e); }
+  var res = await sb.from('estudio_pagamentos').delete().eq('id', ecEditPgId);
+  if (res.error) { setSyncStatus('error'); alert('Erro ao excluir: ' + res.error.message); return; }
+  var erros = await ecPgAplicaPedidos([], (g && g.pedido_ids) || [], null);
+  if (erros.length) alert('Pagamento excluído, mas falhou ao desmarcar pedidos: ' + erros.join(', '));
+  ecClose('ec-pg-ov');
+  await ecLoad();
+}
+
+// ── Ordem de pagamento: casos em aberto do cliente + PIX (BR Code) ──
+// Padrão do PIX; o que for editado no modal fica salvo neste navegador
+var EC_PIX_PADRAO = { chave:'contato.idealilab@gmail.com', nome:'Beatriz Alves Araujo', cidade:'' };
+var EC_PIX_LS = 'ec_pix_cfg';
+var ecOpCliId = null;
+var ecOpSel = [];
+
+function ecOpPixCfg() {
+  var cfg = Object.assign({}, EC_PIX_PADRAO);
+  try { Object.assign(cfg, JSON.parse(localStorage.getItem(EC_PIX_LS) || '{}')); } catch(e) {}
+  return cfg;
+}
+function ecOpLerPix() {
+  return {
+    chave:  document.getElementById('ec-op-chave').value.trim(),
+    nome:   document.getElementById('ec-op-nome').value.trim(),
+    cidade: document.getElementById('ec-op-cidade').value.trim()
+  };
+}
+function ecOpPixChange() {
+  try { localStorage.setItem(EC_PIX_LS, JSON.stringify(ecOpLerPix())); } catch(e) {}
+  ecOpAtualiza();
+}
+
+// Casos não pagos do cliente: finalizados vêm marcados; em andamento aparecem desmarcados
+function ecOpCasos(cli) {
+  var abertos = ecPedidos.filter(function(p){ return p.cliente_id === cli && !p.pago; });
+  var fin = abertos.filter(function(p){ return p.status === 'finalizado'; });
+  var and = abertos.filter(function(p){ return p.status !== 'finalizado'; });
+  fin.sort(function(a,b){ return String(a.finalizado_at).localeCompare(String(b.finalizado_at)); });
+  and.sort(function(a,b){ return a.numero - b.numero; });
+  return { fin:fin, and:and };
+}
+
+function ecOpenOrdemPg(cliId) {
+  var c = ecCli(cliId);
+  if (!c) return;
+  ecOpCliId = cliId;
+  var casos = ecOpCasos(cliId);
+  ecOpSel = casos.fin.map(function(p){ return p.id; });
+  document.getElementById('ec-op-title').textContent = 'Ordem de pagamento · ' + c.nome;
+  var cfg = ecOpPixCfg();
+  document.getElementById('ec-op-chave').value  = cfg.chave || '';
+  document.getElementById('ec-op-nome').value   = cfg.nome || '';
+  document.getElementById('ec-op-cidade').value = cfg.cidade || '';
+  document.getElementById('ec-op-cfg').open = !(cfg.chave && cfg.nome && cfg.cidade);
+  document.getElementById('ec-op-msg').textContent = '';
+  function item(p) {
+    var on = ecOpSel.indexOf(p.id) >= 0;
+    var sub = [p.tipo_trabalho, p.material, (p.dentes && p.dentes.length) ? 'dentes ' + p.dentes.join(', ') : (p.qtd_elementos ? p.qtd_elementos + ' elem.' : ''),
+               p.status === 'finalizado' ? (p.finalizado_at ? 'finalizado ' + fmtDate(ecDataLocal(p.finalizado_at)) : 'finalizado') : EC_STATUS[p.status]]
+      .filter(Boolean).map(escHtml).join(' · ');
+    return '<label class="ec-pg-item">' +
+      '<input type="checkbox"'+(on?' checked':'')+' onchange="ecOpToggle(\''+p.id+'\', this.checked)">' +
+      '<span class="info"><b>'+escHtml(p.paciente || 'Sem paciente')+'</b> <span class="sub">#'+String(p.numero).padStart(4,'0')+'</span>' +
+      '<div class="sub">'+sub+'</div></span><span class="v">'+fmt(p.valor)+'</span></label>';
+  }
+  var html = '';
+  if (casos.fin.length) html += '<div class="ec-pg-grp">Finalizados</div>' + casos.fin.map(item).join('');
+  if (casos.and.length) html += '<div class="ec-pg-grp">Em andamento</div>' + casos.and.map(item).join('');
+  document.getElementById('ec-op-pedidos').innerHTML = html || '<div class="ec-empty">Este cliente não tem casos em aberto.</div>';
+  ecOpAtualiza();
+  document.getElementById('ec-op-ov').hidden = false;
+}
+
+function ecOpToggle(id, on) {
+  var i = ecOpSel.indexOf(id);
+  if (on && i < 0) ecOpSel.push(id);
+  if (!on && i >= 0) ecOpSel.splice(i, 1);
+  ecOpAtualiza();
+}
+
+function ecOpPedidosSel() {
+  return ecPedidos.filter(function(p){ return ecOpSel.indexOf(p.id) >= 0; })
+    .sort(function(a,b){ return a.numero - b.numero; });
+}
+function ecOpTotal() {
+  return ecOpPedidosSel().reduce(function(s,p){ return s + ecNum(p.valor); }, 0);
+}
+
+// PIX "copia e cola" (BR Code / EMV) com valor fixo
+function ecPixAscii(s, max) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9 @._+\-]/g, '').trim().toUpperCase().slice(0, max);
+}
+function ecPixTlv(id, v) { return id + String(v.length).padStart(2,'0') + v; }
+function ecPixCrc(s) {
+  var crc = 0xFFFF;
+  for (var i = 0; i < s.length; i++) {
+    crc ^= s.charCodeAt(i) << 8;
+    for (var j = 0; j < 8; j++) crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF;
+  }
+  return crc.toString(16).toUpperCase().padStart(4,'0');
+}
+function ecPixChave(ch) {
+  ch = String(ch || '').trim();
+  if (ch.indexOf('@') >= 0) return ch.toLowerCase();
+  var dig = ch.replace(/\D/g, '');
+  if (/^\+/.test(ch)) return '+' + dig;                       // celular já com +55
+  if (dig.length === 11 && /[()\s-]/.test(ch) && !/\./.test(ch)) return '+55' + dig; // (11) 9xxxx-xxxx
+  if (dig.length === 11 || dig.length === 14) return dig;     // CPF / CNPJ
+  return ch;                                                  // chave aleatória
+}
+function ecPixPayload(cfg, valor, txid) {
+  var conta = ecPixTlv('00', 'br.gov.bcb.pix') + ecPixTlv('01', ecPixChave(cfg.chave));
+  var p = ecPixTlv('00', '01') + ecPixTlv('26', conta) + ecPixTlv('52', '0000') + ecPixTlv('53', '986') +
+    (valor > 0 ? ecPixTlv('54', valor.toFixed(2)) : '') + ecPixTlv('58', 'BR') +
+    ecPixTlv('59', ecPixAscii(cfg.nome, 25)) + ecPixTlv('60', ecPixAscii(cfg.cidade, 15) || 'BRASIL') +
+    ecPixTlv('62', ecPixTlv('05', (txid || '***').replace(/[^A-Za-z0-9]/g, '').slice(0, 25) || '***')) + '6304';
+  return p + ecPixCrc(p);
+}
+function ecOpTxid() { return 'ESTUDIO' + ecHoje().replace(/-/g, ''); }
+
+var ecOpPixAtual = '';
+function ecOpAtualiza() {
+  var sel = ecOpPedidosSel();
+  var total = ecOpTotal();
+  var elem = sel.reduce(function(s,p){ return s + ecNum(p.qtd_elementos); }, 0);
+  document.getElementById('ec-op-resumo').textContent = sel.length ? sel.length + ' caso(s) · ' + elem + ' elemento(s)' : 'Nenhum caso marcado';
+  document.getElementById('ec-op-total').textContent = fmt(total);
+  var cfg = ecOpLerPix();
+  var qr = document.getElementById('ec-op-qr');
+  var code = document.getElementById('ec-op-code');
+  qr.innerHTML = '';
+  ecOpPixAtual = '';
+  if (!cfg.chave || !cfg.nome) { code.textContent = 'Preencha a chave e o nome do recebedor em "Dados do PIX".'; return; }
+  if (!(total > 0)) { code.textContent = 'Marque pelo menos um caso com valor.'; return; }
+  ecOpPixAtual = ecPixPayload(cfg, total, ecOpTxid());
+  code.textContent = ecOpPixAtual;
+  if (window.QRCode) new QRCode(qr, { text: ecOpPixAtual, width: 148, height: 148, correctLevel: QRCode.CorrectLevel.M });
+}
+
+function ecOpTexto() {
+  var c = ecCli(ecOpCliId);
+  var cfg = ecOpLerPix();
+  var linhas = ecOpPedidosSel().map(function(p){
+    var det = [p.tipo_trabalho, (p.dentes && p.dentes.length) ? 'dentes ' + p.dentes.join(', ') : (p.qtd_elementos ? p.qtd_elementos + ' elem.' : '')].filter(Boolean).join(' · ');
+    return '• #' + String(p.numero).padStart(4,'0') + ' ' + (p.paciente || 'Sem paciente') + (det ? ' — ' + det : '') + ' — ' + fmt(p.valor);
+  });
+  return '*Ordem de pagamento — Estúdio CAD*\n' +
+    'Cliente: ' + (c ? c.nome : '') + '\nData: ' + fmtDate(ecHoje()) + '\n\n' +
+    linhas.join('\n') + '\n\n*Total: ' + fmt(ecOpTotal()) + '*\n\n' +
+    'PIX: ' + cfg.chave + '\nRecebedor: ' + cfg.nome + '\n\n' +
+    'PIX copia e cola:\n' + ecOpPixAtual;
+}
+
+async function ecOpCopiar(qual) {
+  var msg = document.getElementById('ec-op-msg');
+  if (!ecOpPixAtual) { msg.textContent = 'Marque os casos e preencha os dados do PIX antes de copiar.'; return; }
+  var txt = qual === 'pix' ? ecOpPixAtual : ecOpTexto();
+  try { await navigator.clipboard.writeText(txt); }
+  catch(e) { window.prompt('Copie o texto abaixo:', txt); return; }
+  msg.style.color = 'var(--ec-done-fg)';
+  msg.textContent = qual === 'pix' ? 'PIX copia e cola copiado.' : 'Texto copiado. É só colar no WhatsApp.';
+  setTimeout(function(){ msg.textContent = ''; msg.style.color = ''; }, 2500);
+}
+
+function ecOpImprimir() {
+  var msg = document.getElementById('ec-op-msg');
+  if (!ecOpPixAtual) { msg.textContent = 'Marque os casos e preencha os dados do PIX antes de imprimir.'; return; }
+  var c = ecCli(ecOpCliId);
+  var cfg = ecOpLerPix();
+  var cv = document.querySelector('#ec-op-qr canvas');
+  var qrImg = cv ? cv.toDataURL('image/png') : '';
+  var linhas = ecOpPedidosSel().map(function(p){
+    var det = [p.tipo_trabalho, p.material].filter(Boolean).join(' · ');
+    var dentes = (p.dentes && p.dentes.length) ? p.dentes.join(', ') : (p.qtd_elementos ? p.qtd_elementos + ' elem.' : '—');
+    return '<tr><td>#'+String(p.numero).padStart(4,'0')+'</td><td><b>'+escHtml(p.paciente || 'Sem paciente')+'</b>'+(det?'<div class="s">'+escHtml(det)+'</div>':'')+'</td>' +
+      '<td>'+escHtml(dentes)+'</td><td class="n">'+fmt(p.valor)+'</td></tr>';
+  }).join('');
+  var w = window.open('', '_blank');
+  if (!w) { msg.textContent = 'O navegador bloqueou a janela. Libere pop-ups para esta página.'; return; }
+  w.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Ordem de pagamento - '+escHtml(c ? c.nome : '')+'</title>' +
+    '<style>body{font-family:Arial,Helvetica,sans-serif;color:#111;max-width:720px;margin:24px auto;padding:0 16px}' +
+    'h1{font-size:20px;margin:0}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:16px}' +
+    '.top img{height:48px}.m{color:#555;font-size:13px}table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}' +
+    'th{text-align:left;font-size:11px;text-transform:uppercase;color:#555;border-bottom:1px solid #999;padding:6px}td{padding:7px 6px;border-bottom:1px solid #e5e5e5;vertical-align:top}' +
+    '.n{text-align:right;white-space:nowrap}.s{font-size:11px;color:#666}.tot td{font-size:16px;font-weight:bold;border-bottom:0;padding-top:12px}' +
+    '.pix{display:flex;gap:18px;align-items:center;margin-top:24px;border:1px solid #ccc;border-radius:8px;padding:14px}' +
+    '.code{font-family:monospace;font-size:10px;word-break:break-all;color:#333;margin-top:6px}@media print{body{margin:0}}</style></head><body>' +
+    '<div class="top"><div><h1>Ordem de pagamento</h1><div class="m">Estúdio CAD · Ideali Laboratório</div></div><img src="'+location.href.replace(/[^\/]*$/, '')+'assets/logo.png" alt=""></div>' +
+    '<div class="m"><b style="color:#111">Cliente:</b> '+escHtml(c ? c.nome : '')+(c && c.documento ? ' · '+escHtml(c.documento) : '')+'<br><b style="color:#111">Data:</b> '+fmtDate(ecHoje())+'</div>' +
+    '<table><thead><tr><th>#</th><th>Paciente / trabalho</th><th>Dentes</th><th class="n">Valor</th></tr></thead><tbody>'+linhas+
+    '<tr class="tot"><td colspan="3">Total</td><td class="n">'+fmt(ecOpTotal())+'</td></tr></tbody></table>' +
+    '<div class="pix">'+(qrImg ? '<img src="'+qrImg+'" width="150" height="150" alt="QR Code PIX">' : '')+
+    '<div><b>Pague com PIX</b><div class="m">Chave: '+escHtml(cfg.chave)+'<br>Recebedor: '+escHtml(cfg.nome)+'<br>Valor: '+fmt(ecOpTotal())+'</div>' +
+    '<div class="code">'+escHtml(ecOpPixAtual)+'</div></div></div>' +
+    '<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>');
+  w.document.close();
+}
+
 // ── Modais ────────────────────────────────────────────────────
 function ecClose(id) { document.getElementById(id).hidden = true; }
 document.addEventListener('keydown', function(e){
   if (e.key !== 'Escape') return;
-  ecClose('ec-ped-ov'); ecClose('ec-cli-ov');
+  ecClose('ec-ped-ov'); ecClose('ec-cli-ov'); ecClose('ec-pg-ov'); ecClose('ec-op-ov');
 });
 
 // ── Modal: Cliente ────────────────────────────────────────────
@@ -646,6 +1189,14 @@ function ecOpenPedido(id) {
   document.getElementById('ec-p-tipo').value     = p ? (p.tipo_trabalho || '') : '';
   document.getElementById('ec-p-material').value = p ? (p.material || '') : '';
   document.getElementById('ec-p-status').value   = p ? p.status : 'a_fazer';
+  var cadSel = document.getElementById('ec-p-cadista');
+  var cadOpts = EC_CADISTAS.slice();
+  if (p && p.cadista && cadOpts.indexOf(p.cadista) < 0) cadOpts.push(p.cadista);
+  cadSel.innerHTML = '<option value="">Não atribuído</option>' + cadOpts.map(function(n){
+    return '<option value="'+escHtml(n)+'">'+escHtml(n)+'</option>';
+  }).join('');
+  cadSel.value = p ? (p.cadista || '') : '';
+  cadSel.closest('.ec-f').hidden = !ecTemCadista;
   document.getElementById('ec-p-qtd').value      = p ? (p.qtd_elementos || 0) : 1;
   document.getElementById('ec-p-prazo').value    = p ? (p.prazo || '') : '';
   document.getElementById('ec-p-valor').value    = p ? ecNum(p.valor) : '';
@@ -732,6 +1283,7 @@ async function ecSalvarPedido() {
     status:        status,
     observacao:    document.getElementById('ec-p-obs').value.trim() || null
   };
+  if (ecTemCadista) payload.cadista = document.getElementById('ec-p-cadista').value || null;
   if (status === 'finalizado' && !(atual && atual.finalizado_at)) payload.finalizado_at = new Date().toISOString();
   if (status !== 'finalizado') payload.finalizado_at = null;
 
@@ -776,11 +1328,15 @@ async function ecArquivarPedido() {
 
 // ── Anexos: bucket 'casos', pasta estudio/<pedido_id>/<slot>-<arquivo> ──
 function ecRenderAnexos(p) {
-  document.getElementById('ec-anexos').innerHTML = EC_SLOTS.map(function(s){
-    return '<div><input type="file" id="ec-up-'+s.id+'" multiple hidden onchange="ecUpChange(\''+s.id+'\')">' +
+  // Slot com "box" (comprovante) fica no próprio campo do modal; os demais, na grade de Arquivos
+  var boxes = {};
+  EC_SLOTS.forEach(function(s){
+    var alvo = s.box || 'ec-anexos';
+    boxes[alvo] = (boxes[alvo] || '') + '<div><input type="file" id="ec-up-'+s.id+'" multiple hidden onchange="ecUpChange(\''+s.id+'\')">' +
       '<div class="ec-up" id="ec-up-'+s.id+'-box" onclick="document.getElementById(\'ec-up-'+s.id+'\').click()">📎 '+s.label+'</div>' +
       '<div id="ec-up-'+s.id+'-files"></div></div>';
-  }).join('');
+  });
+  Object.keys(boxes).forEach(function(id){ document.getElementById(id).innerHTML = boxes[id]; });
   if (p) ecListarAnexos(p.id);
 }
 function ecUpChange(slot) {
