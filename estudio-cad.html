@@ -1217,7 +1217,7 @@ async function ecOpPdf() {
   if (y + 58 > 285) { doc.addPage(); y = 20; }
   doc.setFont('courier','normal'); doc.setFontSize(7.5);
   var code = doc.splitTextToSize(ecOpPixAtual, W - 58);
-  var boxH = Math.max(52, 30 + code.length * 3.2);
+  var boxH = Math.max(52, 51 + code.length * 3.2);
   doc.setDrawColor(190,190,190); doc.setLineWidth(0.3); doc.roundedRect(M, y, W, boxH, 3, 3);
   if (qrImg) doc.addImage(qrImg, 'PNG', M + 5, y + 5, 42, 42);
   var tx = M + 53, ty = y + 9;
@@ -1231,6 +1231,16 @@ async function ecOpPdf() {
   doc.text('PIX copia e cola:', tx, ty + 22);
   doc.setFont('courier','normal'); doc.setFontSize(7.5); doc.setTextColor(40,40,40);
   doc.text(code, tx, ty + 26);
+
+  // Botão "Copiar código PIX": PDF não copia sozinho, então é um link pra pix.html, que copia com um toque
+  var linkPix = new URL('pix.html', location.href).href + '?c=' + encodeURIComponent(ecOpPixAtual);
+  var by = ty + 26 + code.length * 3.2 + 1, bw = 52, bh = 9;
+  doc.setFillColor(22,163,74); doc.roundedRect(tx, by, bw, bh, 2, 2, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(255,255,255);
+  doc.text('Copiar código PIX', tx + bw / 2, by + 6, { align:'center' });
+  doc.link(tx, by, bw, bh, { url: linkPix });
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor.apply(doc, cinza);
+  doc.text('Toque no botão para abrir e copiar o código', tx + bw + 4, by + 5.8);
 
   var nomeArq = ('Ordem de pagamento - ' + (c ? c.nome : 'cliente') + ' - ' + fmtDate(ecHoje()).replace(/\//g,'-'))
     .replace(/[\\/:*?"<>|]/g, '').trim() + '.pdf';

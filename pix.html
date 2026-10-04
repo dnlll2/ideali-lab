@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pagamento PIX — Ideali Laboratório</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  /* Página pública aberta pelo botão "Copiar código PIX" do PDF da ordem de pagamento
+     (estudio-cad.html). Recebe o PIX copia e cola em ?c= e não usa o banco nem senha. */
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0f1117;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+  .wrap{width:min(440px,100%);min-width:0}
+  .card *{max-width:100%}
+  .card{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;padding:26px 22px;text-align:center}
+  h1{font-size:18px;font-weight:600;color:#f1f5f9;margin-bottom:2px}
+  .sub{font-size:13px;color:#64748b;margin-bottom:18px}
+  .valor{font-size:30px;font-weight:700;color:#f1f5f9;font-variant-numeric:tabular-nums}
+  .rec{font-size:13px;color:#94a3b8;margin:4px 0 18px}
+  .qr{display:inline-block;background:#fff;padding:10px;border-radius:10px;line-height:0;margin-bottom:18px}
+  .code{font-family:ui-monospace,Consolas,monospace;font-size:11px;word-break:break-all;color:#94a3b8;background:#22263a;border:0.5px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px 12px;text-align:left;margin-bottom:14px}
+  .btn{width:100%;height:50px;border-radius:10px;border:none;background:#16a34a;color:#fff;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
+  .btn:active{transform:scale(0.99)}
+  .btn.ok{background:#0d3d2b;color:#86efac}
+  .passos{font-size:12px;color:#64748b;margin-top:14px;line-height:1.6}
+  .erro{font-size:14px;color:#fca5a5;padding:10px 0}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <img src="assets/logo.png" alt="" style="height:64px;width:64px;object-fit:contain;margin:0 auto 8px;display:block">
+    <h1>Pagamento PIX</h1>
+    <p class="sub">Ideali Laboratório · Estúdio CAD</p>
+    <div id="ok" hidden>
+      <div class="valor" id="valor"></div>
+      <div class="rec" id="rec"></div>
+      <div class="qr" id="qr"></div>
+      <div class="code" id="code"></div>
+      <button class="btn" id="btn" type="button" onclick="copiar()">Copiar código PIX</button>
+      <p class="passos">Depois de copiar, abra o app do seu banco → <b>PIX</b> → <b>Pix Copia e Cola</b> e cole o código.</p>
+    </div>
+    <p class="erro" id="erro" hidden>Código PIX inválido ou incompleto. Peça uma nova ordem de pagamento.</p>
+  </div>
+</div>
+<script>
+var codigo = (new URLSearchParams(location.search).get('c') || '').trim();
+
+// Lê os campos do BR Code (ID de 2 dígitos + tamanho de 2 dígitos + valor)
+function tlv(s) {
+  var o = {}, i = 0;
+  while (i + 4 <= s.length) {
+    var id = s.substr(i, 2), n = parseInt(s.substr(i + 2, 2), 10);
+    if (isNaN(n)) break;
+    o[id] = s.substr(i + 4, n);
+    i += 4 + n;
+  }
+  return o;
+}
+function crc16(s) {
+  var crc = 0xFFFF;
+  for (var i = 0; i < s.length; i++) {
+    crc ^= s.charCodeAt(i) << 8;
+    for (var j = 0; j < 8; j++) crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF;
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+}
+
+var valido = codigo.length > 30 && /^000201/.test(codigo) && crc16(codigo.slice(0, -4)) === codigo.slice(-4).toUpperCase();
+if (valido) {
+  var f = tlv(codigo);
+  if (f['54']) document.getElementById('valor').textContent = 'R$ ' + Number(f['54']).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  document.getElementById('rec').textContent = f['59'] ? 'Recebedor: ' + f['59'] : '';
+  document.getElementById('code').textContent = codigo;
+  if (window.QRCode) new QRCode(document.getElementById('qr'), { text: codigo, width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M });
+  else document.getElementById('qr').hidden = true;
+  document.getElementById('ok').hidden = false;
+} else {
+  document.getElementById('erro').hidden = false;
+}
+
+async function copiar() {
+  var btn = document.getElementById('btn');
+  var feito = false;
+  try { await navigator.clipboard.writeText(codigo); feito = true; } catch(e) {}
+  if (!feito) {
+    // Navegadores antigos / dentro do WhatsApp: cópia pelo campo de texto
+    var ta = document.createElement('textarea');
+    ta.value = codigo; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, codigo.length);
+    try { feito = document.execCommand('copy'); } catch(e) {}
+    ta.remove();
+  }
+  if (feito) {
+    btn.textContent = '✓ Código copiado';
+    btn.classList.add('ok');
+    setTimeout(function(){ btn.textContent = 'Copiar código PIX'; btn.classList.remove('ok'); }, 3000);
+  } else {
+    btn.textContent = 'Segure o código acima para copiar';
+  }
+}
+</script>
+</body>
+</html>
