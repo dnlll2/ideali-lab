@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   /* Estúdio CAD: sistema separado pra desenhos avulsos (fora do fluxo Inove).
      Usa só as tabelas estudio_clientes / estudio_pedidos (039_estudio_cad.sql). */
@@ -415,7 +416,7 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="ec-btn" type="button" onclick="ecOpCopiar('pix')"><i class="ti ti-copy"></i> Copiar PIX</button>
         <button class="ec-btn" type="button" onclick="ecOpCopiar('texto')"><i class="ti ti-brand-whatsapp"></i> Copiar texto</button>
-        <button class="ec-btn pri" type="button" onclick="ecOpImprimir()"><i class="ti ti-printer"></i> Imprimir / PDF</button>
+        <button class="ec-btn pri" type="button" onclick="ecOpPdf()"><i class="ti ti-file-type-pdf"></i> Gerar PDF</button>
       </div>
     </div>
   </div>
@@ -1126,38 +1127,128 @@ async function ecOpCopiar(qual) {
   setTimeout(function(){ msg.textContent = ''; msg.style.color = ''; }, 2500);
 }
 
-function ecOpImprimir() {
+// Gera o PDF da ordem (jsPDF) pra mandar pro cliente: no celular abre o compartilhar (WhatsApp),
+// no computador baixa o arquivo
+function ecOpCarregaLogo() {
+  return new Promise(function(resolve){
+    var img = new Image();
+    img.onload = function(){
+      try {
+        // Reduz pra ~160px de altura: o logo original deixa o PDF pesado pro WhatsApp
+        var k = Math.min(1, 160 / img.naturalHeight);
+        var cv = document.createElement('canvas');
+        cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        resolve({ url: cv.toDataURL('image/png'), w: cv.width, h: cv.height });
+      } catch(e) { resolve(null); }
+    };
+    img.onerror = function(){ resolve(null); };
+    img.src = 'assets/logo.png';
+  });
+}
+
+async function ecOpPdf() {
   var msg = document.getElementById('ec-op-msg');
-  if (!ecOpPixAtual) { msg.textContent = 'Marque os casos e preencha os dados do PIX antes de imprimir.'; return; }
+  msg.style.color = ''; msg.textContent = '';
+  if (!ecOpPixAtual) { msg.textContent = 'Marque os casos e preencha os dados do PIX antes de gerar o PDF.'; return; }
+  if (!window.jspdf) { msg.textContent = 'Não consegui carregar o gerador de PDF. Recarregue a página e tente de novo.'; return; }
   var c = ecCli(ecOpCliId);
   var cfg = ecOpLerPix();
+  var total = ecOpTotal();
   var cv = document.querySelector('#ec-op-qr canvas');
   var qrImg = cv ? cv.toDataURL('image/png') : '';
-  var linhas = ecOpPedidosSel().map(function(p){
+  var logo = await ecOpCarregaLogo();
+
+  var doc = new window.jspdf.jsPDF({ unit:'mm', format:'a4' });
+  var M = 16, W = 210 - 2*M, y = 18;
+  var cinza = [110,110,110], linha = [220,220,220];
+  if (logo) { var lh = 16, lw = lh * logo.w / logo.h; doc.addImage(logo.url, 'PNG', 210 - M - lw, 12, lw, lh); }
+  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(17,17,17);
+  doc.text('Ordem de pagamento', M, y + 4);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor.apply(doc, cinza);
+  doc.text('Estúdio CAD · Ideali Laboratório', M, y + 10);
+  y += 16;
+  doc.setDrawColor(17,17,17); doc.setLineWidth(0.6); doc.line(M, y, M + W, y);
+  y += 8;
+  doc.setFontSize(10.5); doc.setTextColor(17,17,17);
+  doc.setFont('helvetica','bold'); doc.text('Cliente:', M, y);
+  doc.setFont('helvetica','normal'); doc.text((c ? c.nome : '') + (c && c.documento ? '  ·  ' + c.documento : ''), M + 17, y);
+  y += 6;
+  doc.setFont('helvetica','bold'); doc.text('Data:', M, y);
+  doc.setFont('helvetica','normal'); doc.text(fmtDate(ecHoje()), M + 17, y);
+  y += 10;
+
+  // Tabela: # | Paciente / trabalho | Dentes | Valor
+  var cx = [M, M + 16, M + 104, M + W];
+  function cabecalho() {
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor.apply(doc, cinza);
+    doc.text('#', cx[0], y); doc.text('PACIENTE / TRABALHO', cx[1], y); doc.text('DENTES', cx[2], y);
+    doc.text('VALOR', cx[3], y, { align:'right' });
+    y += 2.5; doc.setDrawColor(150,150,150); doc.setLineWidth(0.3); doc.line(M, y, M + W, y); y += 5;
+  }
+  cabecalho();
+  ecOpPedidosSel().forEach(function(p){
     var det = [p.tipo_trabalho, p.material].filter(Boolean).join(' · ');
-    var dentes = ecDetalheElem(p, true) || '—';
-    return '<tr><td>#'+String(p.numero).padStart(4,'0')+'</td><td><b>'+escHtml(p.paciente || 'Sem paciente')+'</b>'+(det?'<div class="s">'+escHtml(det)+'</div>':'')+'</td>' +
-      '<td>'+escHtml(dentes)+'</td><td class="n">'+fmt(p.valor)+'</td></tr>';
-  }).join('');
-  var w = window.open('', '_blank');
-  if (!w) { msg.textContent = 'O navegador bloqueou a janela. Libere pop-ups para esta página.'; return; }
-  w.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Ordem de pagamento - '+escHtml(c ? c.nome : '')+'</title>' +
-    '<style>body{font-family:Arial,Helvetica,sans-serif;color:#111;max-width:720px;margin:24px auto;padding:0 16px}' +
-    'h1{font-size:20px;margin:0}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:16px}' +
-    '.top img{height:48px}.m{color:#555;font-size:13px}table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}' +
-    'th{text-align:left;font-size:11px;text-transform:uppercase;color:#555;border-bottom:1px solid #999;padding:6px}td{padding:7px 6px;border-bottom:1px solid #e5e5e5;vertical-align:top}' +
-    '.n{text-align:right;white-space:nowrap}.s{font-size:11px;color:#666}.tot td{font-size:16px;font-weight:bold;border-bottom:0;padding-top:12px}' +
-    '.pix{display:flex;gap:18px;align-items:center;margin-top:24px;border:1px solid #ccc;border-radius:8px;padding:14px}' +
-    '.code{font-family:monospace;font-size:10px;word-break:break-all;color:#333;margin-top:6px}@media print{body{margin:0}}</style></head><body>' +
-    '<div class="top"><div><h1>Ordem de pagamento</h1><div class="m">Estúdio CAD · Ideali Laboratório</div></div><img src="'+location.href.replace(/[^\/]*$/, '')+'assets/logo.png" alt=""></div>' +
-    '<div class="m"><b style="color:#111">Cliente:</b> '+escHtml(c ? c.nome : '')+(c && c.documento ? ' · '+escHtml(c.documento) : '')+'<br><b style="color:#111">Data:</b> '+fmtDate(ecHoje())+'</div>' +
-    '<table><thead><tr><th>#</th><th>Paciente / trabalho</th><th>Dentes</th><th class="n">Valor</th></tr></thead><tbody>'+linhas+
-    '<tr class="tot"><td colspan="3">Total</td><td class="n">'+fmt(ecOpTotal())+'</td></tr></tbody></table>' +
-    '<div class="pix">'+(qrImg ? '<img src="'+qrImg+'" width="150" height="150" alt="QR Code PIX">' : '')+
-    '<div><b>Pague com PIX</b><div class="m">Chave: '+escHtml(cfg.chave)+'<br>Recebedor: '+escHtml(cfg.nome)+'<br>Valor: '+fmt(ecOpTotal())+'</div>' +
-    '<div class="code">'+escHtml(ecOpPixAtual)+'</div></div></div>' +
-    '<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>');
-  w.document.close();
+    doc.setFontSize(10);
+    var pac = doc.splitTextToSize(p.paciente || 'Sem paciente', cx[2] - cx[1] - 4);
+    doc.setFontSize(8.5);
+    var detL = det ? doc.splitTextToSize(det, cx[2] - cx[1] - 4) : [];
+    var den = doc.splitTextToSize(ecDetalheElem(p, true) || '—', cx[3] - cx[2] - 26);
+    var h = Math.max(pac.length * 4.6 + detL.length * 3.8, den.length * 4.2) + 3;
+    if (y + h > 250) { doc.addPage(); y = 20; cabecalho(); }
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor.apply(doc, cinza);
+    doc.text('#' + String(p.numero).padStart(4,'0'), cx[0], y);
+    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(17,17,17);
+    doc.text(pac, cx[1], y);
+    if (detL.length) { doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor.apply(doc, cinza); doc.text(detL, cx[1], y + pac.length * 4.6 - 0.6); }
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(17,17,17);
+    doc.text(den, cx[2], y);
+    doc.text(fmt(p.valor), cx[3], y, { align:'right' });
+    y += h;
+    doc.setDrawColor.apply(doc, linha); doc.setLineWidth(0.2); doc.line(M, y - 3, M + W, y - 3);
+    y += 1.5;
+  });
+  y += 3;
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(17,17,17);
+  doc.text('Total', cx[1], y); doc.text(fmt(total), cx[3], y, { align:'right' });
+  y += 10;
+
+  // Caixa do PIX
+  if (y + 58 > 285) { doc.addPage(); y = 20; }
+  doc.setFont('courier','normal'); doc.setFontSize(7.5);
+  var code = doc.splitTextToSize(ecOpPixAtual, W - 58);
+  var boxH = Math.max(52, 30 + code.length * 3.2);
+  doc.setDrawColor(190,190,190); doc.setLineWidth(0.3); doc.roundedRect(M, y, W, boxH, 3, 3);
+  if (qrImg) doc.addImage(qrImg, 'PNG', M + 5, y + 5, 42, 42);
+  var tx = M + 53, ty = y + 9;
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(17,17,17);
+  doc.text('Pague com PIX', tx, ty);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(60,60,60);
+  doc.text('Chave: ' + cfg.chave, tx, ty + 6);
+  doc.text('Recebedor: ' + cfg.nome, tx, ty + 11);
+  doc.text('Valor: ' + fmt(total), tx, ty + 16);
+  doc.setFontSize(8); doc.setTextColor.apply(doc, cinza);
+  doc.text('PIX copia e cola:', tx, ty + 22);
+  doc.setFont('courier','normal'); doc.setFontSize(7.5); doc.setTextColor(40,40,40);
+  doc.text(code, tx, ty + 26);
+
+  var nomeArq = ('Ordem de pagamento - ' + (c ? c.nome : 'cliente') + ' - ' + fmtDate(ecHoje()).replace(/\//g,'-'))
+    .replace(/[\\/:*?"<>|]/g, '').trim() + '.pdf';
+  var blob = doc.output('blob');
+  var arq = null;
+  try { arq = new File([blob], nomeArq, { type:'application/pdf' }); } catch(e) {}
+  var celular = /Android|iPhone|iPad/i.test(navigator.userAgent);
+  if (celular && arq && navigator.canShare && navigator.canShare({ files:[arq] })) {
+    try { await navigator.share({ files:[arq], title: nomeArq }); return; }
+    catch(e) { if (e && e.name === 'AbortError') return; }
+  }
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = nomeArq;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  msg.style.color = 'var(--ec-done-fg)';
+  msg.textContent = 'PDF gerado: ' + nomeArq + '. É só anexar no WhatsApp do cliente.';
 }
 
 // ── Modais ────────────────────────────────────────────────────
