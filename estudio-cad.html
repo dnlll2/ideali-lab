@@ -132,6 +132,35 @@
   .dente.on{background:#2f8fae;border-color:var(--ec-accent);color:#fff;font-weight:600}
   .odonto-gap{width:8px}
   .odonto.off{opacity:0.35;pointer-events:none}
+
+  /* Aba Análise: cores validadas (validate_palette, modo escuro) contra o fundo --ec-card #2b2f36 */
+  .ec-ana{--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--grid:#3a3f47;--base:#575e69}
+  .ec-ana-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:900px){.ec-ana-grid{grid-template-columns:1fr}}
+  .ec-ana-card{background:var(--ec-card);border:0.5px solid var(--ec-line);border-radius:6px;padding:14px 16px 10px;min-width:0;box-shadow:0 4px 14px rgba(0,0,0,0.25)}
+  .ec-ana-card.full{grid-column:1/-1}
+  .ec-ana-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .ec-ana-h h3{font-size:14px;font-weight:600;color:var(--ec-text)}
+  .ec-ana-h p{font-size:11px;color:var(--ec-dim);margin-top:2px}
+  .ec-ana-leg{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--ec-muted)}
+  .ec-ana-leg span{display:inline-flex;align-items:center;gap:5px}
+  .ec-ana-leg i{width:10px;height:10px;border-radius:2px;display:inline-block}
+  .ec-ana-plot svg{display:block;width:100%;height:auto;overflow:visible}
+  .ec-ana-plot text{font-family:inherit;font-size:11px;fill:var(--ec-dim)}
+  .ec-ana-plot text.v{fill:var(--ec-muted);font-variant-numeric:tabular-nums}
+  .ec-ana-plot text.sel{fill:var(--ec-text);font-weight:600}
+  .ec-ana-plot text.nm{fill:var(--ec-muted)}
+  .ec-ana-plot .hit{fill:transparent;cursor:default}
+  .ec-ana-plot .hit:hover{fill:rgba(255,255,255,0.04)}
+  .ec-ana-tab summary{cursor:pointer;font-size:11px;color:var(--ec-dim);margin-top:6px}
+  .ec-ana-tab .ec-table{font-size:12px;margin-top:6px}
+  .ec-ana-tab .ec-table td,.ec-ana-tab .ec-table th{padding:6px 8px}
+  .ec-ana-tip{position:fixed;z-index:600;pointer-events:none;background:#1c1f24;border:0.5px solid rgba(255,255,255,0.16);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--ec-text);box-shadow:0 6px 20px rgba(0,0,0,0.45);min-width:150px}
+  .ec-ana-tip .t{font-weight:600;margin-bottom:4px}
+  .ec-ana-tip .r{display:flex;justify-content:space-between;gap:14px;color:var(--ec-muted)}
+  .ec-ana-tip .r b{color:var(--ec-text);font-weight:600;font-variant-numeric:tabular-nums}
+  .ec-ana-tip .r i{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:5px}
+  .ec-ana-vazio{font-size:12px;color:var(--ec-dim);text-align:center;padding:28px 0}
   .ec-opts{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;min-height:36px}
   .ec-f label.ec-opt{display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ec-text);cursor:pointer}
   .ec-opt input:disabled+*,.ec-opt.dis{opacity:0.45;cursor:default}
@@ -212,6 +241,7 @@
       <button class="ec-tab"    type="button" id="ec-tab-clientes"   onclick="ecSetTab('clientes')">Clientes <span class="n" id="ec-n-clientes">0</span></button>
       <button class="ec-tab"    type="button" id="ec-tab-pagamentos" onclick="ecSetTab('pagamentos')">Pagamentos <span class="n" id="ec-n-pagamentos">0</span></button>
       <button class="ec-tab"    type="button" id="ec-tab-financeiro" onclick="ecSetTab('financeiro')">Financeiro</button>
+      <button class="ec-tab"    type="button" id="ec-tab-analise"    onclick="ecSetTab('analise')">Análise</button>
     </div>
 
     <!-- Pedidos -->
@@ -271,6 +301,37 @@
           <tbody id="ec-fin-aberto"></tbody>
         </table>
       </div>
+    </section>
+
+    <!-- Análise -->
+    <section id="ec-panel-analise" hidden class="ec-ana">
+      <div class="ec-filters">
+        <select class="ec-sel" id="ec-ana-periodo" onchange="ecRenderAnalise()" style="background:var(--ec-card)" title="Meses nos gráficos de evolução">
+          <option value="6" selected>Últimos 6 meses</option><option value="12">Últimos 12 meses</option></select>
+        <span class="ec-hint" style="align-self:center">Os números do topo e os gráficos por cliente e por tipo usam o mês escolhido lá em cima. Tudo conta pela data em que o pedido foi finalizado.</span>
+      </div>
+      <div class="ec-kpis" id="ec-ana-kpis"></div>
+      <div class="ec-ana-grid">
+        <div class="ec-ana-card full">
+          <div class="ec-ana-h"><div><h3>Faturamento por mês</h3><p>Valor dos pedidos finalizados em cada mês</p></div><div class="ec-ana-leg" id="ec-ana-leg-fat"></div></div>
+          <div class="ec-ana-plot" id="ec-ana-fat"></div>
+          <details class="ec-ana-tab"><summary>Ver tabela</summary><div id="ec-ana-fat-tab"></div></details>
+        </div>
+        <div class="ec-ana-card full">
+          <div class="ec-ana-h"><div><h3>Produção por mês</h3><p>Elementos, arcadas de protocolo e placa, e modelos finalizados</p></div><div class="ec-ana-leg" id="ec-ana-leg-prod"></div></div>
+          <div class="ec-ana-plot" id="ec-ana-prod"></div>
+          <details class="ec-ana-tab"><summary>Ver tabela</summary><div id="ec-ana-prod-tab"></div></details>
+        </div>
+        <div class="ec-ana-card">
+          <div class="ec-ana-h"><div><h3>Faturado por cliente</h3><p id="ec-ana-cli-sub"></p></div></div>
+          <div class="ec-ana-plot" id="ec-ana-cli"></div>
+        </div>
+        <div class="ec-ana-card">
+          <div class="ec-ana-h"><div><h3>Por tipo de trabalho</h3><p id="ec-ana-tipo-sub"></p></div></div>
+          <div class="ec-ana-plot" id="ec-ana-tipo"></div>
+        </div>
+      </div>
+      <div class="ec-ana-tip" id="ec-ana-tip" hidden></div>
     </section>
   </main>
 </div>
@@ -457,6 +518,7 @@ var EC_ARC_LABEL = { protocolo:'Protocolo', placa:'Placa de bruxismo' };
 var EC_ARC_NOME = { sup:'superior', inf:'inferior' };
 // Colunas arcada_tipo/arcadas/modelos vêm da 044_estudio_arcada_modelo.sql; até ela ser rodada as opções ficam travadas
 var ecTemArcada = false;
+var ecTodosPedidos = [];   // inclui arquivados (aba Análise)
 var ecArcTipo = '';
 var EC_BUCKET = 'casos';
 // Pagamentos vêm da 043_estudio_pagamentos.sql; até ela ser rodada a aba mostra um aviso
@@ -515,8 +577,10 @@ async function ecLoad() {
     ecTemPagamentos = !r3.error;
     ecPagamentos = r3.data || [];
     ecPedRef = {};
-    var r4 = await sb.from('estudio_pedidos').select('id,numero,paciente');
-    (r4.data || []).forEach(function(p){ ecPedRef[p.id] = p; });
+    // Todos os pedidos, inclusive arquivados: coluna "Referente a" dos pagamentos e aba Análise
+    var r4 = await sb.from('estudio_pedidos').select('*');
+    ecTodosPedidos = r4.data || [];
+    ecTodosPedidos.forEach(function(p){ ecPedRef[p.id] = p; });
     setSyncStatus('ok');
   } catch(e) {
     console.error('[ecLoad]', e);
@@ -535,6 +599,7 @@ function ecRenderAll() {
   ecRenderClientes();
   ecRenderPagamentos();
   ecRenderFinanceiro();
+  if (ecTab === 'analise') ecRenderAnalise();
 }
 
 function ecRenderMesSelect() {
@@ -571,10 +636,12 @@ function ecRenderFiltroCli() {
 
 function ecSetTab(t) {
   ecTab = t;
-  ['pedidos','clientes','pagamentos','financeiro'].forEach(function(k){
+  ['pedidos','clientes','pagamentos','financeiro','analise'].forEach(function(k){
     document.getElementById('ec-tab-'+k).classList.toggle('on', k === t);
     document.getElementById('ec-panel-'+k).hidden = k !== t;
   });
+  // Os gráficos medem a largura do painel, então só desenham com ele visível
+  if (t === 'analise') ecRenderAnalise();
 }
 
 function ecToggleChip(k) {
@@ -1264,6 +1331,231 @@ async function ecOpPdf() {
   msg.style.color = 'var(--ec-done-fg)';
   msg.textContent = 'PDF gerado: ' + nomeArq + '. É só anexar no WhatsApp do cliente.';
 }
+
+// ── Análise: gráficos em SVG puro (sem biblioteca) ────────────
+var EC_ANA_COR = { s1:'var(--s1)', s2:'var(--s2)', s3:'var(--s3)', s4:'var(--s4)' };
+
+// Unidades produzidas num pedido. Protocolo/placa antigos (sem arcada_tipo) contam pelo tipo de trabalho.
+function ecUnidades(p) {
+  var u = { el:0, prot:0, placa:0, mod:(p.modelos || []).length };
+  var arcs = (p.arcadas || []).length;
+  if (p.arcada_tipo === 'protocolo') u.prot = arcs || 1;
+  else if (p.arcada_tipo === 'placa') u.placa = arcs || 1;
+  else if (/protocolo/i.test(p.tipo_trabalho || '')) u.prot = ecNum(p.qtd_elementos) || 1;
+  else if (/placa/i.test(p.tipo_trabalho || '')) u.placa = ecNum(p.qtd_elementos) || 1;
+  else u.el = ecNum(p.qtd_elementos);
+  return u;
+}
+function ecAnaFinalizados() {
+  return ecTodosPedidos.filter(function(p){ return p.status === 'finalizado' && p.finalizado_at; });
+}
+function ecAnaMeses(n) {
+  var p = ecMesSel.split('-'), y = +p[0], m = +p[1] - 1, out = [];
+  for (var i = n - 1; i >= 0; i--) {
+    var d = new Date(y, m - i, 1);
+    out.push(d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'));
+  }
+  return out;
+}
+function ecAnaMesCurto(k) { var p = k.split('-'); return MESES[+p[1]-1].slice(0,3) + '/' + p[0].slice(2); }
+function ecAnaMesLongo(k) { var p = k.split('-'); return MESES[+p[1]-1] + ' ' + p[0]; }
+function ecFmtCurto(v) {
+  if (v >= 1000) return 'R$ ' + (v/1000).toLocaleString('pt-BR', { maximumFractionDigits: v >= 10000 ? 0 : 1 }) + ' mil';
+  return 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+}
+// Passo "redondo" do eixo: 1, 2, 2.5 ou 5 × 10^n
+function ecAnaEscala(max, ticks) {
+  if (!(max > 0)) return { max: ticks, passo: 1 };
+  var bruto = max / ticks, pot = Math.pow(10, Math.floor(Math.log10(bruto)));
+  var passo = [1, 2, 2.5, 5, 10].map(function(f){ return f * pot; }).find(function(s){ return s >= bruto; });
+  return { max: Math.ceil(max / passo) * passo, passo: passo };
+}
+// Retângulo com só os cantos de cima arredondados (ponta do dado), base reta
+function ecAnaTopo(x, y, w, h, r) {
+  r = Math.min(r, w / 2, h);
+  return 'M' + x + ',' + (y + h) + 'V' + (y + r) + 'Q' + x + ',' + y + ' ' + (x + r) + ',' + y +
+    'H' + (x + w - r) + 'Q' + (x + w) + ',' + y + ' ' + (x + w) + ',' + (y + r) + 'V' + (y + h) + 'Z';
+}
+function ecAnaLegenda(id, series) {
+  document.getElementById(id).innerHTML = series.map(function(s){
+    return '<span><i style="background:' + EC_ANA_COR[s.cor] + '"></i>' + escHtml(s.nome) + '</span>';
+  }).join('');
+}
+
+// Colunas empilhadas por mês. series: [{nome, cor, fmt}], dados: {mes: [v1, v2, ...]}
+function ecAnaColunas(elId, meses, series, dados, fmtTotal) {
+  var el = document.getElementById(elId);
+  var W = Math.max(320, el.clientWidth || 600), H = 230, pl = 52, pr = 8, pt = 22, pb = 26;
+  var totais = meses.map(function(k){ return (dados[k] || []).reduce(function(a,b){ return a + b; }, 0); });
+  var esc = ecAnaEscala(Math.max.apply(null, totais), 4);
+  var iw = W - pl - pr, ih = H - pt - pb, band = iw / meses.length;
+  var bw = Math.min(24, band * 0.6), y0 = pt + ih;
+  var sy = function(v){ return ih * v / esc.max; };
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + escHtml(series.map(function(x){ return x.nome; }).join(', ')) + ' por mês">';
+  for (var t = 0; t <= esc.max + 1e-9; t += esc.passo) {
+    var ty = y0 - sy(t);
+    s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + ty + '" y2="' + ty + '" stroke="' + (t === 0 ? 'var(--base)' : 'var(--grid)') + '" stroke-width="1"/>';
+    s += '<text x="' + (pl - 8) + '" y="' + (ty + 4) + '" text-anchor="end" class="v">' + escHtml(fmtTotal.eixo(t)) + '</text>';
+  }
+  meses.forEach(function(k, i){
+    var cx = pl + band * i + band / 2, x = cx - bw / 2, base = y0, vals = dados[k] || [];
+    var ultimo = -1;
+    vals.forEach(function(v, j){ if (v > 0) ultimo = j; });
+    vals.forEach(function(v, j){
+      if (!(v > 0)) return;
+      var h = sy(v), gap = j === ultimo ? 0 : 2;   // 2px de fundo entre segmentos
+      var hh = Math.max(1, h - gap), y = base - h + (j === ultimo ? 0 : 0);
+      s += j === ultimo
+        ? '<path d="' + ecAnaTopo(x, base - h, bw, hh, 4) + '" fill="' + EC_ANA_COR[series[j].cor] + '"/>'
+        : '<rect x="' + x + '" y="' + (base - h + gap) + '" width="' + bw + '" height="' + hh + '" fill="' + EC_ANA_COR[series[j].cor] + '"/>';
+      base -= h;
+    });
+    if (totais[i] > 0) s += '<text x="' + cx + '" y="' + (base - 6) + '" text-anchor="middle" class="v">' + escHtml(fmtTotal.topo(totais[i])) + '</text>';
+    s += '<text x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle"' + (k === ecMesSel ? ' class="sel"' : '') + '>' + ecAnaMesCurto(k) + '</text>';
+    var tip = '<div class="t">' + ecAnaMesLongo(k) + '</div>' + series.map(function(se, j){
+      return '<div class="r"><span><i style="background:' + EC_ANA_COR[se.cor] + '"></i>' + escHtml(se.nome) + '</span><b>' + escHtml(se.fmt(vals[j] || 0)) + '</b></div>';
+    }).join('') + (series.length > 1 ? '<div class="r" style="margin-top:3px;border-top:0.5px solid rgba(255,255,255,0.1);padding-top:3px"><span>Total</span><b>' + escHtml(fmtTotal.tip(totais[i])) + '</b></div>' : '');
+    s += '<rect class="hit" x="' + (pl + band * i) + '" y="' + pt + '" width="' + band + '" height="' + ih + '" data-tip="' + escHtml(tip) + '"/>';
+  });
+  el.innerHTML = s + '</svg>';
+}
+
+// Barras horizontais (um valor por item), valor na ponta
+function ecAnaBarras(elId, itens, fmtV, vazio) {
+  var el = document.getElementById(elId);
+  if (!itens.length) { el.innerHTML = '<div class="ec-ana-vazio">' + vazio + '</div>'; return; }
+  var W = Math.max(280, el.clientWidth || 400), lh = 34, pt = 4;
+  var lw = Math.min(150, W * 0.38), vw = 78, iw = W - lw - vw - 8;
+  var max = Math.max.apply(null, itens.map(function(x){ return x.v; })) || 1;
+  var H = pt + itens.length * lh;
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + escHtml(vazio) + '">';
+  s += '<line x1="' + lw + '" x2="' + lw + '" y1="0" y2="' + H + '" stroke="var(--base)" stroke-width="1"/>';
+  itens.forEach(function(it, i){
+    var y = pt + i * lh, bh = 16, by = y + (lh - bh) / 2, w = Math.max(2, iw * it.v / max);
+    var nome = it.nome.length > 22 ? it.nome.slice(0, 21) + '…' : it.nome;
+    s += '<text x="' + (lw - 8) + '" y="' + (by + 12) + '" text-anchor="end" class="nm">' + escHtml(nome) + '</text>';
+    // ponta arredondada à direita, base reta no eixo
+    var r = Math.min(4, w / 2);
+    s += '<path d="M' + lw + ',' + by + 'H' + (lw + w - r) + 'Q' + (lw + w) + ',' + by + ' ' + (lw + w) + ',' + (by + r) +
+      'V' + (by + bh - r) + 'Q' + (lw + w) + ',' + (by + bh) + ' ' + (lw + w - r) + ',' + (by + bh) + 'H' + lw + 'Z" fill="var(--s1)"/>';
+    s += '<text x="' + (lw + w + 6) + '" y="' + (by + 12) + '" class="v">' + escHtml(fmtV(it.v)) + '</text>';
+    s += '<rect class="hit" x="0" y="' + y + '" width="' + W + '" height="' + lh + '" data-tip="' + escHtml('<div class="t">' + escHtml(it.nome) + '</div>' + (it.tip || '')) + '"/>';
+  });
+  el.innerHTML = s + '</svg>';
+}
+
+function ecAnaTabela(elId, cab, linhas) {
+  document.getElementById(elId).innerHTML = '<div class="ec-table-wrap"><table class="ec-table"><thead><tr>' +
+    cab.map(function(c, i){ return '<th' + (i ? ' class="num"' : '') + '>' + c + '</th>'; }).join('') + '</tr></thead><tbody>' +
+    linhas.map(function(l){ return '<tr>' + l.map(function(c, i){ return '<td' + (i ? ' class="num"' : '') + '>' + c + '</td>'; }).join('') + '</tr>'; }).join('') +
+    '</tbody></table></div>';
+}
+
+function ecRenderAnalise() {
+  var painel = document.getElementById('ec-panel-analise');
+  if (painel.hidden) return;
+  var fin = ecAnaFinalizados();
+  var n = parseInt(document.getElementById('ec-ana-periodo').value, 10) || 12;
+  var meses = ecAnaMeses(n);
+
+  // Agrega por mês de finalização
+  var porMes = {};
+  meses.forEach(function(k){ porMes[k] = { rec:0, abr:0, el:0, prot:0, placa:0, mod:0, ped:0 }; });
+  fin.forEach(function(p){
+    var k = ecMesDeTs(p.finalizado_at), a = porMes[k];
+    if (!a) return;
+    var u = ecUnidades(p);
+    a.ped++; a.el += u.el; a.prot += u.prot; a.placa += u.placa; a.mod += u.mod;
+    if (p.pago) a.rec += ecNum(p.valor); else a.abr += ecNum(p.valor);
+  });
+
+  // Números do mês selecionado
+  var doMes = fin.filter(function(p){ return ecMesDeTs(p.finalizado_at) === ecMesSel; });
+  var t = { el:0, prot:0, placa:0, mod:0, fat:0, rec:0 };
+  doMes.forEach(function(p){
+    var u = ecUnidades(p);
+    t.el += u.el; t.prot += u.prot; t.placa += u.placa; t.mod += u.mod;
+    t.fat += ecNum(p.valor); if (p.pago) t.rec += ecNum(p.valor);
+  });
+  var mesAnt = ecAnaMeses(2)[0];
+  var fatAnt = fin.filter(function(p){ return ecMesDeTs(p.finalizado_at) === mesAnt; }).reduce(function(s,p){ return s + ecNum(p.valor); }, 0);
+  var delta = fatAnt ? Math.round((t.fat - fatAnt) / fatAnt * 100) : null;
+  var deltaTxt = delta === null ? 'sem base no mês anterior'
+    : (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(delta) + '% vs ' + ecAnaMesLongo(mesAnt).toLowerCase();
+  document.getElementById('ec-ana-kpis').innerHTML =
+    ecKpiHtml('Elementos', t.el, doMes.length + ' pedido(s) finalizado(s)') +
+    ecKpiHtml('Protocolos', t.prot, 'arcada(s) · ' + fmt(t.prot * EC_PRECOS.protocolo)) +
+    ecKpiHtml('Placas de bruxismo', t.placa, 'arcada(s)') +
+    ecKpiHtml('Modelos', t.mod, 'superior + inferior') +
+    ecKpiHtml('Faturado', fmt(t.fat), deltaTxt, 'ok') +
+    ecKpiHtml('Recebido', fmt(t.rec), t.fat ? Math.round(t.rec / t.fat * 100) + '% do faturado' : '—', 'ok') +
+    ecKpiHtml('A receber', fmt(t.fat - t.rec), 'dos finalizados no mês', (t.fat - t.rec) ? 'wr' : '') +
+    ecKpiHtml('Ticket médio', doMes.length ? fmt(t.fat / doMes.length) : '—', 'por pedido');
+
+  // Faturamento por mês: recebido + a receber
+  var sFat = [{ nome:'Recebido', cor:'s1', fmt:fmt }, { nome:'A receber', cor:'s2', fmt:fmt }];
+  ecAnaLegenda('ec-ana-leg-fat', sFat);
+  var dFat = {}; meses.forEach(function(k){ dFat[k] = [porMes[k].rec, porMes[k].abr]; });
+  ecAnaColunas('ec-ana-fat', meses, sFat, dFat, { eixo: ecFmtCurto, topo: ecFmtCurto, tip: fmt });
+  ecAnaTabela('ec-ana-fat-tab', ['Mês', 'Pedidos', 'Recebido', 'A receber', 'Faturado'],
+    meses.slice().reverse().map(function(k){ var a = porMes[k]; return [ecAnaMesLongo(k), a.ped, fmt(a.rec), fmt(a.abr), fmt(a.rec + a.abr)]; }));
+
+  // Produção por mês
+  var un = function(v){ return v + (v === 1 ? ' unid.' : ' unid.'); };
+  var sProd = [{ nome:'Elementos', cor:'s1', fmt:un }, { nome:'Protocolo (arcadas)', cor:'s2', fmt:un },
+               { nome:'Placa (arcadas)', cor:'s3', fmt:un }, { nome:'Modelos', cor:'s4', fmt:un }];
+  ecAnaLegenda('ec-ana-leg-prod', sProd);
+  var dProd = {}; meses.forEach(function(k){ var a = porMes[k]; dProd[k] = [a.el, a.prot, a.placa, a.mod]; });
+  var inteiro = function(v){ return String(Math.round(v)); };
+  ecAnaColunas('ec-ana-prod', meses, sProd, dProd, { eixo: inteiro, topo: inteiro, tip: un });
+  ecAnaTabela('ec-ana-prod-tab', ['Mês', 'Elementos', 'Protocolo', 'Placa', 'Modelos', 'Pedidos'],
+    meses.slice().reverse().map(function(k){ var a = porMes[k]; return [ecAnaMesLongo(k), a.el, a.prot, a.placa, a.mod, a.ped]; }));
+
+  // Por cliente e por tipo, no mês selecionado
+  var mesNome = ecAnaMesLongo(ecMesSel);
+  document.getElementById('ec-ana-cli-sub').textContent = mesNome + ' · finalizados';
+  document.getElementById('ec-ana-tipo-sub').textContent = mesNome + ' · unidades produzidas';
+  var porCli = {}, porTipo = {};
+  doMes.forEach(function(p){
+    var c = porCli[p.cliente_id] = porCli[p.cliente_id] || { v:0, rec:0, ped:0 };
+    c.v += ecNum(p.valor); c.ped++; if (p.pago) c.rec += ecNum(p.valor);
+    var u = ecUnidades(p);
+    var tipo = u.prot ? 'Protocolo' : u.placa ? 'Placa de bruxismo' : (p.tipo_trabalho || 'Sem tipo');
+    var tt = porTipo[tipo] = porTipo[tipo] || { v:0, ped:0, val:0 };
+    tt.v += u.el + u.prot + u.placa; tt.ped++; tt.val += ecNum(p.valor);
+    if (u.mod) { var tm = porTipo['Modelo'] = porTipo['Modelo'] || { v:0, ped:0, val:0 }; tm.v += u.mod; }
+  });
+  var itCli = Object.keys(porCli).map(function(id){
+    var c = porCli[id];
+    return { nome: ecCliNome(id), v: c.v, tip: '<div class="r"><span>Pedidos</span><b>' + c.ped + '</b></div><div class="r"><span>Recebido</span><b>' + fmt(c.rec) + '</b></div><div class="r"><span>A receber</span><b>' + fmt(c.v - c.rec) + '</b></div>' };
+  }).sort(function(a,b){ return b.v - a.v; });
+  ecAnaBarras('ec-ana-cli', itCli, ecFmtCurto, 'Nenhum pedido finalizado em ' + mesNome.toLowerCase() + '.');
+  var itTipo = Object.keys(porTipo).map(function(k){
+    var x = porTipo[k];
+    return { nome: k, v: x.v, tip: '<div class="r"><span>Unidades</span><b>' + x.v + '</b></div>' + (x.ped ? '<div class="r"><span>Pedidos</span><b>' + x.ped + '</b></div><div class="r"><span>Valor</span><b>' + fmt(x.val) + '</b></div>' : '') };
+  }).sort(function(a,b){ return b.v - a.v; });
+  ecAnaBarras('ec-ana-tipo', itTipo, function(v){ return v + ' unid.'; }, 'Nenhum pedido finalizado em ' + mesNome.toLowerCase() + '.');
+}
+
+// Tooltip único: segue o mouse sobre qualquer área com data-tip
+(function(){
+  var tip = null;
+  document.addEventListener('mousemove', function(e){
+    tip = tip || document.getElementById('ec-ana-tip');
+    if (!tip) return;
+    var alvo = e.target.closest && e.target.closest('#ec-panel-analise [data-tip]');
+    if (!alvo) { tip.hidden = true; return; }
+    tip.innerHTML = alvo.getAttribute('data-tip');
+    tip.hidden = false;
+    var w = tip.offsetWidth, h = tip.offsetHeight;
+    var x = e.clientX + 14, y = e.clientY + 14;
+    if (x + w > window.innerWidth - 8) x = e.clientX - w - 14;
+    if (y + h > window.innerHeight - 8) y = e.clientY - h - 14;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  });
+  var to;
+  window.addEventListener('resize', function(){ clearTimeout(to); to = setTimeout(ecRenderAnalise, 150); });
+})();
 
 // ── Modais ────────────────────────────────────────────────────
 function ecClose(id) { document.getElementById(id).hidden = true; }
