@@ -890,31 +890,43 @@ function ecOpenPagamento(id) {
   document.getElementById('ec-pg-ov').hidden = false;
 }
 
-// Lista os pedidos finalizados do cliente: não pagos (marcáveis) primeiro; os já pagos
-// por outro pagamento/manual aparecem apagados e travados
+// Lista os pedidos finalizados do cliente: em aberto (marcáveis) primeiro; depois os
+// marcados como pago à mão no pedido (também marcáveis, pra registrar o pagamento deles);
+// só ficam travados os que já pertencem a OUTRO pagamento
 function ecPgRenderPedidos() {
   var cli = document.getElementById('ec-g-cliente').value;
   var box = document.getElementById('ec-g-pedidos');
   if (!cli) { box.innerHTML = '<div class="ec-empty">Escolha o cliente para ver os pedidos finalizados.</div>'; ecPgAtualizaTotal(); return; }
   ecPgSel = ecPgSel.filter(function(id){ var p = ecPedidos.find(function(x){ return x.id === id; }); return !p || p.cliente_id === cli; });
+  var emOutro = {};
+  ecPagamentos.forEach(function(g){
+    if (g.id === ecEditPgId) return;
+    (g.pedido_ids || []).forEach(function(id){ emOutro[id] = g; });
+  });
   var fin = ecPedidos.filter(function(p){ return p.cliente_id === cli && p.status === 'finalizado'; });
-  var livres = fin.filter(function(p){ return !p.pago || ecPgSel.indexOf(p.id) >= 0; });
-  var pagos  = fin.filter(function(p){ return p.pago && ecPgSel.indexOf(p.id) < 0; });
-  livres.sort(function(a,b){ return String(a.finalizado_at).localeCompare(String(b.finalizado_at)); });
-  pagos.sort(function(a,b){ return String(b.finalizado_at).localeCompare(String(a.finalizado_at)); });
-  function item(p, travado) {
+  var abertos = fin.filter(function(p){ return (!p.pago || ecPgSel.indexOf(p.id) >= 0) && !emOutro[p.id]; });
+  var manuais = fin.filter(function(p){ return p.pago && ecPgSel.indexOf(p.id) < 0 && !emOutro[p.id]; });
+  var travados = fin.filter(function(p){ return emOutro[p.id]; });
+  abertos.sort(function(a,b){ return String(a.finalizado_at).localeCompare(String(b.finalizado_at)); });
+  manuais.sort(function(a,b){ return String(b.finalizado_at).localeCompare(String(a.finalizado_at)); });
+  travados.sort(function(a,b){ return String(b.finalizado_at).localeCompare(String(a.finalizado_at)); });
+  function item(p, modo) {
     var on = ecPgSel.indexOf(p.id) >= 0;
+    var travado = modo === 'travado';
     var sub = [p.tipo_trabalho, p.qtd_elementos ? p.qtd_elementos + ' elem.' : '', p.finalizado_at ? 'finalizado ' + fmtDate(ecDataLocal(p.finalizado_at)) : '']
       .filter(Boolean).map(escHtml).join(' · ');
+    var nota = travado ? ' · já em outro pagamento' + (emOutro[p.id].data_pagamento ? ' (' + fmtDate(emOutro[p.id].data_pagamento) + ')' : '')
+      : modo === 'manual' ? ' · marcado como pago no pedido' + (p.pago_em ? ' em ' + fmtDate(p.pago_em) : '') : '';
     return '<label class="ec-pg-item'+(travado?' pago':'')+'">' +
       '<input type="checkbox"'+(on?' checked':'')+(travado?' disabled':'')+' onchange="ecPgToggle(\''+p.id+'\', this.checked)">' +
       '<span class="info"><b>'+escHtml(p.paciente || 'Sem paciente')+'</b> <span class="sub">#'+String(p.numero).padStart(4,'0')+'</span>' +
-      '<div class="sub">'+sub+(travado ? ' · já pago' + (p.pago_em ? ' em ' + fmtDate(p.pago_em) : '') : '')+'</div></span>' +
+      '<div class="sub">'+sub+nota+'</div></span>' +
       '<span class="v">'+fmt(p.valor)+'</span></label>';
   }
-  var html = livres.map(function(p){ return item(p, false); }).join('');
-  if (!livres.length) html = '<div class="ec-empty">Nenhum pedido finalizado em aberto para este cliente.</div>';
-  html += pagos.map(function(p){ return item(p, true); }).join('');
+  var html = abertos.map(function(p){ return item(p, 'aberto'); }).join('');
+  if (!abertos.length) html = '<div class="ec-empty">Nenhum pedido finalizado em aberto para este cliente.</div>';
+  html += manuais.map(function(p){ return item(p, 'manual'); }).join('');
+  html += travados.map(function(p){ return item(p, 'travado'); }).join('');
   box.innerHTML = html;
   ecPgAtualizaTotal();
 }
