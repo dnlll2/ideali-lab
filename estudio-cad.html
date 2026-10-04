@@ -1217,24 +1217,28 @@ async function ecOpPdf() {
   if (y + 58 > 285) { doc.addPage(); y = 20; }
   doc.setFont('courier','normal'); doc.setFontSize(7.5);
   var code = doc.splitTextToSize(ecOpPixAtual, W - 58);
-  var boxH = Math.max(52, 51 + code.length * 3.2);
+  var boxH = Math.max(52, 60 + code.length * 3.2);
   doc.setDrawColor(190,190,190); doc.setLineWidth(0.3); doc.roundedRect(M, y, W, boxH, 3, 3);
   if (qrImg) doc.addImage(qrImg, 'PNG', M + 5, y + 5, 42, 42);
   var tx = M + 53, ty = y + 9;
   doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(17,17,17);
   doc.text('Pague com PIX', tx, ty);
+  // Chave em destaque (verde, grande) pra quem prefere digitar a chave no banco
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor.apply(doc, cinza);
+  doc.text(cfg.chave.indexOf('@') >= 0 ? 'Chave PIX (e-mail):' : 'Chave PIX:', tx, ty + 6);
+  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(22,163,74);
+  doc.text(cfg.chave, tx, ty + 12.5);
   doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(60,60,60);
-  doc.text('Chave: ' + cfg.chave, tx, ty + 6);
-  doc.text('Recebedor: ' + cfg.nome, tx, ty + 11);
-  doc.text('Valor: ' + fmt(total), tx, ty + 16);
+  doc.text('Recebedor: ' + cfg.nome, tx, ty + 19);
+  doc.text('Valor: ' + fmt(total), tx, ty + 24);
   doc.setFontSize(8); doc.setTextColor.apply(doc, cinza);
-  doc.text('PIX copia e cola:', tx, ty + 22);
+  doc.text('PIX copia e cola:', tx, ty + 30.5);
   doc.setFont('courier','normal'); doc.setFontSize(7.5); doc.setTextColor(40,40,40);
-  doc.text(code, tx, ty + 26);
+  doc.text(code, tx, ty + 34.5);
 
   // Botão "Copiar código PIX": PDF não copia sozinho, então é um link pra pix.html, que copia com um toque
   var linkPix = new URL('pix.html', location.href).href + '?c=' + encodeURIComponent(ecOpPixAtual);
-  var by = ty + 26 + code.length * 3.2 + 1, bw = 52, bh = 9;
+  var by = ty + 34.5 + code.length * 3.2 + 1, bw = 52, bh = 9;
   doc.setFillColor(22,163,74); doc.roundedRect(tx, by, bw, bh, 2, 2, 'F');
   doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(255,255,255);
   doc.text('Copiar código PIX', tx + bw / 2, by + 6, { align:'center' });
