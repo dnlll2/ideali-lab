@@ -424,6 +424,13 @@ async function loadAndRender() {
   hideBanner();
 
   try {
+    // Lista acima e' fallback; clientes novos (reg 43+) so existem no banco
+    var cliRes = await sb.from('cadastro_clientes').select('reg,nome,cidade,uf');
+    (cliRes.data || []).forEach(function(row) {
+      var obj = {reg:row.reg, nome:row.nome||'', cidade:row.cidade||'', uf:row.uf||''};
+      var idx = clients.findIndex(function(c){ return c.reg === row.reg; });
+      if (idx >= 0) clients[idx] = obj; else clients.push(obj);
+    });
     var folder = viewYear + '_' + viewMonth;
     var [dbRes, storRes] = await Promise.all([
       sb.from('controle_mensal').select('*').eq('mes', viewMonth).eq('ano', viewYear),

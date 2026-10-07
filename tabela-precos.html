@@ -146,7 +146,7 @@ async function init() {
   }
 }
 
-initShell().then(function() { if (typeof init === 'function') init(); });
+initShell().then(function() { return clientesDbPronto; }).then(function() { if (typeof init === 'function') init(); });
 </script>
 
 </body>
