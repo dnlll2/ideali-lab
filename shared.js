@@ -56,6 +56,29 @@ var clients = [
   {reg:42,nome:"Dr. Eduardo de Mello Caprio",cpf:"CNPJ: 35.977.659/0001-87",cro:"CROSP 83222",end:"Rua Arizona, 1422 - Conjunto 81",              bairro:"Brooklin",           cidade:"Sao Paulo",           uf:"SP", cep:"04567-003", tel:"",                  obs:"Odontocaprio"}
 ];
 
+// ── Clientes do banco ─────────────────────────────────────────
+// A lista acima e' so o fallback offline. cadastro_clientes e' a fonte de
+// verdade: clientes novos (reg 43+) so existem la'. Toda pagina espera
+// clientesDbPronto antes do init() (ver linha initShell().then(...)).
+async function carregarClientesDb() {
+  try {
+    var res = await sb.from('cadastro_clientes').select('*');
+    if (res.error) throw res.error;
+    (res.data||[]).forEach(function(row) {
+      var idx = -1;
+      for (var i=0;i<clients.length;i++){if(clients[i].reg===row.reg){idx=i;break;}}
+      var obj={reg:row.reg,nome:row.nome||'',cpf:row.cpf||'',cro:row.cro||'',
+        end:row.end_str||'',bairro:row.bairro||'',cidade:row.cidade||'',
+        uf:row.uf||'',cep:row.cep||'',tel:row.tel||'',email:row.email||'',
+        obs:row.obs||'',status:row.status||'ativo'};
+      if (row.regra_padrao) obj.regraPadrao = row.regra_padrao;
+      if(idx>=0)clients[idx]=obj; else clients.push(obj);
+    });
+    clients.sort(function(a,b){return a.nome.localeCompare(b.nome,'pt-BR');});
+  } catch(e) { console.warn('[carregarClientesDb]', e); }
+}
+var clientesDbPronto = carregarClientesDb();
+
 // ── Estado global ─────────────────────────────────────────────
 var now = new Date();
 var currentMonth = now.getMonth();
