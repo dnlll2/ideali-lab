@@ -254,7 +254,24 @@ async function saveClientePanel() {
   }
 }
 
-function init() {
+async function loadCadastroClientes() {
+  try {
+    var res = await sb.from('cadastro_clientes').select('*');
+    if (res.error) throw res.error;
+    (res.data||[]).forEach(function(row) {
+      var idx = -1;
+      for (var i=0;i<clients.length;i++){if(clients[i].reg===row.reg){idx=i;break;}}
+      var obj={reg:row.reg,nome:row.nome||'',cpf:row.cpf||'',cro:row.cro||'',
+        end:row.end_str||'',bairro:row.bairro||'',cidade:row.cidade||'',
+        uf:row.uf||'',cep:row.cep||'',tel:row.tel||'',email:row.email||'',
+        obs:row.obs||'',status:row.status||'ativo'};
+      if(idx>=0)clients[idx]=obj; else clients.push(obj);
+    });
+  } catch(e) { console.warn('[loadCadastroClientes]', e); }
+}
+
+async function init() {
+  await loadCadastroClientes();
   renderCadastroTable();
   hideLoading();
 }
