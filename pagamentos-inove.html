@@ -351,7 +351,6 @@ table .hist-extrato-row td a,table .hist-extrato-row td a.comp-link.extrato-link
           <th>Cliente</th>
           <th>Valor do mês</th>
           <th>Valor pago</th>
-          <th title="Ficou faltando pagar no mês anterior — só aviso, não afeta este mês">Saldo devedor (mês ant.)</th>
           <th>Restante</th>
           <th>Status</th>
           <th>Comprovantes</th>
@@ -727,16 +726,6 @@ function saldoAnteriorDe(reg) {
   if (!p) return null;
   var diff = p.valor_pago - p.valor_mes;
   return Math.abs(diff) < 0.005 ? null : diff;
-}
-
-// Coluna de saldo devedor do mes anterior -- so aviso, nao muda o Restante.
-// (O sistema de saldo credor/abatimento foi removido: Restante = faturado - pago.)
-function saldoAnteriorCells(reg) {
-  var diff = saldoAnteriorDe(reg);
-  if (diff !== null && diff < 0) {
-    return '<td><span class="status-badge status-nada">'+fmt(Math.abs(diff))+'</span></td>';
-  }
-  return '<td><span class="no-comp">—</span></td>';
 }
 
 async function loadMonthData() {
@@ -1530,7 +1519,7 @@ function renderTable() {
   if (!rows.length) {
     var emptyMsg = buscaCliente ? 'Nenhum cliente com esse nome neste mês.'
       : statusFilter === 'todos' ? 'Nenhum lançamento neste mês.' : 'Nenhum cliente com esse status neste mês.';
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#4a5568;padding:2rem">'+emptyMsg+'</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#4a5568;padding:2rem">'+emptyMsg+'</td></tr>';
   } else {
     tbody.innerHTML = rows.map(function(r) {
       var vm = Number(r.s.valor_mes||0), vp = Number(r.s.valor_pago||0);
@@ -1562,7 +1551,6 @@ function renderTable() {
         '<td><p class="client-name">'+nomeClienteBuscaHtml(r.c.nome)+'</p>'+novoBadgeHtml+'</td>' +
         '<td class="'+(vm>0?'valor-mes':'valor-zero')+'">'+fmt(vm)+'</td>' +
         '<td class="'+(vp>0?'valor-pago':'valor-zero')+'">'+fmt(vp)+'</td>' +
-        saldoAnteriorCells(r.c.reg) +
         '<td style="color:'+(rest>0?'#ef4444':'#4a5568')+'">'+fmt(rest)+'</td>' +
         '<td><span class="status-badge '+st.cls+'">'+st.lbl+'</span></td>' +
         '<td>'+compsHtml+'</td>' +
