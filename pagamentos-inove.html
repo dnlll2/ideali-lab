@@ -7,15 +7,10 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="shared.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
-<script>
-// Página pública (sem senha) — pula a autenticação de shared.js antes dela rodar.
-// Flag local à página (não grava em sessionStorage) pra não vazar acesso pras
-// outras páginas do sistema caso alguém navegue pra elas na mesma aba.
-window.IDEALI_SKIP_AUTH = true;
-</script>
 <script src="shared.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -558,34 +553,11 @@ table .hist-extrato-row td a,table .hist-extrato-row td a.comp-link.extrato-link
 </div>
 
 <script>
-// Seed minimo de clients (reg+nome), usado só como fallback enquanto
-// loadCadastroClientes() (abaixo) não carrega — ela busca a lista real e
-// completa direto da tabela cadastro_clientes, então clientes novos aparecem
-// aqui automaticamente, sem precisar editar este array à mão.
-var clients = [
-  {reg:20,nome:"[REMOVIDO]"},{reg:23,nome:"[REMOVIDO]"},
-  {reg:3,nome:"[REMOVIDO]"},{reg:7,nome:"[REMOVIDO]"},
-  {reg:10,nome:"[REMOVIDO]"},{reg:9,nome:"[REMOVIDO]"},
-  {reg:4,nome:"[REMOVIDO]"},{reg:11,nome:"[REMOVIDO]"},
-  {reg:8,nome:"[REMOVIDO]"},{reg:22,nome:"[REMOVIDO]"},
-  {reg:18,nome:"[REMOVIDO]"},{reg:5,nome:"[REMOVIDO]"},
-  {reg:24,nome:"[REMOVIDO]"},{reg:15,nome:"[REMOVIDO]"},
-  {reg:21,nome:"[REMOVIDO]"},{reg:2,nome:"[REMOVIDO]"},
-  {reg:16,nome:"[REMOVIDO]"},{reg:12,nome:"[REMOVIDO]"},
-  {reg:19,nome:"[REMOVIDO]"},{reg:6,nome:"[REMOVIDO]"},
-  {reg:1,nome:"[REMOVIDO]"},{reg:13,nome:"[REMOVIDO]"},
-  {reg:17,nome:"[REMOVIDO]"},{reg:25,nome:"[REMOVIDO]"},
-  {reg:26,nome:"[REMOVIDO]"},{reg:27,nome:"[REMOVIDO]"},
-  {reg:28,nome:"[REMOVIDO]"},{reg:29,nome:"[REMOVIDO]"},
-  {reg:30,nome:"[REMOVIDO]"},{reg:31,nome:"[REMOVIDO]"},
-  {reg:32,nome:"[REMOVIDO]"},{reg:33,nome:"[REMOVIDO]"},
-  {reg:34,nome:"[REMOVIDO]"},{reg:35,nome:"[REMOVIDO]"},
-  {reg:36,nome:"[REMOVIDO]"},{reg:37,nome:"[REMOVIDO]"}
-];
+// Lista vem do banco em loadCadastroClientes() (abaixo).
+var clients = [];
 
 var SUPABASE_URL = 'https://alqhhgysvehtgkwsxeok.supabase.co';
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFscWhoZ3lzdmVodGdrd3N4ZW9rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDE0ODg2NSwiZXhwIjoyMDk1NzI0ODY1fQ.xogvgvFob-7Ir6hSLkz0pOj3GawRPRbwfz9oGuGQ90E';
-var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var sb = idealiClient();
 
 var MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 var now = new Date();
@@ -733,6 +705,7 @@ async function loadMonthData() {
   var dbRes = await sb.from('controle_mensal').select('*').eq('mes', viewMonth).eq('ano', viewYear);
   var storRes = await sb.storage.from('comprovantes').list(folder);
   var aportesRes = await sb.from('pagamento_aportes').select('*').eq('mes', viewMonth).eq('ano', viewYear).order('data_pagamento');
+  if (aportesRes.data) await idealiAssinarUrls(aportesRes.data, 'comprovante_url', 'comprovantes');
   var compMap = {};
   if (!storRes.error && storRes.data) {
     var compFiles = storRes.data.filter(function(f){ return f.name.match(/^reg(\d+)_/); });
@@ -1914,7 +1887,8 @@ async function loadCadastroClientes() {
   try {
     // end_str/bairro/cidade/uf entram aqui pro endereco do cabecalho do "Gerar Extrato" --
     // ver baixarExtratoPDF() mais abaixo.
-    var res = await sb.from('cadastro_clientes').select('reg,nome,end_str,bairro,cidade,uf');
+    // só nome e endereço (sem CPF/telefone), liberado pra Inove
+    var res = await sb.rpc('inove_listar_clientes');
     if (res.error) { console.error('loadCadastroClientes:', res.error); return; }
     (res.data || []).forEach(function(row) {
       var idx = -1;

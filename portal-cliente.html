@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portal do Cliente — Ideali Laboratório</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="portal-arquivos.js"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:#0f1117;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
@@ -944,17 +945,10 @@ function handleStlFile(e) {
   el.textContent = stlFiles.length === 1 ? '📎 ' + stlFiles[0].name : '📎 ' + stlFiles.length + ' arquivos selecionados';
 }
 
-// Envia o STL direto pro Storage usando o JWT temporario (role anon +
-// claim cliente_reg) gerado por gerar_jwt_upload -- nao usa o cliente
-// `sb` normal porque esse JWT e por-upload, nao a sessao do app.
+// Envia o STL pro Storage com link assinado de envio, gerado pela Edge
+// Function portal-arquivos depois de conferir a sessao (portal-arquivos.js).
 async function enviarStl(sessaoToken, clienteReg, casoId, file) {
-  var jwtRes = await sb.rpc('gerar_jwt_upload', { p_sessao: sessaoToken });
-  if (jwtRes.error) throw jwtRes.error;
-  var jwt = jwtRes.data;
-
-  var uploadClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: 'Bearer ' + jwt } }
-  });
+  var uploadClient = portalArquivos('cliente', sessaoToken);
 
   var nomeSeguro = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
   var path = clienteReg + '/' + casoId + '/escaneamento-' + nomeSeguro;
@@ -1227,12 +1221,7 @@ async function carregarAnexosExistentes(casoId) {
     var sessao = raw ? JSON.parse(raw) : null;
     if (!sessao || !sessao.token) throw new Error('Sessão expirada.');
 
-    var jwtRes = await sb.rpc('gerar_jwt_upload', { p_sessao: sessao.token });
-    if (jwtRes.error) throw jwtRes.error;
-
-    var listClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: 'Bearer ' + jwtRes.data } }
-    });
+    var listClient = portalArquivos('cliente', sessao.token);
     var pasta = sessao.cliente_reg + '/' + casoId;
     var listRes = await listClient.storage.from('casos').list(pasta);
     if (listRes.error) throw listRes.error;
