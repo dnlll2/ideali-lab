@@ -37,6 +37,18 @@ function idealiPapel() {
   return (s && s.user && s.user.app_metadata && s.user.app_metadata.papel) || '';
 }
 
+// "Lembrar meu e-mail": guarda SÓ o e-mail neste aparelho (nunca a senha)
+var EMAIL_LEMBRADO_KEY = 'ideali-email-lembrado';
+function idealiEmailLembrado() {
+  try { return localStorage.getItem(EMAIL_LEMBRADO_KEY) || ''; } catch (e) { return ''; }
+}
+function idealiLembrarEmail(email) {
+  try {
+    if (email) localStorage.setItem(EMAIL_LEMBRADO_KEY, email);
+    else localStorage.removeItem(EMAIL_LEMBRADO_KEY);
+  } catch (e) {}
+}
+
 function idealiPaginaAtual() {
   var p = location.pathname.split('/').pop();
   return p || 'index.html';
@@ -62,6 +74,8 @@ async function idealiSair() {
     '#auth-overlay .lnk{background:none;height:auto;margin-top:14px;color:#94a3b8;font-weight:400;font-size:12.5px;text-decoration:underline}' +
     '#auth-overlay .err{font-size:12.5px;color:#f87171;margin-bottom:10px;min-height:16px}' +
     '#auth-overlay .ok{color:#4ade80}' +
+    '#auth-overlay .lembrar{display:flex;align-items:center;gap:8px;text-align:left;font-size:13px;color:#cbd5e1;margin:2px 0 12px;cursor:pointer;user-select:none}' +
+    '#auth-overlay .lembrar input{width:18px;height:18px;margin:0;padding:0;flex-shrink:0;accent-color:#1d4ed8;cursor:pointer}' +
     'body>*:not(#auth-overlay){display:none!important}';
 
   if (sessao) {
@@ -92,8 +106,9 @@ async function idealiSair() {
       '<p style="font-size:18px;font-weight:600;color:#f1f5f9;margin:0 0 4px">Ideali Laboratório</p>' +
       '<p style="font-size:13px;color:#64748b;margin:0 0 22px">Entre com seu e-mail e senha</p>' +
       '<form id="auth-form" autocomplete="on">' +
-        '<input id="auth-email" type="email" placeholder="E-mail" autocomplete="username" required>' +
-        '<input id="auth-senha" type="password" placeholder="Senha" autocomplete="current-password" required>' +
+        '<input id="auth-email" name="email" type="email" placeholder="E-mail" autocomplete="username" required>' +
+        '<input id="auth-senha" name="password" type="password" placeholder="Senha" autocomplete="current-password" required>' +
+        '<label class="lembrar"><input id="auth-lembrar" type="checkbox" checked> Lembrar meu e-mail e senha neste aparelho</label>' +
         '<p class="err" id="auth-err"></p>' +
         '<button id="auth-btn" type="submit">Entrar</button>' +
       '</form>' +
@@ -101,21 +116,36 @@ async function idealiSair() {
     var form = box.querySelector('#auth-form');
     var err = box.querySelector('#auth-err');
     var btn = box.querySelector('#auth-btn');
-    box.querySelector('#auth-email').focus();
+    var campoEmail = box.querySelector('#auth-email');
+    var campoSenha = box.querySelector('#auth-senha');
+    var lembrar = box.querySelector('#auth-lembrar');
+
+    // Só o e-mail fica guardado no aparelho; a senha quem guarda é o gerenciador de senhas do navegador
+    var emailSalvo = idealiEmailLembrado();
+    if (emailSalvo) { campoEmail.value = emailSalvo; campoSenha.focus(); }
+    else campoEmail.focus();
 
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
       err.className = 'err'; err.textContent = '';
       btn.disabled = true; btn.textContent = 'Entrando...';
-      var r = await idealiClient().auth.signInWithPassword({
-        email: box.querySelector('#auth-email').value.trim(),
-        password: box.querySelector('#auth-senha').value
-      });
+      var email = campoEmail.value.trim(), senha = campoSenha.value;
+      var r = await idealiClient().auth.signInWithPassword({ email: email, password: senha });
       if (r.error) {
         btn.disabled = false; btn.textContent = 'Entrar';
         err.textContent = 'E-mail ou senha incorretos.';
         return;
       }
+      if (lembrar.checked) {
+        idealiLembrarEmail(email);
+        // Pede ao navegador para oferecer "Salvar senha?" (Chrome/Edge/Android; nos outros o próprio formulário já basta)
+        if (window.PasswordCredential && navigator.credentials && navigator.credentials.store) {
+          try { await navigator.credentials.store(new PasswordCredential({ id: email, password: senha })); } catch (x) {}
+        }
+      } else {
+        idealiLembrarEmail(null);
+      }
+      senha = null; campoSenha.value = '';
       // Verificação em duas etapas, se a conta tiver
       var aal = await idealiClient().auth.mfa.getAuthenticatorAssuranceLevel();
       if (aal.data && aal.data.nextLevel === 'aal2' && aal.data.currentLevel !== 'aal2') {
