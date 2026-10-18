@@ -59,11 +59,11 @@ function idealiPaginaAtual() {
 var IDEALI_PAGINA_ROTA = {
   'home.html': 'mais/painel', 'pedidos.html': 'producao/pedidos', 'ordens-cam.html': 'producao/cam',
   'cadastro.html': 'clientes/cadastro', 'convites.html': 'clientes/portal',
-  'contas-receber.html': 'financeiro/receber', 'pagamentos-inove.html': 'financeiro/inove',
+  'contas-receber.html': 'financeiro/receber', 'pagamentos-inove.html': 'inove/pagamentos',
   'cobranca.html': 'financeiro/cobranca', 'recibo.html': 'financeiro/recibos', 'gastos.html': 'financeiro/gastos',
   'relatorio.html': 'financeiro/relatorio', 'tarefas.html': 'mais/tarefas', 'orcamento.html': 'mais/orcamento',
   'relatorios.html': 'mais/relatorios', 'dashboard.html': 'mais/dashboard', 'resumo.html': 'mais/resumo',
-  'inove-3d.html': 'mais/inove-3d', 'inove.html': 'mais/inove', 'tabela-precos.html': 'config/precos'
+  'inove-3d.html': 'inove/3d', 'inove.html': 'inove/controle', 'tabela-precos.html': 'config/precos'
 };
 // Dentro do app (iframe): esconde o menu lateral antigo
 var IDEALI_EMBUTIDO = (function () { try { return window.self !== window.top; } catch (e) { return true; } })();

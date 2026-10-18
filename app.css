@@ -93,6 +93,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 .aba i{font-size:18px}
 .aba:hover{background:rgba(255,255,255,.16)}
 .aba.on{background:var(--vidro);color:var(--vidro-ink);text-shadow:none;border-color:var(--vidro-borda);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);box-shadow:0 4px 14px -6px rgba(0,0,0,.35)}
+.aba.destaque{background:#F5C518;color:#2B2100;text-shadow:none;border-color:rgba(255,255,255,.55);box-shadow:0 4px 14px -6px rgba(0,0,0,.4)}
+.aba.destaque:hover{background:#FFD43B}
+.aba.destaque.on{background:#FFD43B;color:#2B2100;box-shadow:0 0 0 2px #fff,0 6px 16px -6px rgba(0,0,0,.45)}
 .aba.extra{max-width:220px;padding-right:6px}
 .aba.extra a{display:flex;align-items:center;gap:7px;min-width:0;height:100%;text-decoration:none;color:inherit}
 .aba.extra span{overflow:hidden;text-overflow:ellipsis}
