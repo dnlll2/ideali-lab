@@ -1535,7 +1535,12 @@ async function init() {
   }
 }
 
-initShell().then(function() { return clientesDbPronto; }).then(function() { if (typeof init === 'function') init(); });
+initShell().then(function() { return clientesDbPronto; }).then(function() { if (typeof init === 'function') return init(); })
+  .then(function() {                                                       // aba "CAM #88" do app 2.0
+    var m = /[?&]abrir=([^&]+)/.exec(location.search); if (!m) return;
+    var o = ordensCam.find(function(x){ return String(x.id) === decodeURIComponent(m[1]); });
+    if (o) openEditCamOrdem(o.id);
+  });
 </script>
 </body>
 </html>

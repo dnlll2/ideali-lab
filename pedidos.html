@@ -657,7 +657,13 @@ async function init() {
   hideLoading();
 }
 
-initShell().then(function() { return clientesDbPronto; }).then(function() { if (typeof init === 'function') init(); });
+initShell().then(function() { return clientesDbPronto; }).then(function() { if (typeof init === 'function') return init(); })
+  .then(function() { if (/[?&]novo=1/.test(location.search)) openPedidoPanel(null); })    // "+ Novo pedido" do app 2.0
+  .then(function() {                                                                       // aba "Pedido #142" do app 2.0
+    var m = /[?&]abrir=([^&]+)/.exec(location.search); if (!m) return;
+    var p = pedidos.find(function(x){ return String(x.id) === decodeURIComponent(m[1]); });
+    if (p) openPedidoPanel(p.id);
+  });
 </script>
 </body>
 </html>

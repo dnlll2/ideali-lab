@@ -1,0 +1,9 @@
+[
+  { "id": "praia",      "nome": "Praia ao entardecer", "autor": "Griffin Wooldridge",      "fonte": "Pexels", "pexels_id": 20121486 },
+  { "id": "montanha",   "nome": "Montanha",            "autor": "eberhard grossgasteiger", "fonte": "Pexels", "pexels_id": 29609552 },
+  { "id": "entardecer", "nome": "Lago ao pôr do sol",  "autor": "Ahmet Yüksek",            "fonte": "Pexels", "pexels_id": 30672905 },
+  { "id": "lago",       "nome": "Lago com neblina",    "autor": "Courtney RA",             "fonte": "Pexels", "pexels_id": 28640149 },
+  { "id": "rosa",       "nome": "Montanhas rosadas",   "autor": "Ray Bilcliff",            "fonte": "Pexels", "pexels_id": 5748392 },
+  { "id": "floresta",   "nome": "Floresta",            "autor": "Melih Özmen",             "fonte": "Pexels", "pexels_id": 38440480 },
+  { "id": "ceu",        "nome": "Céu sobre a floresta","autor": "Matthias Groeneveld",     "fonte": "Pexels", "pexels_id": 16760020 }
+]
