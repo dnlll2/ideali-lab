@@ -20,11 +20,14 @@ var SECOES = {
                 ['portal', 'Portal e convites', 'convites.html']] },
   financeiro: { nome: 'Financeiro', icon: 'ti-wallet', abas: [
                 ['receber', 'A receber', 'contas-receber.html'],
-                ['inove', 'Pagamentos Inove', 'pagamentos-inove.html'],
                 ['cobranca', 'Cobrança e Pix', 'cobranca.html'],
                 ['recibos', 'Recibos', 'recibo.html'],
                 ['gastos', 'Gastos de entrega', 'gastos.html'],
                 ['relatorio', 'Relatório do mês', 'relatorio.html']] },
+  inove:      { nome: 'Inove',      icon: 'ti-building-factory-2', destaque: true, abas: [
+                ['pagamentos', 'Pagamentos Inove', 'pagamentos-inove.html'],
+                ['3d', 'Inove 3D', 'inove-3d.html'],
+                ['controle', 'Controle mensal', 'inove.html']] },
   mais:       { nome: 'Mais',       icon: 'ti-dots' }
 };
 // Telas que abrem a partir do "Mais" e das Configurações (viram abas extras)
@@ -248,8 +251,8 @@ function fecharAba(k) {
 
 function renderAbas(r) {
   var k = chaveRota(r);
-  var html = ['inicio', 'producao', 'clientes', 'financeiro'].map(function (s) {
-    return '<a class="aba' + (r.sec === s ? ' on' : '') + '" href="#/' + s + '"' + (r.sec === s ? ' aria-current="page"' : '') + '>' +
+  var html = ['inicio', 'producao', 'clientes', 'financeiro', 'inove'].map(function (s) {
+    return '<a class="aba' + (SECOES[s].destaque ? ' destaque' : '') + (r.sec === s ? ' on' : '') + '" href="#/' + s + '"' + (r.sec === s ? ' aria-current="page"' : '') + '>' +
       '<i class="ti ' + SECOES[s].icon + '"></i><span>' + SECOES[s].nome + '</span></a>';
   }).join('') +
     '<a class="aba so-icone' + (r.sec === 'mais' && !r.sub ? ' on' : '') + '" href="#/mais" title="Mais" aria-label="Mais"><i class="ti ti-dots"></i></a>';
@@ -268,7 +271,7 @@ function renderAbas(r) {
   if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   cada('#bnav a[data-sec]', function (a) {
     var sec = a.getAttribute('data-sec');
-    a.classList.toggle('on', r.sec === sec || (sec === 'mais' && (r.sec === 'clientes' || r.sec === 'config' || rotaEhExtra(r))));
+    a.classList.toggle('on', r.sec === sec || (sec === 'mais' && (r.sec === 'clientes' || r.sec === 'inove' || r.sec === 'config' || rotaEhExtra(r))));
   });
   cada('#lateral a[data-sec]', function (a) { a.classList.toggle('on', a.getAttribute('data-sec') === r.sec); });
 }
@@ -618,7 +621,7 @@ var COMANDOS = [
   ['Dentistas e clínicas', 'ti-users', '#/clientes/cadastro', 'clientes cadastro'],
   ['Portal e convites', 'ti-link', '#/clientes/portal', 'clientes acesso'],
   ['A receber', 'ti-cash', '#/financeiro/receber', 'financeiro devendo'],
-  ['Pagamentos Inove', 'ti-building-bank', '#/financeiro/inove', 'financeiro'],
+  ['Pagamentos Inove', 'ti-building-factory-2', '#/inove/pagamentos', 'financeiro inove'],
   ['Cobrança e Pix', 'ti-qrcode', '#/financeiro/cobranca', 'financeiro cobrar'],
   ['Recibos', 'ti-receipt', '#/financeiro/recibos', 'financeiro'],
   ['Gastos de entrega', 'ti-motorbike', '#/financeiro/gastos', 'financeiro motoboy'],
@@ -628,7 +631,8 @@ var COMANDOS = [
   ['Relatórios', 'ti-report', '#/mais/relatorios', 'pdf'],
   ['Painel completo', 'ti-chart-bar', '#/mais/painel', 'graficos'],
   ['Dashboard', 'ti-chart-pie', '#/mais/dashboard', ''],
-  ['Inove 3D', 'ti-cube', '#/mais/inove-3d', ''],
+  ['Inove 3D', 'ti-cube', '#/inove/3d', 'inove'],
+  ['Inove: controle mensal', 'ti-calendar-stats', '#/inove/controle', 'inove'],
   ['Configurações', 'ti-settings', '#/config', 'ajustes perfil'],
   ['Trocar o fundo', 'ti-photo', '#/config', 'aparencia tema foto paisagem'],
   ['Tabela de preços', 'ti-currency-real', '#/config/precos', 'valores'],
@@ -819,8 +823,9 @@ function renderMais() {
       card('#/mais/resumo', 'ti-list-details', 'Resumo', 'Resumo rápido de tarefas e pedidos Inove.') +
     '</div>' +
     '<p class="secao">Inove</p><div class="cards">' +
-      card('#/mais/inove-3d', 'ti-cube', 'Inove 3D', 'Pedidos da Inove por cliente.') +
-      card('#/mais/inove', 'ti-calendar-stats', 'Inove: controle mensal', 'Controle mês a mês da Inove 3D.') +
+      card('#/inove/pagamentos', 'ti-building-factory-2', 'Pagamentos Inove', 'Comissões e pagamentos da Inove.') +
+      card('#/inove/3d', 'ti-cube', 'Inove 3D', 'Pedidos da Inove por cliente.') +
+      card('#/inove/controle', 'ti-calendar-stats', 'Inove: controle mensal', 'Controle mês a mês da Inove 3D.') +
     '</div>' +
     '<p class="secao">Outros sistemas</p><div class="cards">' +
       card('estudio-cad.html" target="_blank" rel="noopener', 'ti-ruler-2', 'Estúdio CAD', 'Desenhos CAD avulsos. Abre em outra aba.') +
