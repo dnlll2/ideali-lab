@@ -240,6 +240,25 @@ var THEMES = {
     hover:'rgba(140,170,182,0.14)', active:'rgba(140,170,182,0.22)', border:'rgba(255,255,255,0.10)',
     text:'#eae7f2', muted:'#a29db3', dim:'#726c85', bodyText:'#eae7f2',
     accent:'#7fb0bb', accent2:'#b7a3dc', success:'#8fc79a', warn:'#e0b96a', danger:'#e2917f'
+  },
+  // App 2.0 (index.html, Ideali Lab): a tela fica dentro de uma janela de vidro, com a foto
+  // de fundo aparecendo por trás. "solido" = correções de legibilidade dos temas Vidro, sem
+  // desfoque próprio (quem desfoca é a janela do app). "lab" = fundo transparente + painéis opacos.
+  ideali: {
+    name:'Ideali Lab', swatch:'linear-gradient(135deg,#EAF4F4,#0B7A80)', glass:true, solido:true, lab:true,
+    customFont:'Manrope', customFontHref:'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap',
+    bg:'transparent', fallbackBg:'#EAF2F2', sbg:'rgba(255,255,255,0.86)', card:'rgba(255,255,255,0.80)', sec:'rgba(240,247,248,0.88)', panel:'rgba(255,255,255,0.97)',
+    hover:'rgba(11,122,128,0.08)', active:'rgba(11,122,128,0.14)', border:'rgba(15,34,38,0.12)',
+    text:'#0F2226', muted:'#4A6064', dim:'#5E7478', bodyText:'#0F2226',
+    accent:'#0B7A80', accentInk:'#FFFFFF', accent2:'#2F6FB0', success:'#1E7F55', warn:'#9A6514', danger:'#C2362E'
+  },
+  'ideali-escuro': {
+    name:'Ideali Lab Escuro', swatch:'linear-gradient(135deg,#0E1A1D,#4FD1C5)', glass:true, solido:true, lab:true, escuro:true,
+    customFont:'Manrope', customFontHref:'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap',
+    bg:'transparent', fallbackBg:'#0E1A1D', sbg:'rgba(12,22,26,0.90)', card:'rgba(14,26,30,0.74)', sec:'rgba(22,36,40,0.80)', panel:'rgba(14,24,28,0.97)',
+    hover:'rgba(79,209,197,0.10)', active:'rgba(79,209,197,0.18)', border:'rgba(255,255,255,0.10)',
+    text:'#E7F2F3', muted:'#A3B8BB', dim:'#86A0A3', bodyText:'#E7F2F3',
+    accent:'#4FD1C5', accentInk:'#06201F', accent2:'#7FB2FF', success:'#5BD69B', warn:'#E8B04A', danger:'#FF7A70'
   }
 };
 
@@ -336,7 +355,8 @@ function applyTheme(name) {
       '.card,#sidebar,.dash-card,.hm-card,.hm-section,.counter-card,.task-item,.fin-card,.tab-tarefa,#month-dd-list,.mob-back,.hamburger,.sb-close,.sb-icon,input,select,'+
       '.cam-col,.cam-card,.cam-report,.cam-report-stat,.cam-pend-card,.cam-scan-box,#cam-panel,#cam-arq-panel,#cam-client-panel,#cadista-dropdown,#cadista-real-dropdown,#obs-dropdown,#qtd-dropdown,'+
       '.modal,.sum-card,.table-wrap,.pend-card,.rank-card,.pont-col{',
-      '  -webkit-backdrop-filter:blur(16px) saturate(1.3) !important;backdrop-filter:blur(16px) saturate(1.3) !important;',
+      t.solido ? '  box-shadow:0 1px 2px rgba(27,24,48,0.06) !important' :
+      '  -webkit-backdrop-filter:blur(16px) saturate(1.3) !important;backdrop-filter:blur(16px) saturate(1.3) !important;' +
       '  box-shadow:0 2px 6px rgba(60,40,90,0.10),0 14px 34px rgba(60,40,90,0.20) !important',
       '}',
       // shared.css define várias classes com cores fixas do tema Sombra (tabelas, sidebar, badges).
@@ -376,6 +396,28 @@ function applyTheme(name) {
       '[style*="background:#1a1d27"]{background:'+t.card+' !important}',
       '[style*="background:#22263a"],[style*="background:#1c1c24"]{background:'+t.sec+' !important}',
       '[style*="background:#2d3250"]{background:'+t.hover+' !important}'
+    ].join('\n') : '',
+    // Temas "solido" (Ideali 2.0): cabeçalho liso, títulos em Plus Jakarta Sans, botões na cor de destaque
+    t.solido ? [
+      '.header-glass,.header-glass-flush{background:'+t.card+' !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;border-bottom:1px solid '+t.border+' !important}',
+      '.header-glass::before,.header-glass::after,.header-glass-flush::before,.header-glass-flush::after{display:none !important}',
+      'h1,h2,h3,.header-left h1{font-family:'+(t.lab ? '"Manrope"' : '"Plus Jakarta Sans","Figtree"')+',sans-serif !important;letter-spacing:-.01em}',
+      '.save-btn,.task-add-btn,.cad-btn-primary,.hist-conf-btn,.conf-comp-sim,[style*="background:#1d4ed8"],[style*="background:#3b82f6"],[style*="background:#2563eb"]{background:'+t.accent+' !important;border-color:'+t.accent+' !important;color:'+t.accentInk+' !important}',
+      '.spinner{border-top-color:'+t.accent+' !important}',
+      '#pp-panel,#cp-panel{background:'+t.card+' !important;border-color:'+t.border+' !important}',
+      '.cp-header,.cp-footer{border-color:'+t.border+' !important}',
+      // Com um painel lateral aberto, o botão da IA sairia por cima do "Salvar"
+      'body:has(#pp-panel.open,#cp-panel.open,#cam-panel[style*="flex"]) .ia-fab{display:none !important}',
+      '.ia-fab{background:'+t.accent+' !important;color:'+t.accentInk+' !important;box-shadow:0 8px 20px -6px '+hexToRgba(t.accent,0.7)+' !important}'
+    ].join('\n') : '',
+    // Temas "lab" (Ideali Lab 2.0): página transparente (a foto do app aparece por trás da
+    // janela de vidro) e painéis/menus que abrem por cima quase opacos, pra leitura não sofrer.
+    t.lab ? [
+      'html{background:transparent !important;color-scheme:'+(t.escuro ? 'dark' : 'light')+'}',
+      'html:not(.ideali-embutido),html:not(.ideali-embutido) body{background:'+t.fallbackBg+' !important}',
+      '.header-glass,.header-glass-flush{background:'+t.card+' !important}',
+      '#pp-panel,#cp-panel,#cam-panel,#cam-arq-panel,#cam-client-panel,#cadista-dropdown,#cadista-real-dropdown,#obs-dropdown,#qtd-dropdown,#month-dd-list,#ia-panel,.modal,.modal-header{background:'+t.panel+' !important}',
+      '#pp-panel,#cp-panel,#cam-panel,#ia-panel{box-shadow:-18px 0 40px -20px rgba(0,0,0,0.45) !important}'
     ].join('\n') : ''
   ].join('\n');
   var el = document.getElementById('theme-style');
@@ -446,9 +488,10 @@ var PAGE_MAP = {
 function sbNav(target) {
   closeSidebar();
   var page = PAGE_MAP[target];
-  if (page) {
-    window.location.href = page;
-  }
+  if (!page) return;
+  // Dentro do app 2.0 (index.html): troca a rota lá em cima, mantendo o menu novo
+  if (window.IDEALI_EMBUTIDO && window.top.idealiAbrirPagina) { window.top.idealiAbrirPagina(page); return; }
+  window.location.href = page;
 }
 
 function openSidebar() {

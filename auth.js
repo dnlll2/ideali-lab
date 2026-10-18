@@ -54,6 +54,27 @@ function idealiPaginaAtual() {
   return p || 'index.html';
 }
 
+// ── App 2.0: as telas antigas abrem dentro do index.html (menu novo) ──
+// Página antiga aberta direto no navegador → vai para a rota dela no app.
+var IDEALI_PAGINA_ROTA = {
+  'home.html': 'mais/painel', 'pedidos.html': 'producao/pedidos', 'ordens-cam.html': 'producao/cam',
+  'cadastro.html': 'clientes/cadastro', 'convites.html': 'clientes/portal',
+  'contas-receber.html': 'financeiro/receber', 'pagamentos-inove.html': 'financeiro/inove',
+  'cobranca.html': 'financeiro/cobranca', 'recibo.html': 'financeiro/recibos', 'gastos.html': 'financeiro/gastos',
+  'relatorio.html': 'financeiro/relatorio', 'tarefas.html': 'mais/tarefas', 'orcamento.html': 'mais/orcamento',
+  'relatorios.html': 'mais/relatorios', 'dashboard.html': 'mais/dashboard', 'resumo.html': 'mais/resumo',
+  'inove-3d.html': 'mais/inove-3d', 'inove.html': 'mais/inove', 'tabela-precos.html': 'config/precos'
+};
+// Dentro do app (iframe): esconde o menu lateral antigo
+var IDEALI_EMBUTIDO = (function () { try { return window.self !== window.top; } catch (e) { return true; } })();
+if (IDEALI_EMBUTIDO) {
+  document.documentElement.classList.add('ideali-embutido');
+  var _st = document.createElement('style');
+  _st.textContent = '.ideali-embutido #sidebar,.ideali-embutido #sidebar-overlay,' +
+    '.ideali-embutido button[onclick="openSidebar()"]{display:none!important}';
+  document.head.appendChild(_st);
+}
+
 
 async function idealiSair() {
   try { await idealiClient().auth.signOut(); } catch (e) {}
@@ -65,23 +86,48 @@ async function idealiSair() {
   var pagina = idealiPaginaAtual();
 
   // ── Tela de login (usada sem sessão, ou pra pedir o código de duas etapas)
+  // Mesmo visual do app 2.0 (Ideali Lab): foto de fundo escolhida neste aparelho + caixa de vidro
+  var FUNDO = 'url("assets/fundos/praia.jpg"), url("assets/fundos/praia-mini.jpg")', FUNDO_COR = '#918a7a';
+  try { FUNDO = localStorage.getItem('ideali-fundo-css') || FUNDO; FUNDO_COR = localStorage.getItem('ideali-fundo-cor') || FUNDO_COR; } catch (e) {}
+  var CLARO = '--a-sf:rgba(255,255,255,.80);--a-ink:#0F2226;--a-mu:#4A6064;--a-ln:rgba(15,34,38,.16);--a-ac:#0B7A80;--a-aci:#FFFFFF;--a-er:#C2362E;--a-ok:#1E7F55;--a-film:rgba(6,18,22,.30);--a-in:rgba(255,255,255,.92);';
+  var ESCURO = '--a-sf:rgba(12,22,26,.72);--a-ink:#E7F2F3;--a-mu:#A3B8BB;--a-ln:rgba(255,255,255,.14);--a-ac:#4FD1C5;--a-aci:#06201F;--a-er:#FF7A70;--a-ok:#5BD69B;--a-film:rgba(2,8,12,.55);--a-in:rgba(8,16,20,.55);';
   var css =
-    '#auth-overlay{position:fixed;inset:0;z-index:99999;background:#0f1117;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:16px}' +
-    '#auth-overlay .box{background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px 28px;width:min(360px,100%);text-align:center}' +
-    '#auth-overlay input{width:100%;height:42px;background:#0f1117;border:0.5px solid rgba(255,255,255,0.15);border-radius:8px;padding:0 14px;font-size:15px;color:#e2e8f0;outline:none;font-family:inherit;margin-bottom:10px;box-sizing:border-box}' +
-    '#auth-overlay button{width:100%;height:42px;background:#1d4ed8;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}' +
+    '#auth-overlay{' + CLARO + '}' +
+    '@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) #auth-overlay{' + ESCURO + '}}' +
+    ':root[data-theme="dark"] #auth-overlay{' + ESCURO + '}' +
+    '#auth-overlay{position:fixed;inset:0;z-index:99999;background-color:' + FUNDO_COR + ';background-image:' + FUNDO.replace(/"/g, "'") + ';background-size:cover;background-position:center;' +
+      'color:var(--a-ink);display:flex;align-items:center;justify-content:center;' +
+      'font-family:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;padding:16px;box-sizing:border-box}' +
+    '#auth-overlay::before{content:"";position:absolute;inset:0;background:var(--a-film)}' +
+    '#auth-overlay *{box-sizing:border-box}' +
+    '#auth-overlay .box{position:relative;overflow:hidden;background:var(--a-sf);border:1px solid rgba(255,255,255,.35);border-radius:22px;padding:34px 28px 26px;width:min(380px,100%);text-align:center;' +
+      '-webkit-backdrop-filter:blur(18px) saturate(140%);backdrop-filter:blur(18px) saturate(140%);box-shadow:0 24px 60px -24px rgba(0,0,0,.55)}' +
+    '#auth-overlay .logo{width:54px;height:54px;border-radius:50%;background:linear-gradient(140deg,#0B7A80,#3CC2B3);color:#fff;display:grid;place-items:center;margin:0 auto 12px;' +
+      'box-shadow:0 6px 16px -6px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.35)}' +
+    '#auth-overlay .logo svg{width:28px;height:28px}' +
+    '#auth-overlay h1{font-family:"Manrope",system-ui,sans-serif;font-size:22px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px;color:var(--a-ink)}' +
+    '#auth-overlay .sub{font-size:14px;color:var(--a-mu);margin:0 0 22px}' +
+    '#auth-overlay input{width:100%;height:46px;background:var(--a-in);border:1.5px solid var(--a-ln);border-radius:12px;padding:0 14px;font-size:16px;color:var(--a-ink);outline:none;font-family:inherit;margin:0 0 10px}' +
+    '#auth-overlay input:focus{border-color:var(--a-ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--a-ac) 22%,transparent)}' +
+    '#auth-overlay button{width:100%;height:46px;background:var(--a-ac);border:none;border-radius:999px;color:var(--a-aci);font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}' +
     '#auth-overlay button:disabled{opacity:.6;cursor:default}' +
-    '#auth-overlay .lnk{background:none;height:auto;margin-top:14px;color:#94a3b8;font-weight:400;font-size:12.5px;text-decoration:underline}' +
-    '#auth-overlay .err{font-size:12.5px;color:#f87171;margin-bottom:10px;min-height:16px}' +
-    '#auth-overlay .ok{color:#4ade80}' +
-    '#auth-overlay .lembrar{display:flex;align-items:center;gap:8px;text-align:left;font-size:13px;color:#cbd5e1;margin:2px 0 12px;cursor:pointer;user-select:none}' +
-    '#auth-overlay .lembrar input{width:18px;height:18px;margin:0;padding:0;flex-shrink:0;accent-color:#1d4ed8;cursor:pointer}' +
+    '#auth-overlay .lnk{background:none;height:auto;margin-top:14px;color:var(--a-mu);font-weight:500;font-size:13px;text-decoration:underline}' +
+    '#auth-overlay .err{font-size:13px;color:var(--a-er);margin:0 0 10px;min-height:17px}' +
+    '#auth-overlay .ok{color:var(--a-ok)}' +
+    '#auth-overlay .lembrar{display:flex;align-items:center;gap:9px;text-align:left;font-size:14px;color:var(--a-ink);margin:4px 0 12px;cursor:pointer;user-select:none}' +
+    '#auth-overlay .lembrar input{width:19px;height:19px;margin:0;padding:0;flex-shrink:0;accent-color:var(--a-ac);cursor:pointer}' +
     'body>*:not(#auth-overlay){display:none!important}';
+  var LOGO = '<div class="logo"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.4 2.6c1.6 0 2.7.8 4.6.8s3-.8 4.6-.8C19.5 2.6 21 5 21 8c0 2.2-.8 3.7-1.4 5.5-.6 1.9-.8 4.2-1.3 6.2-.4 1.6-1 2.4-1.9 2.4-1.2 0-1.5-1.4-1.9-3.4-.3-1.6-.7-3.2-2.5-3.2s-2.2 1.6-2.5 3.2c-.4 2-.7 3.4-1.9 3.4-.9 0-1.5-.8-1.9-2.4-.5-2-.7-4.3-1.3-6.2C3.8 11.7 3 10.2 3 8c0-3 1.5-5.4 4.4-5.4z"/></svg></div>';
 
   if (sessao) {
     // Inove só entra nas páginas dela
     if (idealiPapel() === 'inove' && PAGINAS_INOVE.indexOf(pagina) === -1) {
       location.replace(PAGINAS_INOVE[0]);
+      return;
+    }
+    // Dono abrindo uma tela antiga direto → abre dentro do app novo, na rota certa (F5 continua nela)
+    if (idealiPapel() !== 'inove' && !IDEALI_EMBUTIDO && IDEALI_PAGINA_ROTA[pagina]) {
+      location.replace('index.html#/' + IDEALI_PAGINA_ROTA[pagina]);
       return;
     }
     // Senha certa mas código de duas etapas ainda não confirmado → pede o código
@@ -102,9 +148,9 @@ async function idealiSair() {
 
   function telaSenha(box) {
     box.innerHTML =
-      '<p style="font-size:30px;margin:0 0 8px">🦷</p>' +
-      '<p style="font-size:18px;font-weight:600;color:#f1f5f9;margin:0 0 4px">Ideali Laboratório</p>' +
-      '<p style="font-size:13px;color:#64748b;margin:0 0 22px">Entre com seu e-mail e senha</p>' +
+      LOGO +
+      '<h1>Ideali Lab</h1>' +
+      '<p class="sub">Entre com seu e-mail e senha</p>' +
       '<form id="auth-form" autocomplete="on">' +
         '<input id="auth-email" name="email" type="email" placeholder="E-mail" autocomplete="username" required>' +
         '<input id="auth-senha" name="password" type="password" placeholder="Senha" autocomplete="current-password" required>' +
@@ -168,9 +214,9 @@ async function idealiSair() {
 
   async function telaCodigo(box) {
     box.innerHTML =
-      '<p style="font-size:30px;margin:0 0 8px">🔐</p>' +
-      '<p style="font-size:17px;font-weight:600;color:#f1f5f9;margin:0 0 4px">Verificação em duas etapas</p>' +
-      '<p style="font-size:13px;color:#64748b;margin:0 0 22px">Digite o código de 6 números do seu app autenticador</p>' +
+      LOGO +
+      '<h1>Verificação em duas etapas</h1>' +
+      '<p class="sub">Digite o código de 6 números do seu app autenticador</p>' +
       '<form id="auth-form"><input id="auth-cod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" style="text-align:center;letter-spacing:6px;font-size:20px">' +
       '<p class="err" id="auth-err"></p><button id="auth-btn" type="submit">Confirmar</button></form>' +
       '<button class="lnk" id="auth-voltar" type="button">Voltar</button>';
@@ -198,6 +244,11 @@ async function idealiSair() {
     function go() {
       if (document.getElementById('auth-overlay')) return;
       var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
+      if (!document.querySelector('link[href*="Manrope"]')) {
+        var fl = document.createElement('link'); fl.rel = 'stylesheet';
+        fl.href = 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap';
+        document.head.appendChild(fl);
+      }
       var ov = el('<div id="auth-overlay"><div class="box"></div></div>');
       document.body.appendChild(ov);
       (tela || telaSenha)(ov.firstChild);

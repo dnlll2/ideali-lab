@@ -1,11 +1,90 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0; url=home.html">
-  <title>Ideali Laboratório</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0B7A80">
+<title>Ideali Lab</title>
+<script>
+// Aparência e fundo antes de pintar a tela (evita piscar)
+(function(){try{
+  var a=localStorage.getItem('ideali-aparencia');
+  if(a==='claro')document.documentElement.dataset.theme='light';else if(a==='escuro')document.documentElement.dataset.theme='dark';
+  var f=localStorage.getItem('ideali-fundo-css'),c=localStorage.getItem('ideali-fundo-cor');
+  var s=document.documentElement.style;
+  s.setProperty('--fundo',f||'url("assets/fundos/praia.jpg"), url("assets/fundos/praia-mini.jpg")');
+  s.setProperty('--fundo-cor',c||'#918a7a');
+  if(localStorage.getItem('ideali-sem-blur')==='1')document.documentElement.classList.add('sem-blur');
+}catch(e){}})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="app.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
 </head>
 <body>
-  <script>window.location.href = 'home.html';</script>
+<div class="fundo" id="fundo" aria-hidden="true"></div>
+
+<header class="topo">
+  <div class="faixa">
+    <a class="marca" href="#/inicio" aria-label="Ideali Lab: Início">
+      <span class="logo"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.4 2.6c1.6 0 2.7.8 4.6.8s3-.8 4.6-.8C19.5 2.6 21 5 21 8c0 2.2-.8 3.7-1.4 5.5-.6 1.9-.8 4.2-1.3 6.2-.4 1.6-1 2.4-1.9 2.4-1.2 0-1.5-1.4-1.9-3.4-.3-1.6-.7-3.2-2.5-3.2s-2.2 1.6-2.5 3.2c-.4 2-.7 3.4-1.9 3.4-.9 0-1.5-.8-1.9-2.4-.5-2-.7-4.3-1.3-6.2C3.8 11.7 3 10.2 3 8c0-3 1.5-5.4 4.4-5.4z"/></svg></span>
+      <span class="txt">Ideali Lab</span>
+    </a>
+    <nav class="abas" id="abas" aria-label="Abas"></nav>
+    <div class="dir">
+      <span class="hora" id="hora-topo"></span>
+      <span class="clima" id="clima-topo" hidden></span>
+      <button class="av" id="av" aria-label="Menu da conta" aria-haspopup="true">·</button>
+    </div>
+  </div>
+  <div class="barra-busca" id="barra-busca">
+    <label class="busca" data-busca>
+      <i class="ti ti-search lupa" aria-hidden="true"></i>
+      <input id="busca-topo" type="search" autocomplete="off" spellcheck="false" aria-label="Buscar"
+        placeholder="Buscar pedido, cliente, paciente ou digitar um comando…">
+      <kbd>Ctrl K</kbd>
+    </label>
+  </div>
+</header>
+
+<div class="avmenu" id="avmenu" hidden>
+  <div class="who"><b id="av-nome">—</b><span id="av-email"></span></div>
+  <a href="#/config"><i class="ti ti-settings"></i> Configurações</a>
+  <a href="#/config/conta"><i class="ti ti-lock"></i> Minha conta (senha e 2 etapas)</a>
+  <div class="sep"></div>
+  <button type="button" id="av-tema"><i class="ti ti-moon"></i> <span>Modo escuro</span></button>
+  <button type="button" id="av-lateral"><i class="ti ti-layout-sidebar"></i> <span>Mostrar barra lateral</span></button>
+  <button type="button" onclick="idealiSair()"><i class="ti ti-logout"></i> Sair</button>
+</div>
+
+<aside class="lateral vidro" id="lateral" aria-label="Acesso rápido" hidden>
+  <a href="#/producao" data-sec="producao" data-dica="Produção" aria-label="Produção"><i class="ti ti-layout-kanban"></i></a>
+  <a href="#/clientes" data-sec="clientes" data-dica="Clientes" aria-label="Clientes"><i class="ti ti-users"></i></a>
+  <a href="#/financeiro" data-sec="financeiro" data-dica="Financeiro" aria-label="Financeiro"><i class="ti ti-wallet"></i></a>
+  <button type="button" id="lat-ia" data-dica="Comando rápido IA" aria-label="Comando rápido IA"><i class="ti ti-sparkles"></i></button>
+  <button type="button" class="esconder" id="lat-esconder" data-dica="Esconder barra" aria-label="Esconder barra lateral"><i class="ti ti-chevrons-left"></i></button>
+</aside>
+
+<main id="main"></main>
+<section class="janelas" id="janelas">
+  <nav class="subabas" id="subabas" hidden></nav>
+  <div class="janela" id="janela"></div>
+</section>
+
+<div class="resultados" id="resultados" role="listbox" hidden></div>
+
+<nav class="bnav vidro" id="bnav" aria-label="Menu principal">
+  <a href="#/inicio" data-sec="inicio"><i class="ti ti-home"></i>Início</a>
+  <a href="#/producao" data-sec="producao"><i class="ti ti-layout-kanban"></i>Produção</a>
+  <a href="#/producao/pedidos/novo" aria-label="Novo pedido"><span class="plus"><i class="ti ti-plus"></i></span></a>
+  <a href="#/financeiro" data-sec="financeiro"><i class="ti ti-wallet"></i>Financeiro</a>
+  <a href="#/mais" data-sec="mais"><i class="ti ti-dots"></i>Mais</a>
+</nav>
+
+<script src="app.js"></script>
 </body>
 </html>

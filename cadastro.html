@@ -289,7 +289,12 @@ function initShell() {
     .catch(function(e) { console.error('Erro ao carregar sidebar.html:', e); });
 }
 
-initShell().then(function() { return clientesDbPronto; }).then(function() { if (typeof init === 'function') init(); });
+initShell().then(function() { return clientesDbPronto; }).then(function() { if (typeof init === 'function') return init(); })
+  .then(function() {                                                       // aba "Dr. Fulano" do app 2.0
+    var m = /[?&]abrir=([^&]+)/.exec(location.search); if (!m) return;
+    var c = clients.find(function(x){ return String(x.reg) === decodeURIComponent(m[1]); });
+    if (c) openClientePanel(c.reg);
+  });
 </script>
 
 </body>
