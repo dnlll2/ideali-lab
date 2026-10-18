@@ -10,3 +10,4 @@ deploy.bat
 node_modules/
 supabase/.temp/
 docs/incidente-*
+docs/aviso-*
