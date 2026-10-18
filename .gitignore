@@ -9,3 +9,4 @@ deploy.bat
 .env.*
 node_modules/
 supabase/.temp/
+docs/incidente-*
