@@ -5,67 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Relatório de Pagamentos do Mês - Ideali Laboratório</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap">
-<script>
-// ── Autenticação por senha (espelho leve de checkAuth em shared.js) ────────
-// Página standalone (não carrega shared.js), mesmo padrão de relatorio.html
-// e relatorio-comprovantes.html.
-(function checkAuth() {
-  var IDEALI_PASSWORD = 'ideali2026';
-  if (sessionStorage.getItem('ideali-auth') === 'ok') return;
-
-  function injectLogin() {
-    var overlay = document.createElement('div');
-    overlay.id = 'auth-overlay';
-    overlay.style.cssText = [
-      'position:fixed','inset:0','background:#0f1117','z-index:99999',
-      'display:flex','align-items:center','justify-content:center',
-      'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif'
-    ].join(';');
-    overlay.innerHTML =
-      '<div style="background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px 28px;width:min(340px,90vw);text-align:center">'+
-        '<img src="assets/logo.png" alt="" style="height:64px;width:64px;object-fit:contain;margin:0 auto 8px;display:block">'+
-        '<p style="font-size:18px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Ideali Laboratório</p>'+
-        '<p style="font-size:13px;color:#64748b;margin-bottom:24px">Digite a senha para continuar</p>'+
-        '<input id="auth-inp" type="password" placeholder="Senha" autocomplete="current-password" '+
-          'style="width:100%;height:40px;background:#0f1117;border:0.5px solid rgba(255,255,255,0.15);'+
-          'border-radius:8px;padding:0 14px;font-size:14px;color:#e2e8f0;outline:none;font-family:inherit;margin-bottom:10px"/>'+
-        '<p id="auth-err" style="font-size:12px;color:#ef4444;margin-bottom:10px;min-height:16px"></p>'+
-        '<button id="auth-btn" '+
-          'style="width:100%;height:40px;background:#1d4ed8;border:none;border-radius:8px;'+
-          'color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Entrar</button>'+
-      '</div>';
-    document.body.appendChild(overlay);
-    document.getElementById('auth-inp').focus();
-
-    function tryLogin() {
-      var val = (document.getElementById('auth-inp').value || '').trim();
-      if (val === IDEALI_PASSWORD) {
-        sessionStorage.setItem('ideali-auth', 'ok');
-        document.getElementById('auth-overlay').remove();
-      } else {
-        var err = document.getElementById('auth-err');
-        var inp = document.getElementById('auth-inp');
-        if (err) err.textContent = 'Senha incorreta. Tente novamente.';
-        if (inp) {
-          inp.value = '';
-          inp.style.borderColor = '#ef4444';
-          inp.focus();
-          setTimeout(function(){ inp.style.borderColor = ''; }, 1500);
-        }
-      }
-    }
-
-    document.getElementById('auth-btn').addEventListener('click', tryLogin);
-    document.getElementById('auth-inp').addEventListener('keydown', function(e){
-      if (e.key === 'Enter') tryLogin();
-    });
-  }
-
-  if (document.body) { injectLogin(); }
-  else { document.addEventListener('DOMContentLoaded', injectLogin); }
-})();
-</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
 <style>
 :root{
   --bg:#eef2f6;
@@ -181,8 +122,7 @@ body{
 
 <script>
 var SUPABASE_URL = 'https://alqhhgysvehtgkwsxeok.supabase.co';
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFscWhoZ3lzdmVodGdrd3N4ZW9rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDE0ODg2NSwiZXhwIjoyMDk1NzI0ODY1fQ.xogvgvFob-7Ir6hSLkz0pOj3GawRPRbwfz9oGuGQ90E';
-var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var sb = idealiClient();
 
 var MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 

@@ -4,61 +4,19 @@
    ================================================================ */
 
 // ── Supabase ──────────────────────────────────────────────────
-var SUPABASE_URL = 'https://alqhhgysvehtgkwsxeok.supabase.co';
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFscWhoZ3lzdmVodGdrd3N4ZW9rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDE0ODg2NSwiZXhwIjoyMDk1NzI0ODY1fQ.xogvgvFob-7Ir6hSLkz0pOj3GawRPRbwfz9oGuGQ90E';
-var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// URL, chave pública e login ficam em auth.js (carregado antes deste arquivo).
+var sb = idealiClient();
 
 // ── Constantes ────────────────────────────────────────────────
 var MESES = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 var COMISSAO = 0.15;
 
-// ── Clientes (array hardcoded) ────────────────────────────────
-var clients = [
-  {reg:20,nome:"Adriana Tavares de Almeida",   cpf:"146.607.018-83",  cro:"CRO-SP 92640", end:"Rua Dezesseis de Dezembro, 10 - Sala 3",          bairro:"Jd. Rubio",          cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"",                  obs:""},
-  {reg:23,nome:"Alexandre Miranda Souza",      cpf:"364.961.048-59",  cro:"",             end:"Av. Brasil, 1336 - 1 Andar",                      bairro:"",                   cidade:"Ferraz de Vasconcelos",uf:"SP",cep:"",          tel:"(11) 97723-2657",   obs:""},
-  {reg:3, nome:"Anthony Borges",               cpf:"378.641.768-79",  cro:"126.653",      end:"Av. Silvestre Pires de Freitas, 800",             bairro:"Jardim Paraiso",     cidade:"Guarulhos",           uf:"SP", cep:"07144-000", tel:"",                  obs:"Costa Borges Odontologia"},
-  {reg:7, nome:"Bruno Rocco Giusto",           cpf:"300.066.978-79",  cro:"",             end:"Av. Agua Fria, 1896",                             bairro:"Agua Fria",          cidade:"Sao Paulo",           uf:"SP", cep:"02332-001", tel:"",                  obs:"Entregar via motoboy (Katia)"},
-  {reg:10,nome:"Caio Vinicius Barreto dos Santos",cpf:"376.257.418-93",cro:"",            end:"Av. Inconfidencia Mineira, 1241",                 bairro:"Vila Antonieta",     cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"(11) 98216-2905",   obs:"Lab Barreto"},
-  {reg:9, nome:"Danilo Tuttis T. G. dos Santos",cpf:"338.114.288-70", cro:"",             end:"Rua Prado Rochi, 145",                           bairro:"Vila Assis",         cidade:"Jau",                 uf:"SP", cep:"17210-270", tel:"(14) 99749-3400",   obs:""},
-  {reg:4, nome:"Dr. Andre Ricardo G. Da Silva",cpf:"169.303.098-50",  cro:"SP 56824",     end:"Rua da Fonte, 199 - Sala 04",                    bairro:"Jardim Oriental",    cidade:"Osasco",              uf:"SP", cep:"",          tel:"(11) 3609-2030",    obs:"dr.andrericardo@gmail.com"},
-  {reg:11,nome:"Dr. Renato Oliveira Ferreira da Silva",cpf:"261.834.798-61",cro:"",       end:"Rua Guilherme de Almeida, 2-31",                  bairro:"Vila Cidade Universitaria",cidade:"Bauru",         uf:"SP", cep:"17012-500", tel:"",                  obs:"Padrao"},
-  {reg:8, nome:"Fernando 021 Dental Barra",    cpf:"CNPJ: 37.568.571/0001-37", cro:"",    end:"Av. das Americas, 3665 - Loja 214",              bairro:"Barra da Tijuca",    cidade:"Rio de Janeiro",      uf:"RJ", cep:"22631-000", tel:"",                  obs:"Padrao"},
-  {reg:22,nome:"Gilberto Ferreira Esquivel",   cpf:"CNPJ: 13.265.402/0001-60",cro:"CRO-BA 7329",end:"Rua Henqueque Alves, 315",                bairro:"Castalia",           cidade:"Itabuna",             uf:"BA", cep:"",          tel:"",                  obs:""},
-  {reg:18,nome:"Henrique Falcao",              cpf:"029.583.461-70",  cro:"CRO 5045",     end:"Rua Sao Francisco Xavier, 168",                   bairro:"Tijuca",             cidade:"Rio de Janeiro",      uf:"RJ", cep:"",          tel:"",                  obs:"Clinica Odonto Premier"},
-  {reg:5, nome:"Javier Garrido",               cpf:"CNPJ: 48.257.718/0001-94", cro:"75033", end:"Av. Conselheiro Rodrigues Alves, 518",         bairro:"Vila Mariana",       cidade:"Sao Paulo",           uf:"SP", cep:"04014-001", tel:"+55 (11) 98611-2003",obs:"Padrao"},
-  {reg:24,nome:"Jose Ricardo de Miranda Pires",cpf:"013.432.346-70",  cro:"CRO-BA 8586",  end:"Rua Manuel Vilaboim, 121",                        bairro:"Centro",             cidade:"Cruz das Almas",      uf:"BA", cep:"44380-000", tel:"",                  obs:"", regraPadrao:"Não cimentar componente — enviar sempre sem cimentar. Componente: casos unitários usar Icmut; casos múltiplos usar Imat."},
-  {reg:15,nome:"Julia Ando",                   cpf:"080.218.698-01",  cro:"CRO-SP TPD 9449",end:"Rua Santa Catarina, 240 - 5 andar, Sala 504", bairro:"Galeria Metropole",  cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"(11) 96387-3845",   obs:""},
-  {reg:21,nome:"Juliano Balseiro",             cpf:"195.269.398-59",  cro:"CRO 65000",    end:"Av. Onze de Junho, 1199",                         bairro:"",                   cidade:"Sao Paulo",           uf:"SP", cep:"04041-054", tel:"",                  obs:""},
-  {reg:2, nome:"Leonardo Moll",                cpf:"087.058.557-64",  cro:"RJ 36.484",    end:"Av. Ernani do Amaral Peixoto, 455 - Sala 711",   bairro:"Centro",             cidade:"Niteroi",             uf:"RJ", cep:"",          tel:"(21) 99541-9481",   obs:""},
-  {reg:16,nome:"Luiz Junior",                  cpf:"127.496.107-61",  cro:"",             end:"Rua Academico Walter Goncalves, 1 - Sala 404",    bairro:"Centro",             cidade:"Niteroi",             uf:"RJ", cep:"24020-290", tel:"",                  obs:"Padrao"},
-  {reg:12,nome:"Luiz Tolentino",               cpf:"",                cro:"",             end:"Rua Prefeito Jose Guilherme, 15",                 bairro:"Centro",             cidade:"Capela do Alto",      uf:"SP", cep:"18195-036", tel:"",                  obs:""},
-  {reg:19,nome:"Pedro Henrique de Araujo Cruz",cpf:"446.153.318-27",  cro:"162.968",      end:"Av. Antonio Sylvio Cunha Bueno, 597",             bairro:"Jardim Inamar",      cidade:"Diadema",             uf:"SP", cep:"",          tel:"",                  obs:""},
-  {reg:6, nome:"Renan Gerhard",                cpf:"133.262.117-16",  cro:"",             end:"Av. Geremario Dantas, 832 - Sala 207",            bairro:"Pechincha",          cidade:"Rio de Janeiro",      uf:"RJ", cep:"22743-010", tel:"",                  obs:""},
-  {reg:1, nome:"Ricardo Cader",                cpf:"013.436.277-29",  cro:"",             end:"Av. Nossa Senhora de Copacabana, 749 - Sala 409", bairro:"Copacabana",         cidade:"Rio de Janeiro",      uf:"RJ", cep:"22050-002", tel:"",                  obs:""},
-  {reg:13,nome:"Rodrigo Guimaraes",            cpf:"006.571.367-27",  cro:"",             end:"Av. Dr. Mario Guimaraes, 428 - Sala 813",         bairro:"Centro",             cidade:"Nova Iguacu",         uf:"RJ", cep:"26255-230", tel:"",                  obs:""},
-  {reg:17,nome:"Talia Estefanelli Sampaio (Dr. Alfeu)",    cpf:"223.215.228-60",  cro:"CRO-SP 98329", end:"Rua Salem Bechara, 140 - Sala 1504",              bairro:"Centro",             cidade:"Osasco",              uf:"SP", cep:"",          tel:"",                  obs:"Dr. Alfeu"},
-  {reg:25,nome:"Tiago Muller Pereira",         cpf:"025.981.860-79",  cro:"",             end:"Av. Salgado Filho, 2839",                         bairro:"",                   cidade:"Caxias do Sul",       uf:"RS", cep:"",          tel:"",                  obs:""},
-  {reg:26,nome:"Raquel Ghesso Brentzel",        cpf:"435.301.458-74",  cro:"119391",       end:"Rua Ibitirama, 166 - Cj 902 Torre Office", bairro:"Vila Prudente",      cidade:"Sao Paulo",           uf:"SP", cep:"03134-000", tel:"",                  obs:""},
-  {reg:27,nome:"Kleber Luander",              cpf:"144.031.517-52",  cro:"CRO-RJ 43164", end:"Av. Rotary, 947",                                bairro:"Centro",             cidade:"Sao Joao da Barra",   uf:"RJ", cep:"28200-000", tel:"",                  obs:"Lente Novo"},
-  {reg:28,nome:"Luiz Carlos Figueiredo Seixas",cpf:"107.126.347-11",cro:"CRO-RJ 35796", end:"Rua Conde de Bonfim, 255 - Sala 810",            bairro:"Tijuca",             cidade:"Rio de Janeiro",      uf:"RJ", cep:"20520-051", tel:"",                  obs:""},
-  {reg:29,nome:"Paulo Pagano",               cpf:"",                cro:"",             end:"Rua Salvador Bicudo, 109",                        bairro:"Tucuruvi",           cidade:"Sao Paulo",           uf:"SP", cep:"",          tel:"",                  email:"paulopagano0@gmail.com", obs:""},
-  {reg:30,nome:"Juliana Barros",             cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
-  {reg:31,nome:"Pedro Silva",                cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
-  {reg:32,nome:"Carlos Vinicios Camelo",     cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
-  {reg:33,nome:"Clinica Dr Rosmar",          cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"Rio de Janeiro",      uf:"RJ", cep:"",          tel:"",                  obs:""},
-  {reg:34,nome:"Roberto Isao",               cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
-  {reg:35,nome:"Rafael Heino Santos",        cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
-  {reg:36,nome:"Oral 360 Copa",              cpf:"",                cro:"",             end:"R. Figueiredo de Magalhães, 226 - 201",           bairro:"Copacabana",         cidade:"Rio de Janeiro",      uf:"RJ", cep:"22031-012", tel:"",                  obs:""},
-  {reg:37,nome:"Zivana Castilhos dos Santos",cpf:"",                cro:"",             end:"",                                                bairro:"",                   cidade:"",                    uf:"",   cep:"",          tel:"",                  obs:""},
-  {reg:38,nome:"José Vitor Ortega",          cpf:"349.656.358-33",  cro:"115567",       end:"Av. Eugen Wissmann, 600 - 1º andar, loja 8",       bairro:"São Luiz",           cidade:"Itu",                 uf:"SP", cep:"13304-270", tel:"",                  obs:""},
-  {reg:39,nome:"Luiz Henrique da Silva",     cpf:"058.886.078-60",  cro:"CROSP 35744",  end:"Rua Nicola Martins Romeira, 251",                  bairro:"",                   cidade:"Ribeirão do Sul",     uf:"SP", cep:"19930-025", tel:"",                  obs:""},
-  {reg:41,nome:"Marcelo Rissio",             cpf:"326.412.558-71",  cro:"",             end:"Av. Pereira da Silva, 56",                         bairro:"Jd. Santa Rosalia",  cidade:"Sorocaba",            uf:"SP", cep:"18095-340", tel:"",                  obs:""},
-  {reg:42,nome:"Dr. Eduardo de Mello Caprio",cpf:"CNPJ: 35.977.659/0001-87",cro:"CROSP 83222",end:"Rua Arizona, 1422 - Conjunto 81",              bairro:"Brooklin",           cidade:"Sao Paulo",           uf:"SP", cep:"04567-003", tel:"",                  obs:"Odontocaprio"}
-];
+// ── Clientes ──────────────────────────────────────────────────
+// Dados de clientes não ficam no código: vêm de cadastro_clientes (abaixo).
+var clients = [];
 
 // ── Clientes do banco ─────────────────────────────────────────
-// A lista acima e' so o fallback offline. cadastro_clientes e' a fonte de
-// verdade: clientes novos (reg 43+) so existem la'. Toda pagina espera
+// cadastro_clientes e' a fonte dos clientes (precisa estar logado). Toda pagina espera
 // clientesDbPronto antes do init() (ver linha initShell().then(...)).
 async function carregarClientesDb() {
   try {
@@ -994,6 +952,7 @@ async function salvarAporte(opts) {
   }).select();
   if (insRes.error) throw insRes.error;
   var aporteNovo = insRes.data[0];
+  await idealiAssinarUrls([aporteNovo], 'comprovante_url', 'comprovantes');
 
   var soma = aportesAtuais.concat([aporteNovo]).reduce(function(sum, a) { return sum + Number(a.valor||0); }, 0);
 
@@ -1368,67 +1327,6 @@ function renderTodosComprovantes() {
   var filtro = document.getElementById('aportes-todos-filtro').value;
   lista.innerHTML = renderTodosComprovantesHtml(todosComprovantesCache, filtro, histTodosEstilo);
 }
-
-// ── Autenticação por senha ────────────────────────────────────
-var IDEALI_PASSWORD = 'ideali2026';
-
-(function checkAuth() {
-  // window.IDEALI_SKIP_AUTH é um flag JS local à página (não persiste em storage),
-  // usado só por páginas standalone sem senha (ex: pagamentos-inove.html) para pular
-  // esta tela sem conceder acesso às demais páginas do sistema na mesma aba.
-  if (sessionStorage.getItem('ideali-auth') === 'ok' || window.IDEALI_SKIP_AUTH === true) return;
-
-  function injectLogin() {
-    var overlay = document.createElement('div');
-    overlay.id = 'auth-overlay';
-    overlay.style.cssText = [
-      'position:fixed','inset:0','background:#0f1117','z-index:99999',
-      'display:flex','align-items:center','justify-content:center',
-      'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif'
-    ].join(';');
-    overlay.innerHTML =
-      '<div style="background:#1a1d27;border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px 28px;width:min(340px,90vw);text-align:center">'+
-        '<p style="font-size:30px;margin-bottom:8px">🦷</p>'+
-        '<p style="font-size:18px;font-weight:600;color:#f1f5f9;margin-bottom:4px">Ideali Laboratório</p>'+
-        '<p style="font-size:13px;color:#64748b;margin-bottom:24px">Digite a senha para continuar</p>'+
-        '<input id="auth-inp" type="password" placeholder="Senha" autocomplete="current-password" '+
-          'style="width:100%;height:40px;background:#0f1117;border:0.5px solid rgba(255,255,255,0.15);'+
-          'border-radius:8px;padding:0 14px;font-size:14px;color:#e2e8f0;outline:none;font-family:inherit;margin-bottom:10px"/>'+
-        '<p id="auth-err" style="font-size:12px;color:#ef4444;margin-bottom:10px;min-height:16px"></p>'+
-        '<button id="auth-btn" '+
-          'style="width:100%;height:40px;background:#1d4ed8;border:none;border-radius:8px;'+
-          'color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Entrar</button>'+
-      '</div>';
-    document.body.appendChild(overlay);
-    document.getElementById('auth-inp').focus();
-
-    function tryLogin() {
-      var val = (document.getElementById('auth-inp').value || '').trim();
-      if (val === IDEALI_PASSWORD) {
-        sessionStorage.setItem('ideali-auth', 'ok');
-        document.getElementById('auth-overlay').remove();
-      } else {
-        var err = document.getElementById('auth-err');
-        var inp = document.getElementById('auth-inp');
-        if (err) err.textContent = 'Senha incorreta. Tente novamente.';
-        if (inp) {
-          inp.value = '';
-          inp.style.borderColor = '#ef4444';
-          inp.focus();
-          setTimeout(function(){ inp.style.borderColor = ''; }, 1500);
-        }
-      }
-    }
-
-    document.getElementById('auth-btn').addEventListener('click', tryLogin);
-    document.getElementById('auth-inp').addEventListener('keydown', function(e){
-      if (e.key === 'Enter') tryLogin();
-    });
-  }
-
-  if (document.body) { injectLogin(); }
-  else { document.addEventListener('DOMContentLoaded', injectLogin); }
-})();
 
 // Inicializa tema ao carregar
 applyTheme(currentTheme);

@@ -1,0 +1,11 @@
+# dados e segredos locais (nunca publicar)
+backups/
+backup_*.json
+*.csv
+cad_now.json
+cm_mes6_now.json
+deploy.bat
+.env
+.env.*
+node_modules/
+supabase/.temp/
