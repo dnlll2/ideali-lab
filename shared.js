@@ -1000,6 +1000,14 @@ async function salvarAporte(opts) {
   var soma = aportesAtuais.concat([aporteNovo]).reduce(function(sum, a) { return sum + Number(a.valor||0); }, 0);
 
   var totalAtualizado = true;
+  // Login da Inove: quem soma o pagamento ao "valor pago" do mês é o próprio banco
+  // (gatilho da 049 -- ela não grava valor pago); aqui só lê o total já atualizado.
+  if (typeof idealiPapel === 'function' && idealiPapel() === 'inove') {
+    var lido = await sb.from('controle_mensal').select('valor_pago')
+      .eq('cliente_reg', reg).eq('mes', mes).eq('ano', ano).maybeSingle();
+    if (lido.error || !lido.data) { console.error('salvarAporte (valor pago):', lido.error); return { aporte: aporteNovo, valor_pago: soma, totalAtualizado: false }; }
+    return { aporte: aporteNovo, valor_pago: Number(lido.data.valor_pago || 0), totalAtualizado: true };
+  }
   try {
     var existing = await sb.from('controle_mensal').select('id')
       .eq('cliente_reg', reg).eq('mes', mes).eq('ano', ano);
