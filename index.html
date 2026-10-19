@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="valuation.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js"></script>
 </head>
@@ -36,6 +37,7 @@
     </a>
     <nav class="abas" id="abas" aria-label="Abas"></nav>
     <div class="dir">
+      <button type="button" class="vl-chip" id="vl-topo" data-vl-chip hidden></button>
       <span class="hora" id="hora-topo"></span>
       <span class="clima" id="clima-topo" hidden></span>
       <button class="av" id="av" aria-label="Menu da conta" aria-haspopup="true">·</button>
@@ -53,6 +55,7 @@
 
 <div class="avmenu" id="avmenu" hidden>
   <div class="who"><b id="av-nome">—</b><span id="av-email"></span></div>
+  <button type="button" class="vl-chip vl-menu" data-vl-chip hidden></button>
   <a href="#/config"><i class="ti ti-settings"></i> Configurações</a>
   <a href="#/config/conta"><i class="ti ti-lock"></i> Minha conta (senha e 2 etapas)</a>
   <div class="sep"></div>
@@ -85,6 +88,7 @@
   <a href="#/mais" data-sec="mais"><i class="ti ti-dots"></i>Mais</a>
 </nav>
 
+<script src="valuation.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
