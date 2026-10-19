@@ -12,7 +12,12 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="shared.js"></script>
+<script>
+// Login da Inove: vencimento e comissão são só da Ideali (o banco também recusa -- 049)
+if (idealiPapel() === 'inove') document.documentElement.classList.add('papel-inove');
+</script>
 <style>
+.papel-inove #venc-edit-btn,.papel-inove .comissao-btn-saque,.papel-inove .btn-excluir-saque{display:none !important}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;padding:0.5rem;min-height:100vh}
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:12px}
