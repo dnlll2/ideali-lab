@@ -507,6 +507,7 @@ function renderInicio() {
       '<div class="relogio" id="relogio">' + hhmm(d) + '</div>' +
       '<div class="saud" id="saud">' + esc(saudacao()) + '</div>' +
       '<div class="data-casa">' + dataLonga(d) + '<span id="clima-casa"></span></div>' +
+      '<button type="button" class="vl-chip" data-vl-chip hidden></button>' +
       '<label class="busca grande" data-busca><i class="ti ti-search lupa" aria-hidden="true"></i>' +
         '<input id="busca-casa" type="search" autocomplete="off" spellcheck="false" aria-label="Buscar" placeholder="Buscar pedido, cliente, paciente ou digitar um comando…"><kbd>Ctrl K</kbd></label>' +
       '<div class="atalhos" id="atalhos"></div>' +
@@ -519,6 +520,7 @@ function renderInicio() {
       '</section>' +
     '</section>';
   ligarBusca($('busca-casa'));
+  IdealiValuation.pintar();
   mostrarClima();
   renderAtalhos();
   $('personalizar').addEventListener('click', function () { EDITANDO_ATALHOS = !EDITANDO_ATALHOS; renderAtalhos(); });
@@ -1000,4 +1002,5 @@ $('av-lateral').addEventListener('click', function () { aplicarLateral(!lateralL
   render();
   carregarClima(meta().cidade);
   sincronizarPrefs().catch(function (e) { console.error('[prefs]', e); });
+  IdealiValuation.montar(sb).catch(function (e) { console.error('[valuation]', e); });   // só dono/Inove
 })();

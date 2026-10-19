@@ -1,0 +1,69 @@
+/* valuation.css — chip e janela do Valuation (app novo e tela da Inove).
+   No app usa as cores do app.css; nas telas antigas (classe vl-solo) traz as suas. */
+:root.vl-solo{--ink:#0F2226;--muted:#4A6064;--line:rgba(15,34,38,.12);--accent:#0B7A80;--ok:#1E7F55;--urgent:#C2362E;
+  --painel-forte:rgba(255,255,255,.96);--vidro:rgba(255,255,255,.70);--vidro-ink:#0F2226;--vidro-borda:rgba(15,34,38,.14);--blur:blur(18px) saturate(140%);
+  --f:"Manrope",system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+:root.vl-solo.vl-escuro{--ink:#E7F2F3;--muted:#A3B8BB;--line:rgba(255,255,255,.10);--accent:#4FD1C5;--ok:#5BD69B;--urgent:#FF7A70;
+  --painel-forte:rgba(14,24,28,.96);--vidro:rgba(255,255,255,.08);--vidro-ink:#FFFFFF;--vidro-borda:rgba(255,255,255,.18)}
+
+.vl-chip{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:999px;cursor:pointer;white-space:nowrap;font:700 .86rem var(--f);
+  background:var(--vidro);color:var(--vidro-ink);border:1px solid var(--vidro-borda);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.vl-chip:hover{background:var(--vidro-hover,var(--vidro))}
+.vl-chip i{font-size:17px}
+.vl-chip b{font-weight:800}
+.vl-var{display:inline-flex;align-items:center;gap:2px;font-weight:800;font-size:.8rem}
+.vl-var.sobe{color:var(--ok)}
+.vl-var.desce{color:var(--urgent)}
+:root:not([data-theme="dark"]):not(.vl-escuro) .vl-chip .vl-var.sobe{color:#176B47}
+:root:not([data-theme="dark"]):not(.vl-escuro) .vl-chip .vl-var.desce{color:#A52A22}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]):not(.vl-solo) .vl-chip .vl-var.sobe{color:var(--ok)}
+  :root:not([data-theme="light"]):not(.vl-solo) .vl-chip .vl-var.desce{color:var(--urgent)}}
+.vl-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.vl-ov{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(4,14,18,.45)}
+.vl-ov[hidden]{display:none}
+.vl-janela{width:min(560px,100%);max-height:calc(100dvh - 32px);overflow:auto;padding:20px 22px 22px;border-radius:22px;outline:none;font-family:var(--f);
+  background:var(--painel-forte);color:var(--ink);border:1px solid var(--vidro-borda);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+  box-shadow:0 30px 70px -20px rgba(0,0,0,.6);line-height:1.45;font-variant-numeric:tabular-nums}
+html.vl-aberto{overflow:hidden}
+.vl-janela h3{margin:20px 0 8px;font-size:.76rem;text-transform:uppercase;letter-spacing:.08em;font-weight:800;color:var(--muted)}
+.vl-janela p{margin:0}
+.vl-cab{display:flex;align-items:center;justify-content:space-between}
+.vl-tag{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:.84rem;color:var(--accent)}
+.vl-tag i{font-size:17px}
+.vl-x{width:36px;height:36px;border-radius:50%;border:0;background:none;color:inherit;cursor:pointer;display:grid;place-items:center}
+.vl-x:hover{background:var(--line)}
+.vl-x i{font-size:19px}
+.vl-rot{margin-top:10px!important;font-weight:700;color:var(--muted)}
+.vl-grande{font-size:clamp(2.2rem,8vw,3rem);font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.vl-passado{margin-top:4px!important;display:flex;align-items:center;gap:8px;font-weight:600;color:var(--muted);font-size:.9rem}
+.vl-conta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px;padding:12px 14px;border-radius:14px;border:1px solid var(--line)}
+.vl-conta div{min-width:0}
+.vl-conta small{display:block;font-size:.74rem;font-weight:700;color:var(--muted)}
+.vl-conta b{font-size:1.02rem;font-weight:800;white-space:nowrap}
+.vl-conta>span{font-weight:800;color:var(--muted)}
+.vl-novo{margin-top:14px!important;padding:12px 14px;border-radius:14px;border:1px dashed var(--line);color:var(--muted);font-weight:600}
+.vl-fatores,.vl-dicas{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.vl-fatores li{padding:9px 0;border-top:1px solid var(--line)}
+.vl-fatores li:first-child{border-top:0}
+.vl-ft{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.vl-fatores p{font-size:.86rem;color:var(--muted);margin-top:2px}
+.vl-aj{font-weight:800;font-size:.84rem;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.vl-aj.pos{color:#176B47;background:rgba(30,127,85,.12)}
+.vl-aj.neg{color:#A52A22;background:rgba(194,54,46,.12)}
+.vl-aj.zero{color:var(--muted);background:var(--line)}
+.vl-aj.nd{color:var(--muted);border:1px dashed var(--line)}
+:root[data-theme="dark"] .vl-aj.pos,:root.vl-escuro .vl-aj.pos{color:#5BD69B;background:rgba(91,214,155,.14)}
+:root[data-theme="dark"] .vl-aj.neg,:root.vl-escuro .vl-aj.neg{color:#FF8A80;background:rgba(255,122,112,.14)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]):not(.vl-solo) .vl-aj.pos{color:#5BD69B;background:rgba(91,214,155,.14)}
+  :root:not([data-theme="light"]):not(.vl-solo) .vl-aj.neg{color:#FF8A80;background:rgba(255,122,112,.14)}}
+.vl-dicas li{display:flex;gap:10px;align-items:flex-start;padding:6px 0;font-size:.9rem;font-weight:600}
+.vl-dicas i{font-size:18px;color:var(--accent);flex:none;margin-top:1px}
+.vl-metodo{margin-top:6px}
+.vl-metodo p{font-size:.84rem;color:var(--muted);margin-top:6px!important}
+.vl-metodo b{color:var(--ink)}
+@media (max-width:860px){
+  .vl-ov{align-items:flex-end;padding:0}
+  .vl-janela{width:100%;max-height:92dvh;border-radius:22px 22px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom,0px))}
+}
+@media (prefers-reduced-transparency: reduce){.vl-chip{background:var(--painel-forte)}}

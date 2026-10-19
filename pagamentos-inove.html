@@ -12,11 +12,14 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="shared.js"></script>
+<link rel="stylesheet" href="valuation.css">
+<script src="valuation.js"></script>
 <script>
 // Login da Inove: vencimento e comissão são só da Ideali (o banco também recusa -- 049)
 if (idealiPapel() === 'inove') document.documentElement.classList.add('papel-inove');
 </script>
 <style>
+@media (max-width:700px){#vl-inove{flex-basis:100%;justify-content:center}}
 .papel-inove #venc-edit-btn,.papel-inove .comissao-btn-saque,.papel-inove .btn-excluir-saque{display:none !important}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;padding:0.5rem;min-height:100vh}
@@ -26,7 +29,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .badge-ro{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 10px;border-radius:6px;background:#1a2a40;color:#60a5fa;border:0.5px solid rgba(96,165,250,0.3);font-weight:500}
 .nav-btn{width:34px;height:34px;border-radius:8px;border:0.5px solid rgba(255,255,255,0.12);background:#22263a;color:#94a3b8;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
 .nav-btn:hover{background:#2d3250;color:#e2e8f0}
-.month-nav{display:flex;align-items:center;gap:8px}
+.month-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem}
 .summary-row.summary-row-5{grid-template-columns:repeat(5,1fr)}
 .summary-row-comissao{display:flex;align-items:stretch;gap:10px;margin-bottom:1rem;flex-wrap:wrap}
@@ -289,6 +292,7 @@ table .hist-extrato-row td a,table .hist-extrato-row td a.comp-link.extrato-link
     </div>
   </div>
   <div class="month-nav">
+    <button type="button" class="vl-chip" id="vl-inove" data-vl-chip hidden></button>
     <button class="nav-btn" onclick="changeMonth(-1)"><i class="ti ti-chevron-left"></i></button>
     <div style="position:relative">
       <button id="month-dd-btn" class="month-dd-btn" onclick="toggleMonthDD()">
@@ -1950,6 +1954,12 @@ function hideLoading() {
 }
 
 initShell().then(function() { init(); });
+// Valuation no topo para o login da Inove (dentro do app do dono ele já aparece na barra de cima)
+if (!IDEALI_EMBUTIDO) {
+  document.documentElement.classList.add('vl-solo');
+  if ((localStorage.getItem('ideali-theme') || '') !== 'ideali') document.documentElement.classList.add('vl-escuro');
+  IdealiValuation.montar(sb).catch(function(e) { console.error('[valuation]', e); });
+}
 </script>
 </body>
 </html>
