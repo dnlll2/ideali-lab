@@ -102,6 +102,16 @@
     r.fatores.push({ id: 'tempo', nome: 'Tempo de casa', aj: meses < 6 ? -0.20 : meses < 12 ? -0.10 : meses >= 24 ? 0.10 : 0,
       frase: 'Histórico de ' + (meses < 1 ? dias + ' dias' : Math.floor(meses) + (Math.floor(meses) === 1 ? ' mês' : ' meses')) + ' de pedidos no sistema.' });
 
+    // Clientes que mais diminuíram: últimos 90 dias contra os 90 anteriores (para saber com quem falar)
+    var antes = {}, agora = {};
+    validos.forEach(function (p) {
+      if (p.t > t - 90 * DIA) agora[p.c] = (agora[p.c] || 0) + p.v;
+      else if (p.t > t - 180 * DIA) antes[p.c] = (antes[p.c] || 0) + p.v;
+    });
+    r.quedas = Object.keys(antes).map(function (c) { return { c: c, antes: antes[c], agora: agora[c] || 0 }; })
+      .filter(function (q) { return q.antes - q.agora >= 1; })
+      .sort(function (a, b) { return (b.antes - b.agora) - (a.antes - a.agora); }).slice(0, 5);
+
     var somaAj = r.fatores.reduce(function (s, f) { return f.aj == null ? s : s + f.aj; }, 0);
     r.multiplo = limitar(1 + somaAj, 0.3, 2.0);
     r.valor = Math.round(r.receita * r.multiplo / 100) * 100;
@@ -152,12 +162,13 @@
     return { passado: h[kPassado], hist: h };
   }
 
-  var ESTADO = null;
+  var ESTADO = null, NOMES = {};
   async function carregar(sb) {
     if (!papelPermitido()) return null;
     var dados = { pedidos: await todos(sb, 'pedidos', 'valor,cliente_reg,status,created_at'),
                   controle: await todos(sb, 'controle_mensal', 'cliente_reg,mes,ano,valor_mes,valor_pago,quitado') };
     var r = calcular(dados.pedidos, dados.controle, new Date());
+    try { (await todos(sb, 'cadastro_clientes', 'reg,nome')).forEach(function (c) { NOMES[c.reg] = c.nome; }); } catch (e) {}
     var h = await historico(sb, r, dados);
     r.passado = h.passado;
     r.variacao = h.passado > 0 ? (r.valor - h.passado) / h.passado : null;
@@ -181,7 +192,12 @@
       return '<li><div class="vl-ft"><b>' + esc(f.nome) + '</b><span class="vl-aj ' + cls + '">' + (f.aj == null ? 'sem dados' : ajusteTxt(f.aj)) + '</span></div>' +
         '<p>' + esc(f.frase) + '</p></li>';
     }).join('');
-    var dicas = r.dicas.length ? '<h3>Como aumentar</h3><ul class="vl-dicas">' + r.dicas.map(function (d) { return '<li><i class="ti ti-bulb" aria-hidden="true"></i><span>' + esc(d) + '</span></li>'; }).join('') + '</ul>' : '';
+    var quedas = (r.quedas || []).length ? '<p class="vl-qtit">Clientes que mais diminuíram os pedidos <small>(últimos 90 dias × 90 anteriores)</small></p>' +
+      '<ul class="vl-quedas">' + r.quedas.map(function (q) {
+        return '<li><b>' + esc(NOMES[q.c] || ('Cliente #' + q.c)) + '</b><span>' + brl(q.antes) + ' → ' + brl(q.agora) +
+          ' <em>' + (q.agora ? '−' + pct((q.antes - q.agora) / q.antes) : 'parou') + '</em></span></li>';
+      }).join('') + '</ul>' : '';
+    var dicas = (r.dicas.length || quedas) ? '<h3>Como aumentar</h3><ul class="vl-dicas">' + r.dicas.map(function (d) { return '<li><i class="ti ti-bulb" aria-hidden="true"></i><span>' + esc(d) + '</span></li>'; }).join('') + '</ul>' + quedas : '';
     var conta = r.novo
       ? '<p class="vl-novo">Ainda não há pedidos registrados. Toda conta começa valendo R$ 0 e sobe conforme registra pedidos.</p>'
       : '<div class="vl-conta" aria-label="Conta do valuation">' +

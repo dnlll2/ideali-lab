@@ -59,6 +59,16 @@ html.vl-aberto{overflow:hidden}
   :root:not([data-theme="light"]):not(.vl-solo) .vl-aj.neg{color:#FF8A80;background:rgba(255,122,112,.14)}}
 .vl-dicas li{display:flex;gap:10px;align-items:flex-start;padding:6px 0;font-size:.9rem;font-weight:600}
 .vl-dicas i{font-size:18px;color:var(--accent);flex:none;margin-top:1px}
+.vl-qtit{margin-top:12px!important;font-weight:800;font-size:.88rem}
+.vl-qtit small{font-weight:600;color:var(--muted)}
+.vl-quedas{list-style:none;margin:6px 0 0;padding:0}
+.vl-quedas li{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--line);font-size:.88rem}
+.vl-quedas li:first-child{border-top:0}
+.vl-quedas b{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vl-quedas span{flex:none;color:var(--muted);font-weight:600;white-space:nowrap}
+.vl-quedas em{font-style:normal;font-weight:800;color:#A52A22}
+:root[data-theme="dark"] .vl-quedas em,:root.vl-escuro .vl-quedas em{color:#FF8A80}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]):not(.vl-solo) .vl-quedas em{color:#FF8A80}}
 .vl-metodo{margin-top:6px}
 .vl-metodo p{font-size:.84rem;color:var(--muted);margin-top:6px!important}
 .vl-metodo b{color:var(--ink)}
