@@ -59,6 +59,10 @@ if not tabelas:
     sys.exit("Nao consegui listar as tabelas (%s)" % st)
 print("Tabelas/views expostas no banco: %d" % len(tabelas))
 
+# python testes/teste_negacao_inove_052.py --usuario-real inove3dlab@gmail.com
+#   -> roda tudo com o login REAL da Inove (nao cria nem apaga usuario)
+USUARIO_REAL = sys.argv[sys.argv.index("--usuario-real") + 1].strip().lower() if "--usuario-real" in sys.argv else None
+tok = None
 email = "teste-inove-052-%s@exemplo.invalid" % secrets.token_hex(4)
 senha = secrets.token_urlsafe(24)
 uid = None
@@ -93,18 +97,41 @@ try:
         sys.exit("Nao criei a divida de teste: %s %s" % (st, d))
     print("Clientes temporarios: %s (inativo, deve R$ 123,45) e %s (inativo, zerado)" % (REG_DIVIDA, REG_ZERADO))
 
-    # ── 1) usuario temporario ──
-    st, u = http("POST", "/auth/v1/admin/users", SECRET, corpo={
-        "email": email, "password": senha, "email_confirm": True,
-        "app_metadata": {"papel": "inove", "dono_id": dono_id}})
-    if st not in (200, 201):
-        sys.exit("Nao criei o usuario temporario: %s %s" % (st, u))
-    uid = u["id"]
-    print("Usuario temporario criado:", email)
-    st, s = http("POST", "/auth/v1/token?grant_type=password", PUB, corpo={"email": email, "password": senha})
-    if st != 200:
-        sys.exit("Login do usuario temporario falhou: %s %s" % (st, s))
-    tok = s["access_token"]
+    if USUARIO_REAL:
+        # ── 1) login REAL da Inove: sessao por link magico gerado pelo admin (nao manda e-mail,
+        #        nao troca a senha dela); a sessao e encerrada no fim ──
+        st, lst = http("GET", "/auth/v1/admin/users?page=1&per_page=1000", SECRET)
+        u = next((x for x in (lst or {}).get("users", []) if (x.get("email") or "").lower() == USUARIO_REAL), None)
+        if not u:
+            sys.exit("Nao achei o usuario %s em Authentication > Users (o convite ja foi enviado?)" % USUARIO_REAL)
+        uid = u["id"]
+        app = u.get("app_metadata") or {}
+        checa("login real tem papel inove", app.get("papel") == "inove", str(app.get("papel")))
+        checa("login real aponta para o dono certo", app.get("dono_id") == dono_id, str(app.get("dono_id")))
+        if app.get("papel") != "inove":
+            sys.exit("Usuario %s nao tem papel inove; parei antes de testar." % USUARIO_REAL)
+        st, lk = http("POST", "/auth/v1/admin/generate_link", SECRET, corpo={"type": "magiclink", "email": USUARIO_REAL})
+        th = (lk or {}).get("hashed_token") or ((lk or {}).get("properties") or {}).get("hashed_token")
+        if st != 200 or not th:
+            sys.exit("Nao gerei o link de acesso: %s %s" % (st, str(lk)[:200]))
+        st, s = http("POST", "/auth/v1/verify", PUB, corpo={"type": "magiclink", "token_hash": th})
+        if st != 200 or not (s or {}).get("access_token"):
+            sys.exit("Nao entrei com o login real: %s %s" % (st, str(s)[:200]))
+        tok = s["access_token"]
+        print("Entrei com o login REAL:", USUARIO_REAL)
+    else:
+        # ── 1) usuario temporario ──
+        st, u = http("POST", "/auth/v1/admin/users", SECRET, corpo={
+            "email": email, "password": senha, "email_confirm": True,
+            "app_metadata": {"papel": "inove", "dono_id": dono_id}})
+        if st not in (200, 201):
+            sys.exit("Nao criei o usuario temporario: %s %s" % (st, u))
+        uid = u["id"]
+        print("Usuario temporario criado:", email)
+        st, s = http("POST", "/auth/v1/token?grant_type=password", PUB, corpo={"email": email, "password": senha})
+        if st != 200:
+            sys.exit("Login do usuario temporario falhou: %s %s" % (st, s))
+        tok = s["access_token"]
 
     # ── 2) leitura de todas as tabelas ──
     print("\n[Leitura] tudo fora da lista permitida tem que voltar vazio")
@@ -189,9 +216,11 @@ try:
     if com_tel and com_tel.get("tel_wa"):
         st, d = http("POST", "/rest/v1/rpc/inove_registrar_whatsapp", PUB, tok, {"p_reg": com_tel["reg"]})
         checa("registra clique no WhatsApp", st in (200, 204), "%s %s" % (st, d))
-        st, h = http("GET", "/rest/v1/inove_whatsapp_cliques?usuario_id=eq.%s&select=id,cliente_reg,usuario_email" % uid, SECRET)
+        # so o clique do cliente TEMPORARIO (nunca apaga clique real da Inove)
+        filtro = "usuario_id=eq.%s&cliente_reg=eq.%s" % (uid, REG_DIVIDA)
+        st, h = http("GET", "/rest/v1/inove_whatsapp_cliques?%s&select=id,cliente_reg,usuario_email" % filtro, SECRET)
         checa("clique gravado com quem/cliente/quando", st == 200 and len(h) == 1 and h[0]["cliente_reg"] == com_tel["reg"], str(h)[:120])
-        http("DELETE", "/rest/v1/inove_whatsapp_cliques?usuario_id=eq.%s" % uid, SECRET)
+        http("DELETE", "/rest/v1/inove_whatsapp_cliques?" + filtro, SECRET)
     else:
         checa("registra clique no WhatsApp", False, "nenhum cliente ativo com telefone valido para testar")
     sem_tel = next((c for c in (cli or []) if not c.get("tel_wa")), None)
@@ -202,7 +231,12 @@ try:
     checa("recusa clique de inativo zerado (fora da lista)", st >= 400, str(st))
 finally:
     limpar_clientes_teste()
-    if uid:
+    if USUARIO_REAL:
+        # login real: NUNCA apaga o usuario; so encerra a sessao aberta pelo teste
+        if tok:
+            st, _ = http("POST", "/auth/v1/logout?scope=local", PUB, tok)
+            print("\nSessao de teste do login real encerrada (%s). Usuario %s mantido." % (st, USUARIO_REAL))
+    elif uid:
         st, _ = http("DELETE", "/auth/v1/admin/users/" + uid, SECRET)
         print("\nUsuario temporario apagado:" if st in (200, 204) else "\nATENCAO: nao consegui apagar o usuario %s (%s) - apague em Authentication > Users:" % (uid, st), email)
 
