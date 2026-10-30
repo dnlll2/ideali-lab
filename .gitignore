@@ -14,3 +14,9 @@ docs/aviso-*
 
 # prints de revisão do visual (ficam só no computador)
 prints/
+
+# comprovantes reais do teste de leitura (nome, CPF): nunca publicar
+testes/comprovantes/
+
+# cache do Python dos testes
+testes/__pycache__/

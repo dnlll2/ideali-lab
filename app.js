@@ -422,7 +422,7 @@ function juntarProducao(pedidos, ordens, nomes) {
     var est = !p.data_prevista;
     lista.push({ d: est ? isoLocal(somaDiasUteis(new Date(p.created_at), 7)) : String(p.data_prevista).slice(0, 10), estimado: est,
       nome: nomes[p.cliente_reg] || 'Cliente #' + p.cliente_reg, desc: p.descricao || '—', urgente: p.urgente,
-      rota: 'pedido/' + p.id, titulo: 'Pedido #' + p.id });
+      rota: 'pedido/' + p.id, titulo: 'Pedido #' + p.id, st: p.status });
   });
   ordens.forEach(function (o) {
     if (o.excluido || o.arquivado || o.aceito_pelo_admin === false) return;
@@ -468,8 +468,10 @@ function carregarResumo() {
     var prod = juntarProducao(res[0].data, res[1].data, nomes);
     var hoje = isoLocal(new Date());
     RESUMO = { t: Date.now(), hoje: hoje,
-      atrasados: prod.filter(function (p) { return p.d < hoje; }),
-      deHoje: prod.filter(function (p) { return p.d === hoje; }),
+      // Atrasado/entrega de hoje = pedido em produção COM prazo preenchido (sem prazo não dá para dizer que atrasou;
+      // orçamento, CAM sem prazo, entregue, finalizado e cancelado nunca contam)
+      atrasados: prod.filter(function (p) { return p.st === 'producao' && !p.estimado && p.d < hoje; }),
+      deHoje: prod.filter(function (p) { return p.st === 'producao' && !p.estimado && p.d === hoje; }),
       devendo: calcularDevendo(res[3].data, nomes) };
     return RESUMO;
   }).finally(function () { _resumoPromessa = null; });

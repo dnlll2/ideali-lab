@@ -213,7 +213,7 @@ async function loadMonthData(m, y) {
     var dbRes = await sb.from('controle_mensal').select('*').eq('mes',m).eq('ano',y);
     var storRes = await sb.storage.from('comprovantes').list(folder);
     var extRes  = await sb.storage.from('extratos').list(folder);
-    var aportesRes = await sb.from('pagamento_aportes').select('*').eq('mes',m).eq('ano',y).order('data_pagamento');
+    var aportesRes = await sb.from('pagamento_aportes').select('*').eq('mes',m).eq('ano',y).is('anulado_em', null).order('data_pagamento');
     if (aportesRes.data) await idealiAssinarUrls(aportesRes.data, 'comprovante_url', 'comprovantes');
     if (dbRes.error) throw dbRes.error;
     var rows = dbRes.data || [];
@@ -1056,7 +1056,7 @@ async function conferirAportesPendentes(reg) {
 //   backfillConferenciaComprovantes()
 async function backfillConferenciaComprovantes(onProgress) {
   var res = await sb.from('pagamento_aportes').select('id,valor,comprovante_url')
-    .not('comprovante_path', 'is', null).is('conferencia_status', null);
+    .not('comprovante_path', 'is', null).is('conferencia_status', null).is('anulado_em', null);
   if (res.data) await idealiAssinarUrls(res.data, 'comprovante_url', 'comprovantes');
   if (res.error) {
     console.error('backfillConferenciaComprovantes:', res.error);
@@ -1342,6 +1342,12 @@ async function deleteExtrato(reg, filename, e) {
   var path = folder + '/' + decodeURIComponent(filename);
   var res = await sb.storage.from('extratos').remove([path]);
   if (res.error) { setSyncStatus('error'); alert('Erro ao apagar: ' + (res.error.message || 'desconhecido')); return; }
+  // O link do extrato em controle_mensal apontava para este arquivo: limpa também (a Inove lê só o link)
+  if (dbState[reg] && dbState[reg].extrato_path === path) {
+    var okLink = await patchControleMensal(reg, {extrato_url: null, extrato_path: null});
+    if (okLink === false) { setSyncStatus('error'); alert('Extrato apagado, mas o link no controle mensal não foi limpo. Recarregue e tente de novo.'); }
+    else { dbState[reg].extrato_url = null; dbState[reg].extrato_path = null; }
+  }
   if (!dbState[reg]) dbState[reg] = {};
   if (!dbState[reg].extratos) dbState[reg].extratos = [];
   dbState[reg].extratos = dbState[reg].extratos.filter(function(item) { return item.name !== decodeURIComponent(filename); });

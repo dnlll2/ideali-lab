@@ -1073,11 +1073,12 @@ function renderSeloConferencia(aporte) {
 // (storage comprovantes/<ano>_<mes>/reg<N>_*, sem data/valor). Só entram meses
 // com extrato, pagamento ou anexo.
 // Retorna [{mes, ano, valor_mes, valor_pago, extrato_url, aportes:[...], anexos:[{name,url}]}].
+// Pagamento anulado (050: duplicado, guardado com motivo) não entra em lista, extrato nem soma
 async function carregarComprovantesCliente(reg) {
   // Login da Inove (052): view sem comissão e sem extrato_url; extrato_path só se o dono liberou o PDF
   var ehInove = typeof idealiPapel === 'function' && idealiPapel() === 'inove';
   var results = await Promise.all([
-    sb.from('pagamento_aportes').select('*').eq('cliente_reg', reg).order('data_pagamento'),
+    sb.from('pagamento_aportes').select('*').eq('cliente_reg', reg).is('anulado_em', null).order('data_pagamento'),
     ehInove
       ? sb.from('inove_controle_mensal_v').select('mes,ano,valor_mes,valor_pago,extrato_path').eq('cliente_reg', reg)
       : sb.from('controle_mensal').select('mes,ano,valor_mes,valor_pago,extrato_url,extrato_path').eq('cliente_reg', reg),

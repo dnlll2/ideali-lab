@@ -822,7 +822,7 @@ async function loadMonthData() {
   var folder = viewYear + '_' + viewMonth;
   var dbRes = await sb.from(TAB_CM).select('*').eq('mes', viewMonth).eq('ano', viewYear);
   var storRes = await sb.storage.from('comprovantes').list(folder);
-  var aportesRes = await sb.from('pagamento_aportes').select('*').eq('mes', viewMonth).eq('ano', viewYear).order('data_pagamento');
+  var aportesRes = await sb.from('pagamento_aportes').select('*').eq('mes', viewMonth).eq('ano', viewYear).is('anulado_em', null).order('data_pagamento');
   if (aportesRes.data) await idealiAssinarUrls(aportesRes.data, 'comprovante_url', 'comprovantes');
   var compMap = {};
   if (!storRes.error && storRes.data) {
@@ -1742,6 +1742,7 @@ async function carregarDadosExtratoGerado(reg) {
   var aportesRes = await sb.from('pagamento_aportes')
     .select('valor,data_pagamento,obs,legado')
     .eq('cliente_reg', reg)
+    .is('anulado_em', null)
     .gte('data_pagamento', inicioJanela)
     .lt('data_pagamento', fimJanelaExclusivo)
     .order('data_pagamento');

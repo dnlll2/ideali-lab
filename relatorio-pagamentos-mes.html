@@ -162,7 +162,7 @@ async function montar() {
   try {
     var [cmRes, apRes, clRes] = await Promise.all([
       sb.from('controle_mensal').select('cliente_reg,valor_mes,valor_pago,quitado').eq('mes', mes).eq('ano', ano),
-      sb.from('pagamento_aportes').select('*').eq('mes', mes).eq('ano', ano).order('data_pagamento'),
+      sb.from('pagamento_aportes').select('*').eq('mes', mes).eq('ano', ano).is('anulado_em', null).order('data_pagamento'),
       sb.from('cadastro_clientes').select('reg,nome')
     ]);
     if (cmRes.error) throw cmRes.error;
