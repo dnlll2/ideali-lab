@@ -59,7 +59,7 @@ function idealiPaginaAtual() {
 var IDEALI_PAGINA_ROTA = {
   'home.html': 'mais/painel', 'pedidos.html': 'producao/pedidos', 'ordens-cam.html': 'producao/cam',
   'cadastro.html': 'clientes/cadastro', 'convites.html': 'clientes/portal',
-  'contas-receber.html': 'financeiro/receber', 'pagamentos-inove.html': 'inove/pagamentos',
+  'contas-receber.html': 'financeiro/receber', 'central-financeiro.html': 'financeiro/central', 'pagamentos-inove.html': 'inove/pagamentos',
   'cobranca.html': 'financeiro/cobranca', 'recibo.html': 'financeiro/recibos', 'gastos.html': 'financeiro/gastos',
   'relatorio.html': 'financeiro/relatorio', 'tarefas.html': 'mais/tarefas', 'orcamento.html': 'mais/orcamento',
   'relatorios.html': 'mais/relatorios', 'dashboard.html': 'mais/dashboard', 'resumo.html': 'mais/resumo',

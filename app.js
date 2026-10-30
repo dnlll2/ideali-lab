@@ -20,6 +20,7 @@ var SECOES = {
                 ['portal', 'Portal e convites', 'convites.html']] },
   financeiro: { nome: 'Financeiro', icon: 'ti-wallet', abas: [
                 ['receber', 'A receber', 'contas-receber.html'],
+                ['central', 'Central', 'central-financeiro.html'],
                 ['cobranca', 'Cobrança e Pix', 'cobranca.html'],
                 ['recibos', 'Recibos', 'recibo.html'],
                 ['gastos', 'Gastos de entrega', 'gastos.html'],
@@ -636,6 +637,7 @@ var COMANDOS = [
   ['Dentistas e clínicas', 'ti-users', '#/clientes/cadastro', 'clientes cadastro'],
   ['Portal e convites', 'ti-link', '#/clientes/portal', 'clientes acesso'],
   ['A receber', 'ti-cash', '#/financeiro/receber', 'financeiro devendo'],
+  ['Central do Financeiro', 'ti-file-invoice', '#/financeiro/central', 'financeiro extratos lote whatsapp enviar extrato'],
   ['Pagamentos Inove', 'ti-building-factory-2', '#/inove/pagamentos', 'financeiro inove'],
   ['Cobrança e Pix', 'ti-qrcode', '#/financeiro/cobranca', 'financeiro cobrar'],
   ['Recibos', 'ti-receipt', '#/financeiro/recibos', 'financeiro'],

@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Central do Financeiro — Ideali Laboratório</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<style>
+/* ── Cores (mesmas do app 2.0: azul-petróleo / verde-água) ── */
+:root{
+  --ink:#0F2226; --muted:#4A6064; --dim:#6B8084; --line:rgba(15,34,38,.12); --line-forte:rgba(15,34,38,.22);
+  --painel:rgba(255,255,255,.93); --painel-2:rgba(240,247,248,.95); --campo:#FFFFFF;
+  --accent:#0B7A80; --accent-ink:#FFFFFF; --accent-soft:rgba(11,122,128,.12);
+  --ok:#1E7F55; --ok-soft:rgba(30,127,85,.12); --warn:#9A6514; --warn-soft:rgba(232,176,74,.20);
+  --err:#C2362E; --err-soft:rgba(194,54,46,.11); --info:#2F6FB0; --info-soft:rgba(47,111,176,.12);
+  --sombra:0 10px 30px -14px rgba(4,20,24,.35); --fundo:#EAF2F2;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --ink:#E7F2F3; --muted:#A3B8BB; --dim:#86A0A3; --line:rgba(255,255,255,.10); --line-forte:rgba(255,255,255,.20);
+  --painel:rgba(14,24,28,.94); --painel-2:rgba(22,36,40,.95); --campo:rgba(8,16,20,.85);
+  --accent:#4FD1C5; --accent-ink:#06201F; --accent-soft:rgba(79,209,197,.14);
+  --ok:#5BD69B; --ok-soft:rgba(91,214,155,.14); --warn:#E8B04A; --warn-soft:rgba(232,176,74,.16);
+  --err:#FF7A70; --err-soft:rgba(255,122,112,.14); --info:#7FB2FF; --info-soft:rgba(127,178,255,.14);
+  --sombra:0 10px 30px -14px rgba(0,0,0,.6); --fundo:#0E1A1D;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{background:var(--fundo)}
+html.ideali-embutido{background:transparent}
+body{margin:0;font-family:Manrope,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:var(--ink);font-size:14px;line-height:1.45;padding:18px 20px 60px}
+button,input,select,textarea{font:inherit;color:inherit}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.mu{color:var(--muted)} .dim{color:var(--dim);font-size:12px}
+.wrap{width:100%;max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+
+.topo{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.topo h1{margin:0;font-size:22px;font-weight:800;letter-spacing:-.01em}
+.topo p{margin:2px 0 0}
+.mes-sel{display:flex;align-items:center;gap:6px;background:var(--painel);border:1px solid var(--line);border-radius:12px;padding:4px}
+.mes-sel button{border:0;background:transparent;width:32px;height:32px;border-radius:9px;cursor:pointer;color:var(--muted)}
+.mes-sel button:hover{background:var(--accent-soft);color:var(--accent)}
+.mes-sel b{min-width:132px;text-align:center;font-weight:700}
+
+.abas{display:flex;gap:4px;background:var(--painel);border:1px solid var(--line);border-radius:14px;padding:4px;overflow-x:auto}
+.abas button{border:0;background:transparent;padding:9px 14px;border-radius:10px;cursor:pointer;font-weight:600;color:var(--muted);white-space:nowrap;display:flex;gap:7px;align-items:center}
+.abas button.on{background:var(--accent);color:var(--accent-ink)}
+
+.card{background:var(--painel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sombra);padding:16px 18px}
+.card h2{margin:0 0 4px;font-size:15.5px;font-weight:800}
+.card-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+
+.drop{border:2px dashed var(--line-forte);border-radius:14px;padding:26px 16px;text-align:center;cursor:pointer;transition:.15s;background:var(--painel-2)}
+.drop:hover,.drop.sobre{border-color:var(--accent);background:var(--accent-soft)}
+.drop i{font-size:30px;color:var(--accent)}
+.drop b{display:block;font-size:15px;margin:6px 0 2px}
+
+.btn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--line-forte);background:var(--campo);cursor:pointer;font-weight:700;font-size:13px;white-space:nowrap;text-decoration:none;color:var(--ink)}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.pri:hover{filter:brightness(1.07);color:var(--accent-ink)}
+.btn.zap{background:#1F9D55;border-color:#1F9D55;color:#fff}
+.btn.peq{height:30px;padding:0 10px;font-size:12px}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btn.perigo{color:var(--err);border-color:var(--err)}
+
+.selo{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;line-height:1.3}
+.selo.ok{color:var(--ok);background:var(--ok-soft)} .selo.warn{color:var(--warn);background:var(--warn-soft)}
+.selo.err{color:var(--err);background:var(--err-soft)} .selo.info{color:var(--info);background:var(--info-soft)}
+.selo.neu{color:var(--muted);background:var(--painel-2);border:1px solid var(--line)}
+
+table.conf{width:100%;border-collapse:separate;border-spacing:0}
+table.conf th{text-align:left;font-size:10.5px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;padding:0 8px 8px;border-bottom:1.5px solid var(--line-forte);white-space:nowrap}
+table.conf td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+table.conf tr.fora td{opacity:.55}
+table.conf tr.bloq td{background:var(--err-soft)}
+table.conf td.r,table.conf th.r{text-align:right}
+.arq{font-weight:700;word-break:break-all;font-size:12.5px;min-width:170px;max-width:220px}
+.campo{width:100%;min-width:0;height:32px;border:1px solid var(--line-forte);border-radius:8px;background:var(--campo);padding:0 8px}
+.campo.num{text-align:right;width:110px}
+select.campo{padding-right:4px}
+.alertas{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.alerta{font-size:12px;line-height:1.35;display:flex;gap:5px;align-items:flex-start}
+.alerta i{margin-top:2px;flex-shrink:0}
+.alerta.err{color:var(--err)} .alerta.warn{color:var(--warn)} .alerta.info{color:var(--info)} .alerta.ok{color:var(--ok)}
+.escolha{display:flex;flex-direction:column;gap:3px;margin-top:5px;font-size:12.5px}
+.escolha label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.rodape{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+
+.lista{display:flex;flex-direction:column}
+.lin{display:grid;grid-template-columns:minmax(160px,2fr) repeat(3,minmax(80px,1fr)) minmax(120px,1.2fr) minmax(120px,1.1fr) auto;gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line)}
+.lin.cab{font-size:10.5px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;border-bottom:1.5px solid var(--line-forte);padding-top:0}
+.lin .acoes{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.falta{display:flex;flex-direction:column;gap:6px}
+.falta-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-radius:10px;background:var(--warn-soft);color:var(--ink);font-size:13.5px}
+.falta-item i{color:var(--warn)}
+details summary{cursor:pointer;color:var(--muted);font-weight:600;font-size:13px;margin-top:8px}
+
+.aviso{border-radius:12px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;font-size:13.5px}
+.aviso i{font-size:18px;flex-shrink:0;margin-top:1px}
+.aviso.err{background:var(--err-soft);color:var(--err)} .aviso.ok{background:var(--ok-soft);color:var(--ok)}
+.aviso.warn{background:var(--warn-soft);color:var(--warn)} .aviso.info{background:var(--info-soft);color:var(--info)}
+.aviso b{color:inherit} .aviso p{margin:2px 0 0;color:var(--ink)}
+
+.modal-fundo{position:fixed;inset:0;background:rgba(4,14,18,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal{background:var(--painel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sombra);width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto}
+.modal .mc{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.modal .mc h3{margin:0;font-size:16px;font-weight:800}
+.modal .mb{padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+.modal .mr{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.modal label.t{font-size:11px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px}
+.modal textarea,.aj textarea{width:100%;min-height:130px;border:1px solid var(--line-forte);border-radius:10px;background:var(--campo);padding:10px;resize:vertical;line-height:1.5}
+.x{border:0;background:transparent;font-size:20px;cursor:pointer;color:var(--muted)}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chips button{border:1px solid var(--line-forte);background:var(--campo);border-radius:20px;padding:2px 9px;font-size:12px;cursor:pointer;font-family:ui-monospace,Consolas,monospace}
+.resumo-lote{display:flex;flex-direction:column;gap:6px;font-size:13.5px}
+.resumo-lote div{display:flex;gap:8px;align-items:flex-start}
+
+.aud{display:flex;flex-direction:column}
+.aud-l{display:grid;grid-template-columns:210px 1fr;overflow-wrap:anywhere;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line);font-size:13px}
+.aj{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.aj .full{grid-column:1/-1}
+.aj label.t{font-size:11px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px}
+.aj .campo{height:38px}
+.vazio{padding:26px;text-align:center;color:var(--muted)}
+.esconde{display:none!important}
+.spin{animation:gira 1s linear infinite;display:inline-block} @keyframes gira{to{transform:rotate(360deg)}}
+
+/* ── Celular: tabela vira cartões ── */
+@media (max-width:760px){
+  body{padding:12px 16px 50px}
+  table.conf thead{display:none}
+  table.conf,table.conf tbody,table.conf tr,table.conf td{display:block;width:100%}
+  table.conf tr{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;padding:6px 4px;background:var(--painel-2)}
+  table.conf td{border:0;padding:5px 8px;display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center;text-align:left!important}
+  table.conf td::before{content:attr(data-r);font-size:10.5px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+  table.conf td.so-alerta,table.conf td.bloco{display:block} table.conf td.so-alerta::before{content:none}
+  table.conf td.bloco::before{display:block;margin-bottom:4px}
+  .campo.num{width:100%}
+  .arq{max-width:none}
+  .lin{grid-template-columns:1fr 1fr;gap:6px 10px;padding:12px 2px}
+  .lin.cab{display:none}
+  .lin>.nm{grid-column:1/-1;font-weight:700}
+  .lin .acoes{grid-column:1/-1;justify-content:flex-start}
+  .lin [data-r]::before{content:attr(data-r) " ";font-size:10.5px;font-weight:800;color:var(--dim);text-transform:uppercase}
+  .aj{grid-template-columns:1fr}
+  .aud-l{grid-template-columns:1fr;gap:2px}
+  .mes-sel b{min-width:110px}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="topo">
+    <div>
+      <h1>Central do Financeiro</h1>
+      <p class="mu">Extratos em lote, envio por WhatsApp e histórico de tudo o que mudou.</p>
+    </div>
+    <div class="mes-sel" title="Mês de competência dos extratos">
+      <button onclick="mudarMes(-1)" aria-label="Mês anterior"><i class="ti ti-chevron-left"></i></button>
+      <b id="mes-txt">—</b>
+      <button onclick="mudarMes(1)" aria-label="Próximo mês"><i class="ti ti-chevron-right"></i></button>
+    </div>
+  </div>
+
+  <div class="abas" role="tablist">
+    <button data-aba="extratos" class="on" onclick="abrirAba('extratos')"><i class="ti ti-file-invoice"></i>Extratos em lote</button>
+    <button data-aba="historico" onclick="abrirAba('historico')"><i class="ti ti-history"></i>Histórico</button>
+    <button data-aba="ajustes" onclick="abrirAba('ajustes')"><i class="ti ti-settings"></i>Ajustes</button>
+  </div>
+
+  <div id="aviso-geral"></div>
+
+  <!-- ── Aba: extratos ───────────────────────────── -->
+  <section id="aba-extratos" class="wrap" style="max-width:none">
+    <div class="card">
+      <div class="card-cab">
+        <div>
+          <h2>1. Solte os extratos</h2>
+          <p class="dim">Vários PDFs de uma vez. Nada é gravado até você conferir e confirmar.</p>
+        </div>
+        <span class="selo neu" id="ia-gasto" title="Gasto de hoje com a leitura por IA"></span>
+      </div>
+      <div class="drop" id="drop" onclick="document.getElementById('arquivos').click()">
+        <i class="ti ti-file-upload"></i>
+        <b>Arraste os PDFs aqui ou clique para escolher</b>
+        <span class="dim">Só PDF, até 5 MB cada. O leitor do extrato Inove lê; se ele não entender, você preenche à mão (a IA só entra se for ligada em Ajustes).</span>
+      </div>
+      <input type="file" id="arquivos" accept="application/pdf,.pdf" multiple hidden>
+    </div>
+
+    <div class="card esconde" id="card-conf">
+      <div class="card-cab">
+        <div>
+          <h2>2. Confira antes de gravar</h2>
+          <p class="dim" id="conf-sub"></p>
+        </div>
+        <button class="btn peq" onclick="limparLote()"><i class="ti ti-x"></i>Limpar lista</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="conf">
+          <thead><tr>
+            <th></th><th>PDF</th><th>Cliente sugerido</th><th>Mês</th>
+            <th class="r">Total lido</th><th class="r">No sistema</th><th class="r">Diferença</th><th>Confiança</th>
+          </tr></thead>
+          <tbody id="conf-corpo"></tbody>
+        </table>
+      </div>
+      <div class="rodape">
+        <span class="mu" id="conf-contagem"></span>
+        <button class="btn pri" id="btn-confirmar" onclick="abrirConfirmacao()"><i class="ti ti-check"></i>Conferi, gravar</button>
+      </div>
+    </div>
+
+    <div id="resultado-lote"></div>
+
+    <div class="card" id="card-mes">
+      <div class="card-cab">
+        <div>
+          <h2 id="mes-titulo">3. Extratos do mês</h2>
+          <p class="dim">Quem teve movimento no mês. Envie pelo WhatsApp ou baixe o PDF para arrastar na conversa.</p>
+        </div>
+      </div>
+      <div id="faltando"></div>
+      <div class="lista" id="lista-mes"><div class="vazio">Carregando…</div></div>
+      <div id="sem-movimento"></div>
+    </div>
+  </section>
+
+  <!-- ── Aba: histórico ──────────────────────────── -->
+  <section id="aba-historico" class="wrap esconde" style="max-width:none">
+    <div class="card">
+      <div class="card-cab"><div><h2>Importações</h2><p class="dim">Só a última importação pode ser desfeita, e só se nada mudou depois nos meses que ela tocou.</p></div></div>
+      <div id="lotes" class="aud"><div class="vazio">Carregando…</div></div>
+    </div>
+    <div class="card">
+      <div class="card-cab"><div><h2>O que mudou</h2><p class="dim">Últimas 80 alterações no financeiro: quem, quando e o quê.</p></div></div>
+      <div id="auditoria" class="aud"><div class="vazio">Carregando…</div></div>
+    </div>
+  </section>
+
+  <!-- ── Aba: ajustes ────────────────────────────── -->
+  <section id="aba-ajustes" class="wrap esconde" style="max-width:none">
+    <div class="card">
+      <div class="card-cab"><div><h2>Ajustes da Central</h2><p class="dim">Só vale para este módulo. Grava ao clicar em Salvar.</p></div></div>
+      <div class="aj">
+        <div>
+          <label class="t" for="aj-pix">Chave Pix</label>
+          <input class="campo" id="aj-pix" placeholder="Ainda não preenchida: a mensagem mostra {chave_pix}">
+        </div>
+        <div>
+          <label class="t" for="aj-limite">Limite diário da IA (US$, 0 = desligada)</label>
+          <input class="campo" id="aj-limite" type="number" min="0" step="0.10">
+        </div>
+        <div>
+          <label class="t" for="aj-modelo">Modelo da IA</label>
+          <select class="campo" id="aj-modelo">
+            <option value="claude-opus-5-5">Claude Opus 5.5 (mais preciso)</option>
+            <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (metade do preço)</option>
+            <option value="claude-haiku-5-5">Claude Haiku 5.5 (muito mais barato)</option>
+          </select>
+        </div>
+        <div>
+          <label class="t">Gasto de hoje</label>
+          <div class="campo" style="display:flex;align-items:center" id="aj-gasto">—</div>
+        </div>
+        <div class="full">
+          <label class="t" for="aj-modelo-extrato">Mensagem do extrato (WhatsApp)</label>
+          <div class="chips" id="aj-chips"></div>
+          <textarea id="aj-modelo-extrato" style="margin-top:6px"></textarea>
+        </div>
+      </div>
+      <div class="rodape"><span class="dim" id="aj-status"></span><button class="btn pri" onclick="salvarAjustes()"><i class="ti ti-device-floppy"></i>Salvar</button></div>
+    </div>
+  </section>
+</div>
+
+<script>
+// ================================================================
+// Central do Financeiro — Módulo 1: extratos em lote
+// Meses: "mes" é 0-indexado (0 = janeiro), igual a controle_mensal.
+// Nada é gravado antes do botão "Conferi, gravar" (e da confirmação).
+// Banco: supabase/051_central_financeiro_extratos.sql
+// ================================================================
+var sb = idealiClient();
+var MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+var VARIAVEIS = ['{nome}','{mes}','{valor}','{pago}','{saldo}','{vencimento}','{chave_pix}'];
+var MAX_BYTES = 5 * 1024 * 1024;
+var SETE_DIAS = 7 * 24 * 3600;
+var INICIO_SISTEMA = { ano: 2026, mes: 5 };   // 14/06/2026 (mes 5 = junho)
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
+// Mês padrão: o anterior ao de hoje (extrato de setembro sai no começo de outubro)
+var hoje = new Date();
+var viewMes = hoje.getMonth() - 1, viewAno = hoje.getFullYear();
+if (viewMes < 0) { viewMes = 11; viewAno--; }
+
+var D = { clientes: [], cliPorReg: {}, cm: [], abertura: {}, apelidos: {}, extratos: [], envios: [], pedidosMes: [], cfg: null, vencManual: {}, lotes: [], gastoHoje: 0 };
+var linhas = [];          // linhas da tabela de conferência
+var semMigracao = false;
+
+// ── Utilidades ───────────────────────────────────────────────
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function n2(v) { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function brl(v) { return 'R$ ' + n2(v); }
+function brlSinal(v) { return (v > 0 ? '+' : v < 0 ? '−' : '') + brl(Math.abs(v)); }
+function nomeMes(m, a) { return MESES[m] + '/' + a; }
+function chave(reg, m, a) { return reg + '|' + m + '|' + a; }
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+function dataBr(d) { return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear(); }
+function isoBr(iso) { if (!iso) return '—'; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+function quandoBr(ts) { if (!ts) return '—'; var d = new Date(ts); return dataBr(d) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+function tamanho(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+function cmDe(reg, m, a) { return D.cm.find(function (r) { return r.cliente_reg === reg && r.mes === m && r.ano === a; }) || null; }
+
+function aviso(tipo, icone, titulo, texto) {
+  return '<div class="aviso ' + tipo + '"><i class="ti ' + icone + '"></i><div><b>' + titulo + '</b>' + (texto ? '<p>' + texto + '</p>' : '') + '</div></div>';
+}
+function erroDe(e) { return (e && (e.message || e.error_description || e.erro)) || String(e || 'erro desconhecido'); }
+
+// Tema: segue o app (claro/escuro). O app chama applyTheme() ao trocar.
+function applyTheme(nome) {
+  if (/escuro|dark/.test(nome || '')) document.documentElement.dataset.theme = 'dark';
+  else document.documentElement.removeAttribute('data-theme');
+}
+try { applyTheme(localStorage.getItem('ideali-theme') || ''); } catch (e) {}
+
+// ── Nomes: comparação tolerante (acento, abreviação, "Dr."/"Dra.") ──
+var TITULOS = { dr: 1, dra: 1, doutor: 1, doutora: 1, de: 1, da: 1, do: 1, dos: 1, das: 1, e: 1 };
+function normNome(s) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ').split(' ').filter(function (t) { return t && !TITULOS[t]; }).join(' ');
+}
+function distancia(a, b) {   // Levenshtein (nomes curtos)
+  var m = a.length, n = b.length, d = [], i, j;
+  for (i = 0; i <= m; i++) d[i] = [i];
+  for (j = 0; j <= n; j++) d[0][j] = j;
+  for (i = 1; i <= m; i++) for (j = 1; j <= n; j++)
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[m][n];
+}
+function parecido(t, u) {
+  if (t === u) return 1;
+  if ((t.length === 1 && u[0] === t) || (u.length === 1 && t[0] === u)) return 0.75;      // inicial: "G" ~ "Gabriel"
+  if (t.length >= 3 && u.length >= 3 && (u.indexOf(t) === 0 || t.indexOf(u) === 0)) return 0.8;  // "Odonto" ~ "Odontologia"
+  if (t.length >= 5 && u.length >= 5 && distancia(t, u) <= 1) return 0.85;              // erro de digitação
+  return 0;
+}
+function cobertura(A, B) {
+  if (!A.length) return 0;
+  var soma = 0;
+  A.forEach(function (t) { var m = 0; B.forEach(function (u) { m = Math.max(m, parecido(t, u)); }); soma += m; });
+  return soma / A.length;
+}
+function notaNome(lido, cadastro) {
+  var a = normNome(lido), b = normNome(cadastro);
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  var A = a.split(' '), B = b.split(' ');
+  var s = cobertura(A, B) * 0.65 + cobertura(B, A) * 0.35;
+  if (A[0] === B[0]) s += 0.08;                       // mesmo primeiro nome
+  return Math.min(s, 0.99);
+}
+// Devolve {reg, conf, alternativa, porApelido}
+function sugerirCliente(nomeLido) {
+  if (!nomeLido) return { reg: null, conf: 0 };
+  var ap = D.apelidos[normNome(nomeLido)];
+  if (ap && D.cliPorReg[ap]) return { reg: ap, conf: 0.97, porApelido: true };
+  var notas = D.clientes.map(function (c) { return { reg: c.reg, nota: notaNome(nomeLido, c.nome) }; })
+    .sort(function (x, y) { return y.nota - x.nota; });
+  var p = notas[0], s = notas[1];
+  if (!p || p.nota < 0.35) return { reg: null, conf: p ? p.nota : 0 };
+  var conf = p.nota;
+  var alt = null;
+  if (s && p.nota - s.nota < 0.08) { conf = Math.min(conf, 0.55); alt = s.reg; }   // dois cadastros quase iguais
+  return { reg: p.reg, conf: conf, alternativa: alt };
+}
+
+// ── Leitor do "Extrato Individual" do Inove 3D (mesmo formato de contas-receber.html) ──
+async function lerTextoPDF(file) {
+  var pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  var texto = '';
+  for (var i = 1; i <= pdf.numPages; i++) {
+    var content = await (await pdf.getPage(i)).getTextContent();
+    content.items.forEach(function (it) { texto += it.str + (it.hasEOL ? '\n' : ' '); });
+    texto += '\n';
+  }
+  return texto;
+}
+// Valor BR com sinal ("-1.835,00" → -1835)
+function valorComSinal(trecho) {
+  var m = String(trecho || '').match(/(-)?\s*R?\$?\s*(\d{1,3}(?:\.\d{3})*,\d{2})/);
+  if (!m) return null;
+  var v = parseFloat(m[2].replace(/\./g, '').replace(',', '.'));
+  return isNaN(v) ? null : (m[1] ? -v : v);
+}
+function lerExtratoInove(texto) {
+  var r = { cliente: '', periodoIni: '', periodoFim: '', total: null, saldoAnterior: null };
+  var mp = texto.match(/(\d{2}\/\d{2}\/\d{4})\s*a\s*(\d{2}\/\d{2}\/\d{4})/);
+  if (mp) { r.periodoIni = mp[1]; r.periodoFim = mp[2]; }
+  var mc = texto.match(/Cliente:\s*(.+?)\s*(?:\[\d+\]|\n)/i);
+  if (mc) r.cliente = mc[1].trim();
+  texto.split('\n').forEach(function (l) {
+    if (r.total === null && /Total\s+de\s+Servi[cç]os\s*:/i.test(l)) {
+      var t = valorComSinal(l.replace(/.*Total\s+de\s+Servi[cç]os\s*:/i, ''));
+      if (t !== null) r.total = Math.abs(t);
+    }
+    if (r.saldoAnterior === null && /Saldo\s+Anterior\s*:/i.test(l)) {
+      var s = valorComSinal(l.replace(/.*Saldo\s+Anterior\s*:/i, ''));
+      // No extrato Inove débito vem negativo; aqui positivo = cliente devia
+      if (s !== null) r.saldoAnterior = -s;
+    }
+  });
+  var achou = (r.total !== null ? 0.55 : 0) + (r.cliente ? 0.25 : 0) + (r.periodoFim ? 0.2 : 0);
+  r.confianca = Math.round(achou * 100) / 100;
+  return r;
+}
+
+async function sha256(file) {
+  var buf = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+  return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+}
+function base64De(file) {
+  return new Promise(function (ok, falha) {
+    var fr = new FileReader();
+    fr.onload = function () { ok(String(fr.result).split(',')[1]); };
+    fr.onerror = function () { falha(fr.error); };
+    fr.readAsDataURL(file);
+  });
+}
+
+// Leitura pela IA (Edge Function fin-ia-ler; a chave fica só lá)
+async function lerComIA(file) {
+  var res = await sb.functions.invoke('fin-ia-ler', { body: { tipo: 'extrato', media_type: 'application/pdf', dados_base64: await base64De(file) } });
+  if (res.error) {
+    var msg = erroDe(res.error);
+    try { var j = await res.error.context.json(); if (j && j.erro) msg = j.erro; } catch (e) {}
+    throw new Error(msg);
+  }
+  return res.data;
+}
+
+// ── Saldo e vencimento ───────────────────────────────────────
+// Saldo do sistema no começo do mês: abertura (14/06) + (faturado − pago) dos meses anteriores
+function saldoSistemaAntes(reg, m, a) {
+  var ab = D.abertura[reg];
+  var s = ab ? Number(ab.valor) || 0 : 0;
+  D.cm.forEach(function (r) {
+    if (r.cliente_reg !== reg) return;
+    var k = r.ano * 12 + r.mes;
+    if (k >= INICIO_SISTEMA.ano * 12 + INICIO_SISTEMA.mes && k < a * 12 + m) s += (Number(r.valor_mes) || 0) - (Number(r.valor_pago) || 0);
+  });
+  return { valor: s, temAbertura: !!ab };
+}
+// Vencimento: 5º dia útil do mês SEGUINTE (igual a pagamentos-inove.html), ou o editado à mão
+function pascoa(ano) {
+  var a = ano % 19, b = Math.floor(ano / 100), c = ano % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  var g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4;
+  var l = (32 + 2 * e + 2 * i - h - k) % 7, mm = Math.floor((a + 11 * h + 22 * l) / 451);
+  return new Date(ano, Math.floor((h + l - 7 * mm + 114) / 31) - 1, ((h + l - 7 * mm + 114) % 31) + 1);
+}
+function maisDias(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function quintoDiaUtil(ano, mes) {
+  var p = pascoa(ano);
+  var fer = [[0, 1], [3, 21], [4, 1], [8, 7], [9, 12], [10, 2], [10, 15], [11, 25]].map(function (x) { return new Date(ano, x[0], x[1]).toDateString(); })
+    .concat([maisDias(p, -47), maisDias(p, -2), maisDias(p, 60)].map(function (x) { return x.toDateString(); }));
+  var d = new Date(ano, mes, 1), n = 0;
+  while (true) {
+    if (d.getDay() !== 0 && d.getDay() !== 6 && fer.indexOf(d.toDateString()) < 0 && ++n === 5) return d;
+    d = maisDias(d, 1);
+  }
+}
+function vencimentoDe(m, a) {
+  var man = D.vencManual[m + '|' + a];
+  if (man) return isoBr(man);
+  var pm = m + 1, pa = a; if (pm > 11) { pm = 0; pa++; }
+  return dataBr(quintoDiaUtil(pa, pm));
+}
+
+// ── Carregar dados ───────────────────────────────────────────
+async function carregar() {
+  var ini = new Date(viewAno, viewMes, 1).toISOString(), fim = new Date(viewAno, viewMes + 1, 1).toISOString();
+  var r = await Promise.all([
+    sb.from('cadastro_clientes').select('reg,nome,tel,status').order('nome'),
+    sb.from('controle_mensal').select('id,cliente_reg,mes,ano,valor_mes,valor_pago,enviado,quitado,extrato_url,extrato_path,updated_at'),
+    sb.from('saldo_abertura_clientes').select('cliente_reg,valor,data_referencia,verificado'),
+    sb.from('apelidos_pagador').select('apelido_norm,cliente_reg').eq('origem', 'extrato'),
+    sb.from('extratos_arquivos').select('id,cliente_reg,mes,ano,path,hash_sha256,nome_arquivo,divergente,decisao_divergencia,leitor,situacao,criado_em,lote_id').neq('situacao', 'desfeito'),
+    sb.from('fin_envios').select('cliente_reg,mes,ano,tipo,criado_em,telefone').eq('mes', viewMes).eq('ano', viewAno).order('criado_em', { ascending: false }),
+    sb.from('pedidos').select('cliente_reg,status,valor').gte('created_at', ini).lt('created_at', fim),
+    sb.from('fin_config').select('*').maybeSingle(),
+    sb.from('vencimento_mensal').select('mes,ano,data_vencimento'),
+    sb.from('fin_lotes').select('*').order('criado_em', { ascending: false }).limit(20),
+    sb.from('fin_ia_uso').select('custo_usd').gte('quando', inicioDiaBrasilia())
+  ]);
+  var base = r.slice(0, 2).find(function (x) { return x.error; });
+  if (base) throw base.error;
+  semMigracao = r.slice(2).some(function (x) { return x.error && /PGRST205|does not exist|schema cache/i.test(erroDe(x.error) + (x.error.code || '')); });
+
+  D.clientes = r[0].data || [];
+  D.cliPorReg = {}; D.clientes.forEach(function (c) { D.cliPorReg[c.reg] = c; });
+  D.cm = (r[1].data || []).map(function (x) { x.valor_mes = Number(x.valor_mes) || 0; x.valor_pago = Number(x.valor_pago) || 0; return x; });
+  D.abertura = {}; (r[2].data || []).forEach(function (a) { D.abertura[a.cliente_reg] = a; });
+  D.apelidos = {}; (r[3].data || []).forEach(function (a) { D.apelidos[a.apelido_norm] = a.cliente_reg; });
+  D.extratos = r[4].data || [];
+  D.envios = r[5].data || [];
+  D.pedidosMes = r[6].data || [];
+  D.cfg = r[7].data || null;
+  D.vencManual = {}; (r[8].data || []).forEach(function (v) { D.vencManual[v.mes + '|' + v.ano] = v.data_vencimento; });
+  D.lotes = r[9].data || [];
+  D.gastoHoje = (r[10].data || []).reduce(function (s, u) { return s + Number(u.custo_usd || 0); }, 0);
+}
+function inicioDiaBrasilia() {
+  var d = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+  return new Date(d + 'T03:00:00.000Z').toISOString();
+}
+
+// ── Lote: ler os PDFs soltos ─────────────────────────────────
+var seq = 0;
+async function receberArquivos(lista) {
+  var arquivos = Array.prototype.slice.call(lista || []);
+  if (!arquivos.length) return;
+  arquivos.forEach(function (f) {
+    var l = { id: ++seq, file: f, nome: f.name, tamanho: f.size, estado: 'lendo', alertas: [], incluir: false };
+    if (!/pdf$/i.test(f.type) && !/\.pdf$/i.test(f.name)) { l.estado = 'erro'; l.erro = 'Não é PDF.'; }
+    else if (f.size > MAX_BYTES) { l.estado = 'erro'; l.erro = 'Maior que 5 MB (' + tamanho(f.size) + ').'; }
+    linhas.push(l);
+  });
+  renderConf();
+  for (var i = 0; i < linhas.length; i++) {
+    var l = linhas[i];
+    if (l.estado !== 'lendo') continue;
+    try { await lerLinha(l); } catch (e) { l.estado = 'erro'; l.erro = erroDe(e); }
+    renderConf();
+  }
+}
+
+async function lerLinha(l) {
+  l.hash = await sha256(l.file);
+  var texto = '';
+  try { texto = await lerTextoPDF(l.file); } catch (e) { texto = ''; }
+  var lido = lerExtratoInove(texto);
+  l.leitor = 'leitor';
+  // IA só quando o leitor falha ou a leitura ficou fraca, e só se estiver ligada (limite > 0)
+  if ((lido.total === null || lido.confianca < 0.6) && !iaLigada()) {
+    l.iaErro = 'desligada (limite 0 em Ajustes). Confira e preencha à mão.';
+  } else if (lido.total === null || lido.confianca < 0.6) {
+    l.estado = 'ia'; renderConf();
+    try {
+      var ia = await lerComIA(l.file);
+      var x = ia.leitura || {};
+      lido = { cliente: x.cliente || lido.cliente, periodoIni: x.periodo_inicio || lido.periodoIni, periodoFim: x.periodo_fim || lido.periodoFim,
+               total: x.total_servicos != null ? Math.abs(Number(x.total_servicos)) : lido.total,
+               saldoAnterior: x.saldo_anterior != null ? Number(x.saldo_anterior) : lido.saldoAnterior,
+               confianca: Math.max(0, Math.min(1, Number(x.confianca) || 0)) };
+      l.leitor = 'ia'; l.iaUsoId = ia.ia_uso_id; l.iaCusto = ia.custo_usd; l.iaObs = x.observacao || '';
+      D.gastoHoje += Number(ia.custo_usd || 0);
+      renderGasto();
+    } catch (e) {
+      l.iaErro = erroDe(e);
+    }
+  }
+  l.nomeLido = lido.cliente; l.total = lido.total; l.saldoAnteriorLido = lido.saldoAnterior;
+  l.periodo = lido.periodoIni && lido.periodoFim ? lido.periodoIni + ' a ' + lido.periodoFim : '';
+  l.confLeitura = lido.confianca;
+  l.totalLido = lido.total; l.leitorLido = l.leitor; l.confLido = lido.confianca;
+  // Mês: o do fim do período (0-indexado), senão o mês aberto na tela
+  var pf = (lido.periodoFim || '').split('/');
+  if (pf.length === 3 && +pf[1] >= 1 && +pf[1] <= 12) { l.mes = +pf[1] - 1; l.ano = +pf[2]; l.mesDoPDF = true; }
+  else { l.mes = viewMes; l.ano = viewAno; l.mesDoPDF = false; }
+  var sug = sugerirCliente(lido.cliente);
+  l.reg = sug.reg; l.confNome = sug.conf; l.alternativa = sug.alternativa; l.porApelido = sug.porApelido; l.regSugerido = sug.reg;
+  l.estado = 'pronto';
+  l.incluir = !!l.reg && Math.min(l.confNome, l.confLeitura) >= 0.6;
+}
+
+// Regras de cada linha: duplicado, extrato já existente, divergência, saldo anterior
+function avaliar(l) {
+  l.alertas = []; l.bloqueio = null;
+  if (l.estado !== 'pronto') return;
+  var conf = Math.min(l.confNome || 0, l.confLeitura || 0);
+  l.conf = conf;
+  var cm = l.reg ? cmDe(l.reg, l.mes, l.ano) : null;
+  l.valorSistema = cm ? cm.valor_mes : 0;
+  l.dif = l.total != null ? l.total - l.valorSistema : null;
+  l.divergente = l.total == null || Math.abs(l.dif) > 0.004;
+
+  var dupBanco = D.extratos.find(function (e) { return e.hash_sha256 === l.hash; });
+  var dupLista = linhas.find(function (o) { return o !== l && o.id < l.id && o.hash === l.hash && o.estado === 'pronto'; });
+  if (dupBanco) l.bloqueio = 'Este mesmo PDF já foi anexado (' + esc((D.cliPorReg[dupBanco.cliente_reg] || {}).nome || 'cliente ' + dupBanco.cliente_reg) + ', ' + nomeMes(dupBanco.mes, dupBanco.ano) + ').';
+  else if (dupLista) l.bloqueio = 'Arquivo repetido nesta lista (igual a "' + esc(dupLista.nome) + '").';
+  if (l.bloqueio) { l.incluir = false; return; }
+
+  if (!l.reg) l.alertas.push(['err', 'ti-user-question', 'Cliente não reconhecido' + (l.nomeLido ? ' ("' + esc(l.nomeLido) + '")' : '') + '. Escolha na lista.']);
+  else if (l.alternativa) l.alertas.push(['warn', 'ti-users', 'Nome parecido com dois cadastros: confira se não é ' + esc(D.cliPorReg[l.alternativa].nome) + '.']);
+  if (l.reg && l.reg !== l.regSugerido && l.nomeLido) l.alertas.push(['info', 'ti-bookmark', 'Corrigido por você: o nome "' + esc(l.nomeLido) + '" será lembrado para este cliente.']);
+  if (l.porApelido && l.reg === l.regSugerido) l.alertas.push(['ok', 'ti-bookmark', 'Reconhecido pelo nome guardado de outra importação.']);
+
+  var outro = linhas.find(function (o) { return o !== l && o.id < l.id && o.incluir && !o.bloqueio && o.reg === l.reg && o.mes === l.mes && o.ano === l.ano; });
+  if (outro && l.incluir) l.alertas.push(['err', 'ti-copy', 'Outro PDF desta lista já vai para o mesmo cliente e mês ("' + esc(outro.nome) + '"). Fica só um.']);
+  l.repetidoNoLote = !!outro;
+
+  if (cm && cm.extrato_path) l.alertas.push(['warn', 'ti-file-alert', 'Já existe extrato anexado neste mês.' + (l.substituir ? ' Será substituído (o antigo fica no histórico).' : ' Marque "substituir" para trocar.')]);
+  l.jaTem = !!(cm && cm.extrato_path);
+
+  if (l.total == null) l.alertas.push(['err', 'ti-alert-triangle', 'Total não lido. Digite o total do extrato.']);
+  else if (l.divergente && l.reg) l.alertas.push(['err', 'ti-scale', 'Divergência de ' + brlSinal(l.dif) + ': o extrato diz ' + brl(l.total) + ', o sistema tem ' + brl(l.valorSistema) + '. Escolha abaixo.']);
+
+  if (l.saldoAnteriorLido != null && l.reg) {
+    var ss = saldoSistemaAntes(l.reg, l.mes, l.ano);
+    l.saldoSistema = ss.valor;
+    if (Math.abs(ss.valor - l.saldoAnteriorLido) > 0.01) {
+      l.alertas.push(['warn', 'ti-arrows-diff', 'Saldo anterior não bate: extrato ' + brl(l.saldoAnteriorLido) + ' × sistema ' + brl(ss.valor) +
+        (ss.temAbertura ? '' : ' (sem saldo de abertura cadastrado)') + '. Só aviso, nada é alterado.']);
+    }
+  }
+  if (!l.mesDoPDF) l.alertas.push(['warn', 'ti-calendar-question', 'Período não lido no PDF: usei ' + nomeMes(l.mes, l.ano) + '. Confira o mês.']);
+  else if (l.mes !== viewMes || l.ano !== viewAno) l.alertas.push(['info', 'ti-calendar', 'Período do PDF é ' + nomeMes(l.mes, l.ano) + ' (diferente do mês aberto na tela).']);
+  if (l.leitor === 'ia') l.alertas.push(['info', 'ti-sparkles', 'Lido pela IA' + (l.iaCusto != null ? ' (US$ ' + Number(l.iaCusto).toFixed(3) + ')' : '') + (l.iaObs ? ': ' + esc(l.iaObs) : '') + '.']);
+  if (l.iaErro) l.alertas.push(['warn', 'ti-sparkles-off', 'IA não usada: ' + esc(l.iaErro)]);
+  if (conf < 0.6) l.alertas.push(['warn', 'ti-gauge', 'Confiança baixa: confira cliente, mês e total antes de incluir.']);
+}
+
+function prontaParaGravar(l) {
+  return l.estado === 'pronto' && l.incluir && !l.bloqueio && !!l.reg && l.total != null && !l.repetidoNoLote &&
+    (!l.jaTem || l.substituir) && (!l.divergente || !!l.decisao);
+}
+
+// ── Tabela de conferência ────────────────────────────────────
+function opcoesClientes(sel) {
+  return '<option value="">— escolha —</option>' + D.clientes.map(function (c) {
+    return '<option value="' + c.reg + '"' + (c.reg === sel ? ' selected' : '') + '>' + esc(c.nome) + ' (#' + c.reg + ')</option>';
+  }).join('');
+}
+function opcoesMes(m, a) {
+  var h = '', base = viewAno * 12 + viewMes;
+  var lista = [];
+  for (var k = base - 6; k <= base + 2; k++) lista.push(k);
+  if (lista.indexOf(a * 12 + m) < 0) lista.push(a * 12 + m);
+  lista.sort(function (x, y) { return x - y; }).forEach(function (k) {
+    var mm = k % 12, aa = Math.floor(k / 12);
+    h += '<option value="' + k + '"' + (mm === m && aa === a ? ' selected' : '') + '>' + nomeMes(mm, aa) + '</option>';
+  });
+  return h;
+}
+function seloConf(c) {
+  if (c == null) return '';
+  var p = Math.round(c * 100);
+  return '<span class="selo ' + (c >= 0.85 ? 'ok' : c >= 0.6 ? 'warn' : 'err') + '">' + p + '%</span>';
+}
+
+function renderConf() {
+  var card = $('card-conf');
+  card.classList.toggle('esconde', !linhas.length);
+  if (!linhas.length) return;
+  linhas.forEach(avaliar);
+  var corpo = linhas.map(function (l) {
+    if (l.estado === 'lendo' || l.estado === 'ia') {
+      return '<tr><td></td><td data-r="PDF"><div class="arq">' + esc(l.nome) + '</div></td><td colspan="6" class="mu so-alerta"><i class="ti ti-loader-2 spin"></i> ' +
+        (l.estado === 'ia' ? 'O leitor não entendeu este PDF; lendo com IA…' : 'Lendo…') + '</td></tr>';
+    }
+    if (l.estado === 'erro') {
+      return '<tr class="bloq"><td></td><td data-r="PDF"><div class="arq">' + esc(l.nome) + '</div></td><td colspan="6" class="so-alerta"><div class="alerta err"><i class="ti ti-ban"></i>' + esc(l.erro) + '</div></td></tr>';
+    }
+    var alertas = (l.bloqueio ? [['err', 'ti-ban', l.bloqueio]] : l.alertas).map(function (a) {
+      return '<div class="alerta ' + a[0] + '"><i class="ti ' + a[1] + '"></i><span>' + a[2] + '</span></div>';
+    }).join('');
+    var escolhas = '';
+    if (!l.bloqueio && l.jaTem) escolhas += '<label><input type="checkbox" ' + (l.substituir ? 'checked' : '') + ' onchange="mudar(' + l.id + ',\'substituir\',this.checked)"> Substituir o extrato que já está anexado</label>';
+    if (!l.bloqueio && l.divergente && l.total != null && l.reg) {
+      escolhas += '<label><input type="radio" name="dec' + l.id + '" ' + (l.decisao === 'manter_sistema' ? 'checked' : '') + ' onchange="mudar(' + l.id + ',\'decisao\',\'manter_sistema\')"> Anexar e manter o valor do sistema (' + brl(l.valorSistema) + ')</label>' +
+        '<label><input type="radio" name="dec' + l.id + '" ' + (l.decisao === 'usar_pdf' ? 'checked' : '') + ' onchange="mudar(' + l.id + ',\'decisao\',\'usar_pdf\')"> Anexar e trocar o valor do mês para o do PDF (' + brl(l.total) + ')</label>';
+    }
+    var cls = l.bloqueio ? 'bloq' : (!l.incluir ? 'fora' : '');
+    return '<tr class="' + cls + '">' +
+      '<td data-r="Incluir"><input type="checkbox" aria-label="Incluir" ' + (l.incluir ? 'checked' : '') + (l.bloqueio ? ' disabled' : '') + ' onchange="mudar(' + l.id + ',\'incluir\',this.checked)"></td>' +
+      '<td data-r="PDF" class="bloco"><div class="arq">' + esc(l.nome) + '</div><div class="dim">' + tamanho(l.tamanho) + (l.periodo ? ' · ' + esc(l.periodo) : '') +
+        ' · <span class="selo ' + (l.leitor === 'ia' ? 'info' : 'neu') + '">' + (l.leitor === 'ia' ? 'IA' : l.leitor === 'manual' ? 'à mão' : 'leitor') + '</span></div>' +
+        (l.nomeLido ? '<div class="dim">No PDF: ' + esc(l.nomeLido) + '</div>' : '') + '</td>' +
+      '<td data-r="Cliente" class="bloco"><select class="campo" onchange="mudar(' + l.id + ',\'reg\',this.value)"' + (l.bloqueio ? ' disabled' : '') + '>' + opcoesClientes(l.reg) + '</select>' +
+        '<div class="alertas">' + alertas + '</div>' + (escolhas ? '<div class="escolha">' + escolhas + '</div>' : '') + '</td>' +
+      '<td data-r="Mês"><select class="campo" style="min-width:150px" onchange="mudar(' + l.id + ',\'mesk\',this.value)"' + (l.bloqueio ? ' disabled' : '') + '>' + opcoesMes(l.mes, l.ano) + '</select></td>' +
+      '<td data-r="Total lido" class="r"><input class="campo num" inputmode="decimal" value="' + (l.total != null ? n2(l.total) : '') + '" placeholder="0,00" onchange="mudar(' + l.id + ',\'total\',this.value)"' + (l.bloqueio ? ' disabled' : '') + '></td>' +
+      '<td data-r="No sistema" class="r num">' + brl(l.valorSistema) + '</td>' +
+      '<td data-r="Diferença" class="r num">' + (l.dif == null ? '—' : Math.abs(l.dif) <= 0.004 ? '<span class="selo ok"><i class="ti ti-check"></i>bate</span>' : '<span class="selo err">' + brlSinal(l.dif) + '</span>') + '</td>' +
+      '<td data-r="Confiança">' + seloConf(l.conf) + '</td>' +
+    '</tr>';
+  }).join('');
+  $('conf-corpo').innerHTML = corpo;
+  var lendo = linhas.filter(function (l) { return l.estado === 'lendo' || l.estado === 'ia'; }).length;
+  var prontas = linhas.filter(prontaParaGravar).length;
+  var pendentes = linhas.filter(function (l) { return l.incluir && !prontaParaGravar(l); }).length;
+  $('conf-sub').textContent = linhas.length + ' PDF' + (linhas.length > 1 ? 's' : '') + (lendo ? ' · lendo ' + lendo + '…' : '');
+  $('conf-contagem').innerHTML = '<b>' + prontas + '</b> pronto' + (prontas !== 1 ? 's' : '') + ' para gravar' +
+    (pendentes ? ' · <span style="color:var(--warn)">' + pendentes + ' marcado' + (pendentes > 1 ? 's' : '') + ' precisa' + (pendentes > 1 ? 'm' : '') + ' de uma decisão</span>' : '');
+  $('btn-confirmar').disabled = !!lendo || !prontas || !!pendentes;
+}
+
+function mudar(id, campo, valor) {
+  var l = linhas.find(function (x) { return x.id === id; });
+  if (!l) return;
+  if (campo === 'reg') { l.reg = valor ? +valor : null; l.alternativa = null; if (l.reg) l.confNome = Math.max(l.confNome || 0, 1); l.incluir = !!l.reg; l.decisao = null; }
+  else if (campo === 'mesk') { var k = +valor; l.mes = k % 12; l.ano = Math.floor(k / 12); l.mesDoPDF = true; l.decisao = null; l.substituir = false; }
+  else if (campo === 'total') {
+    var v = parseFloat(String(valor).replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.'));
+    l.total = isNaN(v) ? null : Math.abs(v); l.decisao = null;
+    // total digitado diferente do lido: fica registrado como preenchido à mão
+    if (l.total != null && l.total !== l.totalLido) { l.leitor = 'manual'; l.confLeitura = 1; }
+    else { l.leitor = l.leitorLido; l.confLeitura = l.confLido; }
+  }
+  else l[campo] = valor;
+  renderConf();
+}
+function limparLote() { linhas = []; renderConf(); }
+
+// ── Confirmação e gravação ───────────────────────────────────
+function abrirConfirmacao() {
+  var ok = linhas.filter(prontaParaGravar);
+  if (!ok.length) return;
+  var div = ok.filter(function (l) { return l.divergente; });
+  var sub = ok.filter(function (l) { return l.jaTem; });
+  var usar = ok.filter(function (l) { return l.decisao === 'usar_pdf'; });
+  var itens = ok.map(function (l) {
+    return '<div><i class="ti ti-file-check" style="color:var(--ok)"></i><span><b>' + esc(D.cliPorReg[l.reg].nome) + '</b> · ' + nomeMes(l.mes, l.ano) + ' · ' + brl(l.total) +
+      (l.decisao === 'usar_pdf' ? ' <span class="selo warn">troca o valor do mês: ' + brl(l.valorSistema) + ' → ' + brl(l.total) + '</span>' : l.divergente ? ' <span class="selo warn">divergente, mantém ' + brl(l.valorSistema) + '</span>' : '') +
+      (l.jaTem ? ' <span class="selo info">substitui</span>' : '') + '</span></div>';
+  }).join('');
+  abrirModal('Gravar ' + ok.length + ' extrato' + (ok.length > 1 ? 's' : '') + '?',
+    '<div class="resumo-lote">' + itens + '</div>' +
+    (div.length ? aviso('warn', 'ti-scale', div.length + ' com divergência', 'Cada um fica marcado como "divergente" no histórico.' + (usar.length ? ' ' + usar.length + ' vai(ão) trocar o valor do mês.' : '')) : '') +
+    (sub.length ? aviso('info', 'ti-replace', sub.length + ' substituição(ões)', 'O extrato antigo continua guardado no histórico e volta se você desfizer a importação.') : '') +
+    '<p class="dim">Dá para desfazer esta importação depois, na aba Histórico.</p>',
+    '<button class="btn" onclick="fecharModal()">Voltar</button><button class="btn pri" id="btn-gravar" onclick="gravarLote()"><i class="ti ti-device-floppy"></i>Gravar agora</button>');
+}
+
+async function gravarLote() {
+  var ok = linhas.filter(prontaParaGravar);
+  var btn = $('btn-gravar'); btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2 spin"></i>Gravando…';
+  var resultado = [];
+  var lote = await sb.from('fin_lotes').insert({ tipo: 'extratos', resumo: { qtd: ok.length, mes_tela: viewMes, ano_tela: viewAno } }).select().single();
+  if (lote.error) { fecharModal(); $('resultado-lote').innerHTML = aviso('err', 'ti-alert-triangle', 'Nada foi gravado', esc(erroDe(lote.error))); return; }
+  for (var i = 0; i < ok.length; i++) {
+    var l = ok[i];
+    var path = l.ano + '_' + l.mes + '/reg' + l.reg + '_' + Date.now() + '.pdf';
+    var up = await sb.storage.from('extratos').upload(path, l.file, { contentType: 'application/pdf', upsert: false });
+    if (up.error) { resultado.push([l, false, 'Erro ao enviar o PDF: ' + erroDe(up.error)]); continue; }
+    var url = sb.storage.from('extratos').getPublicUrl(path).data.publicUrl;   // mesmo formato da tela A receber (o app troca por link assinado)
+    var corrigido = l.nomeLido && l.reg !== l.regSugerido;
+    var rpc = await sb.rpc('fin_anexar_extrato', { p: {
+      lote_id: lote.data.id, cliente_reg: l.reg, mes: l.mes, ano: l.ano, path: path, url: url, hash_sha256: l.hash,
+      nome_arquivo: l.nome, tamanho_bytes: l.tamanho, nome_lido: l.nomeLido || null, total_lido: l.total,
+      saldo_anterior_lido: l.saldoAnteriorLido, saldo_anterior_sistema: l.saldoSistema != null ? l.saldoSistema : null,
+      leitor: l.leitor, confianca: l.conf, ia_uso_id: l.iaUsoId || null, substituir: !!l.substituir,
+      decisao_divergencia: l.divergente ? l.decisao : null,
+      apelido_norm: (corrigido || (l.nomeLido && !l.porApelido)) ? normNome(l.nomeLido) : null
+    } });
+    if (rpc.error) {
+      await sb.storage.from('extratos').remove([path]);      // não deixa PDF solto no Storage
+      resultado.push([l, false, erroDe(rpc.error).replace(/^[A-Z_]+:\s*/, '')]);
+    } else resultado.push([l, true]);
+  }
+  var gravados = resultado.filter(function (r) { return r[1]; }).length;
+  if (!gravados) await sb.from('fin_lotes').delete().eq('id', lote.data.id);
+  fecharModal();
+  linhas = linhas.filter(function (l) { return !resultado.some(function (r) { return r[0] === l && r[1]; }); });
+  await recarregar();
+  $('resultado-lote').innerHTML =
+    (gravados ? aviso('ok', 'ti-circle-check', gravados + ' extrato' + (gravados > 1 ? 's anexados' : ' anexado'),
+      'Veja abaixo quem ficou sem extrato. <button class="btn peq perigo" style="margin-left:6px" onclick="desfazerUltimo()"><i class="ti ti-arrow-back-up"></i>Desfazer esta importação</button>') : '') +
+    resultado.filter(function (r) { return !r[1]; }).map(function (r) {
+      return aviso('err', 'ti-alert-triangle', esc(r[0].nome) + ' não foi gravado', esc(r[2]));
+    }).join('');
+}
+
+async function desfazerUltimo() {
+  if (!confirm('Desfazer a última importação de extratos?\n\nOs meses voltam a como estavam antes e os PDFs dela são apagados.')) return;
+  var r = await sb.rpc('fin_desfazer_ultimo_lote');
+  if (r.error) { alert('Não deu para desfazer:\n' + erroDe(r.error).replace(/^[A-Z_]+:\s*/, '')); return; }
+  var paths = (r.data && r.data.paths) || [];
+  if (paths.length) {
+    var rm = await sb.storage.from('extratos').remove(paths);
+    if (rm.error) alert('Importação desfeita, mas não consegui apagar ' + paths.length + ' PDF(s) do Storage: ' + erroDe(rm.error));
+  }
+  $('resultado-lote').innerHTML = aviso('info', 'ti-arrow-back-up', 'Importação desfeita', paths.length + ' extrato(s) retirado(s); os meses voltaram ao que eram antes.');
+  await recarregar();
+}
+
+// ── Lista do mês: quem tem extrato, quem falta, envio ────────
+function enviosDe(reg) { return D.envios.filter(function (e) { return e.cliente_reg === reg && e.tipo === 'extrato'; }); }
+function temMovimento(reg) {
+  var cm = cmDe(reg, viewMes, viewAno);
+  if (cm && (cm.valor_mes > 0 || cm.valor_pago > 0)) return true;
+  return D.pedidosMes.some(function (p) { return p.cliente_reg === reg && p.status !== 'orcamento' && p.status !== 'cancelado'; });
+}
+function renderMes() {
+  $('mes-txt').textContent = nomeMes(viewMes, viewAno);
+  $('mes-titulo').textContent = '3. Extratos de ' + nomeMes(viewMes, viewAno);
+  var com = [], falta = [], semMov = [];
+  D.clientes.forEach(function (c) {
+    var cm = cmDe(c.reg, viewMes, viewAno);
+    var mov = temMovimento(c.reg);
+    if (cm && cm.extrato_path) com.push(c);
+    else if (mov) { com.push(c); falta.push(c); }
+    else if (c.status !== 'inativo') semMov.push(c);
+  });
+  $('faltando').innerHTML = falta.length ? '<div class="falta" style="margin-bottom:12px">' + falta.map(function (c) {
+    return '<div class="falta-item"><span><i class="ti ti-file-off"></i> <b>' + esc(c.nome) + '</b> não tem extrato de ' + nomeMes(viewMes, viewAno) + ', favor conferir.</span></div>';
+  }).join('') + '</div>' : (com.length ? aviso('ok', 'ti-circle-check', 'Todo cliente com movimento em ' + nomeMes(viewMes, viewAno) + ' tem extrato.', '') + '<div style="height:10px"></div>' : '');
+
+  if (!com.length) { $('lista-mes').innerHTML = '<div class="vazio">Nenhum cliente com movimento em ' + nomeMes(viewMes, viewAno) + '.</div>'; }
+  else {
+    $('lista-mes').innerHTML = '<div class="lin cab"><span>Cliente</span><span>Total</span><span>Pago</span><span>Saldo</span><span>Extrato</span><span>Enviado</span><span></span></div>' +
+      com.map(function (c) {
+        var cm = cmDe(c.reg, viewMes, viewAno) || { valor_mes: 0, valor_pago: 0 };
+        var env = enviosDe(c.reg)[0];
+        var ext = D.extratos.find(function (e) { return e.cliente_reg === c.reg && e.mes === viewMes && e.ano === viewAno && e.situacao === 'anexado'; });
+        var temExt = !!cm.extrato_path;
+        var saldo = cm.valor_mes - cm.valor_pago;
+        var seloExt = !temExt ? '<span class="selo err"><i class="ti ti-file-off"></i>sem extrato</span>' :
+          ext && ext.divergente ? '<span class="selo warn" title="Anexado com divergência"><i class="ti ti-scale"></i>divergente</span>' :
+          '<span class="selo ok"><i class="ti ti-file-check"></i>anexado</span>';
+        var seloEnv = env ? '<span class="selo ok"><i class="ti ti-brand-whatsapp"></i>' + quandoBr(env.criado_em) + '</span>' :
+          cm.enviado ? '<span class="selo neu">marcado enviado</span>' : '<span class="dim">—</span>';
+        return '<div class="lin">' +
+          '<span class="nm"><b>' + esc(c.nome) + '</b>' + (c.tel ? '' : ' <span class="dim">· sem telefone</span>') + '</span>' +
+          '<span class="num" data-r="Total">' + brl(cm.valor_mes) + '</span>' +
+          '<span class="num" data-r="Pago">' + brl(cm.valor_pago) + '</span>' +
+          '<span class="num" data-r="Saldo" style="' + (saldo > 0.004 ? 'color:var(--warn);font-weight:700' : '') + '">' + brl(saldo) + '</span>' +
+          '<span data-r="Extrato">' + seloExt + '</span>' +
+          '<span data-r="Enviado">' + seloEnv + '</span>' +
+          '<span class="acoes">' +
+            '<button class="btn peq zap" onclick="abrirWhatsApp(' + c.reg + ')"' + (temExt ? '' : ' disabled title="Anexe o extrato primeiro"') + '><i class="ti ti-brand-whatsapp"></i>Enviar via WhatsApp</button>' +
+            '<button class="btn peq" onclick="baixarPDF(' + c.reg + ')"' + (temExt ? '' : ' disabled') + '><i class="ti ti-download"></i>Baixar PDF</button>' +
+          '</span></div>';
+      }).join('');
+  }
+  $('sem-movimento').innerHTML = semMov.length ? '<details><summary>' + semMov.length + ' cliente(s) ativo(s) sem movimento e sem extrato em ' + nomeMes(viewMes, viewAno) + '</summary><div class="falta" style="margin-top:8px">' +
+    semMov.map(function (c) { return '<div class="falta-item" style="background:var(--painel-2)"><span><i class="ti ti-file-off" style="color:var(--dim)"></i> ' + esc(c.nome) + ' não tem extrato de ' + nomeMes(viewMes, viewAno) + ', favor conferir.</span></div>'; }).join('') +
+    '</div></details>' : '';
+}
+
+// ── WhatsApp ─────────────────────────────────────────────────
+function telefoneWa(tel) {
+  var d = String(tel || '').replace(/\D/g, '').replace(/^0+/, '');
+  if (d.length === 10 || d.length === 11) d = '55' + d;
+  return (d.length === 12 || d.length === 13) && d.indexOf('55') === 0 ? d : '';
+}
+function montarTexto(modelo, reg) {
+  var cm = cmDe(reg, viewMes, viewAno) || { valor_mes: 0, valor_pago: 0 };
+  var pix = D.cfg && D.cfg.chave_pix ? D.cfg.chave_pix : '{chave_pix}';
+  var vars = { '{nome}': D.cliPorReg[reg].nome, '{mes}': nomeMes(viewMes, viewAno), '{valor}': n2(cm.valor_mes), '{pago}': n2(cm.valor_pago),
+               '{saldo}': n2(cm.valor_mes - cm.valor_pago), '{vencimento}': vencimentoDe(viewMes, viewAno), '{chave_pix}': pix };
+  return String(modelo).replace(/\{(nome|mes|valor|pago|saldo|vencimento|chave_pix)\}/g, function (m) { return vars[m]; });
+}
+var MODELO_PADRAO = 'Olá, {nome}. Segue o extrato de {mes} do Ideali Laboratório: total R$ {valor}, pago R$ {pago}, saldo R$ {saldo}. Vencimento em {vencimento}. Qualquer divergência, nos avise. Obrigado.';
+
+async function abrirWhatsApp(reg) {
+  var c = D.cliPorReg[reg], cm = cmDe(reg, viewMes, viewAno);
+  if (!cm || !cm.extrato_path) return;
+  var s = await sb.storage.from('extratos').createSignedUrl(cm.extrato_path, SETE_DIAS);
+  if (s.error) { alert('Não consegui gerar o link do extrato: ' + erroDe(s.error)); return; }
+  var link = s.data.signedUrl;
+  var texto = montarTexto((D.cfg && D.cfg.modelo_extrato) || MODELO_PADRAO, reg) + '\n\nExtrato em PDF (link válido por 7 dias): ' + link;
+  var tel = telefoneWa(c.tel);
+  var env = enviosDe(reg);
+  abrirModal('Enviar extrato · ' + esc(c.nome),
+    '<div><label class="t" for="wa-tel">WhatsApp</label><input class="campo" id="wa-tel" value="' + esc(tel || c.tel || '') + '" placeholder="Sem telefone no cadastro: o WhatsApp vai pedir o contato">' +
+      (tel ? '' : '<p class="dim" style="margin:4px 0 0">' + (c.tel ? 'Telefone do cadastro fora do padrão ("' + esc(c.tel) + '"). Corrija aqui ou escolha o contato no WhatsApp.' : 'Cliente sem telefone no cadastro.') + '</p>') + '</div>' +
+    '<div><label class="t" for="wa-texto">Mensagem (pode editar)</label><textarea id="wa-texto">' + esc(texto) + '</textarea></div>' +
+    aviso('info', 'ti-paperclip', 'O WhatsApp não anexa arquivo por link.', 'Se quiser mandar o PDF em si, clique em "Baixar PDF" e arraste o arquivo para a conversa.') +
+    (env.length ? '<p class="dim">Já enviado ' + env.length + 'x · último em ' + quandoBr(env[0].criado_em) + '.</p>' : ''),
+    '<button class="btn" onclick="baixarPDF(' + reg + ')"><i class="ti ti-download"></i>Baixar PDF</button>' +
+    '<button class="btn zap" onclick="enviarWhatsApp(' + reg + ')"><i class="ti ti-brand-whatsapp"></i>Abrir WhatsApp e marcar enviado</button>');
+}
+
+async function enviarWhatsApp(reg) {
+  var texto = $('wa-texto').value.trim();
+  var tel = telefoneWa($('wa-tel').value);
+  // Abre já (antes de esperar o banco), senão o navegador bloqueia a janela
+  var w = window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(texto), '_blank');
+  var cm = cmDe(reg, viewMes, viewAno);
+  var ext = D.extratos.find(function (e) { return e.cliente_reg === reg && e.mes === viewMes && e.ano === viewAno && e.situacao === 'anexado'; });
+  var ins = await sb.from('fin_envios').insert({ cliente_reg: reg, mes: viewMes, ano: viewAno, tipo: 'extrato', telefone: tel || null, texto: texto,
+    extrato_arquivo_id: ext ? ext.id : null, link_expira_em: new Date(Date.now() + SETE_DIAS * 1000).toISOString() });
+  var upd = cm && !cm.enviado ? await sb.from('controle_mensal').update({ enviado: true, updated_at: new Date().toISOString() }).eq('id', cm.id) : { error: null };
+  fecharModal();
+  if (ins.error || upd.error) alert('O WhatsApp abriu, mas não consegui marcar como enviado: ' + erroDe(ins.error || upd.error));
+  if (!w) alert('O navegador bloqueou a janela do WhatsApp. Permita pop-ups para este site.');
+  await recarregar();
+}
+
+async function baixarPDF(reg) {
+  var cm = cmDe(reg, viewMes, viewAno);
+  if (!cm || !cm.extrato_path) return;
+  var nome = 'Extrato ' + MESES[viewMes] + ' ' + viewAno + ' - ' + D.cliPorReg[reg].nome.replace(/[\\/:*?"<>|]/g, '') + '.pdf';
+  var s = await sb.storage.from('extratos').createSignedUrl(cm.extrato_path, 600, { download: nome });
+  if (s.error) { alert('Não consegui baixar: ' + erroDe(s.error)); return; }
+  var a = document.createElement('a'); a.href = s.data.signedUrl; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+}
+
+// ── Histórico ────────────────────────────────────────────────
+var NOMES_TABELA = { controle_mensal: 'Controle mensal', pagamento_aportes: 'Pagamento', extratos_arquivos: 'Extrato', fin_envios: 'Envio WhatsApp',
+  fin_config: 'Ajustes', apelidos_pagador: 'Nome lembrado', saldo_abertura_clientes: 'Saldo de abertura', fin_lotes: 'Importação' };
+var CAMPOS_IGNORAR = { updated_at: 1, atualizado_em: 1, created_at: 1, criado_em: 1, user_id: 1, id: 1 };
+function resumoMudanca(a) {
+  var reg = (a.depois || a.antes || {}).cliente_reg;
+  var quem = reg && D.cliPorReg[reg] ? D.cliPorReg[reg].nome : '';
+  var mes = (a.depois || a.antes || {}).mes, ano = (a.depois || a.antes || {}).ano;
+  var onde = (quem ? esc(quem) : '') + (mes != null && ano ? ' · ' + nomeMes(mes, ano) : '');
+  var campos = [];
+  if (a.acao === 'update' && a.antes && a.depois) {
+    Object.keys(a.depois).forEach(function (k) {
+      if (CAMPOS_IGNORAR[k] || JSON.stringify(a.antes[k]) === JSON.stringify(a.depois[k])) return;
+      var v = function (x) { return x == null ? '∅' : /url|path/.test(k) ? (x ? 'arquivo' : '∅') : esc(String(x).slice(0, 40)); };
+      campos.push('<b>' + esc(k) + '</b>: ' + v(a.antes[k]) + ' → ' + v(a.depois[k]));
+    });
+  }
+  var acao = { insert: 'criou', update: 'alterou', delete: 'apagou' }[a.acao] || a.acao;
+  return '<b>' + (NOMES_TABELA[a.tabela] || esc(a.tabela)) + '</b> · ' + acao + (onde ? ' · ' + onde : '') + (campos.length ? '<div class="dim">' + campos.join(' · ') + '</div>' : '');
+}
+async function renderHistorico() {
+  var ult = D.lotes.find(function (l) { return !l.desfeito_em; });
+  $('lotes').innerHTML = D.lotes.length ? D.lotes.map(function (l) {
+    var n = D.extratos.filter(function (e) { return e.lote_id === l.id; }).length;
+    return '<div class="aud-l"><span class="dim">' + quandoBr(l.criado_em) + '</span><span style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">' +
+      '<span><b>' + (l.tipo === 'extratos' ? 'Extratos' : 'Comprovantes') + '</b> · ' + (l.desfeito_em ? '<span class="selo neu">desfeita em ' + quandoBr(l.desfeito_em) + '</span>' : n + ' arquivo(s)') + '</span>' +
+      (ult && ult.id === l.id ? '<button class="btn peq perigo" onclick="desfazerUltimo()"><i class="ti ti-arrow-back-up"></i>Desfazer</button>' : '') + '</span></div>';
+  }).join('') : '<div class="vazio">Nenhuma importação ainda.</div>';
+  var r = await sb.from('fin_auditoria').select('*').order('quando', { ascending: false }).limit(80);
+  $('auditoria').innerHTML = r.error ? '<div class="vazio">' + esc(erroDe(r.error)) + '</div>' : (r.data || []).length ? r.data.map(function (a) {
+    return '<div class="aud-l"><span class="dim">' + quandoBr(a.quando) + '<br>' + esc(a.usuario_email || 'sistema') + '</span><span>' + resumoMudanca(a) + '</span></div>';
+  }).join('') : '<div class="vazio">Nada registrado ainda.</div>';
+}
+
+// ── Ajustes ──────────────────────────────────────────────────
+function iaLigada() { return !!D.cfg && Number(D.cfg.ia_limite_diario_usd) > 0; }
+function renderGasto() {
+  var lim = D.cfg ? Number(D.cfg.ia_limite_diario_usd) : 0;
+  $('ia-gasto').innerHTML = iaLigada()
+    ? '<i class="ti ti-sparkles"></i>IA hoje: US$ ' + D.gastoHoje.toFixed(2) + ' de ' + lim.toFixed(2)
+    : '<i class="ti ti-sparkles-off"></i>IA desligada';
+  $('aj-gasto').textContent = iaLigada() ? 'US$ ' + D.gastoHoje.toFixed(3) + ' (limite US$ ' + lim.toFixed(2) + ')' : 'IA desligada';
+}
+function renderAjustes() {
+  var c = D.cfg || {};
+  $('aj-pix').value = c.chave_pix || '';
+  $('aj-limite').value = c.ia_limite_diario_usd != null ? c.ia_limite_diario_usd : 0;
+  $('aj-modelo').value = c.ia_modelo || 'claude-opus-5-5';
+  $('aj-modelo-extrato').value = c.modelo_extrato || MODELO_PADRAO;
+  $('aj-chips').innerHTML = VARIAVEIS.map(function (v) { return '<button type="button" onclick="inserirVar(\'' + v + '\')">' + v + '</button>'; }).join('');
+  renderGasto();
+}
+function inserirVar(v) {
+  var t = $('aj-modelo-extrato'), i = t.selectionStart || t.value.length;
+  t.value = t.value.slice(0, i) + v + t.value.slice(t.selectionEnd || i); t.focus();
+}
+async function salvarAjustes() {
+  var lim = parseFloat(String($('aj-limite').value).replace(',', '.'));
+  var dados = { chave_pix: $('aj-pix').value.trim() || null, ia_limite_diario_usd: isNaN(lim) || lim < 0 ? 0 : lim, ia_modelo: $('aj-modelo').value,
+                modelo_extrato: $('aj-modelo-extrato').value.trim() || MODELO_PADRAO, updated_at: new Date().toISOString() };
+  var r = D.cfg ? await sb.from('fin_config').update(dados).eq('user_id', D.cfg.user_id).select().single()
+                : await sb.from('fin_config').insert(dados).select().single();
+  if (r.error) { $('aj-status').innerHTML = '<span style="color:var(--err)">Não salvou: ' + esc(erroDe(r.error)) + '</span>'; return; }
+  D.cfg = r.data; renderAjustes();
+  $('aj-status').innerHTML = '<span style="color:var(--ok)"><i class="ti ti-check"></i> Salvo às ' + quandoBr(new Date()).slice(11) + '</span>';
+}
+
+// ── Modal, abas, mês ─────────────────────────────────────────
+function abrirModal(titulo, corpo, rodape) {
+  fecharModal();
+  var f = document.createElement('div');
+  f.className = 'modal-fundo'; f.id = 'modal';
+  f.innerHTML = '<div class="modal" role="dialog" aria-modal="true"><div class="mc"><h3>' + titulo + '</h3><button class="x" onclick="fecharModal()" aria-label="Fechar">×</button></div>' +
+    '<div class="mb">' + corpo + '</div><div class="mr">' + rodape + '</div></div>';
+  f.addEventListener('click', function (e) { if (e.target === f) fecharModal(); });
+  document.body.appendChild(f);
+}
+function fecharModal() { var m = $('modal'); if (m) m.remove(); }
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') fecharModal(); });
+
+function abrirAba(a) {
+  document.querySelectorAll('.abas button').forEach(function (b) { b.classList.toggle('on', b.dataset.aba === a); });
+  ['extratos', 'historico', 'ajustes'].forEach(function (x) { $('aba-' + x).classList.toggle('esconde', x !== a); });
+  if (a === 'historico') renderHistorico();
+  try { sessionStorage.setItem('central-fin-aba', a); } catch (e) {}
+}
+async function mudarMes(d) {
+  viewMes += d;
+  if (viewMes < 0) { viewMes = 11; viewAno--; } if (viewMes > 11) { viewMes = 0; viewAno++; }
+  $('mes-txt').textContent = nomeMes(viewMes, viewAno);
+  await recarregar();
+}
+async function recarregar() {
+  try { await carregar(); } catch (e) { $('aviso-geral').innerHTML = aviso('err', 'ti-plug-x', 'Erro ao carregar', esc(erroDe(e))); return; }
+  $('aviso-geral').innerHTML = semMigracao ? aviso('warn', 'ti-database-exclamation', 'Falta rodar a migração 051 no Supabase',
+    'Sem ela a Central só mostra os dados; para gravar, rode supabase/051_central_financeiro_extratos.sql no SQL Editor.') : '';
+  renderMes(); renderConf(); renderAjustes();
+  if (!$('aba-historico').classList.contains('esconde')) renderHistorico();
+}
+
+// ── Início ───────────────────────────────────────────────────
+(function ligarDrop() {
+  var dz = $('drop');
+  ['dragenter', 'dragover'].forEach(function (ev) { dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.add('sobre'); }); });
+  ['dragleave', 'drop'].forEach(function (ev) { dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.remove('sobre'); }); });
+  dz.addEventListener('drop', function (e) { receberArquivos(e.dataTransfer.files); });
+  $('arquivos').addEventListener('change', function (e) { receberArquivos(e.target.files); e.target.value = ''; });
+  // Soltar fora da área não abre o PDF no navegador
+  window.addEventListener('dragover', function (e) { e.preventDefault(); });
+  window.addEventListener('drop', function (e) { e.preventDefault(); });
+})();
+
+(async function iniciar() {
+  if (window.IDEALI_SEM_SESSAO) return;
+  if (idealiPapel() !== 'dono') {
+    $('app').innerHTML = '<div class="card vazio">A Central do Financeiro é só do dono do laboratório.</div>';
+    return;
+  }
+  $('mes-txt').textContent = nomeMes(viewMes, viewAno);
+  await recarregar();
+  try { var a = sessionStorage.getItem('central-fin-aba'); if (a && $('aba-' + a)) abrirAba(a); } catch (e) {}
+})();
+</script>
+</body>
+</html>
