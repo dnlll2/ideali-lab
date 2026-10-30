@@ -351,7 +351,7 @@ function render() {
   if (pagina) { mostrarFrame(pagina, r.extra); return; }
   document.body.classList.remove('com-frame');
   window.scrollTo(0, 0);
-  if (r.sec === 'mais') renderMais();
+  if (r.sec === 'mais') { if (r.sub === 'sem-prazo') renderSemPrazo(); else renderMais(); }
   else if (r.sec === 'config') renderConfig();
   else renderInicio();
 }
@@ -422,7 +422,7 @@ function juntarProducao(pedidos, ordens, nomes) {
     var est = !p.data_prevista;
     lista.push({ d: est ? isoLocal(somaDiasUteis(new Date(p.created_at), 7)) : String(p.data_prevista).slice(0, 10), estimado: est,
       nome: nomes[p.cliente_reg] || 'Cliente #' + p.cliente_reg, desc: p.descricao || '—', urgente: p.urgente,
-      rota: 'pedido/' + p.id, titulo: 'Pedido #' + p.id, st: p.status });
+      rota: 'pedido/' + p.id, titulo: 'Pedido #' + p.id, st: p.status, criado: isoLocal(new Date(p.created_at)) });
   });
   ordens.forEach(function (o) {
     if (o.excluido || o.arquivado || o.aceito_pelo_admin === false) return;
@@ -472,6 +472,9 @@ function carregarResumo() {
       // orçamento, CAM sem prazo, entregue, finalizado e cancelado nunca contam)
       atrasados: prod.filter(function (p) { return p.st === 'producao' && !p.estimado && p.d < hoje; }),
       deHoje: prod.filter(function (p) { return p.st === 'producao' && !p.estimado && p.d === hoje; }),
+      // Sem prazo = pedido em produção sem data prevista (só para conferir; não conta como atrasado)
+      semPrazo: prod.filter(function (p) { return p.st === 'producao' && p.estimado; })
+        .sort(function (a, b) { return a.criado < b.criado ? -1 : a.criado > b.criado ? 1 : 0; }),
       devendo: calcularDevendo(res[3].data, nomes) };
     return RESUMO;
   }).finally(function () { _resumoPromessa = null; });
@@ -483,6 +486,7 @@ var ATALHOS = {
   novo:      { nome: 'Novo pedido',      icon: 'ti-plus',           href: '#/producao/pedidos/novo' },
   atrasados: { nome: 'Atrasados',        icon: 'ti-alarm',          href: '#/producao/pedidos' },
   hoje:      { nome: 'Entregas de hoje', icon: 'ti-truck-delivery', href: '#/producao/pedidos' },
+  semprazo:  { nome: 'Sem prazo',        icon: 'ti-hourglass',      href: '#/mais/sem-prazo' },
   receber:   { nome: 'A receber',        icon: 'ti-cash',           href: '#/financeiro/receber' },
   producao:  { nome: 'Produção',         icon: 'ti-layout-kanban',  href: '#/producao' },
   clientes:  { nome: 'Clientes',         icon: 'ti-users',          href: '#/clientes' },
@@ -490,11 +494,13 @@ var ATALHOS = {
   tarefas:   { nome: 'Tarefas',          icon: 'ti-checklist',      href: '#/mais/tarefas' },
   cobranca:  { nome: 'Cobrança e Pix',   icon: 'ti-qrcode',         href: '#/financeiro/cobranca' }
 };
-var ATALHOS_PADRAO = { ordem: ['novo', 'atrasados', 'hoje', 'receber', 'producao', 'clientes', 'cam', 'tarefas', 'cobranca'], ocultos: ['cam', 'tarefas', 'cobranca'] };
+var ATALHOS_PADRAO = { ordem: ['novo', 'atrasados', 'hoje', 'semprazo', 'receber', 'producao', 'clientes', 'cam', 'tarefas', 'cobranca'], ocultos: ['cam', 'tarefas', 'cobranca'] };
 function cfgAtalhos() {
   var c = lerLocal('ideali-atalhos', null);
   if (!c || !Array.isArray(c.ordem)) c = JSON.parse(JSON.stringify(ATALHOS_PADRAO));
   c.ordem = c.ordem.filter(function (k) { return ATALHOS[k]; });
+  // "Sem prazo" chegou depois: entra visível logo depois de "Entregas de hoje", mesmo em atalhos já personalizados
+  if (c.ordem.indexOf('semprazo') < 0) { var ih = c.ordem.indexOf('hoje'); c.ordem.splice(ih < 0 ? c.ordem.length : ih + 1, 0, 'semprazo'); }
   Object.keys(ATALHOS).forEach(function (k) { if (c.ordem.indexOf(k) < 0) { c.ordem.push(k); (c.ocultos = c.ocultos || []).push(k); } });
   c.ocultos = c.ocultos || [];
   return c;
@@ -514,10 +520,11 @@ function renderInicio() {
         '<input id="busca-casa" type="search" autocomplete="off" spellcheck="false" aria-label="Buscar" placeholder="Buscar pedido, cliente, paciente ou digitar um comando…"><kbd>Ctrl K</kbd></label>' +
       '<div class="atalhos" id="atalhos"></div>' +
       '<button type="button" class="personalizar" id="personalizar"></button>' +
-      '<section class="hoje vidro" id="hoje-card" aria-label="Hoje">' +
+      '<section class="hoje vidro c4" id="hoje-card" aria-label="Hoje">' +
         '<div class="tit-hoje"><b>Hoje</b><a href="#/producao">Ver produção →</a></div>' +
         '<div><h3><i class="ti ti-alarm"></i> Atrasados <span class="n" id="h-atr">…</span></h3><ul id="h-atr-l"></ul></div>' +
         '<div><h3><i class="ti ti-truck-delivery"></i> Entregas de hoje <span class="n" id="h-hoje">…</span></h3><ul id="h-hoje-l"></ul></div>' +
+        '<div><h3><i class="ti ti-hourglass"></i> Sem prazo <span class="n" id="h-sp">…</span></h3><ul id="h-sp-l"></ul></div>' +
         '<div><h3><i class="ti ti-receipt"></i> Quem está devendo <span class="n" id="h-dev">…</span></h3><ul id="h-dev-l"></ul></div>' +
       '</section>' +
     '</section>';
@@ -532,7 +539,7 @@ function renderInicio() {
     renderHoje(R);
   }).catch(function (e) {
     console.error('[inicio]', e);
-    ['h-atr', 'h-hoje', 'h-dev'].forEach(function (id) { $(id).textContent = '—'; });
+    ['h-atr', 'h-hoje', 'h-sp', 'h-dev'].forEach(function (id) { $(id).textContent = '—'; });
     $('h-atr-l').innerHTML = '<li class="vazio">Não deu para carregar agora. Atualize a página.</li>';
   });
 }
@@ -545,6 +552,7 @@ function renderAtalhos() {
     var a = ATALHOS[k], oculto = c.ocultos.indexOf(k) >= 0, extra = '';
     if (R && k === 'atrasados') extra = '<span class="num' + (R.atrasados.length ? ' alerta' : '') + '">' + R.atrasados.length + '</span>';
     if (R && k === 'hoje') extra = '<span class="num">' + R.deHoje.length + '</span>';
+    if (R && k === 'semprazo') extra = '<span class="num">' + R.semPrazo.length + '</span>';
     var val = R && k === 'receber' ? '<span class="val">' + brlCurto(R.devendo.total) + '</span>' : '';
     return '<a class="atalho vidro' + (oculto ? ' oculto' : '') + '" href="' + a.href + '" data-k="' + k + '"' + (EDITANDO_ATALHOS ? ' draggable="true"' : '') + '>' +
       extra + '<span class="ic"><i class="ti ' + a.icon + '"></i></span><span class="nm">' + a.nome + '</span>' + val +
@@ -603,6 +611,9 @@ function renderHoje(R) {
   $('h-hoje').textContent = R.deHoje.length;
   $('h-hoje-l').innerHTML = R.deHoje.length ? R.deHoje.slice(0, 3).map(function (p) { return item(p, p.estimado ? 'previsto' : 'hoje'); }).join('') +
     (R.deHoje.length > 3 ? '<li class="vazio">e mais ' + (R.deHoje.length - 3) + '</li>' : '') : '<li class="vazio">Nada para entregar hoje.</li>';
+  $('h-sp').textContent = R.semPrazo.length;
+  $('h-sp-l').innerHTML = R.semPrazo.length ? R.semPrazo.slice(0, 3).map(function (p) { return item(p, diasEntre(p.criado, R.hoje) + 'd'); }).join('') +
+    '<li><a href="#/mais/sem-prazo"><span class="t"><b>Ver todos (' + R.semPrazo.length + ')</b></span></a></li>' : '<li class="vazio">Todo pedido em produção tem prazo 👍</li>';
   var dv = R.devendo;
   $('h-dev').textContent = brlCurto(dv.total);
   $('h-dev-l').innerHTML = dv.lista.length ? dv.lista.slice(0, 3).map(function (c) {
@@ -806,6 +817,27 @@ function aplicarLateral(ligada) {
 }
 $('lat-esconder').addEventListener('click', function () { aplicarLateral(false); });
 $('lat-ia').addEventListener('click', function () { abrirIA(''); });
+
+// ── Pedidos em produção sem prazo (só leitura) ────────────────
+// Não conta como atrasado (sem data prevista não dá para saber); serve para conferir e preencher.
+function renderSemPrazo() {
+  $('main').innerHTML = '<h1 class="titulo-pg">Sem prazo</h1>' +
+    '<p class="sub-pg">Pedidos em produção sem data prevista. Abra o pedido para preencher o prazo.</p>' +
+    '<section class="painel sem-prazo" id="sp-lista"><p class="muted">Carregando…</p></section>';
+  RESUMO = null;
+  carregarResumo().then(function (R) {
+    var el = $('sp-lista'); if (!el) return;
+    if (!R.semPrazo.length) { el.innerHTML = '<p class="muted">Todo pedido em produção tem prazo. 👍</p>'; return; }
+    el.innerHTML = '<p class="sp-total"><b>' + R.semPrazo.length + '</b> pedido' + (R.semPrazo.length === 1 ? '' : 's') + ' em produção sem prazo · mais antigo primeiro</p><ul class="sp-ul">' +
+      R.semPrazo.map(function (p) {
+        return '<li><a href="#/' + p.rota + '" data-titulo="' + esc(p.titulo) + '"><span class="t">' + (p.urgente ? '🔥 ' : '') + esc(p.nome) + ' · ' + esc(p.desc) + '</span>' +
+          '<span class="d">desde ' + p.criado.split('-').reverse().join('/') + '</span><span class="v">' + diasEntre(p.criado, R.hoje) + 'd</span></a></li>';
+      }).join('') + '</ul>';
+  }).catch(function (e) {
+    console.error('[sem prazo]', e);
+    var el = $('sp-lista'); if (el) el.innerHTML = '<p class="aviso-erro">Não deu para carregar agora. Atualize a página.</p>';
+  });
+}
 
 // ── Mais ──────────────────────────────────────────────────────
 function renderMais() {
