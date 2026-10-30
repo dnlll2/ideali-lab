@@ -20,3 +20,9 @@ testes/comprovantes/
 
 # cache do Python dos testes
 testes/__pycache__/
+
+# dados de clientes (nome, CPF, telefone, valores): nunca publicar
+supabase/000_cadastro_clientes.sql
+supabase/033_lancamento_inove_julho2026.sql
+supabase/038_lancamento_inove_agosto2026.sql
+backups/
